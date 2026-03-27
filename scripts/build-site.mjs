@@ -25,6 +25,12 @@ const CATEGORY_CONFIG = {
 
 const DISPLAY_ORDER = ['l402', 'spatial', 'identity', 'agents', 'trust', 'crypto', 'compliance', 'protocol'];
 
+// Repos with dedicated websites (presentation config, not in JSON)
+const REPO_WEBSITES = {
+  bray: 'https://bray.forgesworn.dev',
+  '402-pub': 'https://402.pub',
+};
+
 // SVG connection definitions: [from, to, style]
 const SVG_CONNECTIONS = [
   ['crypto',     'identity',  'solid'],
@@ -179,11 +185,18 @@ function buildEntryRepoCard(repo, colour) {
     <button class="copy-btn" data-copy="${escHtml(installCmd)}" aria-label="Copy install command">Copy</button>
   </div>`
     : '';
+  const website = REPO_WEBSITES[repo.name];
+  const websiteHtml = website
+    ? `<a class="repo-link repo-link--site" href="${escHtml(website)}" target="_blank" rel="noopener noreferrer">Website</a>`
+    : '';
   return `<div class="repo-card repo-card--entry" style="--stack-colour: ${colour}">
   <h3 class="repo-name">${escHtml(repo.name)}</h3>
   <p class="repo-desc">${escHtml(repo.description)}</p>
   ${installHtml}
-  <a class="repo-link" href="${escHtml(repo.github)}" target="_blank" rel="noopener noreferrer">GitHub</a>
+  <div class="repo-links">
+    <a class="repo-link" href="${escHtml(repo.github)}" target="_blank" rel="noopener noreferrer">GitHub</a>
+    ${websiteHtml}
+  </div>
 </div>`;
 }
 
@@ -191,10 +204,16 @@ function buildEntryRepoCard(repo, colour) {
  * Build a standard repo card.
  */
 function buildRepoCard(repo) {
+  const website = REPO_WEBSITES[repo.name];
+  const websiteHtml = website
+    ? `\n  <a class="repo-link repo-link--site" href="${escHtml(website)}" target="_blank" rel="noopener noreferrer">Website</a>`
+    : '';
   return `<div class="repo-card">
   <h3 class="repo-name">${escHtml(repo.name)}</h3>
   <p class="repo-desc">${escHtml(repo.description)}</p>
-  <a class="repo-link" href="${escHtml(repo.github)}" target="_blank" rel="noopener noreferrer">GitHub</a>
+  <div class="repo-links">
+    <a class="repo-link" href="${escHtml(repo.github)}" target="_blank" rel="noopener noreferrer">GitHub</a>${websiteHtml}
+  </div>
 </div>`;
 }
 
