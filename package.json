@@ -1,0 +1,12 @@
+{
+  "name": "forgesworn.dev",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ForgeSworn organisation landing page",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-site.mjs",
+    "test": "node --test test/build-site.test.mjs"
+  },
+  "license": "MIT"
+}
