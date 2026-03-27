@@ -70,7 +70,7 @@ export function buildHeroStatsHtml(data) {
   const stat = (value, label) =>
     `<div class="stat"><span class="stat-value">${value}</span><span class="stat-label">${label}</span></div>`;
   return [
-    stat(repos, 'public repos'),
+    stat(repos, 'open-source projects'),
     stat(stacks, 'focus areas'),
     stat(npmPackages, 'npm packages'),
   ].join('\n');
