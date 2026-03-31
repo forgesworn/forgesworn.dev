@@ -1,0 +1,1573 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ForgeSworn -- Open-source building blocks for sovereign commerce, identity, and trust</title>
+  <meta name="description" content="30 open-source tools built on Nostr, Lightning, and zero-trust cryptography. Use one, use many, or use them all together.">
+  <meta name="theme-color" content="#0a0a0f">
+  <meta property="og:title" content="ForgeSworn -- Open-source building blocks for sovereign commerce, identity, and trust">
+  <meta property="og:description" content="30 open-source tools built on Nostr, Lightning, and zero-trust cryptography.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://forgesworn.dev">
+  <meta property="og:image" content="https://forgesworn.dev/social-preview.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="ForgeSworn -- Open-source building blocks for sovereign commerce, identity, and trust">
+  <meta name="twitter:description" content="30 open-source tools built on Nostr, Lightning, and zero-trust cryptography.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0a0f'/><text x='16' y='23' font-size='18' text-anchor='middle' fill='%23e8a838' font-family='serif'>&#9876;</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300;1,9..40,400&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* ========================================
+       RESET & BASE
+       ======================================== */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg-deep: #06060b;
+      --bg-primary: #0a0a0f;
+      --bg-elevated: #111118;
+      --bg-card: #14141d;
+      --bg-card-hover: #1a1a26;
+      --border-subtle: #1e1e2e;
+      --border-medium: #2a2a3e;
+
+      --text-primary: #e8e6e3;
+      --text-secondary: #9896a1;
+      --text-muted: #5e5c66;
+
+      --accent-gold: #e8a838;
+      --accent-gold-dim: #b8842a;
+      --accent-gold-glow: rgba(232, 168, 56, 0.15);
+      --accent-blue: #4a9eff;
+      --accent-blue-dim: #3578cc;
+      --accent-blue-glow: rgba(74, 158, 255, 0.1);
+      --accent-green: #34d399;
+      --accent-red: #f87171;
+      --accent-purple: #a78bfa;
+
+      --font-display: 'Instrument Serif', Georgia, serif;
+      --font-body: 'DM Sans', -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+
+      --max-width: 1200px;
+      --section-gap: clamp(6rem, 12vh, 10rem);
+    }
+
+    html {
+      scroll-behavior: smooth;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      line-height: 1.65;
+      font-size: 16px;
+      overflow-x: hidden;
+    }
+
+    /* Noise texture overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      pointer-events: none;
+      opacity: 0.025;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+      background-repeat: repeat;
+      background-size: 256px 256px;
+    }
+
+    a { color: var(--accent-gold); text-decoration: none; transition: color 0.2s; }
+    a:hover { color: var(--accent-blue); }
+
+    ::selection { background: var(--accent-gold); color: var(--bg-deep); }
+
+    /* Skip to content */
+    .skip-link {
+      position: absolute;
+      top: -100%;
+      left: 1rem;
+      background: var(--accent-gold);
+      color: var(--bg-deep);
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      font-weight: 600;
+      z-index: 10000;
+      transition: top 0.2s;
+    }
+    .skip-link:focus {
+      top: 0.5rem;
+      color: var(--bg-deep);
+    }
+
+    /* ========================================
+       LAYOUT
+       ======================================== */
+    .container {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 0 clamp(1.25rem, 4vw, 3rem);
+    }
+
+    section {
+      padding: var(--section-gap) 0;
+      position: relative;
+    }
+
+    /* ========================================
+       TYPOGRAPHY
+       ======================================== */
+    h1, h2, h3 {
+      font-family: var(--font-display);
+      font-weight: 400;
+      line-height: 1.1;
+    }
+
+    h2 {
+      font-size: clamp(2.2rem, 5vw, 3.5rem);
+      margin-bottom: 1.5rem;
+    }
+
+    h3 {
+      font-size: clamp(1.4rem, 2.5vw, 1.75rem);
+      margin-bottom: 0.75rem;
+    }
+
+    .section-label {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--accent-gold);
+      margin-bottom: 1rem;
+      display: block;
+    }
+
+    .text-muted { color: var(--text-secondary); }
+    .text-dim { color: var(--text-muted); }
+
+    p + p { margin-top: 1em; }
+
+    /* ========================================
+       NAV
+       ======================================== */
+    .nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      padding: 1rem 0;
+      background: rgba(6, 6, 11, 0.85);
+      backdrop-filter: blur(20px) saturate(1.5);
+      -webkit-backdrop-filter: blur(20px) saturate(1.5);
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.3s, padding 0.3s;
+    }
+
+    .nav.scrolled {
+      border-bottom-color: var(--border-subtle);
+      padding: 0.6rem 0;
+    }
+
+    .nav-inner {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 0 clamp(1.25rem, 4vw, 3rem);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-brand {
+      font-family: var(--font-mono);
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-brand span { color: var(--accent-gold); }
+
+    .nav-anvil {
+      width: 22px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 2rem;
+      align-items: center;
+      list-style: none;
+    }
+
+    .nav-links a {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      letter-spacing: 0.02em;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--text-primary); }
+
+    .nav-links .btn-nav {
+      background: var(--accent-gold);
+      color: var(--bg-deep);
+      padding: 0.45rem 1rem;
+      border-radius: 4px;
+      font-weight: 600;
+      transition: background 0.2s, transform 0.15s;
+    }
+
+    .nav-links .btn-nav:hover {
+      background: #f0b848;
+      color: var(--bg-deep);
+      transform: translateY(-1px);
+    }
+
+    .nav-toggle {
+      display: none;
+      background: none;
+      border: none;
+      color: var(--text-primary);
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0.25rem;
+    }
+
+    /* ========================================
+       HERO
+       ======================================== */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      padding-top: 5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Wide diffuse gold radial glow */
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90vw;
+      height: 90vw;
+      max-width: 1200px;
+      max-height: 1200px;
+      background: radial-gradient(circle, rgba(232, 168, 56, 0.05) 0%, rgba(74, 158, 255, 0.02) 40%, transparent 70%);
+      pointer-events: none;
+      animation: hero-glow 8s ease-in-out infinite alternate;
+    }
+
+    @keyframes hero-glow {
+      0% { opacity: 0.7; transform: translateX(-50%) translate(0, 0) scale(1); }
+      100% { opacity: 1; transform: translateX(-50%) translate(-3%, 5%) scale(1.05); }
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 1;
+      max-width: 860px;
+    }
+
+    .hero h1 {
+      font-size: clamp(2.8rem, 7vw, 5rem);
+      line-height: 1.05;
+      margin-bottom: 1.5rem;
+      animation: fadeUp 0.8s ease-out 0.1s both;
+    }
+
+    .hero h1 em {
+      font-style: italic;
+      color: var(--accent-gold);
+    }
+
+    .hero-sub {
+      font-size: clamp(1.1rem, 2vw, 1.35rem);
+      color: var(--text-secondary);
+      max-width: 680px;
+      line-height: 1.6;
+      margin-bottom: 2.5rem;
+      animation: fadeUp 0.8s ease-out 0.2s both;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: center;
+      animation: fadeUp 0.8s ease-out 0.3s both;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      font-weight: 500;
+      background: var(--accent-gold);
+      color: var(--bg-deep);
+      border: 1px solid var(--accent-gold);
+      padding: 0.7rem 1.5rem;
+      border-radius: 8px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.15s;
+    }
+
+    .btn-primary:hover {
+      background: #f0b848;
+      color: var(--bg-deep);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      font-weight: 500;
+      background: transparent;
+      color: var(--text-primary);
+      border: 1px solid var(--border-medium);
+      padding: 0.7rem 1.5rem;
+      border-radius: 8px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: border-color 0.2s, background 0.2s, transform 0.15s;
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--accent-blue-dim);
+      background: var(--accent-blue-glow);
+      color: var(--text-primary);
+      transform: translateY(-1px);
+    }
+
+    .hero-stats {
+      display: flex;
+      gap: 2.5rem;
+      margin-top: 3.5rem;
+      animation: fadeUp 0.8s ease-out 0.45s both;
+    }
+
+    .stat {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stat-value {
+      font-family: var(--font-display);
+      font-size: 2.2rem;
+      color: var(--text-primary);
+      line-height: 1;
+    }
+
+    .stat-label {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-top: 0.3rem;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* ========================================
+       STACK MAP
+       ======================================== */
+    .stack-map {
+      background: var(--bg-primary);
+      border-top: 1px solid var(--border-subtle);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .stack-map-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.25rem;
+      margin-top: 2.5rem;
+      position: relative;
+    }
+
+    .stack-map-svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .stack-map-svg line {
+      transition: stroke-opacity 0.3s;
+    }
+
+    .stack-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      overflow: hidden;
+      cursor: pointer;
+      position: relative;
+      z-index: 1;
+      transition: border-color 0.3s, transform 0.2s, box-shadow 0.3s;
+    }
+
+    .stack-card:hover,
+    .stack-card:focus-visible {
+      border-color: var(--border-medium);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .stack-card:focus-visible {
+      outline: 2px solid var(--accent-gold);
+      outline-offset: 2px;
+    }
+
+    .stack-card-accent {
+      height: 3px;
+      background: var(--stack-colour, var(--accent-gold));
+      opacity: 0.6;
+      transition: opacity 0.3s;
+    }
+
+    .stack-card:hover .stack-card-accent,
+    .stack-card:focus-visible .stack-card-accent {
+      opacity: 1;
+    }
+
+    .stack-card-body {
+      padding: 1.25rem;
+    }
+
+    .stack-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+
+    .stack-card-name {
+      font-family: var(--font-body);
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--text-primary);
+    }
+
+    .stack-card-count {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      background: var(--bg-elevated);
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    .stack-card-desc {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* ========================================
+       STACK SECTIONS
+       ======================================== */
+    .stack-section {
+      border-bottom: 1px solid var(--border-subtle);
+      scroll-margin-top: 5rem;
+    }
+
+    .stack-section .section-label {
+      color: var(--stack-colour, var(--accent-gold));
+    }
+
+    .section-title {
+      font-family: var(--font-display);
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 400;
+      line-height: 1.15;
+      margin-bottom: 2rem;
+      max-width: 700px;
+    }
+
+    /* Entry point card */
+    .repo-card--entry {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.3s;
+    }
+
+    .repo-card--entry::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--stack-colour, var(--accent-gold));
+      opacity: 0.7;
+    }
+
+    .repo-card--entry:hover {
+      border-color: var(--border-medium);
+    }
+
+    .repo-card--entry .repo-name {
+      font-family: var(--font-mono);
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 0.5rem;
+    }
+
+    .repo-card--entry .repo-desc {
+      font-size: 1rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      margin-bottom: 1.25rem;
+      max-width: 600px;
+    }
+
+    .repo-links {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .repo-card--entry .repo-link {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--accent-gold);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .repo-card--entry .repo-link:hover {
+      color: var(--accent-blue);
+    }
+
+    /* Install block */
+    .install-block {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-medium);
+      border-radius: 8px;
+      padding: 0.7rem 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+      max-width: fit-content;
+    }
+
+    .install-cmd {
+      color: var(--text-primary);
+    }
+
+    .copy-btn {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      background: var(--bg-card);
+      color: var(--text-muted);
+      border: 1px solid var(--border-subtle);
+      padding: 0.25rem 0.6rem;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+      white-space: nowrap;
+    }
+
+    .copy-btn:hover {
+      color: var(--text-primary);
+      border-color: var(--border-medium);
+    }
+
+    .copy-btn.copied {
+      color: var(--accent-green);
+      border-color: var(--accent-green);
+    }
+
+    /* Repo grid */
+    .repo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .repo-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 1.5rem;
+      transition: border-color 0.3s, transform 0.2s, box-shadow 0.3s;
+    }
+
+    .repo-card:hover {
+      border-color: var(--border-medium);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .repo-card .repo-name {
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 0.4rem;
+    }
+
+    .repo-card .repo-desc {
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+      line-height: 1.55;
+      margin-bottom: 0.75rem;
+    }
+
+    .repo-card .repo-link {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--accent-gold);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .repo-card .repo-link:hover {
+      color: var(--accent-blue);
+    }
+
+    /* Flow chain */
+    .flow-chain {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-top: 1.5rem;
+      padding: 1rem 1.25rem;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+    }
+
+    .flow-arrow {
+      color: var(--accent-gold-dim);
+    }
+
+    /* ========================================
+       BRAY CALLOUT
+       ======================================== */
+    .bray-callout {
+      background: var(--bg-primary);
+      border-top: 1px solid var(--border-subtle);
+      border-bottom: 1px solid var(--border-subtle);
+      text-align: center;
+    }
+
+    .bray-callout h2 {
+      font-size: clamp(2rem, 4.5vw, 3rem);
+    }
+
+    .bray-callout p {
+      color: var(--text-secondary);
+      font-size: clamp(1rem, 1.5vw, 1.15rem);
+      max-width: 600px;
+      margin: 0 auto 2rem;
+      line-height: 1.65;
+    }
+
+    /* ========================================
+       FOOTER
+       ======================================== */
+    .footer {
+      padding: 3rem 0;
+      border-top: 1px solid var(--border-subtle);
+      background: var(--bg-deep);
+    }
+
+    .footer-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .footer-brand {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .footer-brand span { color: var(--text-secondary); }
+
+    .footer-links {
+      display: flex;
+      gap: 2rem;
+      align-items: center;
+      list-style: none;
+    }
+
+    .footer-links a {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      transition: color 0.2s;
+    }
+
+    .footer-links a:hover { color: var(--text-primary); }
+
+    /* ========================================
+       SCROLL ANIMATIONS
+       ======================================== */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .reveal-stagger > * {
+      opacity: 0;
+      transform: translateY(16px);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+
+    .reveal-stagger.visible > * {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .reveal-stagger.visible > *:nth-child(1) { transition-delay: 0.05s; }
+    .reveal-stagger.visible > *:nth-child(2) { transition-delay: 0.1s; }
+    .reveal-stagger.visible > *:nth-child(3) { transition-delay: 0.15s; }
+    .reveal-stagger.visible > *:nth-child(4) { transition-delay: 0.2s; }
+    .reveal-stagger.visible > *:nth-child(5) { transition-delay: 0.25s; }
+    .reveal-stagger.visible > *:nth-child(6) { transition-delay: 0.3s; }
+    .reveal-stagger.visible > *:nth-child(7) { transition-delay: 0.35s; }
+    .reveal-stagger.visible > *:nth-child(8) { transition-delay: 0.4s; }
+
+    /* ========================================
+       DIVIDER FLOURISH
+       ======================================== */
+    .section-divider {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .section-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(to right, var(--border-medium), transparent);
+    }
+
+    .glow-rule {
+      border: none;
+      height: 1px;
+      background: linear-gradient(to right, transparent, var(--accent-gold-dim), transparent);
+      opacity: 0.3;
+      margin: 0;
+    }
+
+    /* ========================================
+       REDUCED MOTION
+       ======================================== */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+
+      .reveal, .reveal-stagger > * {
+        opacity: 1;
+        transform: none;
+      }
+
+      html { scroll-behavior: auto; }
+    }
+
+    /* ========================================
+       RESPONSIVE
+       ======================================== */
+    @media (max-width: 1024px) {
+      .stack-map-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .nav-links.open {
+        display: flex;
+        flex-direction: column;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: rgba(6, 6, 11, 0.97);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        padding: 1.5rem;
+        gap: 1.25rem;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+      .nav-toggle { display: block; }
+
+      .hero { min-height: auto; padding-top: 8rem; padding-bottom: 4rem; }
+      .hero h1 { font-size: clamp(2.2rem, 9vw, 3.2rem); }
+      .hero-stats { gap: 1.5rem; }
+      .hero-stats .stat-value { font-size: 1.8rem; }
+
+      .stack-map-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .repo-grid { grid-template-columns: 1fr; }
+
+      .footer-inner { flex-direction: column; text-align: center; }
+      .footer-links { flex-wrap: wrap; justify-content: center; }
+    }
+
+    @media (max-width: 480px) {
+      .hero-actions { flex-direction: column; align-items: stretch; }
+      .hero-stats { flex-wrap: wrap; gap: 1.25rem; }
+
+      .stack-map-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <a class="skip-link" href="#main-content">Skip to content</a>
+
+  <!-- Top accent line -->
+  <div style="position:fixed;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent-gold),var(--accent-blue),var(--accent-gold));background-size:200% 100%;animation:shimmer 4s linear infinite;z-index:1001;"></div>
+
+  <!-- ====== NAV ====== -->
+  <nav class="nav" id="nav" style="top:2px;" aria-label="Main navigation">
+    <div class="nav-inner">
+      <a href="#" class="nav-brand" aria-label="ForgeSworn home">
+        <svg class="nav-anvil" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M4 18h16v2H4v-2zm2-2h12l1-4H5l1 4zm3-6h6l0.5-2h-7l0.5 2zm2-4h2V4h-2v2z" fill="currentColor" opacity="0.85"/>
+        </svg>
+        Forge<span>Sworn</span>
+      </a>
+      <button class="nav-toggle" id="navToggle" type="button" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="#ecosystem">Ecosystem</a></li>
+        <li><a href="https://bray.forgesworn.dev">Bray</a></li>
+        <li><a href="https://github.com/forgesworn" class="btn-nav">GitHub</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- ====== HERO ====== -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-content">
+        <h1>Open-source building blocks for <em>sovereign commerce, identity, and trust</em></h1>
+        <p class="hero-sub">
+          Composable tools built on Nostr, Lightning, and zero-trust cryptography. Libraries, CLIs, MCP servers, and protocol specs. Use one, use many, or use them all together.
+        </p>
+        <div class="hero-actions">
+          <a href="#ecosystem" class="btn-primary">Explore the ecosystem</a>
+          <a href="https://github.com/forgesworn" class="btn-secondary">
+            <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+            View on GitHub
+          </a>
+        </div>
+        <div class="hero-stats">
+          <div class="stat"><span class="stat-value">30</span><span class="stat-label">open-source projects</span></div>
+<div class="stat"><span class="stat-value">8</span><span class="stat-label">focus areas</span></div>
+<div class="stat"><span class="stat-value">21</span><span class="stat-label">npm packages</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== STACK MAP ====== -->
+  <section class="stack-map" id="ecosystem">
+    <div class="container">
+      <div class="section-divider">
+        <span class="section-label">Ecosystem</span>
+      </div>
+      <h2 class="reveal">Eight stacks, one architecture</h2>
+      <p class="text-muted reveal" style="max-width:660px;">
+        Each stack solves one problem well. Together they form a composable toolkit for sovereign commerce, identity, and trust.
+      </p>
+      <div class="stack-map-grid reveal-stagger">
+        <div class="stack-card" data-stack="l402" style="--stack-colour: #e94560" tabindex="0" role="button">
+  <div class="stack-card-accent"></div>
+  <div class="stack-card-body">
+    <div class="stack-card-header">
+      <span class="stack-card-name">L402 / Machine Payments</span>
+      <span class="stack-card-count">11</span>
+    </div>
+    <p class="stack-card-desc">Make APIs payable, discoverable, and consumable by people and agents</p>
+  </div>
+</div>
+<div class="stack-card" data-stack="spatial" style="--stack-colour: #0f3460" tabindex="0" role="button">
+  <div class="stack-card-accent"></div>
+  <div class="stack-card-body">
+    <div class="stack-card-header">
+      <span class="stack-card-name">Spatial / Meeting</span>
+      <span class="stack-card-count">3</span>
+    </div>
+    <p class="stack-card-desc">Build location-aware workflows and fair meeting-point tools</p>
+  </div>
+</div>
+<div class="stack-card" data-stack="identity" style="--stack-colour: #16c79a" tabindex="0" role="button">
+  <div class="stack-card-accent"></div>
+  <div class="stack-card-body">
+    <div class="stack-card-header">
+      <span class="stack-card-name">Identity / Access</span>
+      <span class="stack-card-count">6</span>
+    </div>
+    <p class="stack-card-desc">Spoken verification, deterministic Nostr identities, encrypted access control, and decentralised identity verification</p>
+  </div>
+</div>
+<div class="stack-card" data-stack="agents" style="--stack-colour: #00b4d8" tabindex="0" role="button">
+  <div class="stack-card-accent"></div>
+  <div class="stack-card-body">
+    <div class="stack-card-header">
+      <span class="stack-card-name">AI Agents</span>
+      <span class="stack-card-count">1</span>
+    </div>
+    <p class="stack-card-desc">Give AI agents sovereign Nostr identities with trust-aware tooling</p>
+  </div>
+</div>
+<div class="stack-card" data-stack="trust" style="--stack-colour: #9b59b6" tabindex="0" role="button">
+  <div class="stack-card-accent"></div>
+  <div class="stack-card-body">
+    <div class="stack-card-header">
+      <span class="stack-card-name">Trust / Privacy</span>
+      <span class="stack-card-count">2</span>
+    </div>
+    <p class="stack-card-desc">Privacy-preserving trust and verifiable attestations</p>
+  </div>
+</div>
+<div class="stack-card" data-stack="crypto" style="--stack-colour: #f5a623" tabindex="0" role="button">
+  <div class="stack-card-accent"></div>
+  <div class="stack-card-body">
+    <div class="stack-card-header">
+      <span class="stack-card-name">Cryptographic Primitives</span>
+      <span class="stack-card-count">4</span>
+    </div>
+    <p class="stack-card-desc">Standalone cryptographic building blocks used across the ecosystem</p>
+  </div>
+</div>
+<div class="stack-card" data-stack="compliance" style="--stack-colour: #e17055" tabindex="0" role="button">
+  <div class="stack-card-accent"></div>
+  <div class="stack-card-body">
+    <div class="stack-card-header">
+      <span class="stack-card-name">Compliance</span>
+      <span class="stack-card-count">1</span>
+    </div>
+    <p class="stack-card-desc">Work with jurisdiction and professional-registry intelligence</p>
+  </div>
+</div>
+<div class="stack-card" data-stack="protocol" style="--stack-colour: #6c5ce7" tabindex="0" role="button">
+  <div class="stack-card-accent"></div>
+  <div class="stack-card-body">
+    <div class="stack-card-header">
+      <span class="stack-card-name">Protocol / Standards</span>
+      <span class="stack-card-count">2</span>
+    </div>
+    <p class="stack-card-desc">Nostr protocol extensions and conformance testing</p>
+  </div>
+</div>
+        <svg class="stack-map-svg" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+  <line data-from="crypto" data-to="identity" x1="0" y1="0" x2="0" y2="0" stroke="#f5a623" stroke-width="2" stroke-opacity="0.6"/>
+  <line data-from="crypto" data-to="trust" x1="0" y1="0" x2="0" y2="0" stroke="#f5a623" stroke-width="2" stroke-opacity="0.6"/>
+  <line data-from="crypto" data-to="l402" x1="0" y1="0" x2="0" y2="0" stroke="#f5a623" stroke-width="2" stroke-opacity="0.6" stroke-dasharray="6 4"/>
+  <line data-from="identity" data-to="l402" x1="0" y1="0" x2="0" y2="0" stroke="#16c79a" stroke-width="2" stroke-opacity="0.6" stroke-dasharray="6 4"/>
+  <line data-from="identity" data-to="spatial" x1="0" y1="0" x2="0" y2="0" stroke="#16c79a" stroke-width="2" stroke-opacity="0.6" stroke-dasharray="6 4"/>
+  <line data-from="identity" data-to="agents" x1="0" y1="0" x2="0" y2="0" stroke="#16c79a" stroke-width="2" stroke-opacity="0.6"/>
+  <line data-from="trust" data-to="identity" x1="0" y1="0" x2="0" y2="0" stroke="#9b59b6" stroke-width="2" stroke-opacity="0.6" stroke-dasharray="6 4"/>
+  <line data-from="compliance" data-to="identity" x1="0" y1="0" x2="0" y2="0" stroke="#e17055" stroke-width="2" stroke-opacity="0.6"/>
+</svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== STACK DETAIL SECTIONS ====== -->
+  <main id="main-content">
+    <div class="container">
+      <section class="stack-section" data-stack="l402" style="--stack-colour: #e94560">
+<div class="section-label" style="color: #e94560">L402 / Machine Payments</div>
+<h2 class="section-title">Make APIs payable, discoverable, and consumable by people and agents.</h2>
+<div class="repo-card repo-card--entry" style="--stack-colour: #e94560">
+  <h3 class="repo-name">toll-booth</h3>
+  <p class="repo-desc">Any API becomes a Lightning toll booth in one line. L402 middleware for Express, Hono, Deno, Bun, and Workers.</p>
+  <div class="install-block">
+    <code class="install-cmd">npm install @forgesworn/toll-booth</code>
+    <button class="copy-btn" data-copy="npm install @forgesworn/toll-booth" aria-label="Copy install command">Copy</button>
+  </div>
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/toll-booth" target="_blank" rel="noopener noreferrer">GitHub</a>
+    
+  </div>
+</div>
+<div class="repo-grid">
+<div class="repo-card">
+  <h3 class="repo-name">402-announce</h3>
+  <p class="repo-desc">Announce HTTP 402 services on Nostr for decentralised discovery using kind 31402.</p>
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/402-announce" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </div>
+</div>
+<div class="repo-card">
+  <h3 class="repo-name">402-mcp</h3>
+  <p class="repo-desc">MCP client for AI agents to discover, pay for, and consume L402 and x402 APIs.</p>
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/402-mcp" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </div>
+</div>
+<div class="repo-card">
+  <h3 class="repo-name">402-pub</h3>
+  <p class="repo-desc">Live directory at 402.pub for Lightning-paid APIs.</p>
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/402-pub" target="_blank" rel="noopener noreferrer">GitHub</a>
+  <a class="repo-link repo-link--site" href="https://402.pub" target="_blank" rel="noopener noreferrer">Website</a>
+  </div>
+</div>
+<div class="repo-card">
+  <h3 class="repo-name">toll-booth-announce</h3>
+  <p class="repo-desc">Bridge between toll-booth and 402-announce for Nostr service announcements.</p>
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/toll-booth-announce" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </div>
+</div>
+<div class="repo-card">
+  <h3 class="repo-name">toll-booth-dvm</h3>
+  <p class="repo-desc">Expose any toll-booth-gated API as a NIP-90 Data Vending Machine on Nostr.</p>
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/toll-booth-dvm" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </div>
+</div>
+<div class="repo-card">
+  <h3 class="repo-name">toll-booth-mcp</h3>
+  <p class="repo-desc">MCP server with read-only analytics and widget UIs for toll-booth deployments.</p>
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/toll-booth-mcp" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </div>
+</div>
+<div class="repo-card">
+  <h3 class="repo-name">402-indexer</h3>
+  <p class="repo-desc">Nostr-native crawler that discovers L402 and x402 paid APIs.</p>
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/402-indexer" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </div>
+</div>
+<div class="repo-card">
+  <h3 class="repo-name">payment-methods</h3>
+  <p class="repo-desc">Specifications for HTTP Payment Authentication methods (Lightning, Cashu, Session).</p>
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/payment-methods" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </div>
+</div>
+<div class="repo-card">
+  <h3 class="repo-name">aperture-phoenixd</h3>
+  <p class="repo-desc">Phoenixd backend for Aperture. No LND required.</p>
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/aperture-phoenixd" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </div>
+</div>
+<div class="repo-card">
+  <h3 class="repo-name">aperture-announce</h3>
+  <p class="repo-desc">Announce Aperture L402 services on Nostr for decentralised discovery.</p>
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/aperture-announce" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </div>
+</div>
+</div>
+<div class="flow-chain">toll-booth <span class="flow-arrow">→</span> toll-booth-announce</div>
+</section>
+
+<section class="stack-section" data-stack="spatial" style="--stack-colour: #0f3460">
+<div class="section-label" style="color: #0f3460">Spatial / Meeting</div>
+<h2 class="section-title">Build location-aware workflows and fair meeting-point tools.</h2>
+<div class="repo-card repo-card--entry" style="--stack-colour: #0f3460">
+  <h3 class="repo-name">rendezvous-kit</h3>
+  <p class="repo-desc">Find fair meeting points for N participants with isochrone intersection, venue search, and fairness scoring.</p>
+  <div class="install-block">
+    <code class="install-cmd">npm install rendezvous-kit</code>
+    <button class="copy-btn" data-copy="npm install rendezvous-kit" aria-label="Copy install command">Copy</button>
+  </div>
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/rendezvous-kit" target="_blank" rel="noopener noreferrer">GitHub</a>
+    
+  </div>
+</div>
+<div class="repo-grid">
+<div class="repo-card">
+  <h3 class="repo-name">geohash-kit</h3>
+  <p class="repo-desc">Zero-dependency geohash toolkit for encoding, decoding, polygon coverage, and Nostr location filters.</p>
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/geohash-kit" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </div>
+</div>
+<div class="repo-card">
+  <h3 class="repo-name">rendezvous-mcp</h3>
+  <p class="repo-desc">MCP server for AI-driven fair meeting-point discovery.</p>
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/rendezvous-mcp" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </div>
+</div>
+</div>
+<div class="flow-chain">geohash-kit <span class="flow-arrow">→</span> rendezvous-kit <span class="flow-arrow">→</span> rendezvous-mcp</div>
+</section>
+
+<section class="stack-section" data-stack="identity" style="--stack-colour: #16c79a">
+<div class="section-label" style="color: #16c79a">Identity / Access</div>
+<h2 class="section-title">Spoken verification, deterministic Nostr identities, encrypted access control, and decentralised identity verification.</h2>
+<div class="repo-card repo-card--entry" style="--stack-colour: #16c79a">
+  <h3 class="repo-name">nsec-tree</h3>
+  <p class="repo-desc">Deterministic Nostr sub-identity derivation. One master secret, unlimited unlinkable identities.</p>
+  <div class="install-block">
+    <code class="install-cmd">npm install nsec-tree</code>
+    <button class="copy-btn" data-copy="npm install nsec-tree" aria-label="Copy install command">Copy</button>
+  </div>
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/nsec-tree" target="_blank" rel="noopener noreferrer">GitHub</a>
+    
+  </div>
+</div>
+<div class="repo-grid">
+<div class="repo-card">
+  <h3 class="repo-name">spoken-token</h3>
+  <p class="repo-desc">Derive time-rotating, human-speakable verification tokens from a shared secret.</p>
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/spoken-token" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </div>
+</div>
+<div class="repo-card">
+  <h3 class="repo-name">nsec-tree-cli</h3>
+  <p class="repo-desc">Offline-first CLI for nsec-tree with derivation, proofs, and Shamir recovery.</p>
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/nsec-tree-cli" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </div>
+</div>
+<div class="repo-card">
+  <h3 class="repo-name">canary-kit</h3>
+  <p class="repo-desc">Deepfake-proof identity verification with per-member spoken words, silent duress detection, encrypted group sync.</p>
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/canary-kit" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </div>
+</div>
+<div class="repo-card">
+  <h3 class="repo-name">signet</h3>
+  <p class="repo-desc">Decentralised identity verification for Nostr. 4 verification tiers, ZKP age proofs, Signet IQ.</p>
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/signet" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </div>
+</div>
+<div class="repo-card">
+  <h3 class="repo-name">dominion</h3>
+  <p class="repo-desc">Epoch-based encrypted access control. HKDF content keys, AES-256-GCM, Shamir secret sharing, tiered audiences.</p>
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/dominion" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </div>
+</div>
+</div>
+<div class="flow-chain">spoken-token <span class="flow-arrow">→</span> canary-kit</div>
+</section>
+
+<section class="stack-section" data-stack="agents" style="--stack-colour: #00b4d8">
+<div class="section-label" style="color: #00b4d8">AI Agents</div>
+<h2 class="section-title">Give AI agents sovereign Nostr identities with trust-aware tooling.</h2>
+<div class="repo-card repo-card--entry" style="--stack-colour: #00b4d8">
+  <h3 class="repo-name">bray</h3>
+  <p class="repo-desc">Trust-aware Nostr MCP for AI and humans. 200+ tools across identity, social, payments, dispatch, moderation, privacy, and encrypted access. Model-agnostic AI-to-AI collaboration over encrypted Nostr DMs.</p>
+  <div class="install-block">
+    <code class="install-cmd">npm install nostr-bray</code>
+    <button class="copy-btn" data-copy="npm install nostr-bray" aria-label="Copy install command">Copy</button>
+  </div>
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/bray" target="_blank" rel="noopener noreferrer">GitHub</a>
+    <a class="repo-link repo-link--site" href="https://bray.forgesworn.dev" target="_blank" rel="noopener noreferrer">Website</a>
+  </div>
+</div>
+
+
+</section>
+
+<section class="stack-section" data-stack="trust" style="--stack-colour: #9b59b6">
+<div class="section-label" style="color: #9b59b6">Trust / Privacy</div>
+<h2 class="section-title">Privacy-preserving trust and verifiable attestations.</h2>
+<div class="repo-card repo-card--entry" style="--stack-colour: #9b59b6">
+  <h3 class="repo-name">nostr-attestations</h3>
+  <p class="repo-desc">One Nostr event kind for all attestations. NIP-VA (kind 31000).</p>
+  <div class="install-block">
+    <code class="install-cmd">npm install nostr-attestations</code>
+    <button class="copy-btn" data-copy="npm install nostr-attestations" aria-label="Copy install command">Copy</button>
+  </div>
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/nostr-attestations" target="_blank" rel="noopener noreferrer">GitHub</a>
+    
+  </div>
+</div>
+<div class="repo-grid">
+<div class="repo-card">
+  <h3 class="repo-name">nostr-veil</h3>
+  <p class="repo-desc">Anonymous trust assertions for Nostr. LSAG ring signatures over NIP-85.</p>
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/nostr-veil" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </div>
+</div>
+</div>
+
+</section>
+
+<section class="stack-section" data-stack="crypto" style="--stack-colour: #f5a623">
+<div class="section-label" style="color: #f5a623">Cryptographic Primitives</div>
+<h2 class="section-title">Standalone cryptographic building blocks used across the ecosystem.</h2>
+<div class="repo-card repo-card--entry" style="--stack-colour: #f5a623">
+  <h3 class="repo-name">ring-sig</h3>
+  <p class="repo-desc">SAG and LSAG ring signatures on secp256k1 for anonymous group membership proofs.</p>
+  <div class="install-block">
+    <code class="install-cmd">npm install ring-sig</code>
+    <button class="copy-btn" data-copy="npm install ring-sig" aria-label="Copy install command">Copy</button>
+  </div>
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/ring-sig" target="_blank" rel="noopener noreferrer">GitHub</a>
+    
+  </div>
+</div>
+<div class="repo-grid">
+<div class="repo-card">
+  <h3 class="repo-name">range-proof</h3>
+  <p class="repo-desc">Pedersen commitment range proofs on secp256k1 for proving a value is in range without revealing it.</p>
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/range-proof" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </div>
+</div>
+<div class="repo-card">
+  <h3 class="repo-name">shamir-core</h3>
+  <p class="repo-desc">Shamir's Secret Sharing over GF(256) with core utilities.</p>
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/shamir-core" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </div>
+</div>
+<div class="repo-card">
+  <h3 class="repo-name">shamir-words</h3>
+  <p class="repo-desc">Split secrets into human-readable BIP-39 word shares using Shamir's Secret Sharing.</p>
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/shamir-words" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </div>
+</div>
+</div>
+<div class="flow-chain">shamir-core <span class="flow-arrow">→</span> shamir-words</div>
+</section>
+
+<section class="stack-section" data-stack="compliance" style="--stack-colour: #e17055">
+<div class="section-label" style="color: #e17055">Compliance</div>
+<h2 class="section-title">Work with jurisdiction and professional-registry intelligence.</h2>
+<div class="repo-card repo-card--entry" style="--stack-colour: #e17055">
+  <h3 class="repo-name">jurisdiction-kit</h3>
+  <p class="repo-desc">Professional body registries and jurisdiction intelligence for 30+ countries.</p>
+  <div class="install-block">
+    <code class="install-cmd">npm install jurisdiction-kit</code>
+    <button class="copy-btn" data-copy="npm install jurisdiction-kit" aria-label="Copy install command">Copy</button>
+  </div>
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/jurisdiction-kit" target="_blank" rel="noopener noreferrer">GitHub</a>
+    
+  </div>
+</div>
+
+
+</section>
+
+<section class="stack-section" data-stack="protocol" style="--stack-colour: #6c5ce7">
+<div class="section-label" style="color: #6c5ce7">Protocol / Standards</div>
+<h2 class="section-title">Nostr protocol extensions and conformance testing.</h2>
+<div class="repo-card repo-card--entry" style="--stack-colour: #6c5ce7">
+  <h3 class="repo-name">nip-drafts</h3>
+  <p class="repo-desc">30 Nostr protocol extensions: service coordination, trust, payments, disputes, key hierarchy, encrypted access.</p>
+  
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/nip-drafts" target="_blank" rel="noopener noreferrer">GitHub</a>
+    
+  </div>
+</div>
+<div class="repo-grid">
+<div class="repo-card">
+  <h3 class="repo-name">trott-conformance</h3>
+  <p class="repo-desc">Protocol conformance test suite. Lifecycle fixtures for TROTT task kinds.</p>
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/trott-conformance" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </div>
+</div>
+</div>
+
+</section>
+    </div>
+  </main>
+
+  <!-- ====== BRAY CALLOUT ====== -->
+  <section class="bray-callout">
+    <div class="container">
+      <h2 class="reveal">See it all come together</h2>
+      <p class="reveal">
+        Bray is a CLI and MCP server that gives AI agents a sovereign Nostr identity -- trust-aware tooling across identity, social, payments, moderation, privacy, and encrypted access.
+      </p>
+      <a href="https://bray.forgesworn.dev" class="btn-primary reveal">Explore Bray</a>
+    </div>
+  </section>
+
+  <!-- ====== FOOTER ====== -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          Forge<span>Sworn</span> &middot; MIT Licence
+        </div>
+        <ul class="footer-links">
+          <li><a href="https://github.com/forgesworn">GitHub</a></li>
+          <li><a href="https://www.npmjs.com/org/forgesworn">npm</a></li>
+          <li><a href="https://github.com/forgesworn" aria-label="ForgeSworn on GitHub">@forgesworn</a></li>
+        </ul>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    /* ========================================
+       NAVIGATION
+       ======================================== */
+    const nav = document.getElementById('nav');
+    const navToggle = document.getElementById('navToggle');
+    const navLinks = document.getElementById('navLinks');
+
+    window.addEventListener('scroll', () => {
+      nav.classList.toggle('scrolled', window.scrollY > 40);
+    }, { passive: true });
+
+    navToggle.addEventListener('click', () => {
+      const isOpen = navLinks.classList.toggle('open');
+      navToggle.textContent = isOpen ? '\u2715' : '\u2630';
+      navToggle.setAttribute('aria-expanded', isOpen);
+    });
+
+    navLinks.querySelectorAll('a').forEach(link => {
+      link.addEventListener('click', () => {
+        navLinks.classList.remove('open');
+        navToggle.textContent = '\u2630';
+        navToggle.setAttribute('aria-expanded', 'false');
+      });
+    });
+
+    /* ========================================
+       STACK MAP CARD INTERACTIONS
+       ======================================== */
+    function scrollToStack(slug) {
+      const target = document.querySelector('.stack-section[data-stack="' + slug + '"]');
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    document.querySelectorAll('.stack-card').forEach(card => {
+      card.addEventListener('click', () => {
+        scrollToStack(card.dataset.stack);
+      });
+
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          scrollToStack(card.dataset.stack);
+        }
+      });
+    });
+
+    /* ========================================
+       SVG LINE POSITIONING
+       ======================================== */
+    function updateSvgLines() {
+      const svg = document.querySelector('.stack-map-svg');
+      if (!svg) return;
+
+      const grid = svg.closest('.stack-map-grid');
+      if (!grid) return;
+
+      const gridRect = grid.getBoundingClientRect();
+      const lines = svg.querySelectorAll('line[data-from][data-to]');
+
+      lines.forEach(line => {
+        const fromCard = grid.querySelector('.stack-card[data-stack="' + line.dataset.from + '"]');
+        const toCard = grid.querySelector('.stack-card[data-stack="' + line.dataset.to + '"]');
+
+        if (!fromCard || !toCard) {
+          line.setAttribute('stroke-opacity', '0');
+          return;
+        }
+
+        const fromRect = fromCard.getBoundingClientRect();
+        const toRect = toCard.getBoundingClientRect();
+
+        const x1 = fromRect.left + fromRect.width / 2 - gridRect.left;
+        const y1 = fromRect.top + fromRect.height / 2 - gridRect.top;
+        const x2 = toRect.left + toRect.width / 2 - gridRect.left;
+        const y2 = toRect.top + toRect.height / 2 - gridRect.top;
+
+        line.setAttribute('x1', x1);
+        line.setAttribute('y1', y1);
+        line.setAttribute('x2', x2);
+        line.setAttribute('y2', y2);
+      });
+    }
+
+    window.addEventListener('load', updateSvgLines);
+    window.addEventListener('resize', updateSvgLines);
+
+    /* ========================================
+       STACK CARD HOVER -- HIGHLIGHT LINES
+       ======================================== */
+    document.querySelectorAll('.stack-card').forEach(card => {
+      card.addEventListener('mouseenter', () => {
+        const slug = card.dataset.stack;
+        const svg = document.querySelector('.stack-map-svg');
+        if (!svg) return;
+
+        svg.querySelectorAll('line').forEach(line => {
+          if (line.dataset.from === slug || line.dataset.to === slug) {
+            line.setAttribute('stroke-opacity', '1');
+            line.setAttribute('stroke-width', '3');
+          } else {
+            line.setAttribute('stroke-opacity', '0.15');
+          }
+        });
+      });
+
+      card.addEventListener('mouseleave', () => {
+        const svg = document.querySelector('.stack-map-svg');
+        if (!svg) return;
+
+        svg.querySelectorAll('line').forEach(line => {
+          line.setAttribute('stroke-opacity', '0.6');
+          line.setAttribute('stroke-width', '2');
+        });
+      });
+    });
+
+    /* ========================================
+       COPY TO CLIPBOARD
+       ======================================== */
+    document.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const cmd = btn.dataset.copy;
+        if (!cmd) return;
+
+        try {
+          await navigator.clipboard.writeText(cmd);
+        } catch (e) {
+          const ta = document.createElement('textarea');
+          ta.value = cmd;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+        }
+
+        const original = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = original;
+          btn.classList.remove('copied');
+        }, 2000);
+      });
+    });
+
+    /* ========================================
+       SCROLL REVEAL
+       ======================================== */
+    const observerOptions = {
+      root: null,
+      rootMargin: '0px 0px -60px 0px',
+      threshold: 0.1,
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, observerOptions);
+
+    document.querySelectorAll('.reveal, .reveal-stagger').forEach(el => {
+      observer.observe(el);
+    });
+
+    /* ========================================
+       SMOOTH SCROLL
+       ======================================== */
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function(e) {
+        const href = this.getAttribute('href');
+        if (href === '#') return;
+        const target = document.querySelector(href);
+        if (target) {
+          e.preventDefault();
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
+  </script>
+</body>
+</html>
