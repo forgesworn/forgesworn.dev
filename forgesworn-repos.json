@@ -212,8 +212,8 @@
           "name": "bray",
           "github": "https://github.com/forgesworn/bray",
           "npm": "nostr-bray",
-          "description": "Trust-aware Nostr MCP for AI and humans. 200+ tools across identity, social, payments, dispatch, moderation, privacy, and encrypted access. Model-agnostic AI-to-AI collaboration over encrypted Nostr DMs.",
-          "tags": ["ai-agents", "mcp", "nostr", "trust", "dispatch", "nip-17"],
+          "description": "Trust-aware Nostr MCP for AI and humans. 224 tools across identity, social, payments, dispatch, badges, communities, calendar, listings, search, moderation, privacy, and encrypted access.",
+          "tags": ["ai-agents", "mcp", "nostr", "trust", "dispatch", "nip-17", "nip-23", "nip-50", "nip-52", "nip-58", "nip-72", "nip-89", "nip-99"],
           "dependsOn": ["nsec-tree", "dominion", "nostr-attestations", "ring-sig", "spoken-token"],
           "usedBy": []
         }
