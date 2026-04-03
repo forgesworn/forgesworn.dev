@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+  <defs>
+    <linearGradient id="inner-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1a1f35"/>
+      <stop offset="100%" stop-color="#0f1225"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="600" fill="#06060b"/>
+
+  <!-- Shield outer (gold border) -->
+  <path d="M400,75 L575,132 C590,137 600,152 600,167 L600,395 C600,420 585,442 563,454 L400,545 L237,454 C215,442 200,420 200,395 L200,167 C200,152 210,137 225,132 Z" fill="#e8a838"/>
+
+  <!-- Shield inner -->
+  <path d="M400,90 L565,143 C577,147 585,159 585,172 L585,388 C585,410 572,430 553,440 L400,527 L247,440 C228,430 215,410 215,388 L215,172 C215,159 223,147 235,143 Z" fill="url(#inner-bg)"/>
+
+  <!-- Inner hexagon accent -->
+  <polygon points="400,145 485,182 485,318 400,355 315,318 315,182" fill="none" stroke="#e8a838" stroke-width="1.5" opacity="0.4"/>
+
+  <!-- Megaphone icon -->
+  <!-- Bell/cone of megaphone (pointing right) -->
+  <polygon points="380,225 440,200 440,280 380,255" fill="#94a3b8"/>
+  <!-- Back of megaphone -->
+  <rect x="365" y="222" width="18" height="36" rx="4" fill="#7a8a9a"/>
+  <!-- Handle -->
+  <rect x="370" y="258" width="10" height="20" rx="3" fill="#64748b"/>
+  <!-- Sound waves -->
+  <path d="M450,225 C460,235 460,245 450,255" fill="none" stroke="#e8a838" stroke-width="3" stroke-linecap="round" opacity="0.7"/>
+  <path d="M462,215 C478,230 478,250 462,265" fill="none" stroke="#e8a838" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>
+  <path d="M474,208 C494,228 494,252 474,272" fill="none" stroke="#e8a838" stroke-width="2" stroke-linecap="round" opacity="0.3"/>
+
+  <!-- Spark accents -->
+  <circle cx="355" cy="210" r="2.5" fill="#fbbf24" opacity="0.8"/>
+  <circle cx="345" cy="230" r="1.8" fill="#fbbf24" opacity="0.7"/>
+  <circle cx="360" cy="195" r="1.5" fill="#fbbf24" opacity="0.6"/>
+  <circle cx="348" cy="250" r="1.2" fill="#fbbf24" opacity="0.7"/>
+
+  <!-- FORGESWORN text -->
+  <text x="400" y="395" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="28" font-weight="bold" letter-spacing="3" fill="#e8a838">FORGESWORN</text>
+
+  <!-- Decorative stars -->
+  <text x="305" y="398" text-anchor="middle" font-family="Georgia, serif" font-size="12" fill="#e8a838" opacity="0.8">&#x2726;</text>
+  <text x="495" y="398" text-anchor="middle" font-family="Georgia, serif" font-size="12" fill="#e8a838" opacity="0.8">&#x2726;</text>
+
+  <!-- Subtitle -->
+  <text x="400" y="420" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="15" letter-spacing="5" fill="#94a3b8">SHOUTOUT</text>
+</svg>
