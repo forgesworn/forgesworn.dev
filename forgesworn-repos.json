@@ -1,6 +1,6 @@
 {
   "generated": "2026-03-27",
-  "totalPublicRepos": 30,
+  "totalPublicRepos": 33,
   "categories": [
     {
       "name": "L402 / Machine Payments",
@@ -15,6 +15,15 @@
           "tags": ["l402", "lightning", "middleware"],
           "dependsOn": [],
           "usedBy": ["toll-booth-announce", "toll-booth-dvm", "toll-booth-mcp"]
+        },
+        {
+          "name": "toll-booth-rs",
+          "github": "https://github.com/forgesworn/toll-booth-rs",
+          "npm": null,
+          "description": "L402 payment middleware for Rust. Gates any HTTP API behind Lightning payments.",
+          "tags": ["l402", "lightning", "middleware", "rust"],
+          "dependsOn": [],
+          "usedBy": []
         },
         {
           "name": "402-announce",
@@ -200,6 +209,15 @@
           "tags": ["identity", "access-control", "encryption"],
           "dependsOn": [],
           "usedBy": ["bray"]
+        },
+        {
+          "name": "bark",
+          "github": "https://github.com/forgesworn/bark",
+          "npm": null,
+          "description": "NIP-07 Nostr signer backed by NIP-46 remote signing. Self-sovereign keys, derived personas with Heartwood.",
+          "tags": ["identity", "nostr", "nip-07", "nip-46", "signer"],
+          "dependsOn": ["heartwood", "nsec-tree"],
+          "usedBy": []
         }
       ]
     },
@@ -312,7 +330,7 @@
           "name": "nip-drafts",
           "github": "https://github.com/forgesworn/nip-drafts",
           "npm": null,
-          "description": "30 Nostr protocol extensions: service coordination, trust, payments, disputes, key hierarchy, encrypted access.",
+          "description": "29 Nostr protocol extensions: service coordination, trust, payments, disputes, key hierarchy, encrypted access.",
           "tags": ["protocol", "nostr", "nips"],
           "dependsOn": [],
           "usedBy": []
