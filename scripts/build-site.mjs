@@ -31,6 +31,15 @@ const REPO_WEBSITES = {
   '402-pub': 'https://402.pub',
 };
 
+// Repos with architecture documentation (presentation config, not in JSON)
+const REPO_DOCS = {
+  heartwood: 'https://github.com/forgesworn/heartwood/blob/main/docs/ECOSYSTEM.md',
+  bark: 'https://github.com/forgesworn/bark/blob/main/ARCHITECTURE.md',
+  sapwood: 'https://github.com/forgesworn/sapwood/blob/main/ARCHITECTURE.md',
+  'nsec-tree': 'https://github.com/forgesworn/nsec-tree/blob/main/ARCHITECTURE.md',
+  'canary-kit': 'https://github.com/forgesworn/canary-kit/blob/main/WALKTHROUGH.md',
+};
+
 // SVG connection definitions: [from, to, style]
 const SVG_CONNECTIONS = [
   ['crypto',     'identity',  'solid'],
@@ -189,6 +198,10 @@ function buildEntryRepoCard(repo, colour) {
   const websiteHtml = website
     ? `<a class="repo-link repo-link--site" href="${escHtml(website)}" target="_blank" rel="noopener noreferrer">Website</a>`
     : '';
+  const docs = REPO_DOCS[repo.name];
+  const docsHtml = docs
+    ? `<a class="repo-link repo-link--docs" href="${escHtml(docs)}" target="_blank" rel="noopener noreferrer">Docs</a>`
+    : '';
   return `<div class="repo-card repo-card--entry" style="--stack-colour: ${colour}">
   <h3 class="repo-name">${escHtml(repo.name)}</h3>
   <p class="repo-desc">${escHtml(repo.description)}</p>
@@ -196,6 +209,7 @@ function buildEntryRepoCard(repo, colour) {
   <div class="repo-links">
     <a class="repo-link" href="${escHtml(repo.github)}" target="_blank" rel="noopener noreferrer">GitHub</a>
     ${websiteHtml}
+    ${docsHtml}
   </div>
 </div>`;
 }
@@ -208,11 +222,15 @@ function buildRepoCard(repo) {
   const websiteHtml = website
     ? `\n  <a class="repo-link repo-link--site" href="${escHtml(website)}" target="_blank" rel="noopener noreferrer">Website</a>`
     : '';
+  const docs = REPO_DOCS[repo.name];
+  const docsHtml = docs
+    ? `\n  <a class="repo-link repo-link--docs" href="${escHtml(docs)}" target="_blank" rel="noopener noreferrer">Docs</a>`
+    : '';
   return `<div class="repo-card">
   <h3 class="repo-name">${escHtml(repo.name)}</h3>
   <p class="repo-desc">${escHtml(repo.description)}</p>
   <div class="repo-links">
-    <a class="repo-link" href="${escHtml(repo.github)}" target="_blank" rel="noopener noreferrer">GitHub</a>${websiteHtml}
+    <a class="repo-link" href="${escHtml(repo.github)}" target="_blank" rel="noopener noreferrer">GitHub</a>${websiteHtml}${docsHtml}
   </div>
 </div>`;
 }
