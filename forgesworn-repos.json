@@ -248,7 +248,7 @@
           "name": "bray",
           "github": "https://github.com/forgesworn/bray",
           "npm": "nostr-bray",
-          "description": "Trust-aware Nostr MCP for AI and humans. 234 tools across identity, social, payments, dispatch, badges, communities, calendar, listings, search, moderation, privacy, spells, and encrypted access.",
+          "description": "Trust-aware Nostr MCP for AI and humans. 236 tools across identity, social, payments, dispatch, badges, communities, calendar, listings, search, moderation, privacy, spells, and encrypted access.",
           "tags": ["ai-agents", "mcp", "nostr", "trust", "dispatch", "nip-17", "nip-23", "nip-50", "nip-52", "nip-58", "nip-72", "nip-89", "nip-99", "nip-a7"],
           "dependsOn": ["nsec-tree", "dominion", "nostr-attestations", "ring-sig", "spoken-token"],
           "usedBy": []
@@ -288,7 +288,7 @@
         {
           "name": "ring-sig",
           "github": "https://github.com/forgesworn/ring-sig",
-          "npm": "ring-sig",
+          "npm": "@forgesworn/ring-sig",
           "description": "SAG and LSAG ring signatures on secp256k1 for anonymous group membership proofs.",
           "tags": ["crypto", "ring-signatures", "secp256k1"],
           "dependsOn": [],
