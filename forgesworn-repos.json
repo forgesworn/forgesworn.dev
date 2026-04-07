@@ -1,6 +1,6 @@
 {
-  "generated": "2026-03-27",
-  "totalPublicRepos": 33,
+  "generated": "2026-04-07",
+  "totalPublicRepos": 34,
   "categories": [
     {
       "name": "L402 / Machine Payments",
@@ -172,7 +172,7 @@
           "description": "Deterministic Nostr sub-identity derivation. One master secret, unlimited unlinkable identities.",
           "tags": ["identity", "nostr", "derivation"],
           "dependsOn": [],
-          "usedBy": ["nsec-tree-cli", "bray", "signet"]
+          "usedBy": ["nsec-tree-cli", "heartwood", "bark", "sapwood", "bray", "signet"]
         },
         {
           "name": "nsec-tree-cli",
@@ -211,10 +211,28 @@
           "usedBy": ["bray"]
         },
         {
+          "name": "heartwood",
+          "github": "https://github.com/forgesworn/heartwood",
+          "npm": null,
+          "description": "Dedicated Nostr signing appliance for Raspberry Pi. Encrypted key storage, NIP-46 remote signing over Tor, unlimited derived identities.",
+          "tags": ["identity", "nostr", "nip-46", "hardware", "signing", "rust"],
+          "dependsOn": ["nsec-tree"],
+          "usedBy": ["bark", "sapwood"]
+        },
+        {
+          "name": "sapwood",
+          "github": "https://github.com/forgesworn/sapwood",
+          "npm": null,
+          "description": "Browser-based device manager for Heartwood. Web Serial and HTTP bridge, firmware updates, policy management. 21 KB.",
+          "tags": ["identity", "device-management", "web-serial", "svelte"],
+          "dependsOn": ["heartwood", "nsec-tree"],
+          "usedBy": []
+        },
+        {
           "name": "bark",
           "github": "https://github.com/forgesworn/bark",
           "npm": null,
-          "description": "NIP-07 Nostr signer backed by NIP-46 remote signing. Self-sovereign keys, derived personas with Heartwood.",
+          "description": "NIP-07 browser extension backed by NIP-46 remote signing. Zero key storage, derived personas with Heartwood.",
           "tags": ["identity", "nostr", "nip-07", "nip-46", "signer"],
           "dependsOn": ["heartwood", "nsec-tree"],
           "usedBy": []
