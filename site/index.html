@@ -975,7 +975,7 @@
       <span class="stack-card-name">Identity / Access</span>
       <span class="stack-card-count">9</span>
     </div>
-    <p class="stack-card-desc">Spoken verification, deterministic Nostr identities, encrypted access control, and decentralised identity verification</p>
+    <p class="stack-card-desc">Hardware-backed Nostr signing, deterministic identities, spoken verification, encrypted access control, and decentralised identity verification</p>
   </div>
 </div>
 <div class="stack-card" data-stack="agents" style="--stack-colour: #00b4d8" tabindex="0" role="button">
@@ -1181,7 +1181,7 @@
 
 <section class="stack-section" data-stack="identity" style="--stack-colour: #16c79a">
 <div class="section-label" style="color: #16c79a">Identity / Access</div>
-<h2 class="section-title">Spoken verification, deterministic Nostr identities, encrypted access control, and decentralised identity verification.</h2>
+<h2 class="section-title">Hardware-backed Nostr signing, deterministic identities, spoken verification, encrypted access control, and decentralised identity verification.</h2>
 <div class="repo-card repo-card--entry" style="--stack-colour: #16c79a">
   <h3 class="repo-name">nsec-tree</h3>
   <p class="repo-desc">Deterministic Nostr sub-identity derivation. One master secret, unlimited unlinkable identities.</p>
@@ -1197,10 +1197,27 @@
 </div>
 <div class="repo-grid">
 <div class="repo-card">
-  <h3 class="repo-name">spoken-token</h3>
-  <p class="repo-desc">Derive time-rotating, human-speakable verification tokens from a shared secret.</p>
+  <h3 class="repo-name">heartwood</h3>
+  <p class="repo-desc">Dedicated Nostr signing appliance for Raspberry Pi. Encrypted key storage, NIP-46 remote signing over Tor, unlimited derived identities.</p>
   <div class="repo-links">
-    <a class="repo-link" href="https://github.com/forgesworn/spoken-token" target="_blank" rel="noopener noreferrer">GitHub</a>
+    <a class="repo-link" href="https://github.com/forgesworn/heartwood" target="_blank" rel="noopener noreferrer">GitHub</a>
+  <a class="repo-link repo-link--docs" href="https://github.com/forgesworn/heartwood/blob/main/docs/ECOSYSTEM.md" target="_blank" rel="noopener noreferrer">Docs</a>
+  </div>
+</div>
+<div class="repo-card">
+  <h3 class="repo-name">bark</h3>
+  <p class="repo-desc">NIP-07 browser extension backed by NIP-46 remote signing. Zero key storage, derived personas with Heartwood.</p>
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/bark" target="_blank" rel="noopener noreferrer">GitHub</a>
+  <a class="repo-link repo-link--docs" href="https://github.com/forgesworn/bark/blob/main/ARCHITECTURE.md" target="_blank" rel="noopener noreferrer">Docs</a>
+  </div>
+</div>
+<div class="repo-card">
+  <h3 class="repo-name">sapwood</h3>
+  <p class="repo-desc">Browser-based device manager for Heartwood. Web Serial and HTTP bridge, firmware updates, policy management. 21 KB.</p>
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/sapwood" target="_blank" rel="noopener noreferrer">GitHub</a>
+  <a class="repo-link repo-link--docs" href="https://github.com/forgesworn/sapwood/blob/main/ARCHITECTURE.md" target="_blank" rel="noopener noreferrer">Docs</a>
   </div>
 </div>
 <div class="repo-card">
@@ -1208,6 +1225,13 @@
   <p class="repo-desc">Offline-first CLI for nsec-tree with derivation, proofs, and Shamir recovery.</p>
   <div class="repo-links">
     <a class="repo-link" href="https://github.com/forgesworn/nsec-tree-cli" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </div>
+</div>
+<div class="repo-card">
+  <h3 class="repo-name">spoken-token</h3>
+  <p class="repo-desc">Derive time-rotating, human-speakable verification tokens from a shared secret.</p>
+  <div class="repo-links">
+    <a class="repo-link" href="https://github.com/forgesworn/spoken-token" target="_blank" rel="noopener noreferrer">GitHub</a>
   </div>
 </div>
 <div class="repo-card">
@@ -1232,32 +1256,8 @@
     <a class="repo-link" href="https://github.com/forgesworn/dominion" target="_blank" rel="noopener noreferrer">GitHub</a>
   </div>
 </div>
-<div class="repo-card">
-  <h3 class="repo-name">heartwood</h3>
-  <p class="repo-desc">Dedicated Nostr signing appliance for Raspberry Pi. Encrypted key storage, NIP-46 remote signing over Tor, unlimited derived identities.</p>
-  <div class="repo-links">
-    <a class="repo-link" href="https://github.com/forgesworn/heartwood" target="_blank" rel="noopener noreferrer">GitHub</a>
-  <a class="repo-link repo-link--docs" href="https://github.com/forgesworn/heartwood/blob/main/docs/ECOSYSTEM.md" target="_blank" rel="noopener noreferrer">Docs</a>
-  </div>
 </div>
-<div class="repo-card">
-  <h3 class="repo-name">sapwood</h3>
-  <p class="repo-desc">Browser-based device manager for Heartwood. Web Serial and HTTP bridge, firmware updates, policy management. 21 KB.</p>
-  <div class="repo-links">
-    <a class="repo-link" href="https://github.com/forgesworn/sapwood" target="_blank" rel="noopener noreferrer">GitHub</a>
-  <a class="repo-link repo-link--docs" href="https://github.com/forgesworn/sapwood/blob/main/ARCHITECTURE.md" target="_blank" rel="noopener noreferrer">Docs</a>
-  </div>
-</div>
-<div class="repo-card">
-  <h3 class="repo-name">bark</h3>
-  <p class="repo-desc">NIP-07 browser extension backed by NIP-46 remote signing. Zero key storage, derived personas with Heartwood.</p>
-  <div class="repo-links">
-    <a class="repo-link" href="https://github.com/forgesworn/bark" target="_blank" rel="noopener noreferrer">GitHub</a>
-  <a class="repo-link repo-link--docs" href="https://github.com/forgesworn/bark/blob/main/ARCHITECTURE.md" target="_blank" rel="noopener noreferrer">Docs</a>
-  </div>
-</div>
-</div>
-<div class="flow-chain">spoken-token <span class="flow-arrow">→</span> canary-kit</div>
+<div class="flow-chain">nsec-tree <span class="flow-arrow">→</span> heartwood <span class="flow-arrow">→</span> bark</div>
 </section>
 
 <section class="stack-section" data-stack="agents" style="--stack-colour: #00b4d8">
