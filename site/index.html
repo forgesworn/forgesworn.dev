@@ -403,6 +403,40 @@
     }
 
     /* ========================================
+       GAME CALLOUT
+       ======================================== */
+    .game-callout {
+      min-height: 560px;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+      border-top: 1px solid var(--border-subtle);
+      border-bottom: 1px solid var(--border-subtle);
+      background:
+        linear-gradient(90deg, rgba(6, 6, 11, 0.9) 0%, rgba(6, 6, 11, 0.68) 42%, rgba(6, 6, 11, 0.18) 100%),
+        linear-gradient(180deg, rgba(6, 6, 11, 0.08) 0%, rgba(6, 6, 11, 0.72) 100%),
+        url('/forge-realms/assets/ui/start-page-v1.png') center / cover;
+    }
+
+    .game-callout-inner {
+      max-width: 560px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .game-callout h2 {
+      margin-bottom: 1rem;
+    }
+
+    .game-callout p {
+      color: var(--text-secondary);
+      font-size: clamp(1rem, 1.6vw, 1.18rem);
+      max-width: 540px;
+      margin-bottom: 2rem;
+      line-height: 1.65;
+    }
+
+    /* ========================================
        STACK MAP
        ======================================== */
     .stack-map {
@@ -867,6 +901,13 @@
       .hero h1 { font-size: clamp(2.2rem, 9vw, 3.2rem); }
       .hero-stats { gap: 1.5rem; }
       .hero-stats .stat-value { font-size: 1.8rem; }
+      .game-callout {
+        min-height: 520px;
+        background:
+          linear-gradient(180deg, rgba(6, 6, 11, 0.2) 0%, rgba(6, 6, 11, 0.86) 62%, rgba(6, 6, 11, 0.98) 100%),
+          url('/forge-realms/assets/ui/start-page-v1.png') 60% center / cover;
+        align-items: flex-end;
+      }
 
       .stack-map-grid {
         grid-template-columns: repeat(2, 1fr);
@@ -907,6 +948,7 @@
       <button class="nav-toggle" id="navToggle" type="button" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
       <ul class="nav-links" id="navLinks">
         <li><a href="#ecosystem">Ecosystem</a></li>
+        <li><a href="/forge-realms/">Forge Realms</a></li>
         <li><a href="https://bray.forgesworn.dev">Bray</a></li>
         <li><a href="https://github.com/forgesworn" class="btn-nav">GitHub</a></li>
       </ul>
@@ -923,6 +965,7 @@
         </p>
         <div class="hero-actions">
           <a href="#ecosystem" class="btn-primary">Explore the ecosystem</a>
+          <a href="/forge-realms/" class="btn-secondary">Play Forge Realms</a>
           <a href="https://github.com/forgesworn" class="btn-secondary">
             <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
             View on GitHub
@@ -932,6 +975,22 @@
           <div class="stat"><span class="stat-value">34</span><span class="stat-label">open-source projects</span></div>
 <div class="stat"><span class="stat-value">8</span><span class="stat-label">focus areas</span></div>
 <div class="stat"><span class="stat-value">21</span><span class="stat-label">npm packages</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== FORGE REALMS ====== -->
+  <section class="game-callout" id="forge-realms">
+    <div class="container">
+      <div class="game-callout-inner reveal">
+        <span class="section-label">Playable RTS prototype</span>
+        <h2>Forge Realms</h2>
+        <p>
+          Build a Stone Age village, gather resources, train armies, and push through an Age of Empires-inspired skirmish directly in the browser.
+        </p>
+        <div class="hero-actions">
+          <a href="/forge-realms/" class="btn-primary">Play now</a>
         </div>
       </div>
     </div>

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#172119" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <title>Forge Realms</title>
+    <script type="module" crossorigin src="/forge-realms/assets/game-eEl5ADIc.js"></script>
+    <link rel="modulepreload" crossorigin href="/forge-realms/assets/modulepreload-polyfill-wMinxHhO.js">
+    <link rel="stylesheet" crossorigin href="/forge-realms/assets/game-Dqc6D9tP.css">
+  </head>
+  <body>
+    <div id="app">
+      <div id="game-shell">
+        <div id="game"></div>
+        <section id="start-screen" class="menu-screen is-visible" aria-label="Forge Realms start">
+          <div class="menu-copy">
+            <p class="menu-eyebrow">Stone Age RTS</p>
+            <h1>Forge Realms</h1>
+            <p class="menu-subtitle">Build, gather, raid, and advance from a fragile village into a conquering realm.</p>
+            <div class="menu-actions">
+              <button type="button" class="menu-button menu-button--primary" id="start-new-match">New Realm</button>
+              <button type="button" class="menu-button" id="start-continue-match">Continue</button>
+            </div>
+          </div>
+        </section>
+        <section id="end-screen" class="end-screen" aria-label="Match result" hidden>
+          <div class="end-copy">
+            <p class="menu-eyebrow" id="end-kicker">Match Complete</p>
+            <h2 id="end-title">Victory</h2>
+            <p class="menu-subtitle" id="end-meta">The enemy town center has fallen.</p>
+            <div class="menu-actions">
+              <button type="button" class="menu-button menu-button--primary" data-end-action="restart">Restart</button>
+            </div>
+          </div>
+        </section>
+        <section id="hud" aria-label="Game status">
+          <div id="resource-bar"></div>
+          <div id="identity-chip"></div>
+        </section>
+        <canvas id="minimap" width="180" height="124" aria-label="Minimap"></canvas>
+        <section id="command-panel" aria-label="Commands">
+          <div id="selection-summary"></div>
+          <div id="command-buttons"></div>
+        </section>
+        <div id="toast" role="status" aria-live="polite"></div>
+      </div>
+    </div>
+  </body>
+</html>
