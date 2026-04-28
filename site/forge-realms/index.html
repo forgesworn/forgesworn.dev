@@ -4,12 +4,228 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#172119" />
+    <link rel="preload" as="image" href="assets/ui/start-page-v1.webp" type="image/webp" fetchpriority="high" />
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <title>Forge Realms</title>
-    <script type="module" crossorigin src="/forge-realms/assets/game-Dal0pgW3.js"></script>
+    <style>
+      html,
+      body,
+      #app,
+      #game-shell,
+      #game {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: #172119;
+      }
+
+      body {
+        min-width: 320px;
+        min-height: 100dvh;
+        color: #fff7e4;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      html:not(.game-started) #hud,
+      html:not(.game-started) #minimap,
+      html:not(.game-started) #command-panel,
+      html:not(.game-started) #touch-controls,
+      html:not(.game-started) #toast {
+        display: none;
+      }
+
+      #game-shell {
+        position: relative;
+      }
+
+      .menu-screen {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        align-items: center;
+        min-height: 100%;
+        overflow: hidden;
+        color: #fff7e4;
+        background-color: #172119;
+        background-position: center;
+        background-size: cover;
+        background-image:
+          linear-gradient(90deg, rgba(9, 13, 10, 0.84) 0%, rgba(16, 22, 15, 0.58) 35%, rgba(16, 22, 15, 0.12) 68%),
+          linear-gradient(180deg, rgba(9, 13, 10, 0.18) 0%, rgba(9, 13, 10, 0.72) 100%),
+          url("assets/ui/start-page-v1.png");
+        background-image:
+          linear-gradient(90deg, rgba(9, 13, 10, 0.84) 0%, rgba(16, 22, 15, 0.58) 35%, rgba(16, 22, 15, 0.12) 68%),
+          linear-gradient(180deg, rgba(9, 13, 10, 0.18) 0%, rgba(9, 13, 10, 0.72) 100%),
+          image-set(url("assets/ui/start-page-v1.webp") type("image/webp"), url("assets/ui/start-page-v1.png") type("image/png"));
+      }
+
+      .menu-screen[hidden],
+      .end-screen[hidden] {
+        display: none;
+      }
+
+      .menu-copy {
+        display: grid;
+        gap: 16px;
+        width: min(560px, calc(100vw - 40px));
+        margin-left: max(28px, env(safe-area-inset-left));
+        padding-block: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-bottom));
+        text-shadow: 0 3px 18px rgba(0, 0, 0, 0.72);
+      }
+
+      .menu-eyebrow,
+      .start-identity__eyebrow {
+        margin: 0;
+        color: #f2d872;
+        font-size: 13px;
+        font-weight: 900;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      .start-identity__eyebrow {
+        font-size: 11px;
+      }
+
+      .menu-copy h1 {
+        margin: 0;
+        color: #fff8e7;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 64px;
+        font-weight: 900;
+        letter-spacing: 0;
+        line-height: 0.92;
+      }
+
+      .menu-subtitle {
+        max-width: 500px;
+        margin: 0;
+        color: #efe4c7;
+        font-size: 17px;
+        font-weight: 750;
+        line-height: 1.45;
+      }
+
+      .start-identity {
+        display: grid;
+        gap: 10px;
+        width: min(520px, 100%);
+        border: 1px solid rgba(247, 205, 112, 0.38);
+        border-radius: 8px;
+        background: linear-gradient(180deg, rgba(18, 26, 20, 0.9), rgba(10, 15, 12, 0.78));
+        box-shadow: 0 18px 44px rgba(0, 0, 0, 0.34);
+        padding: 14px;
+        text-shadow: none;
+      }
+
+      .start-identity__copy {
+        display: grid;
+        gap: 5px;
+      }
+
+      .start-identity h2 {
+        margin: 0;
+        color: #fff8e7;
+        font-size: 24px;
+        font-weight: 950;
+        letter-spacing: 0;
+        line-height: 1;
+      }
+
+      .start-identity p,
+      .start-identity__benefits li {
+        margin: 0;
+        color: #e7dbc0;
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1.35;
+      }
+
+      .start-identity__benefits {
+        display: grid;
+        gap: 7px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .start-identity__benefits li {
+        grid-template-columns: 42px 1fr;
+        gap: 8px;
+        align-items: baseline;
+        display: grid;
+        color: #eee1c6;
+        font-size: 12px;
+      }
+
+      .start-identity__benefits span {
+        color: #f2d872;
+        font-size: 11px;
+        font-weight: 950;
+        text-transform: uppercase;
+      }
+
+      .start-identity__status,
+      .start-identity__actions,
+      .menu-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .start-identity__actions,
+      .menu-actions {
+        flex-wrap: wrap;
+      }
+
+      .menu-button {
+        min-width: 136px;
+        min-height: 46px;
+        border: 1px solid rgba(246, 236, 212, 0.26);
+        border-radius: 7px;
+        background: rgba(24, 33, 25, 0.9);
+        color: #fff8e7;
+        padding: 10px 16px;
+        font: inherit;
+        font-size: 14px;
+        font-weight: 900;
+      }
+
+      .menu-button--primary,
+      .menu-button--signet {
+        border-color: rgba(247, 205, 112, 0.82);
+        background: linear-gradient(180deg, rgba(125, 97, 43, 0.98), rgba(61, 78, 43, 0.98));
+      }
+
+      @media (max-width: 720px) {
+        .menu-screen {
+          align-items: end;
+          background-position: 61% center;
+          background-image:
+            linear-gradient(180deg, rgba(9, 13, 10, 0.2) 0%, rgba(9, 13, 10, 0.82) 64%, rgba(9, 13, 10, 0.96) 100%),
+            url("assets/ui/start-page-v1.png");
+          background-image:
+            linear-gradient(180deg, rgba(9, 13, 10, 0.2) 0%, rgba(9, 13, 10, 0.82) 64%, rgba(9, 13, 10, 0.96) 100%),
+            image-set(url("assets/ui/start-page-v1.webp") type("image/webp"), url("assets/ui/start-page-v1.png") type("image/png"));
+        }
+
+        .menu-copy {
+          width: calc(100vw - 28px);
+          margin: 0 auto;
+          padding-bottom: max(24px, env(safe-area-inset-bottom));
+        }
+
+        .menu-copy h1 {
+          font-size: 42px;
+        }
+      }
+    </style>
+    <script type="module" crossorigin src="/forge-realms/assets/game-BufznLFG.js"></script>
     <link rel="modulepreload" crossorigin href="/forge-realms/assets/modulepreload-polyfill-wMinxHhO.js">
-    <link rel="stylesheet" crossorigin href="/forge-realms/assets/game-BQpvk5B4.css">
+    <link rel="stylesheet" crossorigin href="/forge-realms/assets/game-EMA_cKVC.css">
   </head>
   <body>
     <div id="app">
@@ -20,6 +236,26 @@
             <p class="menu-eyebrow">Stone Age RTS</p>
             <h1>Forge Realms</h1>
             <p class="menu-subtitle">Build, gather, raid, and advance from a fragile village into a conquering realm.</p>
+            <div class="start-identity" id="start-identity-panel">
+              <div class="start-identity__copy">
+                <p class="start-identity__eyebrow">My Signet</p>
+                <h2>Save your realm identity</h2>
+                <p id="start-signet-copy">Play locally now, or link Signet for a persistent Forge identity.</p>
+              </div>
+              <ul class="start-identity__benefits" aria-label="Signet benefits">
+                <li><span>Now</span> keeps the same player identity for this browser and device.</li>
+                <li><span>Next</span> prepares your profile for shared saves, seasons, rankings, and multiplayer.</li>
+                <li><span>Safe</span> no Forge password; approval happens in My Signet.</li>
+              </ul>
+              <div class="start-identity__status" id="start-signet-status-row">
+                <span class="start-identity__dot" aria-hidden="true"></span>
+                <span id="start-signet-status">Checking account...</span>
+              </div>
+              <div class="start-identity__actions">
+                <button type="button" class="menu-button menu-button--signet" id="start-connect-signet">Link My Signet</button>
+                <button type="button" class="menu-button menu-button--quiet" id="start-disconnect-signet" hidden>Use Local</button>
+              </div>
+            </div>
             <div class="menu-actions">
               <button type="button" class="menu-button menu-button--primary" id="start-new-match">New Realm</button>
               <button type="button" class="menu-button" id="start-continue-match">Continue</button>
