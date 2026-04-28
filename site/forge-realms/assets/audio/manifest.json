@@ -1,0 +1,80 @@
+{
+  "select": {
+    "file": "select.wav",
+    "sampleRate": 44100,
+    "channels": 1,
+    "description": "Short UI selection chime."
+  },
+  "command": {
+    "file": "command.wav",
+    "sampleRate": 44100,
+    "channels": 1,
+    "description": "Movement/order confirmation."
+  },
+  "attackCommand": {
+    "file": "attackCommand.wav",
+    "sampleRate": 44100,
+    "channels": 1,
+    "description": "Aggressive attack order."
+  },
+  "gather": {
+    "file": "gather.wav",
+    "sampleRate": 44100,
+    "channels": 1,
+    "description": "Worker gather confirmation."
+  },
+  "build": {
+    "file": "build.wav",
+    "sampleRate": 44100,
+    "channels": 1,
+    "description": "Hammer and foundation impact."
+  },
+  "rally": {
+    "file": "rally.wav",
+    "sampleRate": 44100,
+    "channels": 1,
+    "description": "Rally point confirmation."
+  },
+  "hit": {
+    "file": "hit.wav",
+    "sampleRate": 44100,
+    "channels": 1,
+    "description": "Combat hit impact."
+  },
+  "death": {
+    "file": "death.wav",
+    "sampleRate": 44100,
+    "channels": 1,
+    "description": "Unit death fall."
+  },
+  "complete": {
+    "file": "complete.wav",
+    "sampleRate": 44100,
+    "channels": 1,
+    "description": "Construction or research complete."
+  },
+  "age": {
+    "file": "age.wav",
+    "sampleRate": 44100,
+    "channels": 1,
+    "description": "Age advancement fanfare."
+  },
+  "train": {
+    "file": "train.wav",
+    "sampleRate": 44100,
+    "channels": 1,
+    "description": "Training queue confirmation."
+  },
+  "dropoff": {
+    "file": "dropoff.wav",
+    "sampleRate": 44100,
+    "channels": 1,
+    "description": "Resource drop-off."
+  },
+  "invalid": {
+    "file": "invalid.wav",
+    "sampleRate": 44100,
+    "channels": 1,
+    "description": "Unavailable command buzz."
+  }
+}
