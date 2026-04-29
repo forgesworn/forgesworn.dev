@@ -51,7 +51,7 @@
     "file": "complete.wav",
     "sampleRate": 44100,
     "channels": 1,
-    "description": "Construction or research complete."
+    "description": "Construction complete."
   },
   "age": {
     "file": "age.wav",
@@ -70,6 +70,30 @@
     "sampleRate": 44100,
     "channels": 1,
     "description": "Resource drop-off."
+  },
+  "research": {
+    "file": "research.wav",
+    "sampleRate": 44100,
+    "channels": 1,
+    "description": "Technology research completion."
+  },
+  "victory": {
+    "file": "victory.wav",
+    "sampleRate": 44100,
+    "channels": 1,
+    "description": "Victory fanfare."
+  },
+  "defeat": {
+    "file": "defeat.wav",
+    "sampleRate": 44100,
+    "channels": 1,
+    "description": "Defeat sting."
+  },
+  "warning": {
+    "file": "warning.wav",
+    "sampleRate": 44100,
+    "channels": 1,
+    "description": "Urgent warning pulse."
   },
   "invalid": {
     "file": "invalid.wav",
