@@ -1,4 +1,4 @@
-const CACHE_NAME = "forge-realms-v5";
+const CACHE_NAME = "forge-realms-v6";
 const CORE_ASSETS = ["", "index.html", "manifest.webmanifest", "icon.svg"].map((path) =>
   new URL(path, self.registration.scope).toString(),
 );
