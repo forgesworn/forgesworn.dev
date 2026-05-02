@@ -1,7 +1,18 @@
-const CACHE_NAME = "forge-realms-v19";
+const CACHE_NAME = "forge-realms-v20";
 const CORE_ASSETS = ["", "index.html", "manifest.webmanifest", "icon.svg"].map((path) =>
   new URL(path, self.registration.scope).toString(),
 );
+
+function isCacheableResponse(response) {
+  return response && response.ok;
+}
+
+async function cacheSuccessfulResponse(cache, request, response) {
+  if (isCacheableResponse(response)) {
+    await cache.put(request, response.clone());
+  }
+  return response;
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS)));
@@ -24,27 +35,31 @@ self.addEventListener("fetch", (event) => {
 
   if (event.request.mode === "navigate" || CORE_ASSETS.includes(event.request.url)) {
     event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-          return response;
-        })
-        .catch(() => caches.match(event.request).then((cached) => cached || caches.match(new URL("index.html", self.registration.scope).toString()))),
+      caches.open(CACHE_NAME).then(async (cache) => {
+        try {
+          return await cacheSuccessfulResponse(cache, event.request, await fetch(event.request));
+        } catch {
+          const cached = await cache.match(event.request);
+          if (isCacheableResponse(cached)) {
+            return cached;
+          }
+          return cache.match(new URL("index.html", self.registration.scope).toString());
+        }
+      }),
     );
     return;
   }
 
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) {
+    caches.open(CACHE_NAME).then(async (cache) => {
+      const cached = await cache.match(event.request);
+      if (isCacheableResponse(cached)) {
         return cached;
       }
-      return fetch(event.request).then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-        return response;
-      });
+      if (cached) {
+        await cache.delete(event.request);
+      }
+      return cacheSuccessfulResponse(cache, event.request, await fetch(event.request));
     }),
   );
 });
