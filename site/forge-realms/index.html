@@ -172,6 +172,7 @@
       .start-identity__status,
       .start-identity__actions,
       .menu-actions,
+      .start-tribe__grid,
       .start-loading__meta {
         display: flex;
         align-items: center;
@@ -179,8 +180,243 @@
       }
 
       .start-identity__actions,
-      .menu-actions {
+      .menu-actions,
+      .start-tribe__grid {
         flex-wrap: wrap;
+      }
+
+      .start-tribe {
+        display: grid;
+        gap: 10px;
+        width: min(520px, 100%);
+        border: 1px solid rgba(246, 236, 212, 0.18);
+        border-radius: 8px;
+        background: rgba(12, 17, 13, 0.74);
+        padding: 12px;
+        text-shadow: none;
+      }
+
+      .start-tribe__grid {
+        align-items: stretch;
+      }
+
+      .start-tribe-card {
+        --tribe-color: #268b5c;
+        --tribe-trim: #e6c46f;
+        display: grid;
+        gap: 8px;
+        flex: 1 1 150px;
+        min-width: 148px;
+        border: 1px solid rgba(246, 236, 212, 0.18);
+        border-radius: 7px;
+        background: linear-gradient(180deg, color-mix(in srgb, var(--tribe-color) 14%, rgba(24, 33, 25, 0.96)), rgba(18, 25, 19, 0.92));
+        color: #fff8e7;
+        padding: 10px;
+        text-align: left;
+        font: inherit;
+      }
+
+      .start-tribe-card[data-start-civilization="yamato"] {
+        --tribe-color: #268b5c;
+        --tribe-trim: #e6c46f;
+      }
+
+      .start-tribe-card[data-start-civilization="egyptian"] {
+        --tribe-color: #1d8a84;
+        --tribe-trim: #e0bd5a;
+      }
+
+      .start-tribe-card[data-start-civilization="greek"] {
+        --tribe-color: #315d9e;
+        --tribe-trim: #f0efe4;
+      }
+
+      .start-tribe-card__top {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .start-tribe-card__crest {
+        position: relative;
+        flex: 0 0 auto;
+        width: 34px;
+        height: 34px;
+        border: 1px solid rgba(12, 17, 13, 0.82);
+        background: var(--tribe-color);
+        box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--tribe-trim) 64%, transparent), 0 5px 12px rgba(0, 0, 0, 0.22);
+      }
+
+      .start-tribe-card[data-start-civilization="yamato"] .start-tribe-card__crest {
+        border-radius: 50%;
+      }
+
+      .start-tribe-card[data-start-civilization="yamato"] .start-tribe-card__crest::before,
+      .start-tribe-card[data-start-civilization="yamato"] .start-tribe-card__crest::after {
+        position: absolute;
+        content: "";
+        background: var(--tribe-trim);
+      }
+
+      .start-tribe-card[data-start-civilization="yamato"] .start-tribe-card__crest::before {
+        top: 7px;
+        bottom: 7px;
+        left: 15px;
+        width: 3px;
+      }
+
+      .start-tribe-card[data-start-civilization="yamato"] .start-tribe-card__crest::after {
+        top: 15px;
+        right: 7px;
+        left: 7px;
+        height: 3px;
+      }
+
+      .start-tribe-card[data-start-civilization="egyptian"] .start-tribe-card__crest {
+        clip-path: polygon(50% 4%, 94% 88%, 6% 88%);
+      }
+
+      .start-tribe-card[data-start-civilization="greek"] .start-tribe-card__crest {
+        border-radius: 4px;
+        background:
+          linear-gradient(90deg, transparent 18%, var(--tribe-trim) 18% 25%, transparent 25% 43%, var(--tribe-trim) 43% 50%, transparent 50% 68%, var(--tribe-trim) 68% 75%, transparent 75%),
+          var(--tribe-color);
+      }
+
+      .start-tribe-card strong,
+      .start-tribe-card > span:not(.start-tribe-card__top) {
+        display: block;
+      }
+
+      .start-tribe-card strong {
+        font-size: 14px;
+        font-weight: 950;
+      }
+
+      .start-tribe-card > span:not(.start-tribe-card__top) {
+        margin-top: 4px;
+        color: #e7dbc0;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.25;
+      }
+
+      .start-tribe-card > .start-tribe-card__status {
+        color: var(--tribe-trim);
+        font-size: 10px;
+        font-weight: 950;
+        letter-spacing: 0;
+      }
+
+      .start-tribe-card.is-selected {
+        border-color: rgba(242, 216, 114, 0.9);
+        background: linear-gradient(180deg, color-mix(in srgb, var(--tribe-color) 28%, rgba(77, 87, 48, 0.98)), rgba(28, 51, 37, 0.94));
+        box-shadow: inset 0 0 0 1px rgba(242, 216, 114, 0.22);
+      }
+
+      .start-matchup {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        align-items: center;
+        gap: 8px;
+        border: 1px solid rgba(246, 236, 212, 0.14);
+        border-radius: 7px;
+        background: rgba(9, 13, 10, 0.42);
+        padding: 8px;
+      }
+
+      .start-matchup__side {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .start-matchup__side--rival {
+        justify-content: end;
+        text-align: right;
+      }
+
+      .start-matchup__label,
+      .start-matchup__label strong,
+      .start-matchup__label span {
+        display: block;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .start-matchup__label strong {
+        color: #fff8e7;
+        font-size: 13px;
+        font-weight: 950;
+      }
+
+      .start-matchup__label span,
+      .start-matchup__versus {
+        color: #d8d4c5;
+        font-size: 10px;
+        font-weight: 900;
+        text-transform: uppercase;
+      }
+
+      .start-matchup__versus {
+        color: #f2d872;
+      }
+
+      .start-matchup__crest {
+        --tribe-color: #268b5c;
+        --tribe-trim: #e6c46f;
+        position: relative;
+        flex: 0 0 auto;
+        width: 28px;
+        height: 28px;
+        border: 1px solid rgba(12, 17, 13, 0.82);
+        background: var(--tribe-color);
+        box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--tribe-trim) 64%, transparent), 0 5px 12px rgba(0, 0, 0, 0.2);
+      }
+
+      .start-matchup__crest[data-civilization="yamato"] {
+        --tribe-color: #268b5c;
+        --tribe-trim: #e6c46f;
+        border-radius: 50%;
+      }
+
+      .start-matchup__crest[data-civilization="egyptian"] {
+        --tribe-color: #1d8a84;
+        --tribe-trim: #e0bd5a;
+        clip-path: polygon(50% 4%, 94% 88%, 6% 88%);
+      }
+
+      .start-matchup__crest[data-civilization="greek"] {
+        --tribe-color: #315d9e;
+        --tribe-trim: #f0efe4;
+        border-radius: 4px;
+        background:
+          linear-gradient(90deg, transparent 18%, var(--tribe-trim) 18% 25%, transparent 25% 43%, var(--tribe-trim) 43% 50%, transparent 50% 68%, var(--tribe-trim) 68% 75%, transparent 75%),
+          var(--tribe-color);
+      }
+
+      .start-matchup__crest[data-civilization="yamato"]::before,
+      .start-matchup__crest[data-civilization="yamato"]::after {
+        position: absolute;
+        content: "";
+        background: var(--tribe-trim);
+      }
+
+      .start-matchup__crest[data-civilization="yamato"]::before {
+        top: 6px;
+        bottom: 6px;
+        left: 12px;
+        width: 3px;
+      }
+
+      .start-matchup__crest[data-civilization="yamato"]::after {
+        top: 12px;
+        right: 6px;
+        left: 6px;
+        height: 3px;
       }
 
       .start-loading {
@@ -196,6 +432,7 @@
       }
 
       .menu-screen.is-loading .start-identity,
+      .menu-screen.is-loading .start-tribe,
       .menu-screen.is-loading .menu-actions {
         display: none;
       }
@@ -289,10 +526,10 @@
         }
       }
     </style>
-    <script type="module" crossorigin src="/forge-realms/assets/game-DVmEF4yX.js"></script>
+    <script type="module" crossorigin src="/forge-realms/assets/game-DaeYvJTO.js"></script>
     <link rel="modulepreload" crossorigin href="/forge-realms/assets/rolldown-runtime-ciTZEWaI.js">
     <link rel="modulepreload" crossorigin href="/forge-realms/assets/modulepreload-polyfill-Cf3xff8G.js">
-    <link rel="stylesheet" crossorigin href="/forge-realms/assets/game-DdPIkvHl.css">
+    <link rel="stylesheet" crossorigin href="/forge-realms/assets/game-DlXlTHUO.css">
   </head>
   <body>
     <div id="app">
@@ -303,6 +540,37 @@
             <p class="menu-eyebrow">Stone Age RTS</p>
             <h1>Forge Realms</h1>
             <p class="menu-subtitle">Build, gather, raid, and advance from a fragile village into a conquering realm.</p>
+            <div class="start-tribe" role="group" aria-label="Choose tribe">
+              <p class="start-identity__eyebrow">Choose Tribe</p>
+              <div class="start-tribe__grid">
+                <button type="button" class="start-tribe-card" data-start-civilization="yamato" aria-pressed="true">
+                  <span class="start-tribe-card__top"><span class="start-tribe-card__crest" aria-hidden="true"></span><strong>Yamato</strong></span>
+                  <span>Faster scouts and infantry for map control.</span>
+                  <span class="start-tribe-card__status" data-start-civilization-status>Selected</span>
+                </button>
+                <button type="button" class="start-tribe-card" data-start-civilization="egyptian" aria-pressed="false">
+                  <span class="start-tribe-card__top"><span class="start-tribe-card__crest" aria-hidden="true"></span><strong>Egyptian</strong></span>
+                  <span>Durable priests and stronger stone-age economy.</span>
+                  <span class="start-tribe-card__status" data-start-civilization-status>Choose</span>
+                </button>
+                <button type="button" class="start-tribe-card" data-start-civilization="greek" aria-pressed="false">
+                  <span class="start-tribe-card__top"><span class="start-tribe-card__crest" aria-hidden="true"></span><strong>Greek</strong></span>
+                  <span>Harder-hitting infantry and siege support.</span>
+                  <span class="start-tribe-card__status" data-start-civilization-status>Choose</span>
+                </button>
+              </div>
+              <div class="start-matchup" aria-live="polite">
+                <div class="start-matchup__side">
+                  <span class="start-matchup__crest" data-civilization="yamato" data-start-matchup-player-crest aria-hidden="true"></span>
+                  <span class="start-matchup__label"><strong data-start-matchup-player-label>Yamato</strong><span>Your tribe</span></span>
+                </div>
+                <span class="start-matchup__versus">vs</span>
+                <div class="start-matchup__side start-matchup__side--rival">
+                  <span class="start-matchup__label"><strong data-start-matchup-rival-label>Egyptian</strong><span>Rival tribe</span></span>
+                  <span class="start-matchup__crest" data-civilization="egyptian" data-start-matchup-rival-crest aria-hidden="true"></span>
+                </div>
+              </div>
+            </div>
             <div class="start-identity" id="start-identity-panel">
               <div class="start-identity__copy">
                 <p class="start-identity__eyebrow">My Signet</p>
