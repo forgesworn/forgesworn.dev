@@ -42,6 +42,10 @@
         position: relative;
       }
 
+      html:not(.game-started) #game-shell {
+        touch-action: pan-y;
+      }
+
       .menu-screen {
         position: absolute;
         inset: 0;
@@ -53,6 +57,7 @@
         background-color: #172119;
         background-position: center;
         background-size: cover;
+        touch-action: pan-y;
         background-image:
           linear-gradient(90deg, rgba(9, 13, 10, 0.84) 0%, rgba(16, 22, 15, 0.58) 35%, rgba(16, 22, 15, 0.12) 68%),
           linear-gradient(180deg, rgba(9, 13, 10, 0.18) 0%, rgba(9, 13, 10, 0.72) 100%),
@@ -108,6 +113,45 @@
         font-size: 17px;
         font-weight: 750;
         line-height: 1.45;
+      }
+
+      .start-panel {
+        display: grid;
+        gap: 16px;
+        width: min(540px, 100%);
+      }
+
+      .start-panel--setup {
+        max-height: calc(var(--app-viewport-height, 100vh) - 48px);
+        overflow-y: auto;
+        padding-right: 4px;
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-y;
+      }
+
+      .menu-screen[data-start-view="home"] [data-start-panel="setup"],
+      .menu-screen[data-start-view="setup"] [data-start-panel="home"] {
+        display: none;
+      }
+
+      .start-setup-header {
+        display: grid;
+        gap: 6px;
+      }
+
+      .start-setup-header h2 {
+        margin: 0;
+        color: #fff8e7;
+        font-size: 28px;
+        line-height: 1;
+      }
+
+      .start-setup-header p {
+        margin: 0;
+        color: #efe4c7;
+        font-size: 13px;
+        font-weight: 750;
+        line-height: 1.35;
       }
 
       .start-identity {
@@ -431,9 +475,7 @@
         text-shadow: none;
       }
 
-      .menu-screen.is-loading .start-identity,
-      .menu-screen.is-loading .start-tribe,
-      .menu-screen.is-loading .menu-actions {
+      .menu-screen.is-loading .start-panel {
         display: none;
       }
 
@@ -508,10 +550,10 @@
           align-items: end;
           background-position: 61% center;
           background-image:
-            linear-gradient(180deg, rgba(9, 13, 10, 0.2) 0%, rgba(9, 13, 10, 0.82) 64%, rgba(9, 13, 10, 0.96) 100%),
+            linear-gradient(180deg, rgba(9, 13, 10, 0.12) 0%, rgba(9, 13, 10, 0.62) 66%, rgba(9, 13, 10, 0.9) 100%),
             url("assets/ui/start-page-v1.png");
           background-image:
-            linear-gradient(180deg, rgba(9, 13, 10, 0.2) 0%, rgba(9, 13, 10, 0.82) 64%, rgba(9, 13, 10, 0.96) 100%),
+            linear-gradient(180deg, rgba(9, 13, 10, 0.12) 0%, rgba(9, 13, 10, 0.62) 66%, rgba(9, 13, 10, 0.9) 100%),
             image-set(url("assets/ui/start-page-v1.webp") type("image/webp"), url("assets/ui/start-page-v1.png") type("image/png"));
         }
 
@@ -521,44 +563,34 @@
           padding-bottom: max(24px, env(safe-area-inset-bottom));
         }
 
+        .start-panel {
+          gap: 12px;
+        }
+
+        .start-panel--setup {
+          max-height: calc(var(--app-viewport-height, 100vh) - max(28px, env(safe-area-inset-top)) - max(24px, env(safe-area-inset-bottom)));
+        }
+
         .menu-copy h1 {
           font-size: 42px;
         }
       }
     </style>
-    <script type="module" crossorigin src="/forge-realms/assets/game-DaeYvJTO.js"></script>
+    <script type="module" crossorigin src="/forge-realms/assets/game-0A9NR8Od.js"></script>
     <link rel="modulepreload" crossorigin href="/forge-realms/assets/rolldown-runtime-ciTZEWaI.js">
     <link rel="modulepreload" crossorigin href="/forge-realms/assets/modulepreload-polyfill-Cf3xff8G.js">
-    <link rel="stylesheet" crossorigin href="/forge-realms/assets/game-DlXlTHUO.css">
+    <link rel="stylesheet" crossorigin href="/forge-realms/assets/game-_e8XOXQe.css">
   </head>
   <body>
     <div id="app">
       <div id="game-shell">
         <div id="game"></div>
-        <section id="start-screen" class="menu-screen is-visible" aria-label="Forge Realms start">
+        <section id="start-screen" class="menu-screen is-visible" data-start-view="home" aria-label="Forge Realms start">
           <div class="menu-copy">
-            <p class="menu-eyebrow">Stone Age RTS</p>
-            <h1>Forge Realms</h1>
-            <p class="menu-subtitle">Build, gather, raid, and advance from a fragile village into a conquering realm.</p>
-            <div class="start-tribe" role="group" aria-label="Choose tribe">
-              <p class="start-identity__eyebrow">Choose Tribe</p>
-              <div class="start-tribe__grid">
-                <button type="button" class="start-tribe-card" data-start-civilization="yamato" aria-pressed="true">
-                  <span class="start-tribe-card__top"><span class="start-tribe-card__crest" aria-hidden="true"></span><strong>Yamato</strong></span>
-                  <span>Faster scouts and infantry for map control.</span>
-                  <span class="start-tribe-card__status" data-start-civilization-status>Selected</span>
-                </button>
-                <button type="button" class="start-tribe-card" data-start-civilization="egyptian" aria-pressed="false">
-                  <span class="start-tribe-card__top"><span class="start-tribe-card__crest" aria-hidden="true"></span><strong>Egyptian</strong></span>
-                  <span>Durable priests and stronger stone-age economy.</span>
-                  <span class="start-tribe-card__status" data-start-civilization-status>Choose</span>
-                </button>
-                <button type="button" class="start-tribe-card" data-start-civilization="greek" aria-pressed="false">
-                  <span class="start-tribe-card__top"><span class="start-tribe-card__crest" aria-hidden="true"></span><strong>Greek</strong></span>
-                  <span>Harder-hitting infantry and siege support.</span>
-                  <span class="start-tribe-card__status" data-start-civilization-status>Choose</span>
-                </button>
-              </div>
+            <div class="start-panel start-panel--home" data-start-panel="home">
+              <p class="menu-eyebrow">Stone Age RTS</p>
+              <h1>Forge Realms</h1>
+              <p class="menu-subtitle">Build, gather, raid, and advance from a fragile village into a conquering realm.</p>
               <div class="start-matchup" aria-live="polite">
                 <div class="start-matchup__side">
                   <span class="start-matchup__crest" data-civilization="yamato" data-start-matchup-player-crest aria-hidden="true"></span>
@@ -570,30 +602,63 @@
                   <span class="start-matchup__crest" data-civilization="egyptian" data-start-matchup-rival-crest aria-hidden="true"></span>
                 </div>
               </div>
-            </div>
-            <div class="start-identity" id="start-identity-panel">
-              <div class="start-identity__copy">
-                <p class="start-identity__eyebrow">My Signet</p>
-                <h2>Save your realm identity</h2>
-                <p id="start-signet-copy">Play locally now, or link Signet for a persistent Forge identity.</p>
-              </div>
-              <ul class="start-identity__benefits" aria-label="Signet benefits">
-                <li><span>Now</span> keeps the same player identity for this browser and device.</li>
-                <li><span>Next</span> prepares your profile for shared saves, seasons, rankings, and multiplayer.</li>
-                <li><span>Safe</span> no Forge password; approval happens in My Signet.</li>
-              </ul>
-              <div class="start-identity__status" id="start-signet-status-row">
-                <span class="start-identity__dot" aria-hidden="true"></span>
-                <span id="start-signet-status">Checking account...</span>
-              </div>
-              <div class="start-identity__actions">
-                <button type="button" class="menu-button menu-button--signet" id="start-connect-signet">Link My Signet</button>
-                <button type="button" class="menu-button menu-button--quiet" id="start-disconnect-signet" hidden>Use Local</button>
+              <div class="menu-actions menu-actions--home">
+                <button type="button" class="menu-button menu-button--primary" id="start-new-match">New Realm</button>
+                <button type="button" class="menu-button" id="start-continue-match">Continue</button>
+                <button type="button" class="menu-button menu-button--quiet" id="start-open-setup">Setup</button>
               </div>
             </div>
-            <div class="menu-actions">
-              <button type="button" class="menu-button menu-button--primary" id="start-new-match">New Realm</button>
-              <button type="button" class="menu-button" id="start-continue-match">Continue</button>
+
+            <div class="start-panel start-panel--setup" data-start-panel="setup">
+              <div class="start-setup-header">
+                <p class="start-identity__eyebrow">Realm Setup</p>
+                <h2>Choose your start</h2>
+                <p>Pick a tribe, link Signet if you want a persistent Forge identity, then begin.</p>
+              </div>
+              <div class="start-tribe" role="group" aria-label="Choose tribe">
+                <p class="start-identity__eyebrow">Choose Tribe</p>
+                <div class="start-tribe__grid">
+                  <button type="button" class="start-tribe-card" data-start-civilization="yamato" aria-pressed="true">
+                    <span class="start-tribe-card__top"><span class="start-tribe-card__crest" aria-hidden="true"></span><strong>Yamato</strong></span>
+                    <span>Faster scouts and infantry for map control.</span>
+                    <span class="start-tribe-card__status" data-start-civilization-status>Selected</span>
+                  </button>
+                  <button type="button" class="start-tribe-card" data-start-civilization="egyptian" aria-pressed="false">
+                    <span class="start-tribe-card__top"><span class="start-tribe-card__crest" aria-hidden="true"></span><strong>Egyptian</strong></span>
+                    <span>Durable priests and stronger stone-age economy.</span>
+                    <span class="start-tribe-card__status" data-start-civilization-status>Choose</span>
+                  </button>
+                  <button type="button" class="start-tribe-card" data-start-civilization="greek" aria-pressed="false">
+                    <span class="start-tribe-card__top"><span class="start-tribe-card__crest" aria-hidden="true"></span><strong>Greek</strong></span>
+                    <span>Harder-hitting infantry and siege support.</span>
+                    <span class="start-tribe-card__status" data-start-civilization-status>Choose</span>
+                  </button>
+                </div>
+              </div>
+              <div class="start-identity" id="start-identity-panel">
+                <div class="start-identity__copy">
+                  <p class="start-identity__eyebrow">My Signet</p>
+                  <h2>Save your realm identity</h2>
+                  <p id="start-signet-copy">Play locally now, or link Signet for a persistent Forge identity.</p>
+                </div>
+                <ul class="start-identity__benefits" aria-label="Signet benefits">
+                  <li><span>Now</span> keeps the same player identity for this browser and device.</li>
+                  <li><span>Next</span> prepares your profile for shared saves, seasons, rankings, and multiplayer.</li>
+                  <li><span>Safe</span> no Forge password; approval happens in My Signet.</li>
+                </ul>
+                <div class="start-identity__status" id="start-signet-status-row">
+                  <span class="start-identity__dot" aria-hidden="true"></span>
+                  <span id="start-signet-status">Checking account...</span>
+                </div>
+                <div class="start-identity__actions">
+                  <button type="button" class="menu-button menu-button--signet" id="start-connect-signet">Link My Signet</button>
+                  <button type="button" class="menu-button menu-button--quiet" id="start-disconnect-signet" hidden>Use Local</button>
+                </div>
+              </div>
+              <div class="menu-actions">
+                <button type="button" class="menu-button menu-button--primary" id="start-begin-setup">Begin Realm</button>
+                <button type="button" class="menu-button menu-button--quiet" id="start-back-home">Back</button>
+              </div>
             </div>
             <div class="start-loading" id="start-loading-panel" role="status" aria-live="polite" aria-atomic="true">
               <p class="start-identity__eyebrow">Loading Realm</p>
