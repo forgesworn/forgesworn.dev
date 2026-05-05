@@ -229,6 +229,19 @@
         flex-wrap: wrap;
       }
 
+      .start-multiplayer__invite {
+        overflow-wrap: anywhere;
+        margin: 0;
+        border: 1px solid rgba(246, 236, 212, 0.14);
+        border-radius: 7px;
+        background: rgba(255, 248, 231, 0.06);
+        color: #efe4c7;
+        padding: 8px;
+        font-size: 11px;
+        font-weight: 750;
+        line-height: 1.35;
+      }
+
       .start-tribe {
         display: grid;
         gap: 10px;
@@ -576,10 +589,10 @@
         }
       }
     </style>
-    <script type="module" crossorigin src="/forge-realms/assets/game-BgPg5_Ff.js"></script>
+    <script type="module" crossorigin src="/forge-realms/assets/game-DX3dMIAp.js"></script>
     <link rel="modulepreload" crossorigin href="/forge-realms/assets/rolldown-runtime-ciTZEWaI.js">
     <link rel="modulepreload" crossorigin href="/forge-realms/assets/modulepreload-polyfill-Cf3xff8G.js">
-    <link rel="stylesheet" crossorigin href="/forge-realms/assets/game-_e8XOXQe.css">
+    <link rel="stylesheet" crossorigin href="/forge-realms/assets/game-CkIzIggv.css">
   </head>
   <body>
     <div id="app">
@@ -653,6 +666,23 @@
                 <div class="start-identity__actions">
                   <button type="button" class="menu-button menu-button--signet" id="start-connect-signet">Link My Signet</button>
                   <button type="button" class="menu-button menu-button--quiet" id="start-disconnect-signet" hidden>Use Local</button>
+                </div>
+              </div>
+              <div class="start-identity start-multiplayer" id="start-multiplayer-panel">
+                <div class="start-identity__copy">
+                  <p class="start-identity__eyebrow">Signet Co-op</p>
+                  <h2>Two players vs Forge AI</h2>
+                  <p id="start-multiplayer-copy">Host a Signet co-op realm and share an invite link with one ally.</p>
+                </div>
+                <div class="start-identity__status" id="start-multiplayer-status-row">
+                  <span class="start-identity__dot" aria-hidden="true"></span>
+                  <span id="start-multiplayer-status">Link My Signet to host or join co-op.</span>
+                </div>
+                <p class="start-multiplayer__invite" id="start-invite-value" hidden></p>
+                <div class="start-identity__actions">
+                  <button type="button" class="menu-button menu-button--signet" id="start-host-coop">Host Co-op</button>
+                  <button type="button" class="menu-button menu-button--primary" id="start-join-coop" hidden>Join Invite</button>
+                  <button type="button" class="menu-button menu-button--quiet" id="start-copy-invite" hidden>Copy Invite</button>
                 </div>
               </div>
               <div class="menu-actions">
