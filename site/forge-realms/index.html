@@ -558,6 +558,73 @@
         opacity: 0.68;
       }
 
+      .start-event {
+        display: grid;
+        gap: 8px;
+        border: 1px solid rgba(247, 147, 26, 0.55);
+        border-radius: 9px;
+        background: linear-gradient(180deg, rgba(247, 147, 26, 0.18), rgba(20, 16, 9, 0.66));
+        box-shadow: 0 14px 38px rgba(0, 0, 0, 0.36);
+        padding: 12px 14px;
+        text-shadow: none;
+      }
+
+      .start-event[hidden],
+      .start-continue-hint[hidden] {
+        display: none;
+      }
+
+      .menu-screen.is-event .start-panel--home .menu-subtitle {
+        display: none;
+      }
+
+      .start-event__head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .start-event__badge {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        background: #f7931a;
+        color: #1a1206;
+        padding: 3px 11px;
+        font-size: 12px;
+        font-weight: 950;
+        text-transform: uppercase;
+      }
+
+      .start-event__limit {
+        color: #f7b663;
+        font-size: 13px;
+        font-weight: 950;
+      }
+
+      .start-event__copy {
+        margin: 0;
+        color: #f4e6cb;
+        font-size: 13px;
+        font-weight: 760;
+        line-height: 1.35;
+      }
+
+      .start-event__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .start-continue-hint {
+        margin: 0;
+        color: #d7e3c4;
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1.3;
+      }
+
       @media (max-width: 720px) {
         .menu-screen {
           align-items: end;
@@ -589,7 +656,7 @@
         }
       }
     </style>
-    <script type="module" crossorigin src="/forge-realms/assets/game-DaYviF0A.js"></script>
+    <script type="module" crossorigin src="/forge-realms/assets/game-YD0swabv.js"></script>
     <link rel="modulepreload" crossorigin href="/forge-realms/assets/rolldown-runtime-ciTZEWaI.js">
     <link rel="modulepreload" crossorigin href="/forge-realms/assets/modulepreload-polyfill-Cf3xff8G.js">
     <link rel="stylesheet" crossorigin href="/forge-realms/assets/game-BvJJOdPJ.css">
@@ -604,6 +671,21 @@
               <p class="menu-eyebrow">Stone Age RTS</p>
               <h1>Forge Realms</h1>
               <p class="menu-subtitle">Build, gather, raid, and advance from a fragile village into a conquering realm.</p>
+              <div class="start-event" id="start-event-banner" hidden>
+                <div class="start-event__head">
+                  <span class="start-event__badge">BTC Prague</span>
+                  <span class="start-event__limit" id="start-event-limit">10:00 run</span>
+                </div>
+                <p class="start-event__copy">Hold bitcoin mines and bank sats before the horn. Link Signet for a verified score.</p>
+                <div class="start-identity__status start-event__signet" id="start-event-signet-row">
+                  <span class="start-identity__dot" aria-hidden="true"></span>
+                  <span id="start-event-signet-status">Checking identity...</span>
+                </div>
+                <div class="start-event__actions">
+                  <button type="button" class="menu-button menu-button--signet" id="start-event-link-signet">Link Signet</button>
+                  <button type="button" class="menu-button menu-button--quiet" id="start-event-reset" hidden>Reset for next player</button>
+                </div>
+              </div>
               <div class="start-matchup" aria-live="polite">
                 <div class="start-matchup__side">
                   <span class="start-matchup__crest" data-civilization="yamato" data-start-matchup-player-crest aria-hidden="true"></span>
@@ -620,6 +702,7 @@
                 <button type="button" class="menu-button" id="start-continue-match">Continue</button>
                 <button type="button" class="menu-button menu-button--quiet" id="start-open-setup">Setup</button>
               </div>
+              <p class="start-continue-hint" id="start-continue-hint" hidden></p>
             </div>
 
             <div class="start-panel start-panel--setup" data-start-panel="setup">
