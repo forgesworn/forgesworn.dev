@@ -7,7 +7,20 @@
     <link rel="preload" as="image" href="assets/ui/start-page-v1.webp" type="image/webp" fetchpriority="high" />
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
     <title>Forge Realms</title>
+    <meta name="description" content="Forge Realms is a Bitcoin real-time strategy game. Build a village, mine the chain, and conquer. Play the 10-minute BTC Prague run." />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Forge Realms" />
+    <meta property="og:description" content="A Bitcoin RTS. Build, mine the chain, and conquer. Play the 10-minute BTC Prague run." />
+    <meta property="og:url" content="https://forgesworn.dev/forge-realms/" />
+    <meta property="og:image" content="https://forgesworn.dev/forge-realms/og-card.jpg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Forge Realms" />
+    <meta name="twitter:description" content="A Bitcoin RTS. Build, mine the chain, and conquer. Play the 10-minute BTC Prague run." />
+    <meta name="twitter:image" content="https://forgesworn.dev/forge-realms/og-card.jpg" />
     <style>
       html,
       body,
@@ -104,6 +117,18 @@
         font-weight: 900;
         letter-spacing: 0;
         line-height: 0.92;
+      }
+
+      .start-title {
+        line-height: 0;
+      }
+
+      .start-logo {
+        display: block;
+        width: clamp(180px, 40vw, 320px);
+        height: auto;
+        margin: 0;
+        filter: drop-shadow(0 6px 20px rgba(0, 0, 0, 0.55));
       }
 
       .menu-subtitle {
@@ -656,10 +681,10 @@
         }
       }
     </style>
-    <script type="module" crossorigin src="/forge-realms/assets/game-YD0swabv.js"></script>
+    <script type="module" crossorigin src="/forge-realms/assets/game-DqEIIugB.js"></script>
     <link rel="modulepreload" crossorigin href="/forge-realms/assets/rolldown-runtime-ciTZEWaI.js">
     <link rel="modulepreload" crossorigin href="/forge-realms/assets/modulepreload-polyfill-Cf3xff8G.js">
-    <link rel="stylesheet" crossorigin href="/forge-realms/assets/game-BvJJOdPJ.css">
+    <link rel="stylesheet" crossorigin href="/forge-realms/assets/game-BSoD_CoZ.css">
   </head>
   <body>
     <div id="app">
@@ -669,7 +694,7 @@
           <div class="menu-copy">
             <div class="start-panel start-panel--home" data-start-panel="home">
               <p class="menu-eyebrow">Stone Age RTS</p>
-              <h1>Forge Realms</h1>
+              <h1 class="start-title"><img class="start-logo" src="assets/brand/forge-realms-logo.webp" alt="Forge Realms" width="320" height="320" decoding="async" /></h1>
               <p class="menu-subtitle">Build, gather, raid, and advance from a fragile village into a conquering realm.</p>
               <div class="start-event" id="start-event-banner" hidden>
                 <div class="start-event__head">
