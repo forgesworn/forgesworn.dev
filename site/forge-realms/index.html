@@ -559,6 +559,11 @@
         transition: transform 160ms ease;
       }
 
+      .start-loading__retry {
+        margin-top: 6px;
+        justify-self: start;
+      }
+
       .menu-button {
         min-width: 136px;
         min-height: 46px;
@@ -681,7 +686,7 @@
         }
       }
     </style>
-    <script type="module" crossorigin src="/forge-realms/assets/game-DPb26U3x.js"></script>
+    <script type="module" crossorigin src="/forge-realms/assets/game-DKwePmz4.js"></script>
     <link rel="modulepreload" crossorigin href="/forge-realms/assets/rolldown-runtime-ciTZEWaI.js">
     <link rel="modulepreload" crossorigin href="/forge-realms/assets/modulepreload-polyfill-Cf3xff8G.js">
     <link rel="stylesheet" crossorigin href="/forge-realms/assets/game-CvEu7uRG.css">
@@ -809,6 +814,7 @@
               <div class="start-loading__track" aria-hidden="true">
                 <span class="start-loading__bar" id="start-loading-bar"></span>
               </div>
+              <button type="button" class="menu-button menu-button--primary start-loading__retry" id="start-loading-retry" hidden>Try Again</button>
             </div>
           </div>
         </section>

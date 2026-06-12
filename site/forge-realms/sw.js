@@ -1,10 +1,31 @@
-const CACHE_NAME = "forge-realms-v23";
+const CACHE_NAME = "forge-realms-v24";
 const CORE_ASSETS = ["", "index.html", "manifest.webmanifest", "icon.svg"].map((path) =>
   new URL(path, self.registration.scope).toString(),
 );
 
 function isCacheableResponse(response) {
   return response && response.ok;
+}
+
+// Retry a genuinely failed network fetch a couple of times before giving up.
+// Booth/mobile links drop the odd request; without this a single dropped JS
+// chunk or atlas page rejects the dynamic import ("Could not start the realm")
+// or strands the artwork load with no second chance. Only thrown (transient)
+// failures retry — a real HTTP error response is returned as-is so a genuinely
+// missing asset still fails fast rather than looping.
+async function fetchWithRetry(request, attempts = 3) {
+  let lastError;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      return await fetch(request);
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 300 * (attempt + 1)));
+      }
+    }
+  }
+  throw lastError;
 }
 
 async function cacheSuccessfulResponse(cache, request, response) {
@@ -59,7 +80,7 @@ self.addEventListener("fetch", (event) => {
       if (cached) {
         await cache.delete(event.request);
       }
-      return cacheSuccessfulResponse(cache, event.request, await fetch(event.request));
+      return cacheSuccessfulResponse(cache, event.request, await fetchWithRetry(event.request));
     }),
   );
 });
