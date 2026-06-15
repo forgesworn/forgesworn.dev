@@ -21,9 +21,10 @@ const CATEGORY_CONFIG = {
   crypto:     { colour: '#f5a623', entryPoint: 'ring-sig' },
   compliance: { colour: '#e17055', entryPoint: 'jurisdiction-kit' },
   protocol:   { colour: '#6c5ce7', entryPoint: 'nip-drafts' },
+  tooling:    { colour: '#4a9eff', entryPoint: 'anvil' },
 };
 
-const DISPLAY_ORDER = ['l402', 'spatial', 'identity', 'agents', 'trust', 'crypto', 'compliance', 'protocol'];
+const DISPLAY_ORDER = ['l402', 'spatial', 'identity', 'agents', 'trust', 'crypto', 'compliance', 'protocol', 'tooling'];
 
 // Repos with dedicated websites (presentation config, not in JSON)
 const REPO_WEBSITES = {

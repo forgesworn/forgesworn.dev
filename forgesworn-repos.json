@@ -1,6 +1,12 @@
 {
-  "generated": "2026-04-07",
-  "totalPublicRepos": 34,
+  "generated": "2026-06-15",
+  "totalPublicRepos": 44,
+  "catalogedProjectRepos": 41,
+  "excludedPublicRepos": [
+    { "name": ".github", "reason": "organisation profile" },
+    { "name": "forgesworn.dev", "reason": "landing page source" },
+    { "name": "nips", "reason": "upstream fork" }
+  ],
   "categories": [
     {
       "name": "L402 / Machine Payments",
@@ -46,7 +52,7 @@
         {
           "name": "402-pub",
           "github": "https://github.com/forgesworn/402-pub",
-          "npm": "402-pub",
+          "npm": null,
           "description": "Live directory at 402.pub for Lightning-paid APIs.",
           "tags": ["l402", "directory", "static-site"],
           "dependsOn": ["402-indexer"],
@@ -82,7 +88,7 @@
         {
           "name": "402-indexer",
           "github": "https://github.com/forgesworn/402-indexer",
-          "npm": "402-indexer",
+          "npm": null,
           "description": "Nostr-native crawler that discovers L402 and x402 paid APIs.",
           "tags": ["l402", "nostr", "crawler"],
           "dependsOn": ["402-announce"],
@@ -175,6 +181,15 @@
           "usedBy": ["bark"]
         },
         {
+          "name": "heartwood-esp32",
+          "github": "https://github.com/forgesworn/heartwood-esp32",
+          "npm": null,
+          "description": "Experimental nsec-tree signing token for Heltec WiFi LoRa 32 V4 (ESP32-S3).",
+          "tags": ["identity", "nostr", "hardware", "signing", "esp32", "rust"],
+          "dependsOn": ["nsec-tree"],
+          "usedBy": ["sapwood"]
+        },
+        {
           "name": "bark",
           "github": "https://github.com/forgesworn/bark",
           "npm": null,
@@ -189,7 +204,7 @@
           "npm": null,
           "description": "Browser-based device manager for Heartwood. Web Serial and HTTP bridge, firmware updates, policy management. 21 KB.",
           "tags": ["identity", "device-management", "web-serial", "svelte"],
-          "dependsOn": ["heartwood", "nsec-tree"],
+          "dependsOn": ["heartwood-esp32", "nsec-tree"],
           "usedBy": []
         },
         {
@@ -222,10 +237,46 @@
         {
           "name": "signet",
           "github": "https://github.com/forgesworn/signet",
-          "npm": null,
+          "npm": "signet-protocol",
           "description": "Decentralised identity verification for Nostr. 4 verification tiers, ZKP age proofs, Signet IQ.",
           "tags": ["identity", "verification", "zkp"],
           "dependsOn": ["nostr-attestations", "nsec-tree", "range-proof"],
+          "usedBy": ["signet-credentials", "signet-login", "signet-protocol-rs", "signet-verify"]
+        },
+        {
+          "name": "signet-credentials",
+          "github": "https://github.com/forgesworn/signet-credentials",
+          "npm": "signet-credentials",
+          "description": "Publish, fetch, parse, and validate Signet credential events on Nostr.",
+          "tags": ["identity", "verification", "credentials", "nostr"],
+          "dependsOn": ["signet", "nostr-attestations"],
+          "usedBy": ["signet-login", "signet-verify"]
+        },
+        {
+          "name": "signet-login",
+          "github": "https://github.com/forgesworn/signet-login",
+          "npm": "signet-login",
+          "description": "Drop-in login SDK for Nostr-aware websites with NIP-07, bunker URI, and Signet redirect/QR flows.",
+          "tags": ["identity", "login", "nostr", "sdk"],
+          "dependsOn": ["signet", "signet-credentials"],
+          "usedBy": []
+        },
+        {
+          "name": "signet-protocol-rs",
+          "github": "https://github.com/forgesworn/signet-protocol-rs",
+          "npm": null,
+          "description": "Rust implementation of the Signet identity protocol on Nostr.",
+          "tags": ["identity", "verification", "nostr", "rust"],
+          "dependsOn": ["signet"],
+          "usedBy": []
+        },
+        {
+          "name": "signet-verify",
+          "github": "https://github.com/forgesworn/signet-verify",
+          "npm": "signet-verify",
+          "description": "Drop-in age verification SDK for websites. One script tag, one function call.",
+          "tags": ["identity", "verification", "age-verification", "sdk"],
+          "dependsOn": ["signet", "signet-credentials"],
           "usedBy": []
         },
         {
@@ -248,7 +299,7 @@
           "name": "bray",
           "github": "https://github.com/forgesworn/bray",
           "npm": "nostr-bray",
-          "description": "Trust-aware Nostr MCP for AI and humans. 236 tools across identity, social, payments, dispatch, badges, communities, calendar, listings, search, moderation, privacy, spells, and encrypted access.",
+          "description": "Trust-aware Nostr MCP server for AI agents and humans. Verification, proximity, and access woven into every interaction.",
           "tags": ["ai-agents", "mcp", "nostr", "trust", "dispatch", "nip-17", "nip-23", "nip-50", "nip-52", "nip-58", "nip-72", "nip-89", "nip-99", "nip-a7"],
           "dependsOn": ["nsec-tree", "dominion", "nostr-attestations", "ring-sig", "spoken-token"],
           "usedBy": []
@@ -263,7 +314,7 @@
         {
           "name": "nostr-veil",
           "github": "https://github.com/forgesworn/nostr-veil",
-          "npm": null,
+          "npm": "nostr-veil",
           "description": "Anonymous trust assertions for Nostr. LSAG ring signatures over NIP-85.",
           "tags": ["trust", "privacy", "ring-signatures"],
           "dependsOn": ["ring-sig"],
@@ -297,7 +348,7 @@
         {
           "name": "range-proof",
           "github": "https://github.com/forgesworn/range-proof",
-          "npm": "range-proof",
+          "npm": "@forgesworn/range-proof",
           "description": "Pedersen commitment range proofs on secp256k1 for proving a value is in range without revealing it.",
           "tags": ["crypto", "range-proof", "secp256k1"],
           "dependsOn": [],
@@ -306,7 +357,7 @@
         {
           "name": "shamir-core",
           "github": "https://github.com/forgesworn/shamir-core",
-          "npm": null,
+          "npm": "@forgesworn/shamir-core",
           "description": "Shamir's Secret Sharing over GF(256) with core utilities.",
           "tags": ["crypto", "shamir", "secret-sharing"],
           "dependsOn": [],
@@ -315,7 +366,7 @@
         {
           "name": "shamir-words",
           "github": "https://github.com/forgesworn/shamir-words",
-          "npm": "shamir-words",
+          "npm": "@forgesworn/shamir-words",
           "description": "Split secrets into human-readable BIP-39 word shares using Shamir's Secret Sharing.",
           "tags": ["crypto", "shamir", "bip39"],
           "dependsOn": ["shamir-core"],
@@ -348,7 +399,7 @@
           "name": "nip-drafts",
           "github": "https://github.com/forgesworn/nip-drafts",
           "npm": null,
-          "description": "29 Nostr protocol extensions: service coordination, trust, payments, disputes, key hierarchy, encrypted access.",
+          "description": "29 Nostr protocol extensions for service coordination, trust, payments, disputes, key hierarchy, resource curation, and paid API discovery.",
           "tags": ["protocol", "nostr", "nips"],
           "dependsOn": [],
           "usedBy": []
@@ -360,6 +411,31 @@
           "description": "Protocol conformance test suite. Lifecycle fixtures for TROTT task kinds.",
           "tags": ["protocol", "testing", "conformance"],
           "dependsOn": [],
+          "usedBy": []
+        }
+      ]
+    },
+    {
+      "name": "Tooling / Demos",
+      "slug": "tooling",
+      "description": "Ship, harden, and demonstrate ForgeSworn libraries.",
+      "repos": [
+        {
+          "name": "anvil",
+          "github": "https://github.com/forgesworn/anvil",
+          "npm": null,
+          "description": "Supply-chain-hardened release tool for JS/TS libraries with reproducible-build attestation and OIDC trusted publishing.",
+          "tags": ["tooling", "release", "supply-chain-security", "npm"],
+          "dependsOn": [],
+          "usedBy": []
+        },
+        {
+          "name": "forgesworn-demos",
+          "github": "https://github.com/forgesworn/forgesworn-demos",
+          "npm": null,
+          "description": "Interactive demos for the ForgeSworn crypto toolkit, including range-proof, shamir-words, and ring-sig.",
+          "tags": ["tooling", "demos", "crypto"],
+          "dependsOn": ["range-proof", "shamir-words", "ring-sig"],
           "usedBy": []
         }
       ]
