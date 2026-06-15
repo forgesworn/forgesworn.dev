@@ -26,12 +26,23 @@ Current focus areas:
 - Protocol / Standards
 - Tooling / Demos
 
+## Use Cases
+
+The use-cases page (`/use-cases.html`) is generated from
+[forgesworn-use-cases.json](forgesworn-use-cases.json) — 25 end-to-end
+workflows that compose the catalogue libraries, each with a persona, the
+step-by-step flow, and the building blocks it uses. Stack links are resolved
+against `forgesworn-repos.json` at build time, so each block links back to its
+repo. Add or edit workflows in the JSON; no template changes needed.
+
 ## Development
 
 ```sh
-npm run build
+npm run build   # generates site/index.html and site/use-cases.html
 npm test
 ```
+
+Both pages are generated output (gitignored) and are rebuilt in CI on deploy.
 
 ## Licence
 

@@ -278,6 +278,136 @@ export function buildFlowChain(category) {
   return chain.length >= 2 ? chain : null;
 }
 
+// ─── Use-cases page ──────────────────────────────────────────────────────────
+
+const USE_CASE_FALLBACK_COLOUR = '#888';
+
+/**
+ * Build a lookup of repo name -> { github, npm } from the catalogue data so the
+ * use-cases page can link each stack item back to its repo without duplicating URLs.
+ */
+export function buildRepoIndex(catalogueData) {
+  const index = {};
+  for (const cat of catalogueData.categories) {
+    for (const repo of cat.repos) {
+      index[repo.name] = { github: repo.github, npm: repo.npm };
+    }
+  }
+  return index;
+}
+
+/**
+ * Returns { useCases, categories, repos } counts for the use-cases hero.
+ */
+export function computeUseCaseStats(useCasesData) {
+  const repos = new Set();
+  for (const uc of useCasesData.useCases) {
+    for (const item of uc.stack) repos.add(item.repo);
+  }
+  return {
+    useCases: useCasesData.useCases.length,
+    categories: useCasesData.categories.length,
+    repos: repos.size,
+  };
+}
+
+/**
+ * Returns HTML for <!-- USE_CASES_HERO_STATS -->
+ */
+export function buildUseCasesHeroStatsHtml(useCasesData) {
+  const { useCases, categories, repos } = computeUseCaseStats(useCasesData);
+  const stat = (value, label) =>
+    `<div class="stat"><span class="stat-value">${value}</span><span class="stat-label">${label}</span></div>`;
+  return [
+    stat(useCases, 'end-to-end workflows'),
+    stat(categories, 'problem domains'),
+    stat(repos, 'building blocks used'),
+  ].join('\n');
+}
+
+/**
+ * Returns HTML for <!-- USE_CASE_FILTERS -->
+ */
+export function buildUseCaseFiltersHtml(useCasesData) {
+  const counts = {};
+  for (const uc of useCasesData.useCases) {
+    counts[uc.category] = (counts[uc.category] || 0) + 1;
+  }
+  const pill = (slug, label, count, colour) =>
+    `<button class="uc-filter" data-filter="${escHtml(slug)}"${colour ? ` style="--uc-colour: ${colour}"` : ''} type="button">${escHtml(label)} <span class="uc-filter-count">${count}</span></button>`;
+  const all = `<button class="uc-filter is-active" data-filter="all" type="button">All <span class="uc-filter-count">${useCasesData.useCases.length}</span></button>`;
+  const cats = useCasesData.categories
+    .filter(c => counts[c.slug])
+    .map(c => pill(c.slug, c.name, counts[c.slug], c.colour));
+  return [all, ...cats].join('\n');
+}
+
+/**
+ * Build one use-case card.
+ */
+function buildUseCaseCard(uc, colour, repoIndex) {
+  const steps = uc.steps.map(s => `      <li>${escHtml(s)}</li>`).join('\n');
+
+  const stack = uc.stack
+    .map(item => {
+      const meta = repoIndex[item.repo];
+      const inner = `<span class="uc-chip-name">${escHtml(item.repo)}</span><span class="uc-chip-role">${escHtml(item.role)}</span>`;
+      return meta && meta.github
+        ? `      <a class="uc-chip" href="${escHtml(meta.github)}" target="_blank" rel="noopener noreferrer">${inner}</a>`
+        : `      <span class="uc-chip">${inner}</span>`;
+    })
+    .join('\n');
+
+  const protos = (uc.protocols || [])
+    .map(p => `      <span class="uc-proto">${escHtml(p)}</span>`)
+    .join('\n');
+
+  return `<article class="uc-card" data-category="${escHtml(uc.category)}" id="${escHtml(uc.id)}" style="--uc-colour: ${colour}">
+  <div class="uc-card-accent"></div>
+  <span class="uc-persona">${escHtml(uc.persona)}</span>
+  <h3 class="uc-title">${escHtml(uc.title)}</h3>
+  <p class="uc-problem">${escHtml(uc.problem)}</p>
+  <p class="uc-outcome">${escHtml(uc.outcome)}</p>
+  <div class="uc-label">Workflow</div>
+  <ol class="uc-steps">
+${steps}
+  </ol>
+  <div class="uc-label">Built with</div>
+  <div class="uc-stack">
+${stack}
+  </div>
+  <div class="uc-protos">
+${protos}
+  </div>
+</article>`;
+}
+
+/**
+ * Returns HTML for <!-- USE_CASE_SECTIONS -->
+ */
+export function buildUseCaseSectionsHtml(useCasesData, repoIndex = {}) {
+  const byCat = {};
+  for (const uc of useCasesData.useCases) {
+    (byCat[uc.category] = byCat[uc.category] || []).push(uc);
+  }
+  return useCasesData.categories
+    .filter(cat => byCat[cat.slug] && byCat[cat.slug].length)
+    .map(cat => {
+      const colour = cat.colour || USE_CASE_FALLBACK_COLOUR;
+      const cards = byCat[cat.slug].map(uc => buildUseCaseCard(uc, colour, repoIndex)).join('\n');
+      return `<section class="uc-group" data-category="${escHtml(cat.slug)}" style="--uc-colour: ${colour}">
+  <div class="uc-group-head">
+    <span class="section-label" style="color: ${colour}">${escHtml(cat.name)}</span>
+    <p class="uc-group-desc">${escHtml(cat.description)}</p>
+  </div>
+  <div class="uc-grid">
+${cards}
+  </div>
+</section>`;
+    })
+    .join('\n\n');
+}
+
 // ─── Main build function ───────────────────────────────────────────────────────
 
 export async function build(jsonPath) {
@@ -299,10 +429,34 @@ export async function build(jsonPath) {
   console.log(`Built site/index.html -- ${repos} repos, ${stacks} categories, ${npmPackages} npm packages`);
 }
 
+/**
+ * Build site/use-cases.html from the use-cases JSON + the catalogue (for repo links).
+ */
+export async function buildUseCasesPage(catalogueJsonPath, useCasesJsonPath) {
+  const resolvedCatalogue = catalogueJsonPath || join(ROOT, 'forgesworn-repos.json');
+  const resolvedUseCases = useCasesJsonPath || join(ROOT, 'forgesworn-use-cases.json');
+  const templatePath = join(ROOT, 'site', 'use-cases-template.html');
+  const outputPath = join(ROOT, 'site', 'use-cases.html');
+
+  const catalogueData = JSON.parse(readFileSync(resolvedCatalogue, 'utf8'));
+  const useCasesData = JSON.parse(readFileSync(resolvedUseCases, 'utf8'));
+  const repoIndex = buildRepoIndex(catalogueData);
+
+  let template = readFileSync(templatePath, 'utf8');
+  template = template.replace('<!-- USE_CASES_HERO_STATS -->', buildUseCasesHeroStatsHtml(useCasesData));
+  template = template.replace('<!-- USE_CASE_FILTERS -->', buildUseCaseFiltersHtml(useCasesData));
+  template = template.replace('<!-- USE_CASE_SECTIONS -->', buildUseCaseSectionsHtml(useCasesData, repoIndex));
+
+  writeFileSync(outputPath, template, 'utf8');
+
+  const { useCases, categories } = computeUseCaseStats(useCasesData);
+  console.log(`Built site/use-cases.html -- ${useCases} use cases, ${categories} categories`);
+}
+
 // Only run when executed directly (not when imported by tests)
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (isMain) {
-  build(process.argv[2]).catch(err => {
+  Promise.all([build(process.argv[2]), buildUseCasesPage()]).catch(err => {
     console.error(err);
     process.exit(1);
   });
