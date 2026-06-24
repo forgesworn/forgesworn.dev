@@ -175,7 +175,7 @@
           "name": "heartwood",
           "github": "https://github.com/forgesworn/heartwood",
           "npm": null,
-          "description": "Dedicated Nostr signing appliance for Raspberry Pi. Encrypted key storage, NIP-46 remote signing over Tor, unlimited derived identities.",
+          "description": "Dedicated Nostr signing appliance for cheap ARM boards. Encrypted key storage, NIP-46 remote signing over Nostr relays, unlimited derived identities.",
           "tags": ["identity", "nostr", "nip-46", "hardware", "signing", "rust"],
           "dependsOn": ["nsec-tree"],
           "usedBy": ["bark"]
