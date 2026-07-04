@@ -3,17 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ForgeSworn -- Open-source building blocks for sovereign commerce, identity, and trust</title>
-  <meta name="description" content="41 open-source tools built on Nostr, Lightning, and zero-trust cryptography. Use one, use many, or use them all together.">
+  <title>ForgeSworn -- Forging and sharing the tools to reclaim your freedom</title>
+  <meta name="description" content="Open-source building blocks for sovereign identity, data, money, connection, and trust. Built on Nostr, Lightning, and zero-trust cryptography.">
   <meta name="theme-color" content="#0a0a0f">
-  <meta property="og:title" content="ForgeSworn -- Open-source building blocks for sovereign commerce, identity, and trust">
-  <meta property="og:description" content="41 open-source tools built on Nostr, Lightning, and zero-trust cryptography.">
+  <meta property="og:title" content="ForgeSworn -- Forging and sharing the tools to reclaim your freedom">
+  <meta property="og:description" content="Open-source building blocks for sovereign identity, data, money, connection, and trust.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://forgesworn.dev">
   <meta property="og:image" content="https://forgesworn.dev/social-preview.png">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="ForgeSworn -- Open-source building blocks for sovereign commerce, identity, and trust">
-  <meta name="twitter:description" content="41 open-source tools built on Nostr, Lightning, and zero-trust cryptography.">
+  <meta name="twitter:title" content="ForgeSworn -- Forging and sharing the tools to reclaim your freedom">
+  <meta name="twitter:description" content="Open-source building blocks for sovereign identity, data, money, connection, and trust.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0a0f'/><text x='16' y='23' font-size='18' text-anchor='middle' fill='%23e8a838' font-family='serif'>&#9876;</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -819,6 +819,54 @@
     }
 
     /* ========================================
+       CREED
+       ======================================== */
+    .creed-inner {
+      max-width: 780px;
+      margin: 0 auto;
+    }
+
+    .creed-lede {
+      font-family: var(--font-display);
+      font-size: clamp(1.5rem, 3vw, 2.1rem);
+      line-height: 1.4;
+      color: var(--text-primary);
+      margin-bottom: 3.5rem;
+    }
+
+    .creed .section-label {
+      margin-bottom: 2rem;
+    }
+
+    .vows {
+      list-style: none;
+      display: grid;
+      gap: 2.25rem;
+    }
+
+    .vows h3 {
+      font-family: var(--font-body);
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--accent-gold);
+      margin-bottom: 0.4rem;
+      line-height: 1.3;
+    }
+
+    .vows p {
+      color: var(--text-secondary);
+      font-size: 1.02rem;
+      line-height: 1.6;
+    }
+
+    @media (min-width: 720px) {
+      .vows {
+        grid-template-columns: 1fr 1fr;
+        gap: 2.75rem 3rem;
+      }
+    }
+
+    /* ========================================
        REDUCED MOTION
        ======================================== */
     @media (prefers-reduced-motion: reduce) {
@@ -918,9 +966,9 @@
   <section class="hero">
     <div class="container">
       <div class="hero-content">
-        <h1>Open-source building blocks for <em>sovereign commerce, identity, and trust</em></h1>
+        <h1>Forging and sharing the tools to <em>reclaim your freedom</em>.</h1>
         <p class="hero-sub">
-          Composable tools built on Nostr, Lightning, and zero-trust cryptography. Libraries, CLIs, MCP servers, and protocol specs. Use one, use many, or use them all together.
+          Open-source building blocks for sovereign identity, data, money, connection, and trust &mdash; built on Nostr, Lightning, and zero-trust cryptography. Use one, use many, or use them all together.
         </p>
         <div class="hero-actions">
           <a href="#ecosystem" class="btn-primary">Explore the ecosystem</a>
@@ -933,6 +981,34 @@
         <div class="hero-stats">
           <!-- HERO_STATS -->
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== CREED ====== -->
+  <section class="creed" id="mission">
+    <div class="container">
+      <div class="creed-inner reveal">
+        <p class="creed-lede">Freedom isn&rsquo;t ours to grant &mdash; it&rsquo;s already yours. We forge the tools to help you reclaim what you&rsquo;ve lost, keep what you hold, and share them openly: a commons that belongs to everyone. Each is a real alternative to what you use now &mdash; as good or better, and free in every sense: free of cost, free of capture, free to use without permission.</p>
+        <span class="section-label">The vows we&rsquo;re held to</span>
+        <ul class="vows">
+          <li>
+            <h3>Permissionless by design</h3>
+            <p>No one needs our approval, or anyone&rsquo;s, to run what we make. Walk away any time and take everything &mdash; it was always yours.</p>
+          </li>
+          <li>
+            <h3>A real alternative, not a lecture</h3>
+            <p>We win by making something you&rsquo;d choose anyway. If it only appeals to people who already care about freedom, we built it badly.</p>
+          </li>
+          <li>
+            <h3>Serve the person, not the platform</h3>
+            <p>Every tool answers to the human using it. Safety without surveillance; ownership without a landlord.</p>
+          </li>
+          <li>
+            <h3>Value for value</h3>
+            <p>Your time, talent, or treasure keeps us building. No strings, no backers, no state &mdash; no one owns our direction.</p>
+          </li>
+        </ul>
       </div>
     </div>
   </section>
