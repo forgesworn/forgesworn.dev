@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Forge Realms icon">
+  <rect width="128" height="128" rx="24" fill="#172119"/>
+  <path d="M20 91 64 18l44 73-44 19z" fill="#d7b46a"/>
+  <path d="M42 88h44V57L64 42 42 57z" fill="#35523d"/>
+  <path d="M55 88V68h18v20" fill="#172119"/>
+  <path d="M35 98h58" stroke="#f4ead0" stroke-width="8" stroke-linecap="round"/>
+</svg>

@@ -1,7 +1,16 @@
 {
   "names": {
     "_": "da19f1cd34beca44be74da4b306d9d1dd86b6343cef94ce22c49c6f59816e5bd",
-    "darren": "da19f1cd34beca44be74da4b306d9d1dd86b6343cef94ce22c49c6f59816e5bd"
+    "darren": "da19f1cd34beca44be74da4b306d9d1dd86b6343cef94ce22c49c6f59816e5bd",
+    "forge-realms": "b1a7a47a0abb87c8913c431f5ebdfce45532d26db4b61c85373048d44d1324b9"
   },
-  "relays": {}
+  "relays": {
+    "b1a7a47a0abb87c8913c431f5ebdfce45532d26db4b61c85373048d44d1324b9": [
+      "wss://relay.damus.io",
+      "wss://relay.primal.net",
+      "wss://nos.lol",
+      "wss://relay.nostr.band",
+      "wss://purplepag.es"
+    ]
+  }
 }

@@ -1,0 +1,846 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#172119" />
+    <link rel="preload" as="image" href="assets/ui/start-page-v1.webp" type="image/webp" fetchpriority="high" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <title>Forge Realms</title>
+    <meta name="description" content="Forge Realms is a Bitcoin real-time strategy game. Build a village, mine the chain, and conquer. Play the 10-minute BTC Prague run." />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Forge Realms" />
+    <meta property="og:description" content="A Bitcoin RTS. Build, mine the chain, and conquer. Play the 10-minute BTC Prague run." />
+    <meta property="og:url" content="https://forgesworn.dev/forge-realms/" />
+    <meta property="og:image" content="https://forgesworn.dev/forge-realms/og-card.jpg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Forge Realms" />
+    <meta name="twitter:description" content="A Bitcoin RTS. Build, mine the chain, and conquer. Play the 10-minute BTC Prague run." />
+    <meta name="twitter:image" content="https://forgesworn.dev/forge-realms/og-card.jpg" />
+    <style>
+      html,
+      body,
+      #app,
+      #game-shell,
+      #game {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: #172119;
+      }
+
+      body {
+        min-width: 320px;
+        min-height: 100dvh;
+        color: #fff7e4;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      html:not(.game-started) #hud,
+      html:not(.game-started) #minimap,
+      html:not(.game-started) #command-panel,
+      html:not(.game-started) #touch-controls,
+      html:not(.game-started) #touch-command-bar,
+      html:not(.game-started) #toast {
+        display: none;
+      }
+
+      #game-shell {
+        position: relative;
+      }
+
+      html:not(.game-started) #game-shell {
+        touch-action: pan-y;
+      }
+
+      .menu-screen {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        align-items: center;
+        min-height: 100%;
+        overflow: hidden;
+        color: #fff7e4;
+        background-color: #172119;
+        background-position: center;
+        background-size: cover;
+        touch-action: pan-y;
+        background-image:
+          linear-gradient(90deg, rgba(9, 13, 10, 0.84) 0%, rgba(16, 22, 15, 0.58) 35%, rgba(16, 22, 15, 0.12) 68%),
+          linear-gradient(180deg, rgba(9, 13, 10, 0.18) 0%, rgba(9, 13, 10, 0.72) 100%),
+          url("assets/ui/start-page-v1.png");
+        background-image:
+          linear-gradient(90deg, rgba(9, 13, 10, 0.84) 0%, rgba(16, 22, 15, 0.58) 35%, rgba(16, 22, 15, 0.12) 68%),
+          linear-gradient(180deg, rgba(9, 13, 10, 0.18) 0%, rgba(9, 13, 10, 0.72) 100%),
+          image-set(url("assets/ui/start-page-v1.webp") type("image/webp"), url("assets/ui/start-page-v1.png") type("image/png"));
+      }
+
+      .menu-screen[hidden],
+      .end-screen[hidden] {
+        display: none;
+      }
+
+      .menu-copy {
+        display: grid;
+        gap: 16px;
+        width: min(560px, calc(100vw - 40px));
+        margin-left: max(28px, env(safe-area-inset-left));
+        padding-block: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-bottom));
+        text-shadow: 0 3px 18px rgba(0, 0, 0, 0.72);
+      }
+
+      .menu-eyebrow,
+      .start-identity__eyebrow {
+        margin: 0;
+        color: #f2d872;
+        font-size: 13px;
+        font-weight: 900;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      .start-identity__eyebrow {
+        font-size: 11px;
+      }
+
+      .menu-copy h1 {
+        margin: 0;
+        color: #fff8e7;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 64px;
+        font-weight: 900;
+        letter-spacing: 0;
+        line-height: 0.92;
+      }
+
+      .start-title {
+        line-height: 0;
+      }
+
+      .start-logo {
+        display: block;
+        width: clamp(180px, 40vw, 320px);
+        height: auto;
+        margin: 0;
+        filter: drop-shadow(0 6px 20px rgba(0, 0, 0, 0.55));
+      }
+
+      .menu-subtitle {
+        max-width: 500px;
+        margin: 0;
+        color: #efe4c7;
+        font-size: 17px;
+        font-weight: 750;
+        line-height: 1.45;
+      }
+
+      .start-panel {
+        display: grid;
+        gap: 16px;
+        width: min(540px, 100%);
+      }
+
+      .start-panel--setup {
+        max-height: calc(var(--app-viewport-height, 100vh) - 48px);
+        overflow-y: auto;
+        padding-right: 4px;
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-y;
+      }
+
+      .menu-screen[data-start-view="home"] [data-start-panel="setup"],
+      .menu-screen[data-start-view="setup"] [data-start-panel="home"] {
+        display: none;
+      }
+
+      .start-setup-header {
+        display: grid;
+        gap: 6px;
+      }
+
+      .start-setup-header h2 {
+        margin: 0;
+        color: #fff8e7;
+        font-size: 28px;
+        line-height: 1;
+      }
+
+      .start-setup-header p {
+        margin: 0;
+        color: #efe4c7;
+        font-size: 13px;
+        font-weight: 750;
+        line-height: 1.35;
+      }
+
+      .start-identity {
+        display: grid;
+        gap: 10px;
+        width: min(520px, 100%);
+        border: 1px solid rgba(247, 205, 112, 0.38);
+        border-radius: 8px;
+        background: linear-gradient(180deg, rgba(18, 26, 20, 0.9), rgba(10, 15, 12, 0.78));
+        box-shadow: 0 18px 44px rgba(0, 0, 0, 0.34);
+        padding: 14px;
+        text-shadow: none;
+      }
+
+      .start-identity__copy {
+        display: grid;
+        gap: 5px;
+      }
+
+      .start-identity h2 {
+        margin: 0;
+        color: #fff8e7;
+        font-size: 24px;
+        font-weight: 950;
+        letter-spacing: 0;
+        line-height: 1;
+      }
+
+      .start-identity p,
+      .start-identity__benefits li {
+        margin: 0;
+        color: #e7dbc0;
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1.35;
+      }
+
+      .start-identity__benefits {
+        display: grid;
+        gap: 7px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .start-identity__benefits li {
+        grid-template-columns: 42px 1fr;
+        gap: 8px;
+        align-items: baseline;
+        display: grid;
+        color: #eee1c6;
+        font-size: 12px;
+      }
+
+      .start-identity__benefits span {
+        color: #f2d872;
+        font-size: 11px;
+        font-weight: 950;
+        text-transform: uppercase;
+      }
+
+      .start-identity__status,
+      .start-identity__actions,
+      .menu-actions,
+      .start-tribe__grid,
+      .start-loading__meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .start-identity__actions,
+      .menu-actions,
+      .start-tribe__grid {
+        flex-wrap: wrap;
+      }
+
+      .start-multiplayer__invite {
+        overflow-wrap: anywhere;
+        margin: 0;
+        border: 1px solid rgba(246, 236, 212, 0.14);
+        border-radius: 7px;
+        background: rgba(255, 248, 231, 0.06);
+        color: #efe4c7;
+        padding: 8px;
+        font-size: 11px;
+        font-weight: 750;
+        line-height: 1.35;
+      }
+
+      .start-tribe {
+        display: grid;
+        gap: 10px;
+        width: min(520px, 100%);
+        border: 1px solid rgba(246, 236, 212, 0.18);
+        border-radius: 8px;
+        background: rgba(12, 17, 13, 0.74);
+        padding: 12px;
+        text-shadow: none;
+      }
+
+      .start-tribe__grid {
+        align-items: stretch;
+      }
+
+      .start-tribe-card {
+        --tribe-color: #268b5c;
+        --tribe-trim: #e6c46f;
+        display: grid;
+        gap: 8px;
+        flex: 1 1 150px;
+        min-width: 148px;
+        border: 1px solid rgba(246, 236, 212, 0.18);
+        border-radius: 7px;
+        background: linear-gradient(180deg, color-mix(in srgb, var(--tribe-color) 14%, rgba(24, 33, 25, 0.96)), rgba(18, 25, 19, 0.92));
+        color: #fff8e7;
+        padding: 10px;
+        text-align: left;
+        font: inherit;
+      }
+
+      .start-tribe-card[data-start-civilization="yamato"] {
+        --tribe-color: #268b5c;
+        --tribe-trim: #e6c46f;
+      }
+
+      .start-tribe-card[data-start-civilization="egyptian"] {
+        --tribe-color: #1d8a84;
+        --tribe-trim: #e0bd5a;
+      }
+
+      .start-tribe-card[data-start-civilization="greek"] {
+        --tribe-color: #315d9e;
+        --tribe-trim: #f0efe4;
+      }
+
+      .start-tribe-card__top {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .start-tribe-card__crest {
+        position: relative;
+        flex: 0 0 auto;
+        width: 34px;
+        height: 34px;
+        border: 1px solid rgba(12, 17, 13, 0.82);
+        background: var(--tribe-color);
+        box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--tribe-trim) 64%, transparent), 0 5px 12px rgba(0, 0, 0, 0.22);
+      }
+
+      .start-tribe-card[data-start-civilization="yamato"] .start-tribe-card__crest {
+        border-radius: 50%;
+      }
+
+      .start-tribe-card[data-start-civilization="yamato"] .start-tribe-card__crest::before,
+      .start-tribe-card[data-start-civilization="yamato"] .start-tribe-card__crest::after {
+        position: absolute;
+        content: "";
+        background: var(--tribe-trim);
+      }
+
+      .start-tribe-card[data-start-civilization="yamato"] .start-tribe-card__crest::before {
+        top: 7px;
+        bottom: 7px;
+        left: 15px;
+        width: 3px;
+      }
+
+      .start-tribe-card[data-start-civilization="yamato"] .start-tribe-card__crest::after {
+        top: 15px;
+        right: 7px;
+        left: 7px;
+        height: 3px;
+      }
+
+      .start-tribe-card[data-start-civilization="egyptian"] .start-tribe-card__crest {
+        clip-path: polygon(50% 4%, 94% 88%, 6% 88%);
+      }
+
+      .start-tribe-card[data-start-civilization="greek"] .start-tribe-card__crest {
+        border-radius: 4px;
+        background:
+          linear-gradient(90deg, transparent 18%, var(--tribe-trim) 18% 25%, transparent 25% 43%, var(--tribe-trim) 43% 50%, transparent 50% 68%, var(--tribe-trim) 68% 75%, transparent 75%),
+          var(--tribe-color);
+      }
+
+      .start-tribe-card strong,
+      .start-tribe-card > span:not(.start-tribe-card__top) {
+        display: block;
+      }
+
+      .start-tribe-card strong {
+        font-size: 14px;
+        font-weight: 950;
+      }
+
+      .start-tribe-card > span:not(.start-tribe-card__top) {
+        margin-top: 4px;
+        color: #e7dbc0;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.25;
+      }
+
+      .start-tribe-card > .start-tribe-card__status {
+        color: var(--tribe-trim);
+        font-size: 10px;
+        font-weight: 950;
+        letter-spacing: 0;
+      }
+
+      .start-tribe-card.is-selected {
+        border-color: rgba(242, 216, 114, 0.9);
+        background: linear-gradient(180deg, color-mix(in srgb, var(--tribe-color) 28%, rgba(77, 87, 48, 0.98)), rgba(28, 51, 37, 0.94));
+        box-shadow: inset 0 0 0 1px rgba(242, 216, 114, 0.22);
+      }
+
+      .start-matchup {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        align-items: center;
+        gap: 8px;
+        border: 1px solid rgba(246, 236, 212, 0.14);
+        border-radius: 7px;
+        background: rgba(9, 13, 10, 0.42);
+        padding: 8px;
+      }
+
+      .start-matchup__side {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .start-matchup__side--rival {
+        justify-content: end;
+        text-align: right;
+      }
+
+      .start-matchup__label,
+      .start-matchup__label strong,
+      .start-matchup__label span {
+        display: block;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .start-matchup__label strong {
+        color: #fff8e7;
+        font-size: 13px;
+        font-weight: 950;
+      }
+
+      .start-matchup__label span,
+      .start-matchup__versus {
+        color: #d8d4c5;
+        font-size: 10px;
+        font-weight: 900;
+        text-transform: uppercase;
+      }
+
+      .start-matchup__versus {
+        color: #f2d872;
+      }
+
+      .start-matchup__crest {
+        --tribe-color: #268b5c;
+        --tribe-trim: #e6c46f;
+        position: relative;
+        flex: 0 0 auto;
+        width: 28px;
+        height: 28px;
+        border: 1px solid rgba(12, 17, 13, 0.82);
+        background: var(--tribe-color);
+        box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--tribe-trim) 64%, transparent), 0 5px 12px rgba(0, 0, 0, 0.2);
+      }
+
+      .start-matchup__crest[data-civilization="yamato"] {
+        --tribe-color: #268b5c;
+        --tribe-trim: #e6c46f;
+        border-radius: 50%;
+      }
+
+      .start-matchup__crest[data-civilization="egyptian"] {
+        --tribe-color: #1d8a84;
+        --tribe-trim: #e0bd5a;
+        clip-path: polygon(50% 4%, 94% 88%, 6% 88%);
+      }
+
+      .start-matchup__crest[data-civilization="greek"] {
+        --tribe-color: #315d9e;
+        --tribe-trim: #f0efe4;
+        border-radius: 4px;
+        background:
+          linear-gradient(90deg, transparent 18%, var(--tribe-trim) 18% 25%, transparent 25% 43%, var(--tribe-trim) 43% 50%, transparent 50% 68%, var(--tribe-trim) 68% 75%, transparent 75%),
+          var(--tribe-color);
+      }
+
+      .start-matchup__crest[data-civilization="yamato"]::before,
+      .start-matchup__crest[data-civilization="yamato"]::after {
+        position: absolute;
+        content: "";
+        background: var(--tribe-trim);
+      }
+
+      .start-matchup__crest[data-civilization="yamato"]::before {
+        top: 6px;
+        bottom: 6px;
+        left: 12px;
+        width: 3px;
+      }
+
+      .start-matchup__crest[data-civilization="yamato"]::after {
+        top: 12px;
+        right: 6px;
+        left: 6px;
+        height: 3px;
+      }
+
+      .start-loading {
+        display: none;
+        gap: 12px;
+        width: min(520px, 100%);
+        border: 1px solid rgba(247, 205, 112, 0.46);
+        border-radius: 8px;
+        background: linear-gradient(180deg, rgba(18, 26, 20, 0.92), rgba(10, 15, 12, 0.82));
+        box-shadow: 0 18px 44px rgba(0, 0, 0, 0.34);
+        padding: 14px;
+        text-shadow: none;
+      }
+
+      .menu-screen.is-loading .start-panel {
+        display: none;
+      }
+
+      .menu-screen.is-loading .start-loading {
+        display: grid;
+      }
+
+      .start-loading__title {
+        margin: 0;
+        color: #fff8e7;
+        font-size: 22px;
+        font-weight: 950;
+        letter-spacing: 0;
+      }
+
+      .start-loading__status,
+      .start-loading__percent {
+        color: #efe4c7;
+        font-size: 13px;
+        font-weight: 850;
+      }
+
+      .start-loading__meta {
+        justify-content: space-between;
+      }
+
+      .start-loading__track {
+        height: 8px;
+        overflow: hidden;
+        border: 1px solid rgba(246, 236, 212, 0.16);
+        border-radius: 999px;
+        background: rgba(255, 248, 231, 0.1);
+      }
+
+      .start-loading__bar {
+        display: block;
+        width: 100%;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #86ad64, #f2d872);
+        transform: scaleX(0.02);
+        transform-origin: left center;
+        transition: transform 160ms ease;
+      }
+
+      .start-loading__retry {
+        margin-top: 6px;
+        justify-self: start;
+      }
+
+      .menu-button {
+        min-width: 136px;
+        min-height: 46px;
+        border: 1px solid rgba(246, 236, 212, 0.26);
+        border-radius: 7px;
+        background: rgba(24, 33, 25, 0.9);
+        color: #fff8e7;
+        padding: 10px 16px;
+        font: inherit;
+        font-size: 14px;
+        font-weight: 900;
+      }
+
+      .menu-button--primary,
+      .menu-button--signet {
+        border-color: rgba(247, 205, 112, 0.82);
+        background: linear-gradient(180deg, rgba(125, 97, 43, 0.98), rgba(61, 78, 43, 0.98));
+      }
+
+      .menu-button:disabled {
+        cursor: wait;
+        opacity: 0.68;
+      }
+
+      .start-event {
+        display: grid;
+        gap: 8px;
+        border: 1px solid rgba(247, 147, 26, 0.55);
+        border-radius: 9px;
+        background: linear-gradient(180deg, rgba(247, 147, 26, 0.18), rgba(20, 16, 9, 0.66));
+        box-shadow: 0 14px 38px rgba(0, 0, 0, 0.36);
+        padding: 12px 14px;
+        text-shadow: none;
+      }
+
+      .start-event[hidden],
+      .start-continue-hint[hidden] {
+        display: none;
+      }
+
+      .menu-screen.is-event .start-panel--home .menu-subtitle {
+        display: none;
+      }
+
+      .start-event__head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .start-event__badge {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        background: #f7931a;
+        color: #1a1206;
+        padding: 3px 11px;
+        font-size: 12px;
+        font-weight: 950;
+        text-transform: uppercase;
+      }
+
+      .start-event__limit {
+        color: #f7b663;
+        font-size: 13px;
+        font-weight: 950;
+      }
+
+      .start-event__copy {
+        margin: 0;
+        color: #f4e6cb;
+        font-size: 13px;
+        font-weight: 760;
+        line-height: 1.35;
+      }
+
+      .start-event__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .start-continue-hint {
+        margin: 0;
+        color: #d7e3c4;
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1.3;
+      }
+
+      @media (max-width: 720px) {
+        .menu-screen {
+          align-items: end;
+          background-position: 61% center;
+          background-image:
+            linear-gradient(180deg, rgba(9, 13, 10, 0.12) 0%, rgba(9, 13, 10, 0.62) 66%, rgba(9, 13, 10, 0.9) 100%),
+            url("assets/ui/start-page-v1.png");
+          background-image:
+            linear-gradient(180deg, rgba(9, 13, 10, 0.12) 0%, rgba(9, 13, 10, 0.62) 66%, rgba(9, 13, 10, 0.9) 100%),
+            image-set(url("assets/ui/start-page-v1.webp") type("image/webp"), url("assets/ui/start-page-v1.png") type("image/png"));
+        }
+
+        .menu-copy {
+          width: calc(100vw - 28px);
+          margin: 0 auto;
+          padding-bottom: max(24px, env(safe-area-inset-bottom));
+        }
+
+        .start-panel {
+          gap: 12px;
+        }
+
+        .start-panel--setup {
+          max-height: calc(var(--app-viewport-height, 100vh) - max(28px, env(safe-area-inset-top)) - max(24px, env(safe-area-inset-bottom)));
+        }
+
+        .menu-copy h1 {
+          font-size: 42px;
+        }
+      }
+    </style>
+    <script type="module" crossorigin src="/forge-realms/assets/game-DKwePmz4.js"></script>
+    <link rel="modulepreload" crossorigin href="/forge-realms/assets/rolldown-runtime-ciTZEWaI.js">
+    <link rel="modulepreload" crossorigin href="/forge-realms/assets/modulepreload-polyfill-Cf3xff8G.js">
+    <link rel="stylesheet" crossorigin href="/forge-realms/assets/game-CvEu7uRG.css">
+  </head>
+  <body>
+    <div id="app">
+      <div id="game-shell">
+        <div id="game"></div>
+        <section id="start-screen" class="menu-screen is-visible" data-start-view="home" aria-label="Forge Realms start">
+          <div class="menu-copy">
+            <div class="start-panel start-panel--home" data-start-panel="home">
+              <p class="menu-eyebrow">Stone Age RTS</p>
+              <h1 class="start-title"><img class="start-logo" src="assets/brand/forge-realms-logo.webp" alt="Forge Realms" width="320" height="320" decoding="async" /></h1>
+              <p class="menu-subtitle">Build, gather, raid, and advance from a fragile village into a conquering realm.</p>
+              <div class="start-event" id="start-event-banner" hidden>
+                <div class="start-event__head">
+                  <span class="start-event__badge">BTC Prague</span>
+                  <span class="start-event__limit" id="start-event-limit">10:00 run</span>
+                </div>
+                <p class="start-event__copy">Hold bitcoin mines and bank sats before the horn. Link Signet for a verified score.</p>
+                <div class="start-identity__status start-event__signet" id="start-event-signet-row">
+                  <span class="start-identity__dot" aria-hidden="true"></span>
+                  <span id="start-event-signet-status">Checking identity...</span>
+                </div>
+                <div class="start-event__actions">
+                  <button type="button" class="menu-button menu-button--signet" id="start-event-link-signet">Link Signet</button>
+                  <button type="button" class="menu-button menu-button--quiet" id="start-event-reset" hidden>Reset for next player</button>
+                </div>
+              </div>
+              <div class="start-matchup" aria-live="polite">
+                <div class="start-matchup__side">
+                  <span class="start-matchup__crest" data-civilization="yamato" data-start-matchup-player-crest aria-hidden="true"></span>
+                  <span class="start-matchup__label"><strong data-start-matchup-player-label>Yamato</strong><span>Your tribe</span></span>
+                </div>
+                <span class="start-matchup__versus">vs</span>
+                <div class="start-matchup__side start-matchup__side--rival">
+                  <span class="start-matchup__label"><strong data-start-matchup-rival-label>Egyptian</strong><span>Rival tribe</span></span>
+                  <span class="start-matchup__crest" data-civilization="egyptian" data-start-matchup-rival-crest aria-hidden="true"></span>
+                </div>
+              </div>
+              <div class="menu-actions menu-actions--home">
+                <button type="button" class="menu-button menu-button--primary" id="start-new-match">New Realm</button>
+                <button type="button" class="menu-button" id="start-continue-match">Continue</button>
+                <button type="button" class="menu-button menu-button--quiet" id="start-open-setup">Setup</button>
+              </div>
+              <p class="start-continue-hint" id="start-continue-hint" hidden></p>
+            </div>
+
+            <div class="start-panel start-panel--setup" data-start-panel="setup">
+              <div class="start-setup-header">
+                <p class="start-identity__eyebrow">Realm Setup</p>
+                <h2>Choose your start</h2>
+                <p>Pick a tribe, link Signet if you want a persistent Forge identity, then begin.</p>
+              </div>
+              <div class="start-tribe" role="group" aria-label="Choose tribe">
+                <p class="start-identity__eyebrow">Choose Tribe</p>
+                <div class="start-tribe__grid">
+                  <button type="button" class="start-tribe-card" data-start-civilization="yamato" aria-pressed="true">
+                    <span class="start-tribe-card__top"><span class="start-tribe-card__crest" aria-hidden="true"></span><strong>Yamato</strong></span>
+                    <span>Faster scouts and infantry for map control.</span>
+                    <span class="start-tribe-card__status" data-start-civilization-status>Selected</span>
+                  </button>
+                  <button type="button" class="start-tribe-card" data-start-civilization="egyptian" aria-pressed="false">
+                    <span class="start-tribe-card__top"><span class="start-tribe-card__crest" aria-hidden="true"></span><strong>Egyptian</strong></span>
+                    <span>Durable priests and stronger stone-age economy.</span>
+                    <span class="start-tribe-card__status" data-start-civilization-status>Choose</span>
+                  </button>
+                  <button type="button" class="start-tribe-card" data-start-civilization="greek" aria-pressed="false">
+                    <span class="start-tribe-card__top"><span class="start-tribe-card__crest" aria-hidden="true"></span><strong>Greek</strong></span>
+                    <span>Harder-hitting infantry and siege support.</span>
+                    <span class="start-tribe-card__status" data-start-civilization-status>Choose</span>
+                  </button>
+                </div>
+              </div>
+              <div class="start-identity" id="start-identity-panel">
+                <div class="start-identity__copy">
+                  <p class="start-identity__eyebrow">My Signet</p>
+                  <h2>Save your realm identity</h2>
+                  <p id="start-signet-copy">Play locally now, or link Signet for a persistent Forge identity.</p>
+                </div>
+                <ul class="start-identity__benefits" aria-label="Signet benefits">
+                  <li><span>Now</span> keeps the same player identity for this browser and device.</li>
+                  <li><span>Next</span> prepares your profile for shared saves, seasons, rankings, and multiplayer.</li>
+                  <li><span>Safe</span> no Forge password; approval happens in My Signet.</li>
+                </ul>
+                <div class="start-identity__status" id="start-signet-status-row">
+                  <span class="start-identity__dot" aria-hidden="true"></span>
+                  <span id="start-signet-status">Checking account...</span>
+                </div>
+                <div class="start-forge-balance" id="start-forge-balance" hidden></div>
+                <div class="start-identity__actions">
+                  <button type="button" class="menu-button menu-button--signet" id="start-connect-signet">Link My Signet</button>
+                  <button type="button" class="menu-button menu-button--quiet" id="start-disconnect-signet" hidden>Use Local</button>
+                </div>
+              </div>
+              <div class="start-identity start-multiplayer" id="start-multiplayer-panel">
+                <div class="start-identity__copy">
+                  <p class="start-identity__eyebrow">Signet Co-op</p>
+                  <h2>Two players vs Forge AI</h2>
+                  <p id="start-multiplayer-copy">Host a Signet co-op realm and share an invite link with one ally.</p>
+                </div>
+                <div class="start-identity__status" id="start-multiplayer-status-row">
+                  <span class="start-identity__dot" aria-hidden="true"></span>
+                  <span id="start-multiplayer-status">Link My Signet to host or join co-op.</span>
+                </div>
+                <p class="start-multiplayer__invite" id="start-invite-value" hidden></p>
+                <div class="start-identity__actions">
+                  <button type="button" class="menu-button menu-button--signet" id="start-host-coop">Host Co-op</button>
+                  <button type="button" class="menu-button menu-button--primary" id="start-join-coop" hidden>Join Invite</button>
+                  <button type="button" class="menu-button menu-button--quiet" id="start-copy-invite" hidden>Copy Invite</button>
+                </div>
+              </div>
+              <div class="menu-actions">
+                <button type="button" class="menu-button menu-button--primary" id="start-begin-setup">Begin Realm</button>
+                <button type="button" class="menu-button menu-button--quiet" id="start-back-home">Back</button>
+              </div>
+            </div>
+            <div class="start-loading" id="start-loading-panel" role="status" aria-live="polite" aria-atomic="true">
+              <p class="start-identity__eyebrow">Loading Realm</p>
+              <h2 class="start-loading__title">Preparing the battlefield</h2>
+              <div class="start-loading__meta">
+                <span class="start-loading__status" id="start-loading-status">Starting...</span>
+                <span class="start-loading__percent" id="start-loading-percent">0%</span>
+              </div>
+              <div class="start-loading__track" aria-hidden="true">
+                <span class="start-loading__bar" id="start-loading-bar"></span>
+              </div>
+              <button type="button" class="menu-button menu-button--primary start-loading__retry" id="start-loading-retry" hidden>Try Again</button>
+            </div>
+          </div>
+        </section>
+        <section id="end-screen" class="end-screen" aria-label="Match result" hidden>
+          <div class="end-copy">
+            <div class="end-emblem" id="end-emblem" aria-hidden="true"></div>
+            <p class="menu-eyebrow" id="end-kicker">Match Complete</p>
+            <h2 id="end-title">Victory</h2>
+            <p class="menu-subtitle" id="end-meta">The enemy town center has fallen.</p>
+            <div class="end-result" id="end-details" aria-live="polite"></div>
+            <div class="menu-actions">
+              <button type="button" class="menu-button menu-button--primary" data-end-action="restart">Restart</button>
+            </div>
+          </div>
+        </section>
+        <section id="hud" aria-label="Game status">
+          <div id="resource-bar"></div>
+          <div id="identity-chip"></div>
+        </section>
+        <canvas id="minimap" width="180" height="124" aria-label="Minimap"></canvas>
+        <section id="command-panel" aria-label="Commands">
+          <div id="selection-summary"></div>
+          <div id="command-buttons"></div>
+        </section>
+        <div id="toast" role="status" aria-live="polite"></div>
+      </div>
+    </div>
+  </body>
+</html>
