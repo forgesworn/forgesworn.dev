@@ -5,7 +5,9 @@
   "description": "ForgeSworn organisation landing page",
   "type": "module",
   "scripts": {
+    "sync": "curl -fsSL https://raw.githubusercontent.com/forgesworn/.github/main/forgesworn-repos.json -o forgesworn-repos.json",
     "build": "node scripts/build-site.mjs",
+    "check:drift": "node scripts/check-catalogue-drift.mjs",
     "test": "node --test test/build-site.test.mjs"
   },
   "license": "MIT"

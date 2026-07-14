@@ -8,11 +8,17 @@ deterministic Nostr identities, encrypted access control, privacy-preserving
 trust, spoken verification, spatial coordination, AI-agent tooling,
 cryptographic primitives, protocol work, and hardened release infrastructure.
 
-## Public Repo Catalog
+## Public Repo Catalogue
 
-The landing page is generated from [forgesworn-repos.json](forgesworn-repos.json),
-which tracks the public ForgeSworn project repos. The catalog excludes
-org/profile plumbing and upstream forks.
+The landing page is generated from `forgesworn-repos.json`. The canonical copy
+lives in [forgesworn/.github](https://github.com/forgesworn/.github) — this repo
+holds no tracked copy. CI fetches it at deploy time; locally, run `npm run sync`
+to pull it before building. The catalogue excludes org/profile plumbing and
+upstream forks.
+
+A weekly CI job (`catalogue-drift.yml`) diffs the canonical catalogue against
+the live GitHub org and fails if a public repo is missing from it, so the
+catalogue cannot rot silently. Run it locally with `npm run check:drift`.
 
 Current focus areas:
 
@@ -38,6 +44,7 @@ repo. Add or edit workflows in the JSON; no template changes needed.
 ## Development
 
 ```sh
+npm run sync    # fetch the canonical forgesworn-repos.json
 npm run build   # generates site/index.html and site/use-cases.html
 npm test
 ```

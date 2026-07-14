@@ -3,18 +3,33 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ForgeSworn -- Forging and sharing the tools to reclaim your freedom</title>
+  <title>ForgeSworn &mdash; Forging and sharing the tools to reclaim your freedom</title>
   <meta name="description" content="Open-source building blocks for sovereign identity, data, money, connection, and trust. Built on Nostr, Lightning, and zero-trust cryptography.">
   <meta name="theme-color" content="#0a0a0f">
-  <meta property="og:title" content="ForgeSworn -- Forging and sharing the tools to reclaim your freedom">
+  <link rel="canonical" href="https://forgesworn.dev/">
+  <meta property="og:title" content="ForgeSworn — Forging and sharing the tools to reclaim your freedom">
   <meta property="og:description" content="Open-source building blocks for sovereign identity, data, money, connection, and trust.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://forgesworn.dev">
   <meta property="og:image" content="https://forgesworn.dev/social-preview.png">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="ForgeSworn -- Forging and sharing the tools to reclaim your freedom">
+  <meta name="twitter:title" content="ForgeSworn — Forging and sharing the tools to reclaim your freedom">
   <meta name="twitter:description" content="Open-source building blocks for sovereign identity, data, money, connection, and trust.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0a0f'/><text x='16' y='23' font-size='18' text-anchor='middle' fill='%23e8a838' font-family='serif'>&#9876;</text></svg>">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "ForgeSworn",
+    "url": "https://forgesworn.dev",
+    "logo": "https://forgesworn.dev/anvil-square.png",
+    "description": "Open-source building blocks for sovereign identity, data, money, connection, and trust — built on Nostr, Lightning, and zero-trust cryptography.",
+    "sameAs": [
+      "https://github.com/forgesworn",
+      "https://www.npmjs.com/org/forgesworn"
+    ]
+  }
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300;1,9..40,400&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -362,6 +377,16 @@
       background: var(--accent-blue-glow);
       color: var(--text-primary);
       transform: translateY(-1px);
+    }
+
+    .hero-proof {
+      margin-top: 2.25rem;
+      animation: fadeUp 0.8s ease-out 0.4s both;
+    }
+
+    .hero-proof-note {
+      font-size: 0.85rem;
+      color: var(--text-muted);
     }
 
     .hero-stats {
@@ -978,6 +1003,13 @@
             View on GitHub
           </a>
         </div>
+        <div class="hero-proof">
+          <div class="install-block" style="margin-bottom:0.6rem;">
+            <code class="install-cmd">npx @forgesworn/toll-booth demo</code>
+            <button class="copy-btn" data-copy="npx @forgesworn/toll-booth demo" aria-label="Copy demo command">Copy</button>
+          </div>
+          <p class="hero-proof-note">A full Lightning-paywalled API on localhost in one command &mdash; or <a href="https://jokes.trotters.dev">pay 21 sats for a joke on the live demo</a>.</p>
+        </div>
         <div class="hero-stats">
           <!-- HERO_STATS -->
         </div>
@@ -1042,7 +1074,7 @@
     <div class="container">
       <h2 class="reveal">See it all come together</h2>
       <p class="reveal">
-        Bray is a CLI and MCP server that gives AI agents a sovereign Nostr identity -- trust-aware tooling across identity, social, payments, moderation, privacy, and encrypted access.
+        Bray is a CLI and MCP server that gives AI agents a sovereign Nostr identity &mdash; trust-aware tooling across identity, social, payments, moderation, privacy, and encrypted access.
       </p>
       <a href="https://bray.forgesworn.dev" class="btn-primary reveal">Explore Bray</a>
     </div>
@@ -1058,7 +1090,8 @@
         <ul class="footer-links">
           <li><a href="https://github.com/forgesworn">GitHub</a></li>
           <li><a href="https://www.npmjs.com/org/forgesworn">npm</a></li>
-          <li><a href="https://github.com/forgesworn" aria-label="ForgeSworn on GitHub">@forgesworn</a></li>
+          <li><a href="https://njump.me/darren@forgesworn.dev">Nostr</a></li>
+          <li><a href="https://github.com/sponsors/TheCryptoDonkey">Sponsor</a></li>
         </ul>
       </div>
     </div>

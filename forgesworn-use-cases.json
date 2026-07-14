@@ -1,5 +1,5 @@
 {
-  "generated": "2026-06-15",
+  "generated": "2026-07-14",
   "intro": "Twenty-five end-to-end workflows built by composing ForgeSworn libraries. Each starts with a real person and a real problem, walks the workflow step by step, and names the exact building blocks it stands on — with honest notes on what ships today and what you wire together yourself.",
   "categories": [
     {
@@ -152,7 +152,7 @@
       "outcome": "A continuously refreshed, source-tiered directory that any human or agent can browse or query — with no backend to run.",
       "steps": [
         "Run 402-indexer to crawl GitHub and npm for L402/x402 code, probe live endpoints, and aggregate existing relay events.",
-        "It republishes each discovered service as a signed kind 31402 event tagged with source, verified time, and health status.",
+        "It republishes each discovered service as a signed kind 31402 event tagged with its source, verification time, and a status of active, stale, or unreachable.",
         "402.pub streams those events straight from relays over WebSocket and renders a filterable directory — with no backend of its own.",
         "Stale services are dimmed and, after 30 days unreachable, retired with a NIP-09 deletion.",
         "When an operator self-announces, the indexer steps back and deletes its own superseded copy so the authoritative listing wins."
@@ -192,20 +192,21 @@
       "title": "Keys that never touch the laptop for a high-risk journalist",
       "persona": "An investigative journalist whose device may be seized or compromised",
       "problem": "If the signing key lives in the browser or on disk, one malware infection or border search burns every source contact.",
-      "outcome": "All signing happens on a dedicated appliance reachable over Tor; the working machine holds no key material at all.",
+      "outcome": "All signing happens on dedicated hardware with physical button approval; neither the laptop nor the bridge machine holds any key material.",
       "steps": [
-        "Provision a Heartwood appliance on a Raspberry Pi; the master secret is encrypted with Argon2id and AES-256-GCM and unlocked by PIN.",
-        "Heartwood runs NIP-46 remote signing and is reachable as a Tor hidden service, so the laptop signs through it without a key ever leaving the Pi.",
-        "Install the Bark browser extension, which implements NIP-07 by forwarding every request to Heartwood — zero key storage in the browser.",
+        "Flash a Heartwood hardware signer — a sub-£20 ESP32 token, or a Ledger running the emulator-proven heartwood-ledger app — and pair it with the keyless heartwood-bridge daemon; the seed never leaves the device.",
+        "The bridge connects out to Nostr relays for NIP-46 remote signing — no open ports, no inbound listener, and client apps never learn the machine's IP.",
+        "Install the Bark browser extension, which implements NIP-07 by forwarding every request to the remote signer — zero key storage in the browser.",
         "Derive separate unlinkable personas per investigation from one master seed using nsec-tree.",
-        "Manage client policies and monitor the device from Heartwood's own built-in web UI, served on the Pi over the same hidden service."
+        "Every signing request renders on the device's screen and is approved with a physical button hold; per-client kind permissions are enforced on the device itself."
       ],
       "stack": [
-        { "repo": "heartwood", "role": "Pi signing appliance with Argon2id/AES-256-GCM keys and NIP-46 reachable over Tor" },
+        { "repo": "heartwood", "role": "Keyless NIP-46 bridge relaying each request to the hardware signer — holds no seed, PIN, or plaintext" },
+        { "repo": "heartwood-esp32", "role": "Hardware token that holds the seed and approves each signature on-device" },
         { "repo": "bark", "role": "NIP-07 browser extension backed by remote signing, no local keys" },
         { "repo": "nsec-tree", "role": "Deterministic unlinkable personas from one master secret" }
       ],
-      "protocols": ["NIP-46", "NIP-07", "NIP-44", "Tor", "Argon2id"]
+      "protocols": ["NIP-46", "NIP-07", "NIP-44", "secp256k1"]
     },
     {
       "id": "pseudonymous-personas",
@@ -217,14 +218,14 @@
       "steps": [
         "Create a master tree from a BIP-39 mnemonic; nsec-tree derives child keys with HMAC-SHA256, so a leaked child reveals nothing about siblings or root.",
         "Derive named personas ('work', 'anonymous', 'social') on demand — each is a full Nostr identity.",
-        "Switch the active persona straight from the Bark extension while signing stays on the Heartwood device.",
+        "Switch the active persona straight from the Bark extension while signing stays on the hardware signer behind the Heartwood bridge.",
         "When you want to, publish a signed linkage proof (a NIP-78 kind 30078 event) to claim two personas as yours; otherwise they stay independent.",
         "Recover every persona later by re-deriving from the seed — there is no per-persona backup to lose."
       ],
       "stack": [
         { "repo": "nsec-tree", "role": "HMAC-SHA256 derivation of unlimited unlinkable identities" },
         { "repo": "bark", "role": "Persona switching and signing from the browser" },
-        { "repo": "heartwood", "role": "Holds the master seed and signs for every derived persona" },
+        { "repo": "heartwood", "role": "Bridges every persona's signing requests to the hardware device that holds the master seed" },
         { "repo": "nsec-tree-cli", "role": "Offline derivation, proofs, and inspection from the terminal" }
       ],
       "protocols": ["NIP-19", "NIP-78", "BIP-39", "HMAC-SHA256"]
@@ -412,15 +413,15 @@
         "Each editor who has independently checked the source signs a ring-signed corroboration with ring-sig.",
         "nostr-veil aggregates those into a threshold NIP-85 assertion attached to the source's pubkey.",
         "A revocable kind 31000 vouch can carry a human-readable note alongside the cryptographic proof.",
-        "Editors run the ring-signing on a Heartwood appliance (its heartwood_lsag_sign keeps the key on-device), reachable over Tor, so no signing key sits on a seizable laptop."
+        "Each editor signs under a dedicated circle key derived with nsec-tree from their master seed, so even a compromised circle key never links back to their public byline — and the ring signature hides which editor signed at all."
       ],
       "stack": [
         { "repo": "ring-sig", "role": "Anonymous per-editor corroboration signatures" },
         { "repo": "nostr-veil", "role": "Threshold aggregation into a NIP-85 trust signal" },
         { "repo": "nostr-attestations", "role": "Human-readable, revocable vouch records" },
-        { "repo": "heartwood", "role": "Tor-accessible appliance running LSAG ring signing on-device" }
+        { "repo": "nsec-tree", "role": "Derives each editor's circle signing key, unlinkable from their main identity" }
       ],
-      "protocols": ["LSAG", "NIP-85", "kind 31000", "Tor"]
+      "protocols": ["LSAG", "NIP-85", "kind 31000", "secp256k1"]
     },
     {
       "id": "prove-threshold-zk",
@@ -544,7 +545,7 @@
         "If a dispute arises, the whole signed chain — certificate, evidence, custody — is available to an arbitrator."
       ],
       "stack": [
-        { "repo": "nip-drafts", "role": "Complete draft specs (with test vectors) for the provenance (30404), evidence (30578), and custody (30572) kinds — specs, not yet a library" },
+        { "repo": "nip-drafts", "role": "Draft specs for the provenance (30404), evidence (30578), and custody (30572) kinds, with test vectors for provenance and custody — specs, not yet a library" },
         { "repo": "nostr-attestations", "role": "Shipping kind 31000 authenticity attestations anchoring the chain" },
         { "repo": "signet", "role": "Verifies the installing professional's credentials" },
         { "repo": "jurisdiction-kit", "role": "Cross-border recognition and compliance context" }
