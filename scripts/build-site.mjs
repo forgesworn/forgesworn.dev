@@ -30,7 +30,9 @@ const DISPLAY_ORDER = ['l402', 'spatial', 'identity', 'agents', 'trust', 'crypto
 const REPO_WEBSITES = {
   bray: 'https://bray.forgesworn.dev',
   '402-pub': 'https://402.pub',
+  bark: 'https://bark.forgesworn.dev',
   cambium: 'https://cambium.forgesworn.dev',
+  'heartwood-esp32': 'https://heartwood.forgesworn.dev',
   sapwood: 'https://sapwood.forgesworn.dev',
   signet: 'https://mysignet.app',
 };
