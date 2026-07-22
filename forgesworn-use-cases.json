@@ -572,6 +572,53 @@
         { "repo": "signet", "role": "Ties the maintainer's verified Nostr identity to the attestation" }
       ],
       "protocols": ["SLSA", "OIDC", "kind 31000", "SHA-256"]
+    },
+    {
+      "id": "find-your-friends-off-grid",
+      "category": "coordination",
+      "title": "Walk to a friend through a crowd, guided by ear, with nobody tracking you",
+      "persona": "Friends meeting up at a festival, a station, or across a busy city, on phones they already own",
+      "problem": "Find-my-friends apps turn a group's whereabouts into an advertising and insurance data set, and even then they only show a dot on a map — no help for the last half-mile through a crowd, and nothing once the signal drops.",
+      "outcome": "Each person is guided to a moving friend by voice, stereo sound, and haptics — enough to walk in with the phone still in a pocket — while every location stays end-to-end encrypted, shared only as precisely and as briefly as its owner chooses, held by no server.",
+      "steps": [
+        "One person creates a circle with covey-kit — derived per-circle keys, roles, and a human-readable word code — and shares the code; the others join and converge on the same encrypted roster.",
+        "roost-kit delivers each position as a NIP-59 gift wrap to every member's rotating personal inbox, fanned out across relays, with a pre-signed offline outbox for when there is no signal.",
+        "flock-kit turns a member's disclosed position and your own sensors into an honest guidance state — a heading engine, a three-mode radar (vehicle, on foot, close-in), and a cue grammar of cadence, stereo pan, and haptics — degrading truthfully when GPS cannot be sure instead of pointing you confidently wrong.",
+        "When members are co-located and off-grid, capacitor-mesh-ble carries the same encrypted frames phone-to-phone over a Bluetooth LE mesh; mesh-kit reconciles them reliably, and anyone who still has a relay path carries the wrap back up to Nostr so members out of Bluetooth range still hear it.",
+        "geohash-kit underpins the precision tiers — a share is a cell, never a pin, unless its owner lifts precision for a consented, time-boxed live session."
+      ],
+      "stack": [
+        { "repo": "flock-kit", "role": "The pure guidance core — radar state machine, heading arbitration, honesty gates, and consented-session rules" },
+        { "repo": "covey-kit", "role": "Encrypted circle membership: derived keys, roles, word-code invites, and convergent roster state" },
+        { "repo": "roost-kit", "role": "NIP-59 gift-wrap delivery, relay fan-out, rotating inboxes, and an offline outbox" },
+        { "repo": "capacitor-mesh-ble", "role": "Phone-to-phone Bluetooth LE mesh for co-located, off-grid delivery" },
+        { "repo": "mesh-kit", "role": "Transport-agnostic reliability and reconciliation over the mesh" },
+        { "repo": "geohash-kit", "role": "Geohash precision tiers under the location-sharing model" }
+      ],
+      "protocols": ["Nostr", "NIP-44", "NIP-59", "NIP-40", "BLE mesh", "Noise_XX"]
+    },
+    {
+      "id": "coercion-resistant-safety-net",
+      "category": "trust",
+      "title": "A safety net for the people you trust — that still holds when your phone is taken",
+      "persona": "Someone living with a controlling partner or family member — anyone who could be forced to unlock their phone and open the app",
+      "problem": "A location-sharing safety app becomes a weapon the moment it is compelled: an abuser forces the phone open and reads everyone's exact position, demands you 'share now', or calls in a cloned voice pretending to be someone you trust. And simply not sharing is itself a tell.",
+      "outcome": "The safety net survives the phone being taken. A duress unlock opens a real, empty-looking app; turning sharing off silently alarms your circle instead of just going quiet; a caller is verified as genuinely themselves, not a deepfake; and an SOS reaches the people you trust without the person beside you ever knowing.",
+      "steps": [
+        "Members join a circle by reading each other their spoken words aloud, in order — canary-kit's per-member verification tokens — so a cloned voice or an impostor cannot join the group or fake a check-in.",
+        "The circle's keys, roles, and roster live in covey-kit; every beacon, duress signal, and SOS rides roost-kit as a NIP-59 gift wrap to a rotating personal inbox, so a relay sees only opaque, uncorrelatable traffic.",
+        "A compelled unlock opens the decoy: flock encrypts the entire state into one blob that carries no marker of what it is, wipes the real state, and reboots as a genuinely fresh install — a working app with nothing to find. The true unlock phrase restores it later.",
+        "Withholding is built to be indistinguishable from sharing — a coerced 'stop sharing' silently alarms the circle rather than going dark, and a place you have marked private never beacons at all — so no observer can read your safety from your silence.",
+        "Every layer reuses canary-kit and spoken-token — no bespoke cryptography — so the duress vocabulary, group lifecycle, and NIP-44/NIP-59 transport are the same audited primitives that verify identity."
+      ],
+      "stack": [
+        { "repo": "canary-kit", "role": "Per-member spoken verification words, silent duress detection, and the AES-256-GCM state envelope" },
+        { "repo": "spoken-token", "role": "The time-rotating spoken-word primitive canary-kit derives from" },
+        { "repo": "covey-kit", "role": "Encrypted circle membership — keys, roles, and roster" },
+        { "repo": "roost-kit", "role": "NIP-59 gift-wrap delivery of beacons, duress, and SOS to rotating inboxes" },
+        { "repo": "flock-kit", "role": "The location-safety model: precision tiers, no-report places, and honest degradation" }
+      ],
+      "protocols": ["Nostr", "NIP-44", "NIP-59", "AES-256-GCM", "PBKDF2"]
     }
   ]
 }
