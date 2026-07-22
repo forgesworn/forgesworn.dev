@@ -1,6 +1,6 @@
 {
   "generated": "2026-07-14",
-  "intro": "Twenty-five end-to-end workflows built by composing ForgeSworn libraries. Each starts with a real person and a real problem, walks the workflow step by step, and names the exact building blocks it stands on — with honest notes on what ships today and what you wire together yourself.",
+  "intro": "Twenty-seven end-to-end workflows built by composing ForgeSworn libraries. Each starts with a real person and a real problem, walks the workflow step by step, and names the exact building blocks it stands on — with honest notes on what ships today and what you wire together yourself.",
   "categories": [
     {
       "slug": "payments",
