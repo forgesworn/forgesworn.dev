@@ -724,18 +724,21 @@
     /* ========================================
        BRAY CALLOUT
        ======================================== */
-    .bray-callout {
+    .bray-callout,
+    .flock-callout {
       background: var(--bg-primary);
       border-top: 1px solid var(--border-subtle);
       border-bottom: 1px solid var(--border-subtle);
       text-align: center;
     }
 
-    .bray-callout h2 {
+    .bray-callout h2,
+    .flock-callout h2 {
       font-size: clamp(2rem, 4.5vw, 3rem);
     }
 
-    .bray-callout p {
+    .bray-callout p,
+    .flock-callout p {
       color: var(--text-secondary);
       font-size: clamp(1rem, 1.5vw, 1.15rem);
       max-width: 600px;
@@ -982,6 +985,7 @@
         <li><a href="#ecosystem">Ecosystem</a></li>
         <li><a href="/use-cases.html">Use Cases</a></li>
         <li><a href="https://bray.forgesworn.dev">Bray</a></li>
+        <li><a href="https://flock.forgesworn.dev">flock</a></li>
         <li><a href="https://github.com/forgesworn" class="btn-nav">GitHub</a></li>
       </ul>
     </div>
@@ -1077,6 +1081,17 @@
         Bray is an MCP server and CLI that give AI agents and their humans a sovereign Nostr identity &mdash; trust-aware tooling across identity, social, payments, moderation, privacy, and encrypted access, with walkthrough guides for newcomers.
       </p>
       <a href="https://bray.forgesworn.dev" class="btn-primary reveal">Explore Bray</a>
+    </div>
+  </section>
+
+  <!-- ====== FLOCK CALLOUT ====== -->
+  <section class="flock-callout">
+    <div class="container">
+      <h2 class="reveal">Find your people, not their data</h2>
+      <p class="reveal">
+        flock is a group locator that guides you the last half-mile to a moving friend &mdash; by voice, sound, and vibration, enough to walk to someone with the phone still in your pocket, driving or on foot or through a crowd. When the GPS can&rsquo;t be sure, it says so, instead of pointing you confidently wrong. There&rsquo;s no account and no company holding you: your location is end-to-end encrypted over Nostr, shared only with the people you choose, at the precision you choose, for as long as you choose &mdash; then it&rsquo;s gone. Nobody can sell it, subpoena it, or lose it in a breach. On a phone you already own &mdash; no gadget, no matching handset.
+      </p>
+      <a href="https://flock.forgesworn.dev" class="btn-primary reveal">Explore flock</a>
     </div>
   </section>
 
