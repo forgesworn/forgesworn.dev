@@ -725,7 +725,8 @@
        BRAY CALLOUT
        ======================================== */
     .bray-callout,
-    .flock-callout {
+    .flock-callout,
+    .donkey-callout {
       background: var(--bg-primary);
       border-top: 1px solid var(--border-subtle);
       border-bottom: 1px solid var(--border-subtle);
@@ -733,12 +734,14 @@
     }
 
     .bray-callout h2,
-    .flock-callout h2 {
+    .flock-callout h2,
+    .donkey-callout h2 {
       font-size: clamp(2rem, 4.5vw, 3rem);
     }
 
     .bray-callout p,
-    .flock-callout p {
+    .flock-callout p,
+    .donkey-callout p {
       color: var(--text-secondary);
       font-size: clamp(1rem, 1.5vw, 1.15rem);
       max-width: 600px;
@@ -986,6 +989,7 @@
         <li><a href="/use-cases.html">Use Cases</a></li>
         <li><a href="https://bray.forgesworn.dev">Bray</a></li>
         <li><a href="https://flock.forgesworn.dev">flock</a></li>
+        <li><a href="#donkeyride">DonkeyRide</a></li>
         <li><a href="https://github.com/forgesworn" class="btn-nav">GitHub</a></li>
       </ul>
     </div>
@@ -1096,6 +1100,21 @@
       </p>
       <a href="https://flock.forgesworn.dev" class="btn-primary reveal">Explore flock</a>
       <a href="https://github.com/forgesworn/flock" class="btn-secondary reveal">Read the code</a>
+    </div>
+  </section>
+
+  <!-- ====== DONKEYRIDE CALLOUT ====== -->
+  <section class="donkey-callout" id="donkeyride">
+    <div class="container">
+      <h2 class="reveal">The whole fare is the driver&rsquo;s</h2>
+      <p class="reveal">
+        DonkeyRide is ride-hailing with nobody in the middle taking a cut. There&rsquo;s no sign-up, no phone number and no card on file &mdash; your phone makes its own key. You see the price before you request, broken down to the penny, and it is the price recorded at the end. Then you pay the driver: cash in hand, M-Pesa, or Lightning straight to their wallet. The software that put you together never touches the money, so on a &pound;17.20 fare the driver keeps &pound;17.20 &mdash; where a quarter of it would otherwise go to a company that did none of the driving.
+      </p>
+      <p class="reveal">
+        The same engine dispatches nine kinds of work &mdash; locksmiths, recovery trucks, couriers, cleaners, house moves &mdash; because turning up somewhere and doing a job is one problem: agree a price, find each other, prove it happened, get paid. It is the reference implementation of the TROTT protocol, and anyone can run one.
+      </p>
+      <a href="https://donkeyride.95.217.39.110.sslip.io/about" class="btn-primary reveal">Explore DonkeyRide</a>
+      <a href="https://github.com/TheCryptoDonkey/donkeyride" class="btn-secondary reveal">Read the code</a>
     </div>
   </section>
 
