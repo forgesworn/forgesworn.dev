@@ -35,7 +35,7 @@ Current focus areas:
 ## Use Cases
 
 The use-cases page (`/use-cases.html`) is generated from
-[forgesworn-use-cases.json](forgesworn-use-cases.json) — 25 end-to-end
+[forgesworn-use-cases.json](forgesworn-use-cases.json) — 27 end-to-end
 workflows that compose the catalogue libraries, each with a persona, the
 step-by-step flow, and the building blocks it uses. Stack links are resolved
 against `forgesworn-repos.json` at build time, so each block links back to its
