@@ -457,6 +457,53 @@
       transition: stroke-opacity 0.3s;
     }
 
+    /* ========================================
+       PAYMENT STACK DIAGRAM
+       ======================================== */
+    .pmap { background: var(--bg-deep); border-bottom: 1px solid var(--border-subtle); }
+    .pmap-fig { margin-top: 2.5rem; }
+    .pmap-scroll {
+      overflow-x: auto;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 1.25rem;
+    }
+    .pmap svg.pdiagram { width: 100%; height: auto; min-width: 760px; display: block; }
+    .pmap-legend { display: flex; flex-wrap: wrap; gap: 1.25rem; margin-top: 1.1rem; font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-secondary); }
+    .pmap-legend span { display: inline-flex; align-items: center; gap: 0.5rem; }
+    .pmap-legend i { width: 22px; height: 3px; border-radius: 2px; }
+    .pmap-caption { margin-top: 1.4rem; color: var(--text-secondary); max-width: 680px; font-size: 0.95rem; }
+    .pmap-caption b { color: var(--text-primary); font-weight: 600; }
+    .pmap-caption code { font-family: var(--font-mono); font-size: 0.85em; color: var(--accent-gold); }
+
+    .pdiagram text { font-family: var(--font-mono); }
+    .pdiagram .b { fill: var(--bg-card); stroke: var(--border-medium); stroke-width: 1.5; }
+    .pdiagram .b-nostr { stroke: var(--accent-purple); }
+    .pdiagram .b-money { stroke: var(--accent-gold); }
+    .pdiagram .b-disc { stroke: var(--accent-blue); }
+    .pdiagram .chip { fill: var(--bg-elevated); stroke: var(--border-medium); }
+    .pdiagram .t { fill: var(--text-primary); font-size: 14px; font-weight: 600; }
+    .pdiagram .t-sm { fill: var(--text-primary); font-size: 12.5px; font-weight: 600; }
+    .pdiagram .t-sub { fill: var(--text-secondary); font-size: 11.5px; }
+    .pdiagram .t-sub.money { fill: var(--accent-gold); }
+    .pdiagram .t-sub.nostr { fill: var(--accent-purple); }
+    .pdiagram .t-sub.disc { fill: var(--accent-blue); }
+    .pdiagram .flow { fill: none; stroke: var(--text-muted); stroke-width: 1.6; }
+    .pdiagram .flow-nostr { stroke: var(--accent-purple); }
+    .pdiagram .flow-money { stroke: var(--accent-gold); }
+    .pdiagram .flow-disc { stroke: var(--accent-blue); }
+    .pdiagram .flow-dep { stroke: #6b6478; stroke-width: 1.4; stroke-dasharray: 4 4; fill: none; }
+    .pdiagram .elbl { fill: var(--text-secondary); font-size: 11px; }
+    .pdiagram .elbl-dep { fill: var(--text-muted); font-size: 11px; font-style: italic; }
+    .pdiagram .band { fill: var(--text-muted); font-size: 10.5px; letter-spacing: 0.16em; }
+    .pdiagram .ah { fill: var(--text-muted); }
+    .pdiagram .ah-dep { fill: #6b6478; }
+    .pdiagram a rect { transition: fill 0.15s ease; cursor: pointer; }
+    .pdiagram a:hover rect { fill: var(--bg-card-hover); }
+    .pdiagram a:hover .t, .pdiagram a:hover .t-sm { fill: var(--accent-gold); text-decoration: underline; }
+    .pdiagram a:focus-visible rect { outline: 2px solid var(--accent-gold); outline-offset: 2px; }
+
     .stack-card {
       background: var(--bg-card);
       border: 1px solid var(--border-subtle);
@@ -1066,6 +1113,123 @@
       <div class="stack-map-grid reveal-stagger">
         <!-- STACK_MAP_CARDS -->
         <!-- STACK_MAP_SVG -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== PAYMENTS STACK MAP ====== -->
+  <section class="pmap" id="payments">
+    <div class="container">
+      <div class="section-divider">
+        <span class="section-label">Payments</span>
+      </div>
+      <h2 class="reveal">How the money pieces fit</h2>
+      <p class="text-muted reveal" style="max-width:680px;">
+        Every payment tool hangs off one idea: a constrained connection to a wallet you don&rsquo;t hold. nwc-kit is that connection, farrier-kit checks it, a bridge turns any node into a wallet, and the L402 tools sell and discover paid APIs on top. Each box links to its project.
+      </p>
+      <div class="pmap-fig reveal">
+        <div class="pmap-scroll">
+          <svg class="pdiagram" viewBox="0 0 960 430" role="img"
+               aria-label="The connection layer: an app uses nwc-kit and farrier-kit to reach a user wallet over NWC, or an nwc-lnd-bridge that fronts an LND node or the mint. The L402 layer: toll-booth gates an API, 402-announce publishes it, 402.pub lists it, 402-mcp discovers and pays. toll-booth issues invoices and 402-mcp pays, both through nwc-kit.">
+            <defs>
+              <marker id="pmArrow" markerWidth="9" markerHeight="9" refX="7.5" refY="4" orient="auto"><polygon class="ah" points="0,0 8,4 0,8"/></marker>
+              <marker id="pmDep" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto"><polygon class="ah-dep" points="0,0 8,4 0,8"/></marker>
+            </defs>
+
+            <text class="band" x="40" y="26">THE CONNECTION</text>
+
+            <rect class="b" x="40" y="60" width="150" height="56" rx="9"/>
+            <text class="t" x="115" y="93" text-anchor="middle">App / agent</text>
+
+            <line class="flow" x1="192" y1="88" x2="282" y2="88" marker-end="url(#pmArrow)"/>
+
+            <a href="https://nwc-kit.forgesworn.dev" target="_blank" rel="noopener">
+              <title>nwc-kit &mdash; a constrained NIP-47 connection to a wallet you don't hold</title>
+              <rect class="b b-nostr" x="284" y="60" width="164" height="56" rx="9"/>
+              <text class="t" x="366" y="84" text-anchor="middle">nwc-kit</text>
+              <text class="t-sub nostr" x="366" y="102" text-anchor="middle">the connection</text>
+            </a>
+
+            <a href="https://github.com/forgesworn/farrier-kit#readme" target="_blank" rel="noopener">
+              <title>farrier-kit &mdash; verify BOLT-11 invoices and payment preimages</title>
+              <rect class="b chip" x="284" y="124" width="164" height="28" rx="7"/>
+              <text class="t-sub" x="366" y="142" text-anchor="middle">farrier-kit &middot; verify</text>
+            </a>
+
+            <path class="flow flow-nostr" d="M450,80 C500,72 512,64 556,64" marker-end="url(#pmArrow)"/>
+            <text class="elbl" x="505" y="52" text-anchor="middle">NWC</text>
+            <path class="flow flow-nostr" d="M450,100 C500,110 512,128 556,128" marker-end="url(#pmArrow)"/>
+
+            <rect class="b b-nostr" x="558" y="40" width="178" height="52" rx="9"/>
+            <text class="t-sm" x="647" y="62" text-anchor="middle">User wallet</text>
+            <text class="t-sub nostr" x="647" y="79" text-anchor="middle">over NWC</text>
+
+            <a href="https://github.com/forgesworn/nwc-lnd-bridge" target="_blank" rel="noopener">
+              <title>nwc-lnd-bridge &mdash; make any LND node speak NWC, invoice-only by default</title>
+              <rect class="b b-nostr" x="558" y="104" width="178" height="52" rx="9"/>
+              <text class="t-sm" x="647" y="126" text-anchor="middle">nwc-lnd-bridge</text>
+              <text class="t-sub nostr" x="647" y="143" text-anchor="middle">invoice-only</text>
+            </a>
+
+            <line class="flow flow-money" x1="738" y1="130" x2="780" y2="130" marker-end="url(#pmArrow)"/>
+            <rect class="b b-money" x="782" y="104" width="150" height="52" rx="9"/>
+            <text class="t-sm" x="857" y="126" text-anchor="middle">LND / the mint</text>
+            <text class="t-sub money" x="857" y="143" text-anchor="middle">funds</text>
+
+            <path class="flow-dep" d="M320,152 C300,225 210,265 150,318" marker-end="url(#pmDep)"/>
+            <text class="elbl-dep" x="196" y="238" text-anchor="middle">issues invoices</text>
+            <path class="flow-dep" d="M412,152 C470,235 720,255 815,318" marker-end="url(#pmDep)"/>
+            <text class="elbl-dep" x="660" y="243" text-anchor="middle">pays</text>
+
+            <text class="band" x="40" y="306">L402 &middot; PAID APIS</text>
+
+            <a href="https://github.com/forgesworn/toll-booth#readme" target="_blank" rel="noopener">
+              <title>toll-booth &mdash; L402 middleware: gate any API behind Lightning</title>
+              <rect class="b b-money" x="40" y="322" width="164" height="56" rx="9"/>
+              <text class="t-sm" x="122" y="346" text-anchor="middle">toll-booth</text>
+              <text class="t-sub money" x="122" y="364" text-anchor="middle">gates an API</text>
+            </a>
+
+            <line class="flow flow-disc" x1="206" y1="350" x2="286" y2="350" marker-end="url(#pmArrow)"/>
+            <text class="elbl" x="246" y="340" text-anchor="middle">publish</text>
+
+            <a href="https://github.com/forgesworn/402-announce" target="_blank" rel="noopener">
+              <title>402-announce &mdash; publish paid APIs to Nostr as kind 31402 events</title>
+              <rect class="b b-disc" x="288" y="322" width="160" height="56" rx="9"/>
+              <text class="t-sm" x="368" y="355" text-anchor="middle">402-announce</text>
+            </a>
+
+            <line class="flow flow-disc" x1="450" y1="350" x2="514" y2="350" marker-end="url(#pmArrow)"/>
+
+            <a href="https://402.pub" target="_blank" rel="noopener">
+              <title>402.pub &mdash; live directory of L402 paid APIs</title>
+              <rect class="b b-disc" x="516" y="322" width="140" height="56" rx="9"/>
+              <text class="t-sm" x="586" y="346" text-anchor="middle">402.pub</text>
+              <text class="t-sub disc" x="586" y="364" text-anchor="middle">directory</text>
+            </a>
+
+            <line class="flow flow-disc" x1="658" y1="350" x2="738" y2="350" marker-end="url(#pmArrow)"/>
+            <text class="elbl" x="698" y="340" text-anchor="middle">discover</text>
+
+            <a href="https://github.com/forgesworn/402-mcp" target="_blank" rel="noopener">
+              <title>402-mcp &mdash; let AI agents discover, pay and consume 402 APIs</title>
+              <rect class="b b-disc" x="740" y="322" width="180" height="56" rx="9"/>
+              <text class="t-sm" x="830" y="346" text-anchor="middle">402-mcp</text>
+              <text class="t-sub disc" x="830" y="364" text-anchor="middle">agent pays</text>
+            </a>
+          </svg>
+        </div>
+        <div class="pmap-legend">
+          <span><i style="background:var(--accent-purple)"></i> Nostr &middot; NWC</span>
+          <span><i style="background:var(--accent-gold)"></i> Lightning &middot; money</span>
+          <span><i style="background:var(--accent-blue)"></i> discovery</span>
+          <span><i style="background:#6b6478"></i> depends on the connection</span>
+        </div>
+        <p class="pmap-caption"><b>The connection is the load-bearing piece; everything else is built on it.</b>
+          An app reaches a wallet through <code>nwc-kit</code>, with <code>farrier-kit</code> verifying invoices and preimages.
+          That wallet is either the user&rsquo;s own over NWC, or an <code>nwc-lnd-bridge</code> fronting a node you run.
+          On top, <code>toll-booth</code> sells access to an API, <code>402-announce</code> and <code>402.pub</code> make it
+          discoverable, and <code>402-mcp</code> lets an agent find and pay for it &mdash; both ends settling through the same connection.</p>
       </div>
     </div>
   </section>
