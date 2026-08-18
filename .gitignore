@@ -4,3 +4,6 @@ site/use-cases.html
 forgesworn-repos.json
 .DS_Store
 .playwright-mcp/
+tools/opsec-terms.json
+tools/*.local.json
+captures-out/

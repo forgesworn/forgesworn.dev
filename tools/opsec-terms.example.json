@@ -1,0 +1,7 @@
+[
+  { "pattern": "\\bFirstname\\b", "label": "real first name" },
+  { "pattern": "\\bSurname\\b", "label": "real surname" },
+  { "pattern": "private-project-name", "label": "private project name" },
+  { "pattern": "\\bprivate-host\\.example\\b", "label": "private domain" },
+  { "pattern": "/Users/[a-z]+/", "label": "local filesystem path" }
+]
