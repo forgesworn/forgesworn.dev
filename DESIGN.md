@@ -6,7 +6,8 @@ of which has no display face. This is the shared skeleton. Each site keeps its o
 palette — the colour *is* the product's identity — and adopts the same type system,
 scale and rules.
 
-Piloted on heartwood.forgesworn.dev. Nothing else has adopted it yet.
+Piloted on heartwood.forgesworn.dev. cambium, bark and nwc-kit have since
+adopted it; see the table below for what is left.
 
 ## Three faces, three jobs
 
@@ -58,10 +59,28 @@ Columns balance the text regardless of how the paragraphs happen to divide. Set
 **Set Fraunces' `opsz` explicitly on every heading.** The optical-size axis runs
 9–144 and **defaults to 9**, its caption cut. At hero size that renders as a
 lurching, over-calligraphic version of the face that looks like a different and
-much worse typeface — it reads as though the heading has been set in a synthetic
-italic. `font-optical-sizing: auto` did not rescue it. heartwood had this right
-already; bark hit it the moment Fraunces was introduced. Use `"opsz" 144` on the
-h1, `60` on h2, `32` on h3.
+much worse typeface. `font-optical-sizing: auto` did not rescue it. heartwood had
+this right already; bark hit it the moment Fraunces was introduced. Use
+`"opsz" 144` on the h1, `60` on h2, `32` on h3.
+
+**The two Fraunces subsets were swapped, and that was the bigger half of it.**
+An earlier draft of the paragraph above went on to say the headings read "as
+though set in a synthetic italic". They did, and the reason was not `opsz`: the
+file named `fraunces-latin.woff2` held the **italic** cut and
+`fraunces-italic-latin.woff2` held the **roman**. The name tables were
+unambiguous — subfamily `Italic`, `macStyle` bit 1 set, `italicAngle` −16 — so
+every site declaring the first as `font-style: normal` had been setting its
+upright headings in Fraunces Italic and its `<em>` in the roman.
+
+Corrected in place on 19 August 2026 across heartwood, cambium, bark, bray-event-
+validation, forgesworn.dev and nwc-kit. The fix is a byte swap of the two files;
+no `@font-face` rule changed. bark was the exception: it shipped only one Fraunces
+file, the italic, so it rendered *entirely* in italic and its emphasis rule had no
+face to match. It now carries both, and a second `@font-face` for the italic.
+
+Check a subset before trusting its filename. `fontTools` reads it in three lines,
+and the two failure modes — a swapped pair, and a synthesised oblique standing in
+for a missing face — look identical on screen.
 
 **Weights tuned for a system sans are too heavy for Fraunces.** bark's h1 was
 `font-weight: 800`, which is right for a UI grotesque and far too much for a
@@ -84,6 +103,7 @@ a library. See the scroll-driven block in each stylesheet.
 | heartwood | **done** — the pilot |
 | cambium | **done** |
 | bark | **done** — Fraunces + Inter, `--dim` to AA, approval dialog in the hero |
+| nwc-kit | **done** — same three faces on its own violet/amber palette; portrait figures rather than the family's landscape plates, because both diagrams live in a hero column |
 | sapwood | **deliberately exempt, see below** |
 | forgesworn.dev | Undecided: swap to Fraunces + Inter, or keep Instrument Serif + DM Sans and align only the scale |
 | bray | Same as forgesworn.dev |
