@@ -16,6 +16,7 @@ const CATEGORY_CONFIG = {
   l402:       { colour: '#e94560', entryPoint: 'toll-booth' },
   spatial:    { colour: '#0f3460', entryPoint: 'rendezvous-kit' },
   identity:   { colour: '#16c79a', entryPoint: 'nsec-tree' },
+  storage:    { colour: '#2a9d8f', entryPoint: 'wildbloom' },
   agents:     { colour: '#00b4d8', entryPoint: 'bray' },
   trust:      { colour: '#9b59b6', entryPoint: 'nostr-attestations' },
   crypto:     { colour: '#f5a623', entryPoint: 'ring-sig' },
@@ -24,7 +25,7 @@ const CATEGORY_CONFIG = {
   tooling:    { colour: '#4a9eff', entryPoint: 'anvil' },
 };
 
-const DISPLAY_ORDER = ['l402', 'spatial', 'identity', 'agents', 'trust', 'crypto', 'compliance', 'protocol', 'tooling'];
+const DISPLAY_ORDER = ['l402', 'spatial', 'identity', 'storage', 'agents', 'trust', 'crypto', 'compliance', 'protocol', 'tooling'];
 
 // Repos with dedicated websites (presentation config, not in JSON)
 const REPO_WEBSITES = {
@@ -35,6 +36,7 @@ const REPO_WEBSITES = {
   'heartwood-esp32': 'https://heartwood.forgesworn.dev',
   sapwood: 'https://sapwood.forgesworn.dev',
   signet: 'https://mysignet.app',
+  wildbloom: 'https://wildbloom.forgesworn.dev',
 };
 
 // Repos with a live demo (presentation config, not in JSON)
