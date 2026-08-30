@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  numberWord,
   computeStats,
   buildHeroStatsHtml,
   buildStackMapCardsHtml,
@@ -93,9 +94,27 @@ test('buildStackMapCardsHtml produces one card per category with data-stack', ()
   assert.ok(html.includes('data-stack="l402"'), 'l402 card present');
   assert.ok(html.includes('data-stack="crypto"'), 'crypto card present');
   assert.ok(html.includes('stack-card-accent'), 'has accent element');
-  // Verify tabindex and role accessibility attributes
-  assert.ok(html.includes('tabindex="0"'), 'has tabindex');
-  assert.ok(html.includes('role="button"'), 'has role button');
+  // Cards are real links to their section, so keyboard and click need no script
+  assert.ok(html.includes('<a class="stack-card" href="#stack-l402"'), 'card is an anchor to its section');
+  assert.ok(!html.includes('role="button"'), 'no fake button role');
+});
+
+test('buildStackMapCardsHtml prefers the plain-English line and falls back to the description', () => {
+  const html = buildStackMapCardsHtml(FIXTURE);
+  // l402 has presentation config with a plain line
+  assert.ok(html.includes('Sell an API per request'), 'configured plain line used');
+  // crypto too; a slug with no config would fall back to the first sentence
+  const noConfig = { categories: [{ name: 'Mystery', slug: 'mystery', description: 'First sentence. Second sentence.', repos: [] }] };
+  const fallback = buildStackMapCardsHtml(noConfig);
+  assert.ok(fallback.includes('First sentence'), 'falls back to first sentence');
+  assert.ok(!fallback.includes('Second sentence'), 'only the first sentence');
+});
+
+test('numberWord spells small counts and leaves large ones as digits', () => {
+  assert.equal(numberWord(9), 'Nine');
+  assert.equal(numberWord(11), 'Eleven');
+  assert.equal(numberWord(20), 'Twenty');
+  assert.equal(numberWord(21), '21');
 });
 
 test('buildStackMapSvgHtml returns SVG element with line elements', () => {
@@ -112,6 +131,47 @@ test('buildStackSectionsHtml produces one section per category', () => {
   // One section per category
   const sectionMatches = html.match(/<section/g);
   assert.ok(sectionMatches && sectionMatches.length >= 2, 'at least 2 sections');
+  assert.ok(html.includes('id="stack-l402"'), 'section carries a linkable id');
+  assert.ok(html.includes('id="stack-crypto"'), 'every category gets one');
+});
+
+test('buildStackSectionsHtml heads each section with a headline and the description as lede', () => {
+  const html = buildStackSectionsHtml(FIXTURE);
+  assert.ok(html.includes('<h2 class="section-title">Get paid per call'), 'configured headline is the h2');
+  assert.ok(html.includes('<p class="section-lede">Make APIs payable.</p>'), 'description becomes the lede');
+  assert.ok(html.includes('<span class="section-label">L402 / Machine Payments</span>'), 'category name is the eyebrow');
+  assert.ok(html.includes('3 projects'), 'project count in the meta line');
+  assert.ok(html.includes('2 on npm'), 'npm count in the meta line');
+});
+
+test('buildStackSectionsHtml renders language and npm chips from tags', () => {
+  const data = {
+    categories: [{
+      name: 'X', slug: 'x', description: 'Desc.',
+      repos: [
+        { name: 'a-rs', github: 'https://github.com/forgesworn/a-rs', npm: null, description: 'Rust thing.', tags: ['rust'], dependsOn: [], usedBy: [] },
+        { name: 'b', github: 'https://github.com/forgesworn/b', npm: 'b', description: 'npm thing.', tags: [], dependsOn: [], usedBy: [] },
+      ],
+    }],
+  };
+  const html = buildStackSectionsHtml(data);
+  assert.ok(html.includes('<span class="repo-chip">Rust</span>'), 'language chip from tag');
+  assert.ok(html.includes('repo-chip--npm'), 'npm chip when published');
+  assert.ok(!html.includes('npm install null'), 'no install for unpublished');
+});
+
+test('buildStackSectionsHtml folds cards past the third and adds a Show all button', () => {
+  const repos = Array.from({ length: 7 }, (_, i) => ({
+    name: `r${i}`, github: `https://github.com/forgesworn/r${i}`, npm: null, description: 'd', tags: [], dependsOn: [], usedBy: [],
+  }));
+  const html = buildStackSectionsHtml({ categories: [{ name: 'X', slug: 'x', description: 'Desc.', repos }] });
+  const folded = (html.match(/repo-card--fold/g) || []).length;
+  assert.equal(folded, 4, 'seven repos, no entry point: three shown, four folded');
+  assert.ok(html.includes('class="repo-fold"'), 'fold button present');
+  assert.ok(html.includes('Show all 7 projects'), 'button names the full count');
+
+  const small = buildStackSectionsHtml(FIXTURE);
+  assert.ok(!small.includes('repo-fold'), 'no button when nothing is folded');
 });
 
 test('buildStackSectionsHtml includes entry point repo with install command', () => {

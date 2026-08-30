@@ -1,32 +1,51 @@
 # ForgeSworn
 
-> Open-source building blocks for sovereign identity, data, money, connection, and trust — built on Nostr, Lightning, and zero-trust cryptography. 56 MIT-licensed repos that work standalone or compose into full workflows.
+> ForgeSworn is an open-source workshop: apps you can use today and libraries you can build with, on Nostr, Lightning and plain cryptography, so that identity, money, files, location and conversations answer to the person rather than to a platform. 69 MIT-licensed repos in 11 focus areas that work standalone or compose into full workflows.
 
 ## Pages
 
-- [Landing page](https://forgesworn.dev/): the full repo catalogue grouped into nine focus areas
-- [Use cases](https://forgesworn.dev/use-cases.html): 27 end-to-end workflows, each naming the exact libraries it composes
+- [Landing page](https://forgesworn.dev/): products you can run today, the creed, and the full repo catalogue grouped into eleven focus areas
+- [Use cases](https://forgesworn.dev/use-cases.html): 32 end-to-end workflows, each naming the exact libraries it composes
 - [GitHub organisation](https://github.com/forgesworn): all source code
 - [402.pub](https://402.pub): live directory of Lightning-paid APIs
 
+## Products people can use today
+
+- [flock](https://flock.forgesworn.dev): coercion-resistant group locator; end-to-end encrypted location over Nostr, guidance by voice, sound and vibration (source: https://github.com/forgesworn/flock)
+- [KithMoot](https://kithmoot.forgesworn.dev): multi-device video rooms over Nostr; a room is a secret held by whoever has the link, and a person on two devices appears as one participant (source: https://github.com/forgesworn/kithmoot, Android: https://github.com/forgesworn/kithmoot-android)
+- [DonkeyRide](https://ride.trotters.dev/about): ride-hailing and dispatch with nobody in the middle taking a cut; reference implementation of the TROTT protocol (source: https://github.com/TheCryptoDonkey/donkeyride)
+- [Wildbloom](https://wildbloom.forgesworn.dev): local-first encrypted publishing and storage over Nostr and Blossom, with a self-hosted node (source: https://github.com/forgesworn/wildbloom)
+- notecase and moneyer: an LNURLcash (LUD-25) bearer-note wallet and mint (npm: @forgesworn/notecase, @forgesworn/moneyer)
+- [Heartwood](https://heartwood.forgesworn.dev): hardware Nostr signer on an ESP32 with a keyless bridge; clients bark (browser, https://bark.forgesworn.dev) and cambium (Android, https://cambium.forgesworn.dev)
+- [Bray](https://bray.forgesworn.dev): trust-aware Nostr MCP server for AI agents (npm: nostr-bray)
+- [My Signet](https://mysignet.app): decentralised identity verification with ZK age proofs; drop-in SDK signet-verify
+- Kintrinsic: libre, self-hosted digital wardship on a family's own keys (source: https://github.com/forgesworn/kintrinsic, SDK on npm: @forgesworn/charter)
+
 ## Key libraries
 
-- [toll-booth](https://github.com/forgesworn/toll-booth): L402 middleware — any HTTP API becomes Lightning-payable in one line (npm: @forgesworn/toll-booth). Try `npx @forgesworn/toll-booth demo` or the live demo at https://jokes.trotters.dev
+- [toll-booth](https://github.com/forgesworn/toll-booth): L402 middleware, any HTTP API becomes Lightning-payable in one line (npm: @forgesworn/toll-booth). Try `npx @forgesworn/toll-booth demo` or the live demo at https://jokes.trotters.dev
 - [402-mcp](https://github.com/forgesworn/402-mcp): MCP client so AI agents can discover, pay for, and consume L402/x402 APIs (npm: 402-mcp)
-- [bray](https://github.com/forgesworn/bray): trust-aware Nostr MCP server for AI agents — 253 tools across identity, social, payments, dispatch, trust, and privacy (npm: nostr-bray)
-- [nsec-tree](https://github.com/forgesworn/nsec-tree): deterministic Nostr sub-identity derivation — one master secret, unlimited unlinkable identities (npm: nsec-tree)
+- [nwc-kit](https://github.com/forgesworn/nwc-kit): small, security-focused NIP-47 Nostr Wallet Connect client (npm: @forgesworn/nwc-kit); site at https://nwc-kit.forgesworn.dev
+- [nwc-lnd-bridge](https://github.com/forgesworn/nwc-lnd-bridge): minimal NIP-47 wallet service in front of an LND node, invoice-only by default
+- [farrier-kit](https://github.com/forgesworn/farrier-kit): Lightning payment primitives without running a node: BOLT-11 decoding, preimage verification, LNURL-pay resolution (npm: farrier-kit)
+- [moneyer](https://github.com/forgesworn/moneyer) and [notecase](https://github.com/forgesworn/notecase): LNURLcash (LUD-25) mint and crash-safe wallet for Lightning bearer notes
+- [bray](https://github.com/forgesworn/bray): trust-aware Nostr MCP server for AI agents, 258 tools across identity, social, payments, dispatch, trust, and privacy (npm: nostr-bray)
+- [nsec-tree](https://github.com/forgesworn/nsec-tree): deterministic Nostr sub-identity derivation, one master secret, unlimited unlinkable identities (npm: nsec-tree)
 - [heartwood](https://github.com/forgesworn/heartwood): keyless NIP-46 bridge for hardware Nostr signers (ESP32 or Ledger)
-- [signet](https://github.com/forgesworn/signet): decentralised identity verification — tiers, Signet Score, ZKP age proofs (npm: signet-protocol); user app at https://mysignet.app
+- [signet](https://github.com/forgesworn/signet): decentralised identity verification, tiers, Signet Score, ZKP age proofs (npm: signet-protocol); user app at https://mysignet.app
 - [canary-kit](https://github.com/forgesworn/canary-kit): deepfake-proof spoken verification with silent duress detection (npm: canary-kit)
 - [dominion](https://github.com/forgesworn/dominion): epoch-based encrypted access control with tiered audiences (npm: dominion-protocol)
+- [kintrinsic](https://github.com/forgesworn/kintrinsic): self-hosted digital wardship; guardian app, Android ward app, Linux warden, Nostr wire contract (npm SDK: @forgesworn/charter)
+- [wildbloom](https://github.com/forgesworn/wildbloom), [wildbloom-node](https://github.com/forgesworn/wildbloom-node), [shelter-kit](https://github.com/forgesworn/shelter-kit), [forgesworn-link](https://github.com/forgesworn/forgesworn-link): encrypted, content-addressed Blossom storage: client, self-hosted node, Rust storage core, and a QUIC-or-relay lane between nodes
+- [kithmoot](https://github.com/forgesworn/kithmoot): multi-device conference rooms over Nostr; second implementation in Kotlin at kithmoot-android
+- [relayswarm](https://github.com/forgesworn/relayswarm): peer-assisted HLS live streaming with WebRTC signalling over Nostr relays instead of a tracker; Swift port relayswarm-kit
 - [nostr-veil](https://github.com/forgesworn/nostr-veil): anonymous trust assertions via LSAG ring signatures over NIP-85 (npm: nostr-veil)
+- [nostr-anon-vote](https://github.com/forgesworn/nostr-anon-vote): anonymous voting on Nostr with LSAG ring signatures (npm: nostr-anon-vote)
 - [rendezvous-kit](https://github.com/forgesworn/rendezvous-kit): fair meeting points for N participants via isochrone intersection (npm: rendezvous-kit)
-- [farrier-kit](https://github.com/forgesworn/farrier-kit): Lightning payment primitives without running a node — BOLT-11 decoding, preimage verification, LNURL-pay resolution; browser and Node from one codebase (npm: farrier-kit)
 - [gopherkind](https://github.com/forgesworn/gopherkind): signed gopherholes served from Nostr relays (kind 31436), with Gopher, Gemini, HTTP and CLI readers (npm: gopherkind); site at https://gopherkind.com
-- [nostr-anon-vote](https://github.com/forgesworn/nostr-anon-vote): anonymous voting on Nostr with LSAG ring signatures — double-vote prevention without revealing identity (npm: nostr-anon-vote)
 - [ring-sig](https://github.com/forgesworn/ring-sig), [range-proof](https://github.com/forgesworn/range-proof), [shamir-words](https://github.com/forgesworn/shamir-words), [private-equality](https://github.com/forgesworn/private-equality): standalone cryptographic primitives (npm: @forgesworn/*)
-- [anvil](https://github.com/forgesworn/anvil): supply-chain-hardened npm release tool — reproducible two-runner builds, OIDC trusted publishing, SLSA provenance
-- [nip-drafts](https://github.com/forgesworn/nip-drafts): 37 draft Nostr protocol extensions
+- [anvil](https://github.com/forgesworn/anvil): supply-chain-hardened npm release tool, reproducible two-runner builds, OIDC trusted publishing, SLSA provenance
+- [nip-drafts](https://github.com/forgesworn/nip-drafts): 30 draft Nostr protocol extensions
 
 ## Contact
 
