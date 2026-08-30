@@ -1,20 +1,20 @@
 <!DOCTYPE html>
-<html lang="en-GB">
+<html lang="en-GB" class="no-js">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ForgeSworn &mdash; Forging and sharing the tools to reclaim your freedom</title>
-  <meta name="description" content="Open-source building blocks for sovereign identity, data, money, connection, and trust. Built on Nostr, Lightning, and zero-trust cryptography.">
+  <meta name="description" content="ForgeSworn is an open-source workshop: apps you can use today and libraries you can build with, on Nostr, Lightning and plain cryptography, so your identity, money, files, location and conversations answer to you rather than to a platform.">
   <meta name="theme-color" content="#0a0a0f">
   <link rel="canonical" href="https://forgesworn.dev/">
   <meta property="og:title" content="ForgeSworn — Forging and sharing the tools to reclaim your freedom">
-  <meta property="og:description" content="Open-source building blocks for sovereign identity, data, money, connection, and trust.">
+  <meta property="og:description" content="Open-source apps and libraries for sovereign identity, money, files, location and conversation, built on Nostr and Lightning.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://forgesworn.dev">
   <meta property="og:image" content="https://forgesworn.dev/social-preview.png">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="ForgeSworn — Forging and sharing the tools to reclaim your freedom">
-  <meta name="twitter:description" content="Open-source building blocks for sovereign identity, data, money, connection, and trust.">
+  <meta name="twitter:description" content="Open-source apps and libraries for sovereign identity, money, files, location and conversation, built on Nostr and Lightning.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0a0f'/><text x='16' y='23' font-size='18' text-anchor='middle' fill='%23e8a838' font-family='serif'>&#9876;</text></svg>">
   <script type="application/ld+json">
   {
@@ -23,13 +23,16 @@
     "name": "ForgeSworn",
     "url": "https://forgesworn.dev",
     "logo": "https://forgesworn.dev/anvil-square.png",
-    "description": "Open-source building blocks for sovereign identity, data, money, connection, and trust — built on Nostr, Lightning, and zero-trust cryptography.",
+    "description": "Open-source apps and libraries for sovereign identity, money, files, location and conversation — built on Nostr, Lightning, and zero-trust cryptography.",
     "sameAs": [
       "https://github.com/forgesworn",
       "https://www.npmjs.com/org/forgesworn"
     ]
   }
   </script>
+  <!-- Progressive enhancement flag: the phone-only "Show all" folds are
+       applied only when this has run, so a page without JS hides nothing. -->
+  <script>document.documentElement.className = 'js';</script>
   <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/fraunces-latin.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -74,7 +77,9 @@
 
       --text-primary: #e8e6e3;
       --text-secondary: #9896a1;
-      --text-muted: #5e5c66;
+      /* 5.0:1 on --bg-deep. The old #5e5c66 was 3.2:1 and carried real
+         sentences (the hero note, nav, footer), under AA. */
+      --text-muted: #7f7d89;
 
       --accent-gold: #e8a838;
       --accent-gold-dim: #b8842a;
@@ -90,8 +95,10 @@
       --font-body: "Inter", ui-sans-serif, -apple-system, "Segoe UI", sans-serif;
       --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
 
+      --text-lede: clamp(1.08rem, 1.5vw, 1.25rem);
+
       --max-width: 1200px;
-      --section-gap: clamp(6rem, 12vh, 10rem);
+      --section-gap: clamp(5rem, 10vh, 8rem);
     }
 
     html {
@@ -124,6 +131,7 @@
 
     a { color: var(--accent-gold); text-decoration: none; transition: color 0.2s; }
     a:hover { color: var(--accent-blue); }
+    :focus-visible { outline: 2px solid var(--accent-gold); outline-offset: 3px; border-radius: 3px; }
 
     ::selection { background: var(--accent-gold); color: var(--bg-deep); }
 
@@ -174,7 +182,7 @@
     h2 { font-variation-settings: "opsz" 60; }
     h3 { font-variation-settings: "opsz" 32; }
     .section-title { font-variation-settings: "opsz" 72; }
-    .creed-lede, .stat-value { font-variation-settings: "opsz" 48; }
+    .creed-lede, .stat-value, .way h3, .product-promise { font-variation-settings: "opsz" 48; }
 
     h2 {
       font-size: clamp(2.2rem, 5vw, 3.5rem);
@@ -199,6 +207,7 @@
 
     .text-muted { color: var(--text-secondary); }
     .text-dim { color: var(--text-muted); }
+    .lede { font-size: var(--text-lede); line-height: 1.6; }
 
     p + p { margin-top: 1em; }
 
@@ -290,15 +299,22 @@
       border: none;
       color: var(--text-primary);
       font-size: 1.5rem;
+      line-height: 1;
       cursor: pointer;
-      padding: 0.25rem;
+      /* 44px tap target */
+      width: 44px;
+      height: 44px;
+      margin-right: -0.5rem;
+      border-radius: 6px;
     }
 
     /* ========================================
        HERO
        ======================================== */
     .hero {
-      min-height: 100vh;
+      /* Fills a laptop screen; on a tall tablet it stops short rather than
+         leaving a third of the screen empty above and below the copy. */
+      min-height: min(100vh, 880px);
       display: flex;
       align-items: center;
       padding-top: 5rem;
@@ -348,11 +364,12 @@
     .hero-sub {
       font-size: clamp(1.1rem, 2vw, 1.35rem);
       color: var(--text-secondary);
-      max-width: 680px;
+      max-width: 700px;
       line-height: 1.6;
       margin-bottom: 2.5rem;
       animation: fadeUp 0.8s ease-out 0.2s both;
     }
+    .hero-sub strong { color: var(--text-primary); font-weight: 600; }
 
     .hero-actions {
       display: flex;
@@ -365,6 +382,7 @@
     .btn-primary {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 0.5rem;
       font-family: var(--font-mono);
       font-size: 0.9rem;
@@ -388,6 +406,7 @@
     .btn-secondary {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 0.5rem;
       font-family: var(--font-mono);
       font-size: 0.9rem;
@@ -407,16 +426,6 @@
       background: var(--accent-blue-glow);
       color: var(--text-primary);
       transform: translateY(-1px);
-    }
-
-    .hero-proof {
-      margin-top: 2.25rem;
-      animation: fadeUp 0.8s ease-out 0.4s both;
-    }
-
-    .hero-proof-note {
-      font-size: 0.85rem;
-      color: var(--text-muted);
     }
 
     .hero-stats {
@@ -458,11 +467,223 @@
     }
 
     /* ========================================
+       THREE WAYS IN
+       The org has three layers — apps, libraries, protocols — and each
+       reader arrives wanting one of them. This row says which is which.
+       ======================================== */
+    .ways {
+      padding: clamp(3rem, 6vh, 4.5rem) 0;
+      background: var(--bg-primary);
+      border-top: 1px solid var(--border-subtle);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .ways-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2.5rem;
+    }
+
+    .way {
+      border-top: 1px solid var(--border-medium);
+      padding-top: 1.25rem;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .way-label {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent-gold);
+    }
+
+    .way h3 {
+      font-size: clamp(1.45rem, 2vw, 1.75rem);
+      font-weight: 450;
+      margin: 0.5rem 0 0.5rem;
+      line-height: 1.15;
+    }
+
+    .way p {
+      color: var(--text-secondary);
+      font-size: 0.98rem;
+      line-height: 1.6;
+      flex: 1;
+    }
+
+    .way a {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      display: inline-block;
+      margin-top: 1rem;
+    }
+
+    /* ========================================
+       PRODUCTS
+       ======================================== */
+    .products { background: var(--bg-deep); }
+
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem;
+      margin-top: 2.5rem;
+    }
+
+    .product {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 1.5rem 1.5rem 1.4rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.3s, transform 0.2s, box-shadow 0.3s;
+    }
+
+    .product::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: var(--product-colour, var(--accent-gold));
+      opacity: 0.75;
+    }
+
+    .product:hover {
+      border-color: var(--border-medium);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .product-form {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .product h3 {
+      font-family: var(--font-mono);
+      font-size: 1.02rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 0;
+      line-height: 1.3;
+    }
+
+    .product-promise {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: clamp(1.3rem, 1.7vw, 1.5rem);
+      line-height: 1.25;
+      color: var(--accent-gold);
+      margin: 0.1rem 0 0.2rem;
+    }
+
+    .product p.product-body {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      flex: 1;
+      margin-top: 0;
+    }
+
+    .product-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem 1.1rem;
+      margin-top: 0.6rem;
+    }
+
+    .product-links a {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      /* comfortable tap height without inflating the layout */
+      padding: 0.3rem 0;
+    }
+
+    .product-links a.is-secondary { color: var(--text-secondary); }
+    .product-links a.is-secondary:hover { color: var(--text-primary); }
+
+    .product-also {
+      margin-top: 2rem;
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      max-width: 760px;
+      line-height: 1.7;
+    }
+    .product-also a { font-family: var(--font-mono); font-size: 0.9em; white-space: nowrap; }
+
+    /* ========================================
+       CREED
+       ======================================== */
+    .creed {
+      background: var(--bg-primary);
+      border-top: 1px solid var(--border-subtle);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .creed-inner {
+      max-width: 780px;
+      margin: 0 auto;
+    }
+
+    .creed-lede {
+      font-family: var(--font-display);
+      font-size: clamp(1.5rem, 3vw, 2.1rem);
+      line-height: 1.4;
+      color: var(--text-primary);
+      margin-bottom: 3.5rem;
+    }
+
+    .creed .section-label {
+      margin-bottom: 2rem;
+    }
+
+    .vows {
+      list-style: none;
+      display: grid;
+      gap: 2.25rem;
+    }
+
+    .vows h3 {
+      font-family: var(--font-body);
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--accent-gold);
+      margin-bottom: 0.4rem;
+      line-height: 1.3;
+    }
+
+    .vows p {
+      color: var(--text-secondary);
+      font-size: 1.02rem;
+      line-height: 1.6;
+    }
+
+    @media (min-width: 720px) {
+      .vows {
+        grid-template-columns: 1fr 1fr;
+        gap: 2.75rem 3rem;
+      }
+    }
+
+    /* ========================================
        STACK MAP
        ======================================== */
     .stack-map {
-      background: var(--bg-primary);
-      border-top: 1px solid var(--border-subtle);
+      background: var(--bg-deep);
       border-bottom: 1px solid var(--border-subtle);
     }
 
@@ -487,25 +708,105 @@
       transition: stroke-opacity 0.3s;
     }
 
+    .stack-card {
+      display: block;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      overflow: hidden;
+      cursor: pointer;
+      position: relative;
+      z-index: 1;
+      color: inherit;
+      transition: border-color 0.3s, transform 0.2s, box-shadow 0.3s;
+    }
+
+    .stack-card:hover,
+    .stack-card:focus-visible {
+      border-color: var(--border-medium);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      color: inherit;
+    }
+
+    .stack-card-accent {
+      height: 3px;
+      background: var(--stack-colour, var(--accent-gold));
+      opacity: 0.6;
+      transition: opacity 0.3s;
+    }
+
+    .stack-card:hover .stack-card-accent,
+    .stack-card:focus-visible .stack-card-accent {
+      opacity: 1;
+    }
+
+    .stack-card-body {
+      padding: 1.25rem;
+    }
+
+    .stack-card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .stack-card-name {
+      font-family: var(--font-body);
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--text-primary);
+    }
+
+    .stack-card-count {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      background: var(--bg-elevated);
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .stack-card-desc {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
     /* ========================================
        PAYMENT STACK DIAGRAM
        ======================================== */
-    .pmap { background: var(--bg-deep); border-bottom: 1px solid var(--border-subtle); }
+    .pmap { background: var(--bg-primary); border-bottom: 1px solid var(--border-subtle); }
     .pmap-fig { margin-top: 2.5rem; }
     .pmap-scroll {
       overflow-x: auto;
-      background: var(--bg-primary);
+      -webkit-overflow-scrolling: touch;
+      background: var(--bg-deep);
       border: 1px solid var(--border-subtle);
       border-radius: 14px;
       padding: 1.25rem;
     }
     .pmap svg.pdiagram { width: 100%; height: auto; min-width: 760px; display: block; }
-    .pmap-legend { display: flex; flex-wrap: wrap; gap: 1.25rem; margin-top: 1.1rem; font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-secondary); }
+    .pmap-hint {
+      display: none;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.6rem;
+    }
+    .pmap-legend { display: flex; flex-wrap: wrap; gap: 0.6rem 1.25rem; margin-top: 1.1rem; font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-secondary); }
     .pmap-legend span { display: inline-flex; align-items: center; gap: 0.5rem; }
     .pmap-legend i { width: 22px; height: 3px; border-radius: 2px; }
     .pmap-caption { margin-top: 1.4rem; color: var(--text-secondary); max-width: 680px; font-size: 0.95rem; }
     .pmap-caption b { color: var(--text-primary); font-weight: 600; }
     .pmap-caption code { font-family: var(--font-mono); font-size: 0.85em; color: var(--accent-gold); }
+    .pmap-try { margin-top: 2rem; }
+    .pmap-try .install-block { margin-bottom: 0.6rem; }
+    .pmap-try-note { font-size: 0.9rem; color: var(--text-secondary); max-width: 600px; }
 
     .pdiagram text { font-family: var(--font-mono); }
     .pdiagram .b { fill: var(--bg-card); stroke: var(--border-medium); stroke-width: 1.5; }
@@ -534,94 +835,57 @@
     .pdiagram a:hover .t, .pdiagram a:hover .t-sm { fill: var(--accent-gold); text-decoration: underline; }
     .pdiagram a:focus-visible rect { outline: 2px solid var(--accent-gold); outline-offset: 2px; }
 
-    .stack-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-subtle);
-      border-radius: 10px;
-      overflow: hidden;
-      cursor: pointer;
-      position: relative;
-      z-index: 1;
-      transition: border-color 0.3s, transform 0.2s, box-shadow 0.3s;
-    }
-
-    .stack-card:hover,
-    .stack-card:focus-visible {
-      border-color: var(--border-medium);
-      transform: translateY(-2px);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    }
-
-    .stack-card:focus-visible {
-      outline: 2px solid var(--accent-gold);
-      outline-offset: 2px;
-    }
-
-    .stack-card-accent {
-      height: 3px;
-      background: var(--stack-colour, var(--accent-gold));
-      opacity: 0.6;
-      transition: opacity 0.3s;
-    }
-
-    .stack-card:hover .stack-card-accent,
-    .stack-card:focus-visible .stack-card-accent {
-      opacity: 1;
-    }
-
-    .stack-card-body {
-      padding: 1.25rem;
-    }
-
-    .stack-card-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 0.5rem;
-    }
-
-    .stack-card-name {
-      font-family: var(--font-body);
-      font-weight: 600;
-      font-size: 0.95rem;
-      color: var(--text-primary);
-    }
-
-    .stack-card-count {
-      font-family: var(--font-mono);
-      font-size: 0.7rem;
-      color: var(--text-muted);
-      background: var(--bg-elevated);
-      padding: 0.15rem 0.5rem;
-      border-radius: 4px;
-      white-space: nowrap;
-    }
-
-    .stack-card-desc {
-      font-size: 0.85rem;
-      color: var(--text-secondary);
-      line-height: 1.5;
-    }
-
     /* ========================================
        STACK SECTIONS
        ======================================== */
     .stack-section {
       border-bottom: 1px solid var(--border-subtle);
-      scroll-margin-top: 5rem;
+      scroll-margin-top: 4.5rem;
     }
 
-    .stack-section .section-label {
+    .stack-head {
+      display: flex;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 0.5rem 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .stack-head .section-label {
+      margin-bottom: 0;
       color: var(--stack-colour, var(--accent-gold));
     }
 
+    .stack-meta {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+    }
+
+    .stack-up {
+      margin-left: auto;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .stack-up:hover { color: var(--text-primary); }
+
     .section-title {
       font-family: var(--font-display);
-      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-size: clamp(1.9rem, 4vw, 2.8rem);
       font-weight: 400;
       line-height: 1.15;
-      margin-bottom: 2rem;
-      max-width: 700px;
+      margin-bottom: 1rem;
+      max-width: 760px;
+    }
+
+    .section-lede {
+      font-size: var(--text-lede);
+      color: var(--text-secondary);
+      line-height: 1.6;
+      max-width: 680px;
+      margin-bottom: 2.25rem;
     }
 
     /* Entry point card */
@@ -651,12 +915,21 @@
       border-color: var(--border-medium);
     }
 
+    .entry-label {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--stack-colour, var(--accent-gold));
+      margin-bottom: 0.75rem;
+    }
+
     .repo-card--entry .repo-name {
       font-family: var(--font-mono);
       font-size: 1.15rem;
       font-weight: 600;
       color: var(--text-primary);
-      margin-bottom: 0.5rem;
     }
 
     .repo-card--entry .repo-desc {
@@ -664,12 +937,47 @@
       color: var(--text-secondary);
       line-height: 1.6;
       margin-bottom: 1.25rem;
-      max-width: 600px;
+      max-width: 640px;
+    }
+
+    .repo-card-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.45rem;
+    }
+
+    .repo-card-head .repo-name { margin-bottom: 0; word-break: break-word; }
+
+    .repo-chips {
+      display: flex;
+      gap: 0.35rem;
+      flex-shrink: 0;
+      padding-top: 0.15rem;
+    }
+
+    .repo-chip {
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      border: 1px solid var(--border-medium);
+      border-radius: 4px;
+      padding: 0.1rem 0.4rem;
+      line-height: 1.5;
+    }
+
+    .repo-chip--npm {
+      color: var(--accent-gold-dim);
+      border-color: rgba(232, 168, 56, 0.35);
     }
 
     .repo-links {
       display: flex;
-      gap: 1rem;
+      flex-wrap: wrap;
+      gap: 0.25rem 1rem;
       align-items: center;
     }
 
@@ -680,6 +988,7 @@
       display: inline-flex;
       align-items: center;
       gap: 0.35rem;
+      padding: 0.25rem 0;
     }
 
     .repo-card--entry .repo-link:hover {
@@ -703,6 +1012,7 @@
 
     .install-cmd {
       color: var(--text-primary);
+      overflow-wrap: anywhere;
     }
 
     .copy-btn {
@@ -711,7 +1021,7 @@
       background: var(--bg-card);
       color: var(--text-muted);
       border: 1px solid var(--border-subtle);
-      padding: 0.25rem 0.6rem;
+      padding: 0.35rem 0.6rem;
       border-radius: 4px;
       cursor: pointer;
       transition: color 0.2s, border-color 0.2s;
@@ -733,7 +1043,7 @@
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
       gap: 1rem;
-      margin-bottom: 2rem;
+      margin-bottom: 1.5rem;
     }
 
     .repo-card {
@@ -755,7 +1065,6 @@
       font-size: 0.95rem;
       font-weight: 600;
       color: var(--text-primary);
-      margin-bottom: 0.4rem;
     }
 
     .repo-card .repo-desc {
@@ -772,10 +1081,27 @@
       display: inline-flex;
       align-items: center;
       gap: 0.3rem;
+      padding: 0.25rem 0;
     }
 
     .repo-card .repo-link:hover {
       color: var(--accent-blue);
+    }
+
+    /* "Show all" fold: phones only, JS only. Desktop shows every card. */
+    .repo-fold {
+      display: none;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      font-weight: 500;
+      background: transparent;
+      color: var(--text-primary);
+      border: 1px solid var(--border-medium);
+      border-radius: 8px;
+      padding: 0.75rem 1.25rem;
+      width: 100%;
+      cursor: pointer;
+      margin-bottom: 1.5rem;
     }
 
     /* Flow chain */
@@ -787,11 +1113,19 @@
       font-family: var(--font-mono);
       font-size: 0.8rem;
       color: var(--text-secondary);
-      margin-top: 1.5rem;
+      margin-top: 0.5rem;
       padding: 1rem 1.25rem;
       background: var(--bg-elevated);
       border: 1px solid var(--border-subtle);
       border-radius: 8px;
+    }
+
+    .flow-label {
+      font-size: 0.68rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-right: 0.5rem;
     }
 
     .flow-arrow {
@@ -799,31 +1133,29 @@
     }
 
     /* ========================================
-       BRAY CALLOUT
+       CLOSING
        ======================================== */
-    .bray-callout,
-    .flock-callout,
-    .donkey-callout {
+    .closing {
       background: var(--bg-primary);
       border-top: 1px solid var(--border-subtle);
-      border-bottom: 1px solid var(--border-subtle);
       text-align: center;
     }
 
-    .bray-callout h2,
-    .flock-callout h2,
-    .donkey-callout h2 {
-      font-size: clamp(2rem, 4.5vw, 3rem);
-    }
+    .closing h2 { font-size: clamp(2rem, 4.5vw, 3rem); }
 
-    .bray-callout p,
-    .flock-callout p,
-    .donkey-callout p {
+    .closing p {
       color: var(--text-secondary);
       font-size: clamp(1rem, 1.5vw, 1.15rem);
       max-width: 600px;
       margin: 0 auto 2rem;
       line-height: 1.65;
+    }
+
+    .closing-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
     }
 
     /* ========================================
@@ -853,9 +1185,10 @@
 
     .footer-links {
       display: flex;
-      gap: 2rem;
+      gap: 0.5rem 1.75rem;
       align-items: center;
       list-style: none;
+      flex-wrap: wrap;
     }
 
     .footer-links a {
@@ -863,6 +1196,8 @@
       font-size: 0.8rem;
       color: var(--text-muted);
       transition: color 0.2s;
+      display: inline-block;
+      padding: 0.35rem 0;
     }
 
     .footer-links a:hover { color: var(--text-primary); }
@@ -921,67 +1256,13 @@
       margin-bottom: 1.5rem;
     }
 
+    .section-divider .section-label { margin-bottom: 0; }
+
     .section-divider::after {
       content: '';
       flex: 1;
       height: 1px;
       background: linear-gradient(to right, var(--border-medium), transparent);
-    }
-
-    .glow-rule {
-      border: none;
-      height: 1px;
-      background: linear-gradient(to right, transparent, var(--accent-gold-dim), transparent);
-      opacity: 0.3;
-      margin: 0;
-    }
-
-    /* ========================================
-       CREED
-       ======================================== */
-    .creed-inner {
-      max-width: 780px;
-      margin: 0 auto;
-    }
-
-    .creed-lede {
-      font-family: var(--font-display);
-      font-size: clamp(1.5rem, 3vw, 2.1rem);
-      line-height: 1.4;
-      color: var(--text-primary);
-      margin-bottom: 3.5rem;
-    }
-
-    .creed .section-label {
-      margin-bottom: 2rem;
-    }
-
-    .vows {
-      list-style: none;
-      display: grid;
-      gap: 2.25rem;
-    }
-
-    .vows h3 {
-      font-family: var(--font-body);
-      font-size: 1.15rem;
-      font-weight: 600;
-      color: var(--accent-gold);
-      margin-bottom: 0.4rem;
-      line-height: 1.3;
-    }
-
-    .vows p {
-      color: var(--text-secondary);
-      font-size: 1.02rem;
-      line-height: 1.6;
-    }
-
-    @media (min-width: 720px) {
-      .vows {
-        grid-template-columns: 1fr 1fr;
-        gap: 2.75rem 3rem;
-      }
     }
 
     /* ========================================
@@ -1006,51 +1287,78 @@
        RESPONSIVE
        ======================================== */
     @media (max-width: 1024px) {
-      .stack-map-grid {
-        grid-template-columns: repeat(3, 1fr);
-      }
+      .stack-map-grid { grid-template-columns: repeat(3, 1fr); }
+      .product-grid { grid-template-columns: repeat(2, 1fr); }
+      .ways-grid { gap: 1.75rem; }
+    }
+
+    @media (max-width: 900px) {
+      .pmap-hint { display: block; }
     }
 
     @media (max-width: 768px) {
+      :root { --section-gap: clamp(3.5rem, 8vh, 5rem); }
+
       .nav-links { display: none; }
       .nav-links.open {
         display: flex;
         flex-direction: column;
+        align-items: stretch;
         position: absolute;
         top: 100%;
         left: 0;
         right: 0;
-        background: rgba(6, 6, 11, 0.97);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        padding: 1.5rem;
-        gap: 1.25rem;
+        background: var(--bg-deep);
+        padding: 0.75rem 1.5rem 1.25rem;
+        gap: 0;
         border-bottom: 1px solid var(--border-subtle);
+      }
+      .nav-links.open a {
+        display: block;
+        font-size: 0.95rem;
+        padding: 0.8rem 0;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+      .nav-links.open .btn-nav {
+        margin-top: 0.9rem;
+        text-align: center;
+        padding: 0.7rem 1rem;
+        border-bottom: none;
       }
       .nav-toggle { display: block; }
 
-      .hero { min-height: auto; padding-top: 8rem; padding-bottom: 4rem; }
+      .hero { min-height: auto; padding-top: 7rem; padding-bottom: 3.5rem; }
       .hero h1 { font-size: clamp(2.2rem, 9vw, 3.2rem); }
-      .hero-stats { gap: 1.5rem; }
+      .hero-stats { gap: 1.5rem; margin-top: 2.75rem; }
       .hero-stats .stat-value { font-size: 1.8rem; }
 
-      .stack-map-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
+      .ways-grid { grid-template-columns: 1fr; gap: 1.5rem; }
+      .way p { flex: none; }
+
+      .stack-map-grid { grid-template-columns: repeat(2, 1fr); }
+      /* Connectors only make sense when the cards sit in a wide grid. */
+      .stack-map-svg { display: none; }
 
       .repo-grid { grid-template-columns: 1fr; }
+      .repo-card--entry { padding: 1.5rem; }
+
+      html.js .stack-section:not(.is-open) .repo-card--fold { display: none; }
+      html.js .repo-fold { display: block; }
 
       .footer-inner { flex-direction: column; text-align: center; }
-      .footer-links { flex-wrap: wrap; justify-content: center; }
+      .footer-links { justify-content: center; }
+    }
+
+    @media (max-width: 640px) {
+      .product-grid { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 480px) {
       .hero-actions { flex-direction: column; align-items: stretch; }
-      .hero-stats { flex-wrap: wrap; gap: 1.25rem; }
-
-      .stack-map-grid {
-        grid-template-columns: 1fr;
-      }
+      .hero-stats { flex-wrap: wrap; gap: 1.25rem 2rem; }
+      .stack-map-grid { grid-template-columns: 1fr; }
+      .install-block { flex-wrap: wrap; max-width: 100%; }
+      .closing-actions { flex-direction: column; align-items: stretch; }
     }
   </style>
 </head>
@@ -1070,13 +1378,12 @@
         </svg>
         Forge<span>Sworn</span>
       </a>
-      <button class="nav-toggle" id="navToggle" type="button" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+      <button class="nav-toggle" id="navToggle" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="navLinks">&#9776;</button>
       <ul class="nav-links" id="navLinks">
+        <li><a href="#products">Products</a></li>
+        <li><a href="#why">Why</a></li>
         <li><a href="#ecosystem">Ecosystem</a></li>
-        <li><a href="/use-cases.html">Use Cases</a></li>
-        <li><a href="https://bray.forgesworn.dev">Bray</a></li>
-        <li><a href="https://flock.forgesworn.dev">flock</a></li>
-        <li><a href="#donkeyride">DonkeyRide</a></li>
+        <li><a href="/use-cases.html">Use cases</a></li>
         <li><a href="https://github.com/forgesworn" class="btn-nav">GitHub</a></li>
       </ul>
     </div>
@@ -1088,22 +1395,15 @@
       <div class="hero-content">
         <h1>Forging and sharing the tools to <em>reclaim your freedom</em>.</h1>
         <p class="hero-sub">
-          Open-source building blocks for sovereign identity, data, money, connection, and trust &mdash; built on Nostr, Lightning, and zero-trust cryptography. Use one, use many, or use them all together.
+          ForgeSworn is an open-source workshop. We make <strong>apps you can use today</strong> and <strong>libraries you can build with</strong>, on Nostr, Lightning and plain cryptography, so that your identity, money, files, location and conversations answer to you and not to a platform.
         </p>
         <div class="hero-actions">
-          <a href="#ecosystem" class="btn-primary">Explore the ecosystem</a>
-          <a href="/use-cases.html" class="btn-secondary">See 27 use cases</a>
+          <a href="#products" class="btn-primary">See what you can use</a>
+          <a href="#ecosystem" class="btn-secondary">Build with the blocks</a>
           <a href="https://github.com/forgesworn" class="btn-secondary">
             <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-            View on GitHub
+            GitHub
           </a>
-        </div>
-        <div class="hero-proof">
-          <div class="install-block" style="margin-bottom:0.6rem;">
-            <code class="install-cmd">npx @forgesworn/toll-booth demo</code>
-            <button class="copy-btn" data-copy="npx @forgesworn/toll-booth demo" aria-label="Copy demo command">Copy</button>
-          </div>
-          <p class="hero-proof-note">A full Lightning-paywalled API on localhost in one command &mdash; or <a href="https://jokes.trotters.dev">pay 21 sats for a joke on the live demo</a>.</p>
         </div>
         <div class="hero-stats">
           <!-- HERO_STATS -->
@@ -1112,10 +1412,161 @@
     </div>
   </section>
 
+  <main id="main-content">
+
+  <!-- ====== THREE WAYS IN ====== -->
+  <section class="ways" aria-label="Three ways in">
+    <div class="container">
+      <div class="ways-grid reveal-stagger">
+        <div class="way">
+          <span class="way-label">Use it</span>
+          <h3>Apps for people</h3>
+          <p>Install one and it is yours. There is no account to make and no company holding your data, so nothing can be sold, subpoenaed or lost in a breach.</p>
+          <a href="#products">Products &darr;</a>
+        </div>
+        <div class="way">
+          <span class="way-label">Build with it</span>
+          <h3>Libraries for developers</h3>
+          <p>Each does one thing, works on its own, and composes with the rest. MIT-licensed, on npm where it makes sense, in Rust, Python, Kotlin and Swift where that is the right tool.</p>
+          <a href="#ecosystem">Ecosystem &darr;</a>
+        </div>
+        <div class="way">
+          <span class="way-label">Implement it</span>
+          <h3>Protocols for anyone</h3>
+          <p>Published wire contracts and conformance suites, so a second implementation is always possible and no single codebase is load-bearing.</p>
+          <a href="#stack-protocol">Protocol / Standards &darr;</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== PRODUCTS ====== -->
+  <section class="products" id="products">
+    <div class="container">
+      <div class="section-divider">
+        <span class="section-label">Use something today</span>
+      </div>
+      <h2 class="reveal">Things you can run right now</h2>
+      <p class="text-muted lede reveal" style="max-width:680px;">
+        Every one of these is open source, and every one is a real alternative to what you use now: as good or better, and free of cost, free of capture, free to use without permission.
+      </p>
+
+      <div class="product-grid reveal-stagger">
+
+        <article class="product" style="--product-colour:#b5e04a">
+          <span class="product-form">Phone app</span>
+          <h3>flock</h3>
+          <p class="product-promise">Find your people, not their data.</p>
+          <p class="product-body">A group locator that walks you the last half-mile to a moving friend by voice, sound and vibration, phone still in your pocket. Location is end-to-end encrypted over Nostr and shared only with who you choose, at the precision you choose, for as long as you choose. Then it is gone.</p>
+          <div class="product-links">
+            <a href="https://flock.forgesworn.dev">Open flock &rarr;</a>
+            <a class="is-secondary" href="https://github.com/forgesworn/flock">Code</a>
+          </div>
+        </article>
+
+        <article class="product" style="--product-colour:#f472b6">
+          <span class="product-form">Web app &middot; Android</span>
+          <h3>KithMoot</h3>
+          <p class="product-promise">A town hall nobody owns.</p>
+          <p class="product-body">Video rooms over Nostr. A room is a secret held by whoever has the link, so nobody outside it can tell it exists. Join from a phone and a laptop and the room sees one person with two devices, not two strangers.</p>
+          <div class="product-links">
+            <a href="https://kithmoot.forgesworn.dev">Open KithMoot &rarr;</a>
+            <a class="is-secondary" href="https://github.com/forgesworn/kithmoot">Code</a>
+          </div>
+        </article>
+
+        <article class="product" style="--product-colour:#e8a838">
+          <span class="product-form">Ride-hailing &middot; Dispatch</span>
+          <h3>DonkeyRide</h3>
+          <p class="product-promise">The whole fare is the driver&rsquo;s.</p>
+          <p class="product-body">No sign-up, no phone number, no card on file: your phone makes its own key. You see the price before you request and you pay the driver directly, in cash, M-Pesa or Lightning. The software never touches the money, so a &pound;17.20 fare is &pound;17.20 to the driver.</p>
+          <div class="product-links">
+            <a href="https://ride.trotters.dev/about">Explore DonkeyRide &rarr;</a>
+            <a class="is-secondary" href="https://github.com/TheCryptoDonkey/donkeyride">Code</a>
+          </div>
+        </article>
+
+        <article class="product" style="--product-colour:#2a9d8f">
+          <span class="product-form">Web app &middot; Self-hosted node</span>
+          <h3>Wildbloom</h3>
+          <p class="product-promise">Files that outlive their host.</p>
+          <p class="product-body">Local-first encrypted publishing over Nostr and Blossom: files and posts that stay reachable when any one server goes away. Run your own node, mirror to a friend&rsquo;s, and keep BitTorrent as an extra lane.</p>
+          <div class="product-links">
+            <a href="https://wildbloom.forgesworn.dev">Open Wildbloom &rarr;</a>
+            <a class="is-secondary" href="https://github.com/forgesworn/wildbloom">Code</a>
+          </div>
+        </article>
+
+        <article class="product" style="--product-colour:#e94560">
+          <span class="product-form">Wallet &middot; Mint</span>
+          <h3>notecase &amp; moneyer</h3>
+          <p class="product-promise">Money you can hand over like a banknote.</p>
+          <p class="product-body">Lightning bearer notes (LNURLcash): the secret is the money, so a note passes from hand to hand with no account on either side. notecase is the wallet, built so no crash, timeout or lying mint can lose a note. moneyer is the mint that strikes them.</p>
+          <div class="product-links">
+            <a href="https://github.com/forgesworn/notecase">notecase &rarr;</a>
+            <a href="https://github.com/forgesworn/moneyer">moneyer &rarr;</a>
+          </div>
+        </article>
+
+        <article class="product" style="--product-colour:#16c79a">
+          <span class="product-form">Hardware &middot; Browser &middot; Android</span>
+          <h3>Heartwood signers</h3>
+          <p class="product-promise">Keys that never touch the internet.</p>
+          <p class="product-body">A Nostr signer on an ESP32 board with a physical approve button, a keyless bridge that connects it to relays, and clients that sign through it: bark in the browser and cambium on Android. Nothing on the networked computer ever holds a key.</p>
+          <div class="product-links">
+            <a href="https://heartwood.forgesworn.dev">Heartwood &rarr;</a>
+            <a class="is-secondary" href="https://bark.forgesworn.dev">bark</a>
+            <a class="is-secondary" href="https://cambium.forgesworn.dev">cambium</a>
+          </div>
+        </article>
+
+        <article class="product" style="--product-colour:#00b4d8">
+          <span class="product-form">MCP server &middot; CLI</span>
+          <h3>Bray</h3>
+          <p class="product-promise">Give an AI agent a name of its own.</p>
+          <p class="product-body">A trust-aware Nostr MCP server: hundreds of tools that let an agent post, pay, verify and unlock encrypted content under a sovereign identity, with verification, web-of-trust and access woven into every call.</p>
+          <div class="product-links">
+            <a href="https://bray.forgesworn.dev">Explore Bray &rarr;</a>
+            <a class="is-secondary" href="https://github.com/forgesworn/bray">Code</a>
+          </div>
+        </article>
+
+        <article class="product" style="--product-colour:#16c79a">
+          <span class="product-form">Web app &middot; SDK</span>
+          <h3>My Signet</h3>
+          <p class="product-promise">Prove you&rsquo;re over 18, not your birthday.</p>
+          <p class="product-body">Decentralised identity verification for Nostr: four tiers, a Signet Score, and zero-knowledge age proofs. Any website can age-gate or identity-gate with one script tag and never see a date of birth.</p>
+          <div class="product-links">
+            <a href="https://mysignet.app">Open My Signet &rarr;</a>
+            <a class="is-secondary" href="https://github.com/forgesworn/signet">Code</a>
+          </div>
+        </article>
+
+        <article class="product" style="--product-colour:#16c79a">
+          <span class="product-form">Android &middot; Linux</span>
+          <h3>Kintrinsic</h3>
+          <p class="product-promise">Screen-time on your family&rsquo;s own keys.</p>
+          <p class="product-body">Self-hosted digital wardship. A guardian grants scoped, revocable limits on screen time, apps, content and comms to a child&rsquo;s devices, signed with the family&rsquo;s keys and enforced on the device. No platform account, and the aim is to hand autonomy back over time.</p>
+          <div class="product-links">
+            <a href="https://github.com/forgesworn/kintrinsic">Code &rarr;</a>
+          </div>
+        </article>
+
+      </div>
+
+      <p class="product-also reveal">
+        Also live: <a href="https://402.pub">402.pub</a>, a directory of Lightning-paid APIs;
+        <a href="https://gopherkind.com">gopherkind.com</a>, gopherholes served from Nostr relays;
+        and <a href="https://jokes.trotters.dev">jokes.trotters.dev</a>, where 21 sats buys you a joke from a paywalled API.
+      </p>
+    </div>
+  </section>
+
   <!-- ====== CREED ====== -->
-  <section class="creed" id="mission">
+  <section class="creed" id="why">
     <div class="container">
       <div class="creed-inner reveal">
+        <span class="section-label">Why</span>
         <p class="creed-lede">Freedom isn&rsquo;t ours to grant &mdash; it&rsquo;s already yours. We forge the tools to help you reclaim what you&rsquo;ve lost, keep what you hold, and share them openly: a commons that belongs to everyone. Each is a real alternative to what you use now &mdash; as good or better, and free in every sense: free of cost, free of capture, free to use without permission.</p>
         <span class="section-label">The vows we&rsquo;re held to</span>
         <ul class="vows">
@@ -1144,11 +1595,11 @@
   <section class="stack-map" id="ecosystem">
     <div class="container">
       <div class="section-divider">
-        <span class="section-label">Ecosystem</span>
+        <span class="section-label">Build with the blocks</span>
       </div>
-      <h2 class="reveal">Nine stacks, one architecture</h2>
-      <p class="text-muted reveal" style="max-width:660px;">
-        Each stack solves one problem well. Together they form a composable toolkit for sovereign commerce, identity, and trust.
+      <h2 class="reveal"><!-- STACK_COUNT_WORD --> stacks, one architecture</h2>
+      <p class="text-muted lede reveal" style="max-width:680px;">
+        Everything above is built from these <!-- REPO_COUNT --> projects. Each stack solves one problem well, each library works on its own, and they compose. Pick a stack to jump to its projects, or <a href="/use-cases.html">see <!-- USE_CASE_COUNT --> worked examples</a> of what they build.
       </p>
       <div class="stack-map-grid reveal-stagger">
         <!-- STACK_MAP_CARDS -->
@@ -1164,11 +1615,11 @@
         <span class="section-label">Payments</span>
       </div>
       <h2 class="reveal">How the money pieces fit</h2>
-      <p class="text-muted reveal" style="max-width:680px;">
+      <p class="text-muted lede reveal" style="max-width:680px;">
         Every payment tool hangs off one idea: a constrained connection to a wallet you don&rsquo;t hold. nwc-kit is that connection, farrier-kit checks it, a bridge turns any node into a wallet, and the L402 tools sell and discover paid APIs on top. Each box links to its project.
       </p>
       <div class="pmap-fig reveal">
-        <div class="pmap-scroll">
+        <div class="pmap-scroll" tabindex="0" aria-label="Payments stack diagram, scrolls sideways on small screens">
           <svg class="pdiagram" viewBox="0 0 960 430" role="img"
                aria-label="The connection layer: an app uses nwc-kit and farrier-kit to reach a user wallet over NWC, or an nwc-lnd-bridge that fronts an LND node or the mint. The L402 layer: toll-booth gates an API, 402-announce publishes it, 402.pub lists it, 402-mcp discovers and pays. toll-booth issues invoices and 402-mcp pays, both through nwc-kit.">
             <defs>
@@ -1212,9 +1663,12 @@
             </a>
 
             <line class="flow flow-money" x1="738" y1="130" x2="780" y2="130" marker-end="url(#pmArrow)"/>
-            <rect class="b b-money" x="782" y="104" width="150" height="52" rx="9"/>
-            <text class="t-sm" x="857" y="126" text-anchor="middle">LND / the mint</text>
-            <text class="t-sub money" x="857" y="143" text-anchor="middle">funds</text>
+            <a href="https://github.com/forgesworn/moneyer" target="_blank" rel="noopener">
+              <title>moneyer &mdash; an LNURLcash mint, or any LND node, as the funds behind the bridge</title>
+              <rect class="b b-money" x="782" y="104" width="150" height="52" rx="9"/>
+              <text class="t-sm" x="857" y="126" text-anchor="middle">LND / the mint</text>
+              <text class="t-sub money" x="857" y="143" text-anchor="middle">funds</text>
+            </a>
 
             <path class="flow-dep" d="M320,152 C300,225 210,265 150,318" marker-end="url(#pmDep)"/>
             <text class="elbl-dep" x="196" y="238" text-anchor="middle">issues invoices</text>
@@ -1259,6 +1713,7 @@
             </a>
           </svg>
         </div>
+        <p class="pmap-hint">&larr; Swipe sideways to see the whole diagram &rarr;</p>
         <div class="pmap-legend">
           <span><i style="background:var(--accent-purple)"></i> Nostr &middot; NWC</span>
           <span><i style="background:var(--accent-gold)"></i> Lightning &middot; money</span>
@@ -1270,55 +1725,35 @@
           That wallet is either the user&rsquo;s own over NWC, or an <code>nwc-lnd-bridge</code> fronting a node you run.
           On top, <code>toll-booth</code> sells access to an API, <code>402-announce</code> and <code>402.pub</code> make it
           discoverable, and <code>402-mcp</code> lets an agent find and pay for it &mdash; both ends settling through the same connection.</p>
+        <div class="pmap-try">
+          <div class="install-block">
+            <code class="install-cmd">npx @forgesworn/toll-booth demo</code>
+            <button class="copy-btn" data-copy="npx @forgesworn/toll-booth demo" aria-label="Copy demo command">Copy</button>
+          </div>
+          <p class="pmap-try-note">Try it: a full Lightning-paywalled API on localhost in one command, or <a href="https://jokes.trotters.dev">pay 21 sats for a joke on the live demo</a>.</p>
+        </div>
       </div>
     </div>
   </section>
 
   <!-- ====== STACK DETAIL SECTIONS ====== -->
-  <main id="main-content">
-    <div class="container">
-      <!-- STACK_SECTIONS -->
-    </div>
+  <div class="container">
+    <!-- STACK_SECTIONS -->
+  </div>
+
   </main>
 
-  <!-- ====== BRAY CALLOUT ====== -->
-  <section class="bray-callout">
+  <!-- ====== CLOSING ====== -->
+  <section class="closing">
     <div class="container">
-      <h2 class="reveal">See it all come together</h2>
+      <h2 class="reveal">Pick a block and start</h2>
       <p class="reveal">
-        Bray is an MCP server and CLI that give AI agents and their humans a sovereign Nostr identity &mdash; trust-aware tooling across identity, social, payments, moderation, privacy, and encrypted access, with walkthrough guides for newcomers.
+        Every project here is MIT-licensed. Use one, use many, or use them all together. If something we make saves you from a platform, tell us; if it falls short, tell us louder.
       </p>
-      <a href="https://bray.forgesworn.dev" class="btn-primary reveal">Explore Bray</a>
-    </div>
-  </section>
-
-  <!-- ====== FLOCK CALLOUT ====== -->
-  <section class="flock-callout">
-    <div class="container">
-      <h2 class="reveal">Find your people, not their data</h2>
-      <p class="reveal">
-        flock is a group locator that guides you the last half-mile to a moving friend &mdash; by voice, sound, and vibration, enough to walk to someone with the phone still in your pocket, driving or on foot or through a crowd. When the GPS can&rsquo;t be sure, it says so, instead of pointing you confidently wrong. There&rsquo;s no account and no company holding you: your location is end-to-end encrypted over Nostr, shared only with the people you choose, at the precision you choose, for as long as you choose &mdash; then it&rsquo;s gone. Nobody can sell it, subpoena it, or lose it in a breach. On a phone you already own &mdash; no gadget, no matching handset.
-      </p>
-      <p class="reveal">
-        You don&rsquo;t have to take our word for any of it. flock and the libraries beneath it are open source &mdash; read exactly what it does, line by line, or build your own copy from source.
-      </p>
-      <a href="https://flock.forgesworn.dev" class="btn-primary reveal">Explore flock</a>
-      <a href="https://github.com/forgesworn/flock" class="btn-secondary reveal">Read the code</a>
-    </div>
-  </section>
-
-  <!-- ====== DONKEYRIDE CALLOUT ====== -->
-  <section class="donkey-callout" id="donkeyride">
-    <div class="container">
-      <h2 class="reveal">The whole fare is the driver&rsquo;s</h2>
-      <p class="reveal">
-        DonkeyRide is ride-hailing with nobody in the middle taking a cut. There&rsquo;s no sign-up, no phone number and no card on file &mdash; your phone makes its own key. You see the price before you request, broken down to the penny, and it is the price recorded at the end. Then you pay the driver: cash in hand, M-Pesa, or Lightning straight to their wallet. The software that put you together never touches the money, so on a &pound;17.20 fare the driver keeps &pound;17.20 &mdash; where a quarter of it would otherwise go to a company that did none of the driving.
-      </p>
-      <p class="reveal">
-        The same engine dispatches nine kinds of work &mdash; locksmiths, recovery trucks, couriers, cleaners, house moves &mdash; because turning up somewhere and doing a job is one problem: agree a price, find each other, prove it happened, get paid. It is the reference implementation of the TROTT protocol, and anyone can run one.
-      </p>
-      <a href="https://ride.trotters.dev/about" class="btn-primary reveal">Explore DonkeyRide</a>
-      <a href="https://github.com/TheCryptoDonkey/donkeyride" class="btn-secondary reveal">Read the code</a>
+      <div class="closing-actions reveal">
+        <a href="/use-cases.html" class="btn-primary">See <!-- USE_CASE_COUNT --> worked use cases</a>
+        <a href="https://github.com/sponsors/TheCryptoDonkey" class="btn-secondary">Support the forge</a>
+      </div>
     </div>
   </section>
 
@@ -1330,10 +1765,14 @@
           Forge<span>Sworn</span> &middot; MIT Licence
         </div>
         <ul class="footer-links">
+          <li><a href="#products">Products</a></li>
+          <li><a href="#ecosystem">Ecosystem</a></li>
+          <li><a href="/use-cases.html">Use cases</a></li>
           <li><a href="https://github.com/forgesworn">GitHub</a></li>
           <li><a href="https://www.npmjs.com/org/forgesworn">npm</a></li>
           <li><a href="https://njump.me/darren@forgesworn.dev">Nostr</a></li>
           <li><a href="https://github.com/sponsors/TheCryptoDonkey">Sponsor</a></li>
+          <li><a href="https://github.com/forgesworn/forgesworn.dev">Site source</a></li>
         </ul>
       </div>
     </div>
@@ -1356,41 +1795,25 @@
       nav.classList.toggle('scrolled', window.scrollY > 40);
     }, { passive: true });
 
+    function setMenu(open) {
+      navLinks.classList.toggle('open', open);
+      navToggle.textContent = open ? '✕' : '☰';
+      navToggle.setAttribute('aria-expanded', String(open));
+    }
+
     navToggle.addEventListener('click', () => {
-      const isOpen = navLinks.classList.toggle('open');
-      navToggle.textContent = isOpen ? '\u2715' : '\u2630';
-      navToggle.setAttribute('aria-expanded', isOpen);
+      setMenu(!navLinks.classList.contains('open'));
     });
 
     navLinks.querySelectorAll('a').forEach(link => {
-      link.addEventListener('click', () => {
-        navLinks.classList.remove('open');
-        navToggle.textContent = '\u2630';
-        navToggle.setAttribute('aria-expanded', 'false');
-      });
+      link.addEventListener('click', () => setMenu(false));
     });
 
-    /* ========================================
-       STACK MAP CARD INTERACTIONS
-       ======================================== */
-    function scrollToStack(slug) {
-      const target = document.querySelector('.stack-section[data-stack="' + slug + '"]');
-      if (target) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && navLinks.classList.contains('open')) {
+        setMenu(false);
+        navToggle.focus();
       }
-    }
-
-    document.querySelectorAll('.stack-card').forEach(card => {
-      card.addEventListener('click', () => {
-        scrollToStack(card.dataset.stack);
-      });
-
-      card.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          scrollToStack(card.dataset.stack);
-        }
-      });
     });
 
     /* ========================================
@@ -1464,6 +1887,19 @@
     });
 
     /* ========================================
+       SHOW ALL / SHOW FEWER (phones)
+       ======================================== */
+    document.querySelectorAll('.repo-fold').forEach(btn => {
+      const section = btn.closest('.stack-section');
+      btn.addEventListener('click', () => {
+        const open = section.classList.toggle('is-open');
+        btn.setAttribute('aria-expanded', String(open));
+        btn.textContent = open ? btn.dataset.labelClose : btn.dataset.labelOpen;
+        if (!open) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+
+    /* ========================================
        COPY TO CLIPBOARD
        ======================================== */
     document.querySelectorAll('.copy-btn').forEach(btn => {
@@ -1525,6 +1961,7 @@
         if (target) {
           e.preventDefault();
           target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          history.replaceState(null, '', href);
         }
       });
     });

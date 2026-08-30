@@ -1,5 +1,5 @@
 {
-  "generated": "2026-07-14",
+  "generated": "2026-08-30",
   "intro": "Twenty-seven end-to-end workflows built by composing ForgeSworn libraries. Each starts with a real person and a real problem, walks the workflow step by step, and names the exact building blocks it stands on — with honest notes on what ships today and what you wire together yourself.",
   "categories": [
     {
@@ -31,6 +31,18 @@
       "name": "Protocol, Compliance & Tooling",
       "colour": "#6c5ce7",
       "description": "Provenance trails, jurisdiction intelligence, and supply-chain-hardened release infrastructure."
+    },
+    {
+      "slug": "storage",
+      "name": "Storage & Publishing",
+      "colour": "#2a9d8f",
+      "description": "Files and posts that outlive the server they started on: encrypted, content-addressed storage across machines you control."
+    },
+    {
+      "slug": "live",
+      "name": "Live & Real-time",
+      "colour": "#f472b6",
+      "description": "Calls and streams with nobody in the middle: WebRTC signalled over Nostr relays, media device to device."
     }
   ],
   "useCases": [
@@ -49,12 +61,30 @@
         "Where a service advertises a .onion endpoint, the agent prefers it (onion-first transport) so its data sources are harder to link."
       ],
       "stack": [
-        { "repo": "402-mcp", "role": "Discovers, pays for, and calls L402/x402 APIs as MCP tools" },
-        { "repo": "402-announce", "role": "Publishes the kind 31402 listings the agent searches" },
-        { "repo": "toll-booth", "role": "The gate on the API side that issues the invoice and macaroon" },
-        { "repo": "bray", "role": "Optional companion MCP giving the agent a Nostr identity, web-of-trust, and marketplace discovery" }
+        {
+          "repo": "402-mcp",
+          "role": "Discovers, pays for, and calls L402/x402 APIs as MCP tools"
+        },
+        {
+          "repo": "402-announce",
+          "role": "Publishes the kind 31402 listings the agent searches"
+        },
+        {
+          "repo": "toll-booth",
+          "role": "The gate on the API side that issues the invoice and macaroon"
+        },
+        {
+          "repo": "bray",
+          "role": "Optional companion MCP giving the agent a Nostr identity, web-of-trust, and marketplace discovery"
+        }
       ],
-      "protocols": ["L402", "x402", "NWC", "kind 31402", "Lightning"]
+      "protocols": [
+        "L402",
+        "x402",
+        "NWC",
+        "kind 31402",
+        "Lightning"
+      ]
     },
     {
       "id": "monetise-api-one-line",
@@ -71,12 +101,29 @@
         "Point the read-only toll-booth-mcp at the SQLite ledger and ask an AI client 'how much did I earn this week?' without exposing the database."
       ],
       "stack": [
-        { "repo": "toll-booth", "role": "HTTP 402 middleware that gates routes and tracks credit balances in SQLite" },
-        { "repo": "toll-booth-announce", "role": "Bridges the booth config to a Nostr kind 31402 service announcement" },
-        { "repo": "toll-booth-mcp", "role": "Read-only payment analytics over the ledger, surfaced as MCP widgets (run locally)" },
-        { "repo": "402-pub", "role": "The live public directory the listing shows up on" }
+        {
+          "repo": "toll-booth",
+          "role": "HTTP 402 middleware that gates routes and tracks credit balances in SQLite"
+        },
+        {
+          "repo": "toll-booth-announce",
+          "role": "Bridges the booth config to a Nostr kind 31402 service announcement"
+        },
+        {
+          "repo": "toll-booth-mcp",
+          "role": "Read-only payment analytics over the ledger, surfaced as MCP widgets (run locally)"
+        },
+        {
+          "repo": "402-pub",
+          "role": "The live public directory the listing shows up on"
+        }
       ],
-      "protocols": ["L402", "kind 31402", "Lightning", "Cashu"]
+      "protocols": [
+        "L402",
+        "kind 31402",
+        "Lightning",
+        "Cashu"
+      ]
     },
     {
       "id": "pay-per-token-inference",
@@ -93,12 +140,29 @@
         "Each request settles over Lightning; in session mode the server holds the deposit during the session and refunds the remainder on close."
       ],
       "stack": [
-        { "repo": "toll-booth", "role": "Gates and meters inference per request, with post-request cost reconciliation" },
-        { "repo": "payment-methods", "role": "The Session payment spec (open, bearer, top-up, close with refund) the metering follows" },
-        { "repo": "aperture-phoenixd", "role": "Phoenixd backend for Aperture via the provided patch, no LND required" },
-        { "repo": "402-announce", "role": "Advertises the inference endpoint for discovery" }
+        {
+          "repo": "toll-booth",
+          "role": "Gates and meters inference per request, with post-request cost reconciliation"
+        },
+        {
+          "repo": "payment-methods",
+          "role": "The Session payment spec (open, bearer, top-up, close with refund) the metering follows"
+        },
+        {
+          "repo": "aperture-phoenixd",
+          "role": "Phoenixd backend for Aperture via the provided patch, no LND required"
+        },
+        {
+          "repo": "402-announce",
+          "role": "Advertises the inference endpoint for discovery"
+        }
       ],
-      "protocols": ["L402", "IETF Payment", "Lightning", "BOLT-11"]
+      "protocols": [
+        "L402",
+        "IETF Payment",
+        "Lightning",
+        "BOLT-11"
+      ]
     },
     {
       "id": "nostr-data-vending",
@@ -115,11 +179,25 @@
         "Funds flow peer to peer over Lightning — the DVM only relays the invoice string and never custodies money."
       ],
       "stack": [
-        { "repo": "toll-booth-dvm", "role": "Exposes the API as a NIP-90 DVM (kinds 5800/6800/7000) and mediates payment over Nostr" },
-        { "repo": "toll-booth", "role": "The underlying L402 gate the DVM proxies to" },
-        { "repo": "bray", "role": "Gives a Nostr-native client the identity and relay connectivity to publish the request and read the result (payment via an external wallet)" }
+        {
+          "repo": "toll-booth-dvm",
+          "role": "Exposes the API as a NIP-90 DVM (kinds 5800/6800/7000) and mediates payment over Nostr"
+        },
+        {
+          "repo": "toll-booth",
+          "role": "The underlying L402 gate the DVM proxies to"
+        },
+        {
+          "repo": "bray",
+          "role": "Gives a Nostr-native client the identity and relay connectivity to publish the request and read the result (payment via an external wallet)"
+        }
       ],
-      "protocols": ["NIP-90", "L402", "kind 5800/6800/7000", "Lightning"]
+      "protocols": [
+        "NIP-90",
+        "L402",
+        "kind 5800/6800/7000",
+        "Lightning"
+      ]
     },
     {
       "id": "censorship-resistant-api",
@@ -136,12 +214,29 @@
         "Go-native shops can run the same pattern with Aperture and aperture-announce instead of the TypeScript stack."
       ],
       "stack": [
-        { "repo": "toll-booth", "role": "Gates the API and serves it on clearnet and onion at once" },
-        { "repo": "toll-booth-announce", "role": "Publishes both transports in one signed kind 31402 listing" },
-        { "repo": "402-mcp", "role": "Pays and consumes the API with an onion-first transport preference" },
-        { "repo": "aperture-announce", "role": "The Go-side equivalent for Aperture deployments" }
+        {
+          "repo": "toll-booth",
+          "role": "Gates the API and serves it on clearnet and onion at once"
+        },
+        {
+          "repo": "toll-booth-announce",
+          "role": "Publishes both transports in one signed kind 31402 listing"
+        },
+        {
+          "repo": "402-mcp",
+          "role": "Pays and consumes the API with an onion-first transport preference"
+        },
+        {
+          "repo": "aperture-announce",
+          "role": "The Go-side equivalent for Aperture deployments"
+        }
       ],
-      "protocols": ["L402", "Tor", "kind 31402", "Lightning"]
+      "protocols": [
+        "L402",
+        "Tor",
+        "kind 31402",
+        "Lightning"
+      ]
     },
     {
       "id": "paid-api-directory",
@@ -158,11 +253,24 @@
         "When an operator self-announces, the indexer steps back and deletes its own superseded copy so the authoritative listing wins."
       ],
       "stack": [
-        { "repo": "402-indexer", "role": "Crawls, probes, and publishes service announcements; retires and dedupes them" },
-        { "repo": "402-pub", "role": "The zero-backend live directory front end" },
-        { "repo": "402-announce", "role": "The kind 31402 announcement format both producers and the indexer speak" }
+        {
+          "repo": "402-indexer",
+          "role": "Crawls, probes, and publishes service announcements; retires and dedupes them"
+        },
+        {
+          "repo": "402-pub",
+          "role": "The zero-backend live directory front end"
+        },
+        {
+          "repo": "402-announce",
+          "role": "The kind 31402 announcement format both producers and the indexer speak"
+        }
       ],
-      "protocols": ["kind 31402", "NIP-09", "Lightning"]
+      "protocols": [
+        "kind 31402",
+        "NIP-09",
+        "Lightning"
+      ]
     },
     {
       "id": "agent-to-agent-market",
@@ -179,12 +287,30 @@
         "After the job, either side can call bray's signet-vouch tool to publish a kind 31000 attestation that feeds future trust decisions."
       ],
       "stack": [
-        { "repo": "bray", "role": "Capability discovery (kind 31990) and encrypted NIP-17 dispatch, with Signet trust-checking tools alongside" },
-        { "repo": "toll-booth-dvm", "role": "Delivers and charges for the specialist's output over Nostr" },
-        { "repo": "402-mcp", "role": "Pays for any external L402 tools the specialist itself needs" },
-        { "repo": "signet", "role": "Gives each agent a verifiable identity tier and Score to vet before hiring" }
+        {
+          "repo": "bray",
+          "role": "Capability discovery (kind 31990) and encrypted NIP-17 dispatch, with Signet trust-checking tools alongside"
+        },
+        {
+          "repo": "toll-booth-dvm",
+          "role": "Delivers and charges for the specialist's output over Nostr"
+        },
+        {
+          "repo": "402-mcp",
+          "role": "Pays for any external L402 tools the specialist itself needs"
+        },
+        {
+          "repo": "signet",
+          "role": "Gives each agent a verifiable identity tier and Score to vet before hiring"
+        }
       ],
-      "protocols": ["NIP-89", "NIP-17", "NIP-90", "kind 31000", "Lightning"]
+      "protocols": [
+        "NIP-89",
+        "NIP-17",
+        "NIP-90",
+        "kind 31000",
+        "Lightning"
+      ]
     },
     {
       "id": "journalist-hardware-signer",
@@ -201,12 +327,29 @@
         "Every signing request renders on the device's screen and is approved with a physical button hold; per-client kind permissions are enforced on the device itself."
       ],
       "stack": [
-        { "repo": "heartwood", "role": "Keyless NIP-46 bridge relaying each request to the hardware signer — holds no seed, PIN, or plaintext" },
-        { "repo": "heartwood-esp32", "role": "Hardware token that holds the seed and approves each signature on-device" },
-        { "repo": "bark", "role": "NIP-07 browser extension backed by remote signing, no local keys" },
-        { "repo": "nsec-tree", "role": "Deterministic unlinkable personas from one master secret" }
+        {
+          "repo": "heartwood",
+          "role": "Keyless NIP-46 bridge relaying each request to the hardware signer — holds no seed, PIN, or plaintext"
+        },
+        {
+          "repo": "heartwood-esp32",
+          "role": "Hardware token that holds the seed and approves each signature on-device"
+        },
+        {
+          "repo": "bark",
+          "role": "NIP-07 browser extension backed by remote signing, no local keys"
+        },
+        {
+          "repo": "nsec-tree",
+          "role": "Deterministic unlinkable personas from one master secret"
+        }
       ],
-      "protocols": ["NIP-46", "NIP-07", "NIP-44", "secp256k1"]
+      "protocols": [
+        "NIP-46",
+        "NIP-07",
+        "NIP-44",
+        "secp256k1"
+      ]
     },
     {
       "id": "pseudonymous-personas",
@@ -223,12 +366,29 @@
         "Recover every persona later by re-deriving from the seed — there is no per-persona backup to lose."
       ],
       "stack": [
-        { "repo": "nsec-tree", "role": "HMAC-SHA256 derivation of unlimited unlinkable identities" },
-        { "repo": "bark", "role": "Persona switching and signing from the browser" },
-        { "repo": "heartwood", "role": "Bridges every persona's signing requests to the hardware device that holds the master seed" },
-        { "repo": "nsec-tree-cli", "role": "Offline derivation, proofs, and inspection from the terminal" }
+        {
+          "repo": "nsec-tree",
+          "role": "HMAC-SHA256 derivation of unlimited unlinkable identities"
+        },
+        {
+          "repo": "bark",
+          "role": "Persona switching and signing from the browser"
+        },
+        {
+          "repo": "heartwood",
+          "role": "Bridges every persona's signing requests to the hardware device that holds the master seed"
+        },
+        {
+          "repo": "nsec-tree-cli",
+          "role": "Offline derivation, proofs, and inspection from the terminal"
+        }
       ],
-      "protocols": ["NIP-19", "NIP-78", "BIP-39", "HMAC-SHA256"]
+      "protocols": [
+        "NIP-19",
+        "NIP-78",
+        "BIP-39",
+        "HMAC-SHA256"
+      ]
     },
     {
       "id": "social-recovery",
@@ -245,12 +405,29 @@
         "If trustees published to a shared relay, those acknowledgements let the recovering user rediscover who holds a share — even if contact details changed."
       ],
       "stack": [
-        { "repo": "nsec-tree", "role": "Mnemonic-backed master secret the whole identity tree derives from" },
-        { "repo": "shamir-words", "role": "Splits the secret into human-readable threshold word shares with checksums" },
-        { "repo": "nsec-tree-cli", "role": "Offline shamir split and recover workflow" },
-        { "repo": "nostr-attestations", "role": "Generic kind 31000 attestations a trustee can use to acknowledge a share" }
+        {
+          "repo": "nsec-tree",
+          "role": "Mnemonic-backed master secret the whole identity tree derives from"
+        },
+        {
+          "repo": "shamir-words",
+          "role": "Splits the secret into human-readable threshold word shares with checksums"
+        },
+        {
+          "repo": "nsec-tree-cli",
+          "role": "Offline shamir split and recover workflow"
+        },
+        {
+          "repo": "nostr-attestations",
+          "role": "Generic kind 31000 attestations a trustee can use to acknowledge a share"
+        }
       ],
-      "protocols": ["Shamir SSS", "BIP-39", "kind 31000", "GF(256)"]
+      "protocols": [
+        "Shamir SSS",
+        "BIP-39",
+        "kind 31000",
+        "GF(256)"
+      ]
     },
     {
       "id": "esp32-portable-signer",
@@ -267,11 +444,25 @@
         "Provision, set per-client policies, and run SHA-256-verified OTA firmware updates from the Sapwood UI; pair it to apps with Bark."
       ],
       "stack": [
-        { "repo": "heartwood-esp32", "role": "ESP32-S3 signing token holding up to 8 identities with on-device approval" },
-        { "repo": "sapwood", "role": "Provisioning, policy, and OTA firmware management over Web Serial" },
-        { "repo": "bark", "role": "Connects web apps to the token via NIP-46" }
+        {
+          "repo": "heartwood-esp32",
+          "role": "ESP32-S3 signing token holding up to 8 identities with on-device approval"
+        },
+        {
+          "repo": "sapwood",
+          "role": "Provisioning, policy, and OTA firmware management over Web Serial"
+        },
+        {
+          "repo": "bark",
+          "role": "Connects web apps to the token via NIP-46"
+        }
       ],
-      "protocols": ["NIP-46", "NIP-44", "secp256k1", "Web Serial"]
+      "protocols": [
+        "NIP-46",
+        "NIP-44",
+        "secp256k1",
+        "Web Serial"
+      ]
     },
     {
       "id": "sign-in-with-nostr",
@@ -288,12 +479,29 @@
         "Rust backends can share the same event types and canonical event-id computation through the signet-protocol crate (Schnorr verification lands in a coming release)."
       ],
       "stack": [
-        { "repo": "signet-login", "role": "Drop-in login SDK with extension, QR, and bunker flows plus server-side verification" },
-        { "repo": "signet-credentials", "role": "Fetches and validates the user's handle credential across relays" },
-        { "repo": "bark", "role": "Acts as the NIP-07 signer behind the login" },
-        { "repo": "signet-protocol-rs", "role": "Shared Signet event types and NIP-01 canonical IDs for Rust backends (Schnorr verification on the roadmap)" }
+        {
+          "repo": "signet-login",
+          "role": "Drop-in login SDK with extension, QR, and bunker flows plus server-side verification"
+        },
+        {
+          "repo": "signet-credentials",
+          "role": "Fetches and validates the user's handle credential across relays"
+        },
+        {
+          "repo": "bark",
+          "role": "Acts as the NIP-07 signer behind the login"
+        },
+        {
+          "repo": "signet-protocol-rs",
+          "role": "Shared Signet event types and NIP-01 canonical IDs for Rust backends (Schnorr verification on the roadmap)"
+        }
       ],
-      "protocols": ["NIP-07", "NIP-46", "kind 21236", "BIP-340"]
+      "protocols": [
+        "NIP-07",
+        "NIP-46",
+        "kind 21236",
+        "BIP-340"
+      ]
     },
     {
       "id": "age-verification-no-dob",
@@ -310,12 +518,28 @@
         "Nothing identifying is retained — only a cryptographic pass/fail and the verifier's confirmation status."
       ],
       "stack": [
-        { "repo": "signet-verify", "role": "One-script-tag age gate with verifier status checks" },
-        { "repo": "range-proof", "role": "Zero-knowledge proof that age sits in a band, no DOB revealed" },
-        { "repo": "signet", "role": "Issues and structures the verifiable age credential" },
-        { "repo": "jurisdiction-kit", "role": "Per-country digital-consent ages and a cross-border-restrictions flag (28 jurisdictions)" }
+        {
+          "repo": "signet-verify",
+          "role": "One-script-tag age gate with verifier status checks"
+        },
+        {
+          "repo": "range-proof",
+          "role": "Zero-knowledge proof that age sits in a band, no DOB revealed"
+        },
+        {
+          "repo": "signet",
+          "role": "Issues and structures the verifiable age credential"
+        },
+        {
+          "repo": "jurisdiction-kit",
+          "role": "Per-country digital-consent ages and a cross-border-restrictions flag (28 jurisdictions)"
+        }
       ],
-      "protocols": ["ZK range proof", "NIP-VA", "BIP-340"]
+      "protocols": [
+        "ZK range proof",
+        "NIP-VA",
+        "BIP-340"
+      ]
     },
     {
       "id": "deepfake-proof-comms",
@@ -332,10 +556,21 @@
         "Optional liveness heartbeats give each member a verifiable check-in token your app can treat as a dead-man's switch."
       ],
       "stack": [
-        { "repo": "canary-kit", "role": "Group verification, duress signalling, and liveness tokens over Nostr" },
-        { "repo": "spoken-token", "role": "The rotating, human-speakable token primitive underneath" }
+        {
+          "repo": "canary-kit",
+          "role": "Group verification, duress signalling, and liveness tokens over Nostr"
+        },
+        {
+          "repo": "spoken-token",
+          "role": "The rotating, human-speakable token primitive underneath"
+        }
       ],
-      "protocols": ["HMAC-SHA256", "time-based rotation", "NIP-44", "NIP-17"]
+      "protocols": [
+        "HMAC-SHA256",
+        "time-based rotation",
+        "NIP-44",
+        "NIP-17"
+      ]
     },
     {
       "id": "duress-family-safety",
@@ -352,11 +587,25 @@
         "Removing a member generates a fresh group secret in one call; once it is redistributed over Nostr, the removed member can no longer verify."
       ],
       "stack": [
-        { "repo": "canary-kit", "role": "Groups, duress words, encrypted beacons, and reseed-on-removal" },
-        { "repo": "nsec-tree", "role": "Per-member Nostr signing identity for group event authorship" },
-        { "repo": "spoken-token", "role": "Underlying rotating verification words" }
+        {
+          "repo": "canary-kit",
+          "role": "Groups, duress words, encrypted beacons, and reseed-on-removal"
+        },
+        {
+          "repo": "nsec-tree",
+          "role": "Per-member Nostr signing identity for group event authorship"
+        },
+        {
+          "repo": "spoken-token",
+          "role": "Underlying rotating verification words"
+        }
       ],
-      "protocols": ["NIP-44", "NIP-17", "kind 30078/20078", "NIP-40"]
+      "protocols": [
+        "NIP-44",
+        "NIP-17",
+        "kind 30078/20078",
+        "NIP-40"
+      ]
     },
     {
       "id": "anonymous-moderation",
@@ -373,11 +622,25 @@
         "Human-readable endorsements or vouches can ride alongside as revocable kind 31000 attestations."
       ],
       "stack": [
-        { "repo": "nostr-veil", "role": "Anonymous threshold trust assertions over NIP-85" },
-        { "repo": "ring-sig", "role": "LSAG ring signatures with double-vote-proof key images" },
-        { "repo": "nostr-attestations", "role": "Optional human-readable, revocable endorsement records" }
+        {
+          "repo": "nostr-veil",
+          "role": "Anonymous threshold trust assertions over NIP-85"
+        },
+        {
+          "repo": "ring-sig",
+          "role": "LSAG ring signatures with double-vote-proof key images"
+        },
+        {
+          "repo": "nostr-attestations",
+          "role": "Optional human-readable, revocable endorsement records"
+        }
       ],
-      "protocols": ["LSAG", "NIP-85", "kind 30382-30385", "secp256k1"]
+      "protocols": [
+        "LSAG",
+        "NIP-85",
+        "kind 30382-30385",
+        "secp256k1"
+      ]
     },
     {
       "id": "professional-verification",
@@ -394,12 +657,29 @@
         "Because every record is a signed Nostr event, the reputation is portable across every client, not trapped in one marketplace."
       ],
       "stack": [
-        { "repo": "signet", "role": "Four-tier verification, Signet Score, and verifier lifecycle" },
-        { "repo": "signet-credentials", "role": "Fetches and validates Signet credential events from relays" },
-        { "repo": "jurisdiction-kit", "role": "Professional-body registries for 28 countries" },
-        { "repo": "nostr-attestations", "role": "The universal kind 31000 attestation container" }
+        {
+          "repo": "signet",
+          "role": "Four-tier verification, Signet Score, and verifier lifecycle"
+        },
+        {
+          "repo": "signet-credentials",
+          "role": "Fetches and validates Signet credential events from relays"
+        },
+        {
+          "repo": "jurisdiction-kit",
+          "role": "Professional-body registries for 28 countries"
+        },
+        {
+          "repo": "nostr-attestations",
+          "role": "The universal kind 31000 attestation container"
+        }
       ],
-      "protocols": ["kind 31000", "NIP-VA", "NIP-40", "BIP-340"]
+      "protocols": [
+        "kind 31000",
+        "NIP-VA",
+        "NIP-40",
+        "BIP-340"
+      ]
     },
     {
       "id": "whistleblower-trust",
@@ -416,12 +696,29 @@
         "Each editor signs under a dedicated circle key derived with nsec-tree from their master seed, so even a compromised circle key never links back to their public byline — and the ring signature hides which editor signed at all."
       ],
       "stack": [
-        { "repo": "ring-sig", "role": "Anonymous per-editor corroboration signatures" },
-        { "repo": "nostr-veil", "role": "Threshold aggregation into a NIP-85 trust signal" },
-        { "repo": "nostr-attestations", "role": "Human-readable, revocable vouch records" },
-        { "repo": "nsec-tree", "role": "Derives each editor's circle signing key, unlinkable from their main identity" }
+        {
+          "repo": "ring-sig",
+          "role": "Anonymous per-editor corroboration signatures"
+        },
+        {
+          "repo": "nostr-veil",
+          "role": "Threshold aggregation into a NIP-85 trust signal"
+        },
+        {
+          "repo": "nostr-attestations",
+          "role": "Human-readable, revocable vouch records"
+        },
+        {
+          "repo": "nsec-tree",
+          "role": "Derives each editor's circle signing key, unlinkable from their main identity"
+        }
       ],
-      "protocols": ["LSAG", "NIP-85", "kind 31000", "secp256k1"]
+      "protocols": [
+        "LSAG",
+        "NIP-85",
+        "kind 31000",
+        "secp256k1"
+      ]
     },
     {
       "id": "prove-threshold-zk",
@@ -438,11 +735,25 @@
         "The live ForgeSworn demos let you try a range proof end to end in the browser."
       ],
       "stack": [
-        { "repo": "range-proof", "role": "Pedersen-commitment range proofs on secp256k1" },
-        { "repo": "bray", "role": "Generates, verifies, and publishes range proofs as agent tools" },
-        { "repo": "nostr-attestations", "role": "Optionally wraps a proof in a kind 31000 credential for formal issuance" }
+        {
+          "repo": "range-proof",
+          "role": "Pedersen-commitment range proofs on secp256k1"
+        },
+        {
+          "repo": "bray",
+          "role": "Generates, verifies, and publishes range proofs as agent tools"
+        },
+        {
+          "repo": "nostr-attestations",
+          "role": "Optionally wraps a proof in a kind 31000 credential for formal issuance"
+        }
       ],
-      "protocols": ["Pedersen commitment", "ZK range proof", "kind 30078", "secp256k1"]
+      "protocols": [
+        "Pedersen commitment",
+        "ZK range proof",
+        "kind 30078",
+        "secp256k1"
+      ]
     },
     {
       "id": "portable-reputation",
@@ -459,12 +770,29 @@
         "For big trades the seller can attach a range proof of sufficient balance; payment settles via a toll-booth-gated Lightning flow — pay-to-proceed, not custodial escrow."
       ],
       "stack": [
-        { "repo": "nostr-attestations", "role": "Bilateral, revocable trade endorsements" },
-        { "repo": "nostr-veil", "role": "Anonymous community vendor scoring" },
-        { "repo": "signet", "role": "Verification tiers gating regulated or high-value trades" },
-        { "repo": "toll-booth", "role": "Lightning payment gating for settlement" }
+        {
+          "repo": "nostr-attestations",
+          "role": "Bilateral, revocable trade endorsements"
+        },
+        {
+          "repo": "nostr-veil",
+          "role": "Anonymous community vendor scoring"
+        },
+        {
+          "repo": "signet",
+          "role": "Verification tiers gating regulated or high-value trades"
+        },
+        {
+          "repo": "toll-booth",
+          "role": "Lightning payment gating for settlement"
+        }
       ],
-      "protocols": ["kind 31000", "NIP-85", "LSAG", "L402"]
+      "protocols": [
+        "kind 31000",
+        "NIP-85",
+        "LSAG",
+        "L402"
+      ]
     },
     {
       "id": "tiered-encrypted-content",
@@ -481,12 +809,29 @@
         "Revoke by simply not distributing the next epoch's key — access lapses on the next weekly rotation, no re-encryption needed."
       ],
       "stack": [
-        { "repo": "dominion", "role": "Epoch content keys, AES-256-GCM, M-of-N Shamir, and tiered key distribution" },
-        { "repo": "nsec-tree", "role": "Creator identity that tiers and recipients are keyed to" },
-        { "repo": "toll-booth", "role": "Lightning payment whose onPayment callback grants tier access" },
-        { "repo": "shamir-words", "role": "Optional: word-encode dominion's custodian key shares for safekeeping (manual step)" }
+        {
+          "repo": "dominion",
+          "role": "Epoch content keys, AES-256-GCM, M-of-N Shamir, and tiered key distribution"
+        },
+        {
+          "repo": "nsec-tree",
+          "role": "Creator identity that tiers and recipients are keyed to"
+        },
+        {
+          "repo": "toll-booth",
+          "role": "Lightning payment whose onPayment callback grants tier access"
+        },
+        {
+          "repo": "shamir-words",
+          "role": "Optional: word-encode dominion's custodian key shares for safekeeping (manual step)"
+        }
       ],
-      "protocols": ["HKDF", "AES-256-GCM", "kind 30480", "NIP-59"]
+      "protocols": [
+        "HKDF",
+        "AES-256-GCM",
+        "kind 30480",
+        "NIP-59"
+      ]
     },
     {
       "id": "fair-meetup",
@@ -503,11 +848,25 @@
         "geohash-kit underpins the spatial maths; paid routing can be metered with L402 if you self-host the engine."
       ],
       "stack": [
-        { "repo": "rendezvous-mcp", "role": "Exposes fair-meetup tools to AI agents over MCP" },
-        { "repo": "rendezvous-kit", "role": "Isochrone intersection, Overpass venue search, and fairness scoring" },
-        { "repo": "geohash-kit", "role": "Geospatial primitives (convex-hull coverage) under the spatial maths" }
+        {
+          "repo": "rendezvous-mcp",
+          "role": "Exposes fair-meetup tools to AI agents over MCP"
+        },
+        {
+          "repo": "rendezvous-kit",
+          "role": "Isochrone intersection, Overpass venue search, and fairness scoring"
+        },
+        {
+          "repo": "geohash-kit",
+          "role": "Geospatial primitives (convex-hull coverage) under the spatial maths"
+        }
       ],
-      "protocols": ["MCP", "isochrones", "GeoJSON", "L402"]
+      "protocols": [
+        "MCP",
+        "isochrones",
+        "GeoJSON",
+        "L402"
+      ]
     },
     {
       "id": "local-service-discovery",
@@ -524,11 +883,24 @@
         "The seeker contacts a chosen provider over a NIP-17 encrypted DM; coarse public geohashes keep exact locations private until both sides agree to share."
       ],
       "stack": [
-        { "repo": "geohash-kit", "role": "Geohash encoding and Nostr proximity filters with neighbour-cell expansion" },
-        { "repo": "bray", "role": "Relay queries for kind 30402 listings plus Signet trust checks" },
-        { "repo": "nostr-attestations", "role": "Verifiable provider credentials attached to listings" }
+        {
+          "repo": "geohash-kit",
+          "role": "Geohash encoding and Nostr proximity filters with neighbour-cell expansion"
+        },
+        {
+          "repo": "bray",
+          "role": "Relay queries for kind 30402 listings plus Signet trust checks"
+        },
+        {
+          "repo": "nostr-attestations",
+          "role": "Verifiable provider credentials attached to listings"
+        }
       ],
-      "protocols": ["geohash g-tags", "kind 31000", "NIP-99"]
+      "protocols": [
+        "geohash g-tags",
+        "kind 31000",
+        "NIP-99"
+      ]
     },
     {
       "id": "supply-chain-provenance",
@@ -545,12 +917,29 @@
         "If a dispute arises, the whole signed chain — certificate, evidence, custody — is available to an arbitrator."
       ],
       "stack": [
-        { "repo": "nip-drafts", "role": "Draft specs for the provenance (30404), evidence (30578), and custody (30572) kinds, with test vectors for provenance and custody — specs, not yet a library" },
-        { "repo": "nostr-attestations", "role": "Shipping kind 31000 authenticity attestations anchoring the chain" },
-        { "repo": "signet", "role": "Verifies the installing professional's credentials" },
-        { "repo": "jurisdiction-kit", "role": "Cross-border recognition and compliance context" }
+        {
+          "repo": "nip-drafts",
+          "role": "Draft specs for the provenance (30404), evidence (30578), and custody (30572) kinds, with test vectors for provenance and custody — specs, not yet a library"
+        },
+        {
+          "repo": "nostr-attestations",
+          "role": "Shipping kind 31000 authenticity attestations anchoring the chain"
+        },
+        {
+          "repo": "signet",
+          "role": "Verifies the installing professional's credentials"
+        },
+        {
+          "repo": "jurisdiction-kit",
+          "role": "Cross-border recognition and compliance context"
+        }
       ],
-      "protocols": ["NIP-PROVENANCE (draft)", "NIP-CUSTODY (draft)", "NIP-EVIDENCE (draft)", "kind 31000"]
+      "protocols": [
+        "NIP-PROVENANCE (draft)",
+        "NIP-CUSTODY (draft)",
+        "NIP-EVIDENCE (draft)",
+        "kind 31000"
+      ]
     },
     {
       "id": "hardened-release",
@@ -567,11 +956,25 @@
         "Consumers verify the npm provenance and the release hash — and, if present, the authorship attestation — before trusting the bytes."
       ],
       "stack": [
-        { "repo": "anvil", "role": "Reproducible two-runner builds with OIDC and SLSA provenance" },
-        { "repo": "nostr-attestations", "role": "The optional kind 31000 authorship attestation — and itself a live example, released via anvil" },
-        { "repo": "signet", "role": "Ties the maintainer's verified Nostr identity to the attestation" }
+        {
+          "repo": "anvil",
+          "role": "Reproducible two-runner builds with OIDC and SLSA provenance"
+        },
+        {
+          "repo": "nostr-attestations",
+          "role": "The optional kind 31000 authorship attestation — and itself a live example, released via anvil"
+        },
+        {
+          "repo": "signet",
+          "role": "Ties the maintainer's verified Nostr identity to the attestation"
+        }
       ],
-      "protocols": ["SLSA", "OIDC", "kind 31000", "SHA-256"]
+      "protocols": [
+        "SLSA",
+        "OIDC",
+        "kind 31000",
+        "SHA-256"
+      ]
     },
     {
       "id": "find-your-friends-off-grid",
@@ -588,14 +991,39 @@
         "geohash-kit underpins the precision tiers — a share is a cell, never a pin, unless its owner lifts precision for a consented, time-boxed live session."
       ],
       "stack": [
-        { "repo": "flock-kit", "role": "The pure guidance core — radar state machine, heading arbitration, honesty gates, and consented-session rules" },
-        { "repo": "covey-kit", "role": "Encrypted circle membership: derived keys, roles, word-code invites, and convergent roster state" },
-        { "repo": "roost-kit", "role": "NIP-59 gift-wrap delivery, relay fan-out, rotating inboxes, and an offline outbox" },
-        { "repo": "capacitor-mesh-ble", "role": "Phone-to-phone Bluetooth LE mesh for co-located, off-grid delivery" },
-        { "repo": "mesh-kit", "role": "Transport-agnostic reliability and reconciliation over the mesh" },
-        { "repo": "geohash-kit", "role": "Geohash precision tiers under the location-sharing model" }
+        {
+          "repo": "flock-kit",
+          "role": "The pure guidance core — radar state machine, heading arbitration, honesty gates, and consented-session rules"
+        },
+        {
+          "repo": "covey-kit",
+          "role": "Encrypted circle membership: derived keys, roles, word-code invites, and convergent roster state"
+        },
+        {
+          "repo": "roost-kit",
+          "role": "NIP-59 gift-wrap delivery, relay fan-out, rotating inboxes, and an offline outbox"
+        },
+        {
+          "repo": "capacitor-mesh-ble",
+          "role": "Phone-to-phone Bluetooth LE mesh for co-located, off-grid delivery"
+        },
+        {
+          "repo": "mesh-kit",
+          "role": "Transport-agnostic reliability and reconciliation over the mesh"
+        },
+        {
+          "repo": "geohash-kit",
+          "role": "Geohash precision tiers under the location-sharing model"
+        }
       ],
-      "protocols": ["Nostr", "NIP-44", "NIP-59", "NIP-40", "BLE mesh", "Noise_XX"]
+      "protocols": [
+        "Nostr",
+        "NIP-44",
+        "NIP-59",
+        "NIP-40",
+        "BLE mesh",
+        "Noise_XX"
+      ]
     },
     {
       "id": "coercion-resistant-safety-net",
@@ -612,13 +1040,222 @@
         "Every layer reuses canary-kit and spoken-token — no bespoke cryptography — so the duress vocabulary, group lifecycle, and NIP-44/NIP-59 transport are the same audited primitives that verify identity."
       ],
       "stack": [
-        { "repo": "canary-kit", "role": "Per-member spoken verification words, silent duress detection, and the AES-256-GCM state envelope" },
-        { "repo": "spoken-token", "role": "The time-rotating spoken-word primitive canary-kit derives from" },
-        { "repo": "covey-kit", "role": "Encrypted circle membership — keys, roles, and roster" },
-        { "repo": "roost-kit", "role": "NIP-59 gift-wrap delivery of beacons, duress, and SOS to rotating inboxes" },
-        { "repo": "flock-kit", "role": "The location-safety model: precision tiers, no-report places, and honest degradation" }
+        {
+          "repo": "canary-kit",
+          "role": "Per-member spoken verification words, silent duress detection, and the AES-256-GCM state envelope"
+        },
+        {
+          "repo": "spoken-token",
+          "role": "The time-rotating spoken-word primitive canary-kit derives from"
+        },
+        {
+          "repo": "covey-kit",
+          "role": "Encrypted circle membership — keys, roles, and roster"
+        },
+        {
+          "repo": "roost-kit",
+          "role": "NIP-59 gift-wrap delivery of beacons, duress, and SOS to rotating inboxes"
+        },
+        {
+          "repo": "flock-kit",
+          "role": "The location-safety model: precision tiers, no-report places, and honest degradation"
+        }
       ],
-      "protocols": ["Nostr", "NIP-44", "NIP-59", "AES-256-GCM", "PBKDF2"]
+      "protocols": [
+        "Nostr",
+        "NIP-44",
+        "NIP-59",
+        "AES-256-GCM",
+        "PBKDF2"
+      ]
+    },
+    {
+      "id": "bearer-notes-hand-to-hand",
+      "category": "payments",
+      "title": "Hand someone sats like a banknote",
+      "persona": "A person settling up with a friend who has no Lightning wallet set up yet",
+      "problem": "Lightning needs the receiver to produce an invoice first, so if they have no wallet ready nothing can be sent. Custodial \"send to email\" fixes that by putting a company in charge of the money in between.",
+      "outcome": "You buy a bearer note from a mint and hand it over as a QR or a link. It is money the moment it exists, the friend claims it into any LUD-25 wallet whenever they like, and no company holds it in between.",
+      "steps": [
+        "You pay the mint's Lightning invoice and moneyer strikes a note; you can name the spend secret up front so it is yours alone from the start, and the mint never stores it.",
+        "The friend claims the note in notecase, which rotates it immediately, because the sender, or anyone who saw the mint invoice, still knows the old secret.",
+        "Every replacement secret is written to disk before its hash goes on the wire, so a crash in the middle of a split or a merge can never orphan the money.",
+        "A timeout, or a mint answering \"already spent\" to a repeated request, parks the mutation as ambiguous; notecase reconcile probes the mint and either promotes the staged secret or unwinds it, never both.",
+        "To cash out, the holder melts the note to a BOLT-11 invoice: farrier-kit decodes the invoice before anything is paid and verifies the preimage after settlement.",
+        "The mint's signing key is pinned on first contact, so notes verify offline and a swapped key is refused unless the mint itself publishes the old one as retired."
+      ],
+      "stack": [
+        {
+          "repo": "notecase",
+          "role": "The wallet: receive, hold, split, merge, send and melt notes; persist-before-disclose and reconcile"
+        },
+        {
+          "repo": "moneyer",
+          "role": "The mint: strikes notes against a cln or lnd node and signs them for offline verification"
+        },
+        {
+          "repo": "farrier-kit",
+          "role": "BOLT-11 decoding, Lightning Address resolution and preimage verification"
+        },
+        {
+          "repo": "nwc-kit",
+          "role": "Optional Lightning arm: pay mint invoices and issue melt invoices through a wallet you already trust"
+        },
+        {
+          "repo": "keystore-kit",
+          "role": "PIN protection for the wallet's store key"
+        },
+        {
+          "repo": "shamir-words",
+          "role": "Word-encoded backup shares of the store key"
+        }
+      ],
+      "protocols": [
+        "LNURLcash (LUD-25)",
+        "LNURL",
+        "BOLT-11",
+        "NWC",
+        "Lightning"
+      ]
+    },
+    {
+      "id": "one-person-two-devices-call",
+      "category": "live",
+      "title": "A video call where your phone and laptop count as one person",
+      "persona": "A remote team member who wants the laptop for the screen share and the phone for the camera",
+      "problem": "Every incumbent treats identity as per-connection: join from two devices and the room shows two tiles, two names and two mute buttons. And somebody has to host the room and hold the guest list.",
+      "outcome": "The room sees one participant with three tracks. There is no account and no operator: the room is a secret held by whoever has the link, signalling rides relays that already exist, and media goes device to device.",
+      "steps": [
+        "Create a room: a 32-byte secret carried in the link's fragment, so whatever serves the page never sees it. Relay hints ride in the link; the room names its own STUN and TURN servers the same way.",
+        "Each device publishes a signed device credential (kind 20460) naming its participant, its room and an expiry, plus a roster event (kind 20461) encrypted to the room key.",
+        "The roster groups presence by participant, and singular roles such as the live microphone are arbitrated deterministically so two devices under one identity can never both hold one.",
+        "SDP and ICE travel as ephemeral gift wraps (kind 21059), NIP-44-encrypted to the recipient under a throwaway key, and media flows over a WebRTC mesh.",
+        "A pair that cannot connect directly is offered, in order, a room member who volunteered to carry them, a forwarder the room names, then TURN.",
+        "A room can be gated by Kindred tier, from open to a mutually verified bond, so it admits anyone with the link or only the people who can prove they know you."
+      ],
+      "stack": [
+        {
+          "repo": "kithmoot",
+          "role": "The protocol and the TypeScript reference client, live at kithmoot.forgesworn.dev"
+        },
+        {
+          "repo": "kithmoot-android",
+          "role": "The second, independent implementation, written against the published interop vectors"
+        }
+      ],
+      "protocols": [
+        "WebRTC",
+        "NIP-44",
+        "NIP-59 (gift wrap)",
+        "NIP-40",
+        "kind 20460",
+        "kind 20461",
+        "STUN / TURN"
+      ]
+    },
+    {
+      "id": "livestream-without-a-tracker",
+      "category": "live",
+      "title": "Live-stream to a crowd with no tracker for anyone to seize",
+      "persona": "An independent broadcaster whose peer-assisted stream depends on a signalling tracker one company runs",
+      "problem": "Browser peer-assist needs rendezvous, because viewers cannot find each other from nothing. Today that comes from a dedicated tracker somebody operates, which makes it the one seizable part of the system.",
+      "outcome": "The stream's own Nostr relays carry the swarm's signalling. Viewers exchange encrypted offers over relays the stream chose, fetch segments from each other verified by hash, and fall back to plain HLS from the origin, so the floor is today's behaviour.",
+      "steps": [
+        "A NIP-53 live-stream event already lists relays; RelaySwarm uses that same relay set as the swarm's rendezvous instead of a tracker.",
+        "A viewer announces presence as an ephemeral kind 24170 event scoped to the swarm; peers answer with kind 24171 signals addressed to it.",
+        "SDP is NIP-44-encrypted to the counterparty, because an offer names the sender's network addresses and must never sit readable on a public relay.",
+        "Peers open WebRTC data channels and exchange segments, each verified against its hash before it is played.",
+        "Every viewer keeps the origin as fallback: if no peer can serve a segment in time, it is fetched over plain HLS.",
+        "Native macOS and iOS apps join the same swarm through relayswarm-kit, which ships the signalling and a libdatachannel transport as Swift packages."
+      ],
+      "stack": [
+        {
+          "repo": "relayswarm",
+          "role": "The swarm engine and its proof of concept: HLS integration, hash-verified segments, origin fallback"
+        },
+        {
+          "repo": "relayswarm-kit",
+          "role": "Swift signalling and transport for Apple platforms: presence, encrypted SDP, data channels"
+        }
+      ],
+      "protocols": [
+        "HLS",
+        "WebRTC",
+        "NIP-53",
+        "NIP-44",
+        "kind 24170",
+        "kind 24171"
+      ]
+    },
+    {
+      "id": "files-that-outlive-their-host",
+      "category": "storage",
+      "title": "Publish files that outlive the server they started on",
+      "persona": "A writer whose archive has vanished twice when a hosting company folded",
+      "problem": "A post or a file lives at one host's address. When that host goes away so does everything, and every link that pointed at it breaks.",
+      "outcome": "Content is addressed by its hash, encrypted before it leaves your machine, and mirrored to nodes you and your friends run. Any copy satisfies the link, and repair puts back exactly the bytes that were lost.",
+      "steps": [
+        "Wildbloom keeps the file locally first, encrypts it, and publishes the blob to standard Blossom servers over HTTPS or, optionally, Tor.",
+        "The Nostr event that references it carries the content hash, so a reader can fetch from any server that has it and verify it is the right bytes.",
+        "Your own Wildbloom Node holds it under owner, friend and guest retention tiers over one deduplicated store; a friend's node takes a verified BUD-04 mirror.",
+        "When a copy is missing or corrupt, exact-hash repair fetches it again from another node that has it.",
+        "Nodes without Tor reach each other over ForgeSworn Link: a direct QUIC path where the network allows it and an opaque relay where it does not.",
+        "BitTorrent stays available as an extra distribution lane for large files."
+      ],
+      "stack": [
+        {
+          "repo": "wildbloom",
+          "role": "Local-first client: encrypts, publishes to Blossom servers, keeps BitTorrent as an extra lane"
+        },
+        {
+          "repo": "wildbloom-node",
+          "role": "Self-hosted node with retention tiers, verified mirror and exact-hash repair"
+        },
+        {
+          "repo": "shelter-kit",
+          "role": "The transport-neutral storage core the node is built on: BUD authorisation, content-addressed store, mirror and repair"
+        },
+        {
+          "repo": "forgesworn-link",
+          "role": "Wide-area lane between nodes: direct QUIC or opaque relay, no Tor required"
+        }
+      ],
+      "protocols": [
+        "Blossom",
+        "BUD-04",
+        "Nostr",
+        "QUIC",
+        "BitTorrent",
+        "Tor (optional)"
+      ]
+    },
+    {
+      "id": "family-screen-time-own-keys",
+      "category": "coordination",
+      "title": "Screen-time limits a family signs for itself",
+      "persona": "A parent who wants limits on a child's phone without a Google or Apple family account",
+      "problem": "Platform parental controls put a company between guardian and child, hold the family's data, and frame the whole relationship as surveillance.",
+      "outcome": "The guardian grants scoped, revocable clauses, from schedules and budgets to per-app limits and web content, signed with the family's own key and enforced on the device. No server holds family data, and every limit is visible to both sides.",
+      "steps": [
+        "The guardian app holds the family signing key locally, backs it up encrypted, and pairs the child's devices.",
+        "A clause is a signed grant delivered as a NIP-59 gift wrap over Nostr relays; the ward device verifies the signature before it enforces anything.",
+        "On Android the ward app runs as Device Owner and enforces schedules, budgets, per-app limits, install windows and web content, with an always-available Lifeline emergency-calling path.",
+        "On Linux the charterd warden enforces the same charter: per-child time, an on-display lock, web filtering and honest foreground-app attribution.",
+        "\"Can I have longer?\" asks go back to the guardian to approve or amend, and usage syncs the same way, so guardian and ward see the same picture.",
+        "Any Nostr-aware app can honour a schedule clause directly through the @forgesworn/charter SDK, without the rest of Kintrinsic."
+      ],
+      "stack": [
+        {
+          "repo": "kintrinsic",
+          "role": "The whole system: guardian app, Android ward app, Linux warden, wire contract and consumer SDK"
+        }
+      ],
+      "protocols": [
+        "NIP-59 (gift wrap)",
+        "Nostr",
+        "Blossom",
+        "Android Device Owner"
+      ]
     }
   ]
 }

@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ForgeSworn Use Cases &mdash; 25 end-to-end workflows you can build</title>
-  <meta name="description" content="Twenty-five real, end-to-end workflows built by composing ForgeSworn libraries — machine payments, sovereign identity, verification, encrypted access, and supply-chain tooling on Nostr and Lightning.">
+  <title>ForgeSworn Use Cases &mdash; <!-- USE_CASE_COUNT --> end-to-end workflows you can build</title>
+  <meta name="description" content="<!-- USE_CASE_COUNT --> real, end-to-end workflows built by composing ForgeSworn libraries — machine payments, bearer notes, sovereign identity, verification, encrypted access, storage, live rooms and supply-chain tooling on Nostr and Lightning.">
   <meta name="theme-color" content="#0a0a0f">
   <link rel="canonical" href="https://forgesworn.dev/use-cases.html">
-  <meta property="og:title" content="ForgeSworn Use Cases — 25 end-to-end workflows you can build">
-  <meta property="og:description" content="From building blocks to real workflows: 25 deeply-researched builds and the exact ForgeSworn libraries each one uses.">
+  <meta property="og:title" content="ForgeSworn Use Cases — <!-- USE_CASE_COUNT --> end-to-end workflows you can build">
+  <meta property="og:description" content="From building blocks to real workflows: <!-- USE_CASE_COUNT --> deeply-researched builds and the exact ForgeSworn libraries each one uses.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://forgesworn.dev/use-cases.html">
   <meta property="og:image" content="https://forgesworn.dev/social-preview.png">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="ForgeSworn Use Cases — 25 end-to-end workflows you can build">
-  <meta name="twitter:description" content="From building blocks to real workflows: 25 deeply-researched builds and the libraries each one uses.">
+  <meta name="twitter:title" content="ForgeSworn Use Cases — <!-- USE_CASE_COUNT --> end-to-end workflows you can build">
+  <meta name="twitter:description" content="From building blocks to real workflows: <!-- USE_CASE_COUNT --> deeply-researched builds and the libraries each one uses.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0a0f'/><text x='16' y='23' font-size='18' text-anchor='middle' fill='%23e8a838' font-family='serif'>&#9876;</text></svg>">
   <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/fraunces-latin.woff2" as="font" type="font/woff2" crossorigin>
@@ -60,7 +60,7 @@
 
       --text-primary: #e8e6e3;
       --text-secondary: #9896a1;
-      --text-muted: #5e5c66;
+      --text-muted: #7f7d89;
 
       --accent-gold: #e8a838;
       --accent-gold-dim: #b8842a;
@@ -214,9 +214,14 @@
       border: none;
       color: var(--text-primary);
       font-size: 1.5rem;
+      line-height: 1;
       cursor: pointer;
-      padding: 0.25rem;
+      width: 44px;
+      height: 44px;
+      margin-right: -0.5rem;
+      border-radius: 6px;
     }
+    :focus-visible { outline: 2px solid var(--accent-gold); outline-offset: 3px; border-radius: 3px; }
 
     /* ========================================
        HERO
@@ -568,15 +573,38 @@
         top: 100%;
         left: 0;
         right: 0;
-        background: rgba(6, 6, 11, 0.97);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        padding: 1.5rem;
-        gap: 1.25rem;
+        background: var(--bg-deep);
+        align-items: stretch;
+        padding: 0.75rem 1.5rem 1.25rem;
+        gap: 0;
         border-bottom: 1px solid var(--border-subtle);
+      }
+      .nav-links.open a {
+        display: block;
+        font-size: 0.95rem;
+        padding: 0.8rem 0;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+      .nav-links.open .btn-nav {
+        margin-top: 0.9rem;
+        text-align: center;
+        padding: 0.7rem 1rem;
+        border-bottom: none;
       }
       .nav-toggle { display: block; }
       .uc-filter-bar { top: 50px; }
+      /* One scrollable row: eight wrapped pills were pinning a third of the
+         screen under a sticky bar. */
+      .uc-filter-track {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+        margin: 0 -1.25rem;
+        padding: 0 1.25rem;
+      }
+      .uc-filter-track::-webkit-scrollbar { display: none; }
+      .uc-filter { flex-shrink: 0; }
       .hero-stats { gap: 1.5rem; }
       .hero-stats .stat-value { font-size: 1.8rem; }
       .footer-inner { flex-direction: column; text-align: center; }
@@ -601,11 +629,12 @@
         </svg>
         Forge<span>Sworn</span>
       </a>
-      <button class="nav-toggle" id="navToggle" type="button" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+      <button class="nav-toggle" id="navToggle" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="navLinks">&#9776;</button>
       <ul class="nav-links" id="navLinks">
+        <li><a href="/#products">Products</a></li>
+        <li><a href="/#why">Why</a></li>
         <li><a href="/#ecosystem">Ecosystem</a></li>
-        <li><a href="/use-cases.html" class="is-current">Use Cases</a></li>
-        <li><a href="https://bray.forgesworn.dev">Bray</a></li>
+        <li><a href="/use-cases.html" class="is-current" aria-current="page">Use cases</a></li>
         <li><a href="https://github.com/forgesworn" class="btn-nav">GitHub</a></li>
       </ul>
     </div>
@@ -618,7 +647,7 @@
         <span class="section-label">Use cases</span>
         <h1>From building blocks to <em>real workflows</em></h1>
         <p class="uc-hero-sub">
-          The catalogue shows what each library does. This is what you can build when you compose them. Twenty-five end-to-end workflows &mdash; each starts with a real person and a real problem, walks the steps, and names the exact ForgeSworn pieces it stands on.
+          The catalogue shows what each library does. This is what you can build when you compose them. <!-- USE_CASE_COUNT --> end-to-end workflows &mdash; each starts with a real person and a real problem, walks the steps, and names the exact ForgeSworn pieces it stands on.
         </p>
         <div class="hero-stats">
           <!-- USE_CASES_HERO_STATS -->
@@ -667,6 +696,7 @@
         </div>
         <ul class="footer-links">
           <li><a href="/">Home</a></li>
+          <li><a href="/#products">Products</a></li>
           <li><a href="/#ecosystem">Ecosystem</a></li>
           <li><a href="https://github.com/forgesworn">GitHub</a></li>
           <li><a href="https://www.npmjs.com/org/forgesworn">npm</a></li>
@@ -698,6 +728,14 @@
         navToggle.textContent = '☰';
         navToggle.setAttribute('aria-expanded', 'false');
       });
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && navLinks.classList.contains('open')) {
+        navLinks.classList.remove('open');
+        navToggle.textContent = '☰';
+        navToggle.setAttribute('aria-expanded', 'false');
+        navToggle.focus();
+      }
     });
 
     /* ===== FILTER ===== */
