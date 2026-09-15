@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- The fly: a fruit fly seen from above, drawn as its own wiring diagram.
+       Forest-black ground, sage wiring, champagne body, the red eyes every
+       Drosophila carries. ForgeSworn house palette, as Oathrun's emblem. -->
+  <defs>
+    <radialGradient id="ground" cx="50%" cy="42%" r="70%">
+      <stop offset="0" stop-color="#1a231c"/>
+      <stop offset="0.55" stop-color="#121814"/>
+      <stop offset="1" stop-color="#0b0f0c"/>
+    </radialGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e6d3a3"/>
+      <stop offset="0.5" stop-color="#c9b27c"/>
+      <stop offset="1" stop-color="#8f7a4e"/>
+    </linearGradient>
+    <linearGradient id="bodyDark" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5a4a2c"/>
+      <stop offset="1" stop-color="#3a2f1c"/>
+    </linearGradient>
+    <radialGradient id="eye" cx="38%" cy="35%" r="65%">
+      <stop offset="0" stop-color="#ff8a6a"/>
+      <stop offset="0.35" stop-color="#d9412f"/>
+      <stop offset="1" stop-color="#6d1410"/>
+    </radialGradient>
+    <linearGradient id="wing" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#c0d99b" stop-opacity="0.34"/>
+      <stop offset="1" stop-color="#c0d99b" stop-opacity="0.08"/>
+    </linearGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3"/>
+    </filter>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <clipPath id="abdomenClip">
+      <ellipse cx="512" cy="700" rx="118" ry="168"/>
+    </clipPath>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#ground)"/>
+  <g transform="translate(512 512) scale(1.14) translate(-512 -540)">
+
+  <!-- faint wiring in the ground: the connectome the fly is drawn from -->
+  <g stroke="#c0d99b" stroke-width="1.4" fill="none" opacity="0.2">
+    <path d="M120 180 L260 240 L350 190 L470 260 M260 240 L300 360 L420 400 M700 150 L780 260 L880 220 M780 260 L740 380 L850 430 M140 700 L230 760 L300 860 L420 890 M230 760 L200 880 M880 720 L800 800 L720 900 M800 800 L900 860"/>
+    <path d="M90 470 L170 520 L150 620 M900 480 L840 560 L890 640" />
+  </g>
+  <g fill="#c0d99b" opacity="0.4">
+    <circle cx="120" cy="180" r="4"/><circle cx="260" cy="240" r="5"/><circle cx="350" cy="190" r="3.5"/><circle cx="470" cy="260" r="3"/>
+    <circle cx="300" cy="360" r="4"/><circle cx="420" cy="400" r="3"/><circle cx="700" cy="150" r="4"/><circle cx="780" cy="260" r="5"/>
+    <circle cx="880" cy="220" r="3.5"/><circle cx="740" cy="380" r="4"/><circle cx="850" cy="430" r="3"/><circle cx="140" cy="700" r="4"/>
+    <circle cx="230" cy="760" r="5"/><circle cx="300" cy="860" r="3.5"/><circle cx="420" cy="890" r="3"/><circle cx="200" cy="880" r="3"/>
+    <circle cx="880" cy="720" r="4"/><circle cx="800" cy="800" r="5"/><circle cx="720" cy="900" r="3.5"/><circle cx="900" cy="860" r="3"/>
+    <circle cx="90" cy="470" r="3.5"/><circle cx="170" cy="520" r="4"/><circle cx="150" cy="620" r="3"/><circle cx="900" cy="480" r="3.5"/><circle cx="840" cy="560" r="4"/><circle cx="890" cy="640" r="3"/>
+  </g>
+
+  <!-- wings, behind the body, swept back -->
+  <g>
+    <path d="M488 470 C 380 520, 250 640, 210 800 C 200 850, 240 870, 290 840 C 380 780, 470 640, 500 500 Z" fill="url(#wing)" stroke="#c0d99b" stroke-opacity="0.7" stroke-width="3.5"/>
+    <path d="M536 470 C 644 520, 774 640, 814 800 C 824 850, 784 870, 734 840 C 644 780, 554 640, 524 500 Z" fill="url(#wing)" stroke="#c0d99b" stroke-opacity="0.7" stroke-width="3.5"/>
+    <!-- wing veins -->
+    <g stroke="#c0d99b" stroke-opacity="0.45" stroke-width="1.6" fill="none">
+      <path d="M492 490 C 420 560, 330 680, 260 810 M496 500 C 440 600, 370 720, 300 830 M470 560 C 400 630, 330 700, 280 780"/>
+      <path d="M532 490 C 604 560, 694 680, 764 810 M528 500 C 584 600, 654 720, 724 830 M554 560 C 624 630, 694 700, 744 780"/>
+    </g>
+  </g>
+
+  <!-- legs -->
+  <g stroke="#4a3b22" stroke-width="13" stroke-linecap="round" fill="none">
+    <path d="M470 520 C 400 500, 340 460, 300 400 C 280 370, 270 330, 275 300"/>
+    <path d="M554 520 C 624 500, 684 460, 724 400 C 744 370, 754 330, 749 300"/>
+    <path d="M462 570 C 380 590, 300 600, 230 590 C 200 585, 180 575, 160 560"/>
+    <path d="M562 570 C 644 590, 724 600, 794 590 C 824 585, 844 575, 864 560"/>
+    <path d="M470 620 C 400 680, 340 740, 300 820 C 290 840, 285 860, 290 880"/>
+    <path d="M554 620 C 624 680, 684 740, 724 820 C 734 840, 739 860, 734 880"/>
+  </g>
+  <g stroke="#e6d3a3" stroke-opacity="0.55" stroke-width="3" fill="none">
+    <path d="M470 520 C 400 500, 340 460, 300 400 C 280 370, 270 330, 275 300"/>
+    <path d="M554 520 C 624 500, 684 460, 724 400 C 744 370, 754 330, 749 300"/>
+    <path d="M462 570 C 380 590, 300 600, 230 590 C 200 585, 180 575, 160 560"/>
+    <path d="M562 570 C 644 590, 724 600, 794 590 C 824 585, 844 575, 864 560"/>
+    <path d="M470 620 C 400 680, 340 740, 300 820 C 290 840, 285 860, 290 880"/>
+    <path d="M554 620 C 624 680, 684 740, 724 820 C 734 840, 739 860, 734 880"/>
+  </g>
+
+  <!-- abdomen -->
+  <ellipse cx="512" cy="700" rx="118" ry="168" fill="url(#body)" stroke="#3a2f1c" stroke-width="3"/>
+  <g clip-path="url(#abdomenClip)" fill="#3a2f1c" opacity="0.85">
+    <rect x="380" y="640" width="264" height="26"/>
+    <rect x="380" y="700" width="264" height="26"/>
+    <rect x="380" y="760" width="264" height="24"/>
+    <rect x="380" y="816" width="264" height="22"/>
+  </g>
+  <ellipse cx="512" cy="700" rx="118" ry="168" fill="none" stroke="#c0d99b" stroke-opacity="0.35" stroke-width="2"/>
+
+  <!-- thorax -->
+  <ellipse cx="512" cy="520" rx="104" ry="96" fill="url(#body)" stroke="#3a2f1c" stroke-width="3"/>
+  <ellipse cx="512" cy="520" rx="104" ry="96" fill="none" stroke="#c0d99b" stroke-opacity="0.35" stroke-width="2"/>
+  <!-- the wiring diagram on the thorax: nodes and edges, the sage connectome -->
+  <g stroke="#c0d99b" stroke-width="2.2" fill="none" opacity="0.9">
+    <path d="M512 440 L470 480 L440 530 L470 580 L512 600 L554 580 L584 530 L554 480 Z"/>
+    <path d="M470 480 L512 520 L554 480 M440 530 L512 520 L584 530 M470 580 L512 520 L554 580 M512 440 L512 520 L512 600"/>
+  </g>
+  <g fill="#c0d99b" filter="url(#glow)">
+    <circle cx="512" cy="520" r="9"/>
+    <circle cx="512" cy="440" r="5"/><circle cx="470" cy="480" r="5"/><circle cx="440" cy="530" r="5"/><circle cx="470" cy="580" r="5"/>
+    <circle cx="512" cy="600" r="5"/><circle cx="554" cy="580" r="5"/><circle cx="584" cy="530" r="5"/><circle cx="554" cy="480" r="5"/>
+  </g>
+
+  <!-- neck and head -->
+  <ellipse cx="512" cy="392" rx="84" ry="72" fill="url(#body)" stroke="#3a2f1c" stroke-width="3"/>
+  <!-- antennae with arista -->
+  <g stroke="#3a2f1c" stroke-width="6" stroke-linecap="round" fill="none">
+    <path d="M492 342 C 480 300, 450 275, 420 270"/>
+    <path d="M532 342 C 544 300, 574 275, 604 270"/>
+  </g>
+  <g stroke="#c0d99b" stroke-width="2" stroke-opacity="0.8" fill="none">
+    <path d="M420 270 L400 245 M420 270 L392 268 M420 270 L404 290"/>
+    <path d="M604 270 L624 245 M604 270 L632 268 M604 270 L620 290"/>
+  </g>
+  <!-- compound eyes -->
+  <g>
+    <ellipse cx="452" cy="392" rx="46" ry="58" fill="url(#eye)" stroke="#3a1410" stroke-width="3"/>
+    <ellipse cx="572" cy="392" rx="46" ry="58" fill="url(#eye)" stroke="#3a1410" stroke-width="3"/>
+    <!-- ommatidia hint -->
+    <g fill="#ffffff" opacity="0.10">
+      <circle cx="440" cy="372" r="4"/><circle cx="454" cy="380" r="4"/><circle cx="446" cy="396" r="4"/><circle cx="460" cy="404" r="4"/><circle cx="450" cy="420" r="4"/><circle cx="436" cy="408" r="4"/>
+      <circle cx="584" cy="372" r="4"/><circle cx="570" cy="380" r="4"/><circle cx="578" cy="396" r="4"/><circle cx="564" cy="404" r="4"/><circle cx="574" cy="420" r="4"/><circle cx="588" cy="408" r="4"/>
+    </g>
+    <ellipse cx="438" cy="366" rx="12" ry="16" fill="#ffd7cc" opacity="0.55" filter="url(#soft)"/>
+    <ellipse cx="558" cy="366" rx="12" ry="16" fill="#ffd7cc" opacity="0.55" filter="url(#soft)"/>
+  </g>
+  <!-- proboscis -->
+  <path d="M500 456 C 505 480, 519 480, 524 456" fill="none" stroke="#3a2f1c" stroke-width="7" stroke-linecap="round"/>
+  <path d="M512 468 L512 492" stroke="#3a2f1c" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="512" cy="496" r="6" fill="#c0d99b"/>
+  </g>
+</svg>
