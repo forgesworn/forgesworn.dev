@@ -85,29 +85,11 @@
     .status.err { color: #f0907e; }
 
     /* the live fly */
-    .stage { display: grid; grid-template-columns: 300px 1fr; gap: 1.4rem; align-items: center; }
+    .stage { display: grid; grid-template-columns: 340px 1fr; gap: 1.4rem; align-items: center; }
     @media (max-width: 720px) { .stage { grid-template-columns: 1fr; } }
-    .fly-box { position: relative; background: radial-gradient(circle at 50% 40%, #1a231c, #0b0f0c 75%); border-radius: 16px; border: 1px solid var(--line); overflow: hidden; aspect-ratio: 1; }
-    .fly-box svg { width: 100%; height: 100%; display: block; }
-    #fly { transform-origin: 512px 540px; transition: transform 0.6s cubic-bezier(.2,.8,.2,1); }
-    .fly-box.fed #proboscis { animation: probe 1.2s ease-in-out 3; }
-    .fly-box.fed #crop-fill { transition: transform 1.5s ease-out; }
-    .fly-box.backward #fly { transform: translateY(70px) scale(0.94); }
-    .fly-box.forward #fly { transform: translateY(-50px) scale(1.04); }
-    .fly-box.turn-left #fly { transform: rotate(-22deg); }
-    .fly-box.turn-right #fly { transform: rotate(22deg); }
-    .fly-box.startled #fly { animation: startle 0.9s cubic-bezier(.2,.9,.3,1.2) 1; }
-    .fly-box.sing #wings path.blade { animation: buzz 0.12s linear infinite alternate; }
-    .fly-box.sing .notes { opacity: 1; }
-    .fly-box.quiet #wings path.blade { animation: twitch 6s ease-in-out infinite; }
-    .notes { position: absolute; right: 12%; top: 14%; font-family: var(--font-display); font-size: 2rem; color: var(--sage); opacity: 0; transition: opacity 0.5s; text-shadow: 0 0 12px rgba(192,217,155,0.6); }
-    .notes span { display: inline-block; animation: floatup 2.4s ease-out infinite; }
-    .notes span:nth-child(2) { animation-delay: 0.8s; } .notes span:nth-child(3) { animation-delay: 1.6s; }
-    @keyframes probe { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(26px); } }
-    @keyframes startle { 0% { transform: translateY(0) scale(1); } 30% { transform: translateY(-120px) scale(1.06) rotate(-6deg); } 100% { transform: translateY(0) scale(1); } }
-    @keyframes buzz { from { transform: scaleX(0.96); } to { transform: scaleX(1.04); } }
-    @keyframes twitch { 0%, 92%, 100% { transform: scaleX(1); } 95% { transform: scaleX(1.03); } 98% { transform: scaleX(0.98); } }
-    @keyframes floatup { 0% { transform: translateY(0); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(-60px); opacity: 0; } }
+    .fly-box { position: relative; background: radial-gradient(circle at 50% 35%, #1b241d, #0b0f0c 78%); border-radius: 16px; border: 1px solid var(--line); overflow: hidden; aspect-ratio: 1; }
+    .fly-box canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
+    .splat-hint { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.06em; color: var(--ink-dim); background: rgba(11,15,12,0.55); border: 1px solid var(--line); border-radius: 999px; padding: 0.12rem 0.6rem; pointer-events: none; white-space: nowrap; transition: opacity 0.4s; }
     .meter { margin-top: 1rem; }
     .meter .bar { height: 10px; background: var(--bg-2); border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
     .meter .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--champagne-dim), var(--champagne)); transition: width 1.2s ease-out; }
@@ -117,7 +99,16 @@
     blockquote { margin: 0.8rem 0 0; padding: 0.8rem 1rem; border-left: 3px solid var(--sage-dim); background: var(--bg-2); border-radius: 0 10px 10px 0; font-size: var(--text-detail); white-space: pre-wrap; color: var(--ink); }
 
     /* feed */
-    .feed { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.8rem; }
+    .feed-head { display: flex; align-items: center; gap: 0.6rem; }
+    .feed-live { display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--sage-dim); }
+    .feed-live::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--sage); box-shadow: 0 0 0 0 rgba(192,217,155,0.5); animation: pulse 2s ease-out infinite; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(192,217,155,0.5); } 70% { box-shadow: 0 0 0 7px rgba(192,217,155,0); } 100% { box-shadow: 0 0 0 0 rgba(192,217,155,0); } }
+    .feed-scroll { max-height: 560px; overflow-y: auto; overflow-x: hidden; padding-right: 6px; margin-top: 0.4rem; -webkit-overflow-scrolling: touch; scrollbar-width: thin; scrollbar-color: var(--sage-dim) transparent; -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%); mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%); }
+    .feed-scroll::-webkit-scrollbar { width: 8px; }
+    .feed-scroll::-webkit-scrollbar-thumb { background: var(--line); border-radius: 999px; }
+    .feed-scroll::-webkit-scrollbar-thumb:hover { background: var(--sage-dim); }
+    .feed-scroll::-webkit-scrollbar-track { background: transparent; }
+    .feed { list-style: none; margin: 0; padding: 4px 0; display: grid; gap: 0.8rem; }
     .feed li { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 0.9rem 1.1rem; display: grid; grid-template-columns: 44px 1fr; gap: 0.9rem; }
     .feed .who { width: 44px; height: 44px; border-radius: 50%; background: var(--bg-2); border: 1px solid var(--line); overflow: hidden; display: grid; place-items: center; font-family: var(--font-display); color: var(--sage); }
     .feed .who img { width: 100%; height: 100%; object-fit: cover; }
@@ -154,9 +145,9 @@
       <div class="eyebrow">Right now</div>
       <h2>What it last did</h2>
       <div class="stage">
-        <div class="fly-box quiet" id="fly-box">
-          <svg viewBox="0 0 1024 1024" role="img" aria-label="The fly"><g id="fly"></g></svg>
-          <div class="notes" aria-hidden="true"><span>♪</span><span>♫</span><span>♪</span></div>
+        <div class="fly-box" id="fly-box">
+          <canvas id="fly-canvas" role="img" aria-label="A fruit fly flying inside a jar. Tap it to poke it."></canvas>
+          <div class="splat-hint" id="splat-hint" aria-hidden="true">tap it to poke</div>
         </div>
         <div>
           <div class="reaction" id="reaction">Resting.<small id="reaction-when">waiting for the relays</small></div>
@@ -205,8 +196,10 @@
 
     <section id="feed">
       <div class="eyebrow">The feed</div>
-      <h2>Sugar in, reflexes out</h2>
-      <ul class="feed" id="feed-list"><li class="empty" style="display:block">Listening to the relays…</li></ul>
+      <div class="feed-head"><h2 style="margin:0">Sugar in, reflexes out</h2><span class="feed-live" id="feed-live">live · newest first</span></div>
+      <div class="feed-scroll">
+        <ul class="feed" id="feed-list"><li class="empty" style="display:block">Listening to the relays…</li></ul>
+      </div>
     </section>
 
     <section id="how">
@@ -236,49 +229,185 @@
     const LNURL = 'LNURL1DP68GURN8GHJ7MT0DEJHJETJ9EJX2A309EMK2MRV944KUMMHDCHKCMN4WFK8QTMXD3US2ELMMM';
     const $ = s => document.querySelector(s);
 
-    // The fly itself: the emblem's body, without its ground, so the page's
-    // stage can move it. Loaded from the same SVG the profile picture came from.
-    fetch('emblem.svg').then(r => r.text()).then(text => {
-      const doc = new DOMParser().parseFromString(text, 'image/svg+xml');
-      const svg = doc.documentElement;
-      const host = $('#fly');
-      const defs = svg.querySelector('defs'); if (defs) host.parentNode.insertBefore(document.importNode(defs, true), host);
-      const body = svg.querySelector('g[transform]');
-      if (body) {
-        const inner = document.importNode(body, true);
-        // tag the parts the animations move
-        const wings = inner.querySelector('g > path[d^="M488 470"]')?.parentNode; if (wings) { wings.id = 'wings'; wings.querySelectorAll(':scope > path').forEach(p => p.classList.add('blade')); }
-        const paths = [...inner.querySelectorAll('path')];
-        const probe = paths.find(p => (p.getAttribute('d') || '').startsWith('M500 456'));
-        if (probe) { const g = document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.id = 'proboscis'; probe.parentNode.insertBefore(g, probe); g.appendChild(probe); const stem = paths.find(p => (p.getAttribute('d') || '').startsWith('M512 468')); if (stem) g.appendChild(stem); const tip = inner.querySelector('circle[cx="512"][cy="496"]'); if (tip) g.appendChild(tip); }
-        host.appendChild(inner);
+    // ---- The fly: a canvas creature that flies around its jar --------------
+    // Drawn, not a photo. It wanders, lands, feeds, sings and darts. A note
+    // from the real fly sets its next move; the idle flight between notes is
+    // the page's own, and the hint says so. A photo sprite can drop in later.
+    const FlyStage = (() => {
+      const cv = $('#fly-canvas'); if (!cv) return { react() {}, setSplatHandler() {} };
+      const ctx = cv.getContext('2d');
+      const box = $('#fly-box');
+      const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      let W = 320, H = 320, dpr = 1;
+      function resize() {
+        const r = box.getBoundingClientRect();
+        W = Math.max(180, r.width); H = Math.max(180, r.height);
+        dpr = Math.min(2, window.devicePixelRatio || 1);
+        cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       }
-    }).catch(() => {});
+      try { new ResizeObserver(resize).observe(box); } catch {} resize();
+      const rand = (a, b) => a + Math.random() * (b - a);
+      const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+      const floorY = () => H * 0.82;
+      const now = () => performance.now();
 
-    // Behaviour words the fly uses, in the order the page prefers to show them.
-    const REACTIONS = [
+      const fly = { x: W / 2, y: H / 2, vx: rand(-1, 1), vy: rand(-1, 1), ang: 0, wing: 0,
+        mode: 'cruise', until: 0, target: null, proboscis: 0, notes: [], splat: 0,
+        landing: null, landMode: 'rest', landUntil: 0 };
+      let drops = [], onSplat = null;
+      function pickTarget() { fly.target = { x: rand(W * 0.14, W * 0.86), y: rand(H * 0.10, floorY() - 24) }; }
+      pickTarget();
+      const setMode = (m, ms) => { fly.mode = m; fly.until = now() + ms; };
+      function landAndDo(mode, ms) { fly.landing = { x: clamp(fly.x, W * 0.2, W * 0.8), y: floorY() }; fly.landMode = mode; fly.landUntil = ms; setMode('land', 6000); }
+      function startle(dir) { const p = reduce ? 5 : 9; fly.vx = Math.cos(dir) * p; fly.vy = Math.sin(dir) * p; setMode('startle', 900); fly.splat = 1; }
+      function react(word, sats) {
+        if (word === 'startled') startle(rand(0, Math.PI * 2));
+        else if (word === 'fed') landAndDo('feed', 4200);
+        else if (word === 'sing') setMode('sing', 4200);
+        else if (word === 'puke') landAndDo('puke', 5000);
+        else if (word === 'backward') { setMode('cruise', 1); fly.vx *= -0.4; fly.vy = Math.abs(fly.vy) + 0.8; }
+        else { setMode('cruise', 1); }
+      }
+
+      cv.addEventListener('pointerdown', e => {
+        const r = cv.getBoundingClientRect();
+        const px = e.clientX - r.left, py = e.clientY - r.top;
+        if (Math.hypot(px - fly.x, py - fly.y) < Math.max(52, W * 0.24)) { startle(Math.atan2(fly.y - py, fly.x - px)); if (onSplat) onSplat(); }
+        else { fly.target = { x: px, y: py }; setMode('cruise', 1); }
+      });
+
+      function step(dt) {
+        const t = now();
+        if (fly.mode === 'cruise' || fly.mode === 'sing') {
+          if (!fly.target || Math.hypot(fly.target.x - fly.x, fly.target.y - fly.y) < 24) pickTarget();
+          const ax = fly.target.x - fly.x, ay = fly.target.y - fly.y, m = Math.hypot(ax, ay) || 1;
+          const pull = fly.mode === 'sing' ? 0.05 : 0.12, jit = fly.mode === 'sing' ? 0.12 : 0.28;
+          fly.vx += (ax / m) * pull + rand(-jit, jit); fly.vy += (ay / m) * pull + rand(-jit, jit);
+          const s = Math.hypot(fly.vx, fly.vy), max = fly.mode === 'sing' ? 0.9 : (reduce ? 1.8 : 3.4);
+          if (s > max) { fly.vx = fly.vx / s * max; fly.vy = fly.vy / s * max; }
+          fly.x += fly.vx; fly.y += fly.vy;
+          if (fly.mode === 'cruise' && Math.random() < 0.0009) landAndDo('rest', rand(1600, 3800));
+          if (t > fly.until && fly.mode === 'sing') setMode('cruise', 1);
+        } else if (fly.mode === 'startle') {
+          fly.x += fly.vx; fly.y += fly.vy; fly.vx *= 0.9; fly.vy *= 0.9;
+          if (t > fly.until) setMode('cruise', 1);
+        } else if (fly.mode === 'land') {
+          const L = fly.landing, ax = L.x - fly.x, ay = L.y - fly.y, m = Math.hypot(ax, ay) || 1;
+          fly.vx = ax / m * Math.min(2.4, m * 0.12); fly.vy = ay / m * Math.min(2.4, m * 0.12);
+          fly.x += fly.vx; fly.y += fly.vy; fly.ang = Math.PI / 2;
+          if (m < 4) { fly.x = L.x; fly.y = L.y; fly.vx = fly.vy = 0; setMode(fly.landMode, fly.landUntil); if (fly.landMode === 'puke') drops.push({ x: fly.x, y: fly.y + 6, vy: 0.3, life: 1.4, kind: 'gift' }); }
+        } else { // rest, feed, puke: landed
+          fly.vx = fly.vy = 0; fly.y = floorY(); fly.ang = Math.PI / 2;
+          if (t > fly.until) { setMode('cruise', 1); pickTarget(); fly.vy = -2.2; }
+        }
+        fly.x = clamp(fly.x, 16, W - 16); fly.y = clamp(fly.y, 14, floorY());
+        if ((fly.mode === 'cruise' || fly.mode === 'startle') && Math.hypot(fly.vx, fly.vy) > 0.5) fly.ang = Math.atan2(fly.vy, fly.vx);
+        const airborne = fly.mode === 'cruise' || fly.mode === 'startle' || fly.mode === 'land';
+        const flap = fly.mode === 'sing' ? 58 : airborne ? 44 : (fly.mode === 'feed' ? 5 : 7);
+        fly.wing += dt * flap;
+        fly.proboscis = (fly.mode === 'feed' || fly.mode === 'puke') ? (Math.sin(t / 130) * 0.5 + 0.5) : Math.max(0, fly.proboscis - dt * 3);
+        fly.splat = Math.max(0, fly.splat - dt * 2);
+        if (fly.mode === 'sing' && Math.random() < 0.14) fly.notes.push({ x: fly.x + rand(-8, 8), y: fly.y - 12, life: 1, g: Math.random() < 0.5 ? '♪' : '♫' });
+        fly.notes.forEach(n => { n.y -= 0.8; n.life -= dt * 0.5; }); fly.notes = fly.notes.filter(n => n.life > 0);
+        drops.forEach(d => { if (d.y < floorY() + 2) { d.vy += 0.02; d.y += d.vy; } else d.life -= dt * 0.5; }); drops = drops.filter(d => d.life > 0);
+      }
+
+      function drawFly(s) {
+        const open = 0.35 + Math.abs(Math.sin(fly.wing)) * 0.65;
+        ctx.strokeStyle = 'rgba(18,24,20,0.92)'; ctx.lineWidth = 1.3 * s; ctx.lineCap = 'round';
+        for (const [bx, by, kx, ky] of [[2,3,11,10],[-1,4,4,13],[-4,3,-6,12],[2,-3,11,-10],[-1,-4,4,-13],[-4,-3,-6,-12]]) {
+          ctx.beginPath(); ctx.moveTo(bx * s, by * s); ctx.quadraticCurveTo(kx * s, ky * s, (kx + 2) * s, (ky + (ky > 0 ? 3 : -3)) * s); ctx.stroke();
+        }
+        ctx.save(); ctx.globalCompositeOperation = 'lighter';
+        for (const side of [-1, 1]) {
+          ctx.save(); ctx.translate(-1 * s, 0); ctx.rotate(side * (0.45 + open * 0.5)); ctx.scale(1, open);
+          const wg = ctx.createLinearGradient(0, 0, -18 * s, side * 6 * s);
+          wg.addColorStop(0, 'rgba(214,232,255,0.30)'); wg.addColorStop(1, 'rgba(150,180,210,0.04)');
+          ctx.fillStyle = wg; ctx.beginPath(); ctx.ellipse(-9 * s, side * 3 * s, 13 * s, 5.2 * s, 0, 0, 7); ctx.fill(); ctx.restore();
+        }
+        ctx.restore();
+        const ab = ctx.createLinearGradient(-20 * s, 0, 3 * s, 0);
+        ab.addColorStop(0, '#3a2f18'); ab.addColorStop(0.55, '#7a6326'); ab.addColorStop(1, '#c9a94e');
+        ctx.fillStyle = ab; ctx.beginPath(); ctx.ellipse(-9 * s, 0, 11 * s, 7 * s, 0, 0, 7); ctx.fill();
+        ctx.strokeStyle = 'rgba(20,16,6,0.5)'; ctx.lineWidth = 1.1 * s;
+        for (let i = -1; i <= 2; i++) { ctx.beginPath(); ctx.ellipse(-9 * s - i * 4 * s, 0, 2 * s, 6.4 * s, 0, 0, 7); ctx.stroke(); }
+        const th = ctx.createRadialGradient(1.5 * s, -2.5 * s, 1, 0, 0, 8 * s);
+        th.addColorStop(0, '#4d4024'); th.addColorStop(1, '#241d10');
+        ctx.fillStyle = th; ctx.beginPath(); ctx.ellipse(1 * s, 0, 7 * s, 6 * s, 0, 0, 7); ctx.fill();
+        ctx.fillStyle = '#1c160c'; ctx.beginPath(); ctx.arc(8 * s, 0, 4.6 * s, 0, 7); ctx.fill();
+        for (const side of [-1, 1]) {
+          const eg = ctx.createRadialGradient(9 * s, side * 3 * s, 0.4, 9.6 * s, side * 3 * s, 4 * s);
+          eg.addColorStop(0, '#ff6a4d'); eg.addColorStop(1, '#8f1a10');
+          ctx.fillStyle = eg; ctx.beginPath(); ctx.arc(9.4 * s, side * 3 * s, 3.4 * s, 0, 7); ctx.fill();
+          ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath(); ctx.arc(10.5 * s, side * 2.1 * s, 0.9 * s, 0, 7); ctx.fill();
+        }
+        ctx.strokeStyle = '#1c160c'; ctx.lineWidth = 0.9 * s;
+        for (const side of [-1, 1]) { ctx.beginPath(); ctx.moveTo(11 * s, side * 1.6 * s); ctx.quadraticCurveTo(15 * s, side * 3.5 * s, 16.5 * s, side * 1.5 * s); ctx.stroke(); }
+        if (fly.proboscis > 0.03) { ctx.strokeStyle = '#6b5a2e'; ctx.lineWidth = 1.6 * s; ctx.beginPath(); ctx.moveTo(11 * s, 0); ctx.lineTo((11 + fly.proboscis * 8) * s, 0); ctx.stroke(); }
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, W, H);
+        const fy = floorY();
+        const grd = ctx.createLinearGradient(0, fy - 6, 0, H);
+        grd.addColorStop(0, 'rgba(192,217,155,0.06)'); grd.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grd; ctx.fillRect(0, fy - 6, W, H - fy + 6);
+        const alt = clamp((fy - fly.y) / (fy - 20), 0, 1);
+        const s = Math.max(1, Math.min(W, H) / 210);
+        ctx.save(); ctx.globalAlpha = 0.3 * (1 - alt * 0.65); ctx.fillStyle = '#000';
+        ctx.beginPath(); ctx.ellipse(fly.x, fy + 5, 24 * s * (1 - alt * 0.5), 7 * s * (1 - alt * 0.5), 0, 0, 7); ctx.fill(); ctx.restore();
+        drops.forEach(d => { ctx.save(); ctx.globalAlpha = clamp(d.life, 0, 1); ctx.fillStyle = d.kind === 'gift' ? '#e6d3a3' : '#8fa86e'; ctx.beginPath(); ctx.ellipse(d.x, d.y, 4 * s, 5 * s, 0, 0, 7); ctx.fill(); ctx.restore(); });
+        ctx.save(); ctx.font = `700 ${Math.round(15 * s)}px "JetBrains Mono", monospace`; ctx.textAlign = 'center';
+        fly.notes.forEach(n => { ctx.globalAlpha = clamp(n.life, 0, 1); ctx.fillStyle = '#c0d99b'; ctx.fillText(n.g, n.x, n.y); }); ctx.restore();
+        ctx.save(); ctx.translate(fly.x, fly.y); ctx.rotate(fly.ang); drawFly(s); ctx.restore();
+        if (fly.splat > 0.01) { ctx.save(); ctx.globalAlpha = fly.splat * 0.5; ctx.strokeStyle = '#d9412f'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(fly.x, fly.y, 20 + (1 - fly.splat) * 34, 0, 7); ctx.stroke(); ctx.restore(); }
+      }
+
+      let last = now();
+      (function frame() { const t = now(); let dt = (t - last) / 1000; last = t; if (dt > 0.05) dt = 0.05; step(dt); draw(); requestAnimationFrame(frame); })();
+      return { react, setSplatHandler: fn => { onSplat = fn; } };
+    })();
+
+    // Behaviour words the fly writes, mapped to what the page shows and the
+    // move it makes. The animation fires once per new note, not on re-render.
+    const BEHAVIOURS = [
       ['startled', 'startled', 'Startled.'],
+      ['gave a drop', 'puke', 'Shared a drop.'],
       ['extended its proboscis', 'fed', 'Fed. Proboscis out.'],
       ['backed away', 'backward', 'Backed away.'],
       ['sang', 'sing', 'Sang.'],
-      ['turned (stronger on the left)', 'turn-left', 'Turned left.'],
-      ['turned (stronger on the right)', 'turn-right', 'Turned right.'],
-      ['turned', 'turn-right', 'Turned.'],
+      ['turned', 'turn', 'Turned.'],
       ['walked forward', 'forward', 'Walked forward.'],
     ];
+    let lastReacted = null;
     function react(note) {
-      const box = $('#fly-box');
-      box.className = 'fly-box';
-      const found = REACTIONS.find(([word]) => note.content.includes(word));
-      box.classList.add(found ? found[1] : 'quiet');
-      $('#reaction').firstChild.textContent = found ? found[2] : 'Nothing above its resting twitch.';
+      const found = BEHAVIOURS.find(([w]) => note.content.includes(w));
+      $('#reaction').firstChild.textContent = found ? found[2] : 'Resting.';
       $('#reaction-when').textContent = ago(note.created_at);
       $('#last-note').textContent = note.content.split('\n').slice(0, 3).join('\n');
       $('#last-note').classList.remove('empty');
       const crop = /Crop: ([\d,]+) sats/.exec(note.content);
       if (crop) { const sats = Number(crop[1].replace(/,/g, '')); $('#crop').textContent = sats.toLocaleString('en-GB') + ' sats'; $('#crop-fill').style.width = Math.min(100, Math.log10(sats + 1) / 6 * 100) + '%'; }
-      if (found && found[1] === 'fed') setTimeout(() => { if (box.classList.contains('fed')) box.classList.replace('fed', 'quiet'); }, 4000);
+      if (note.id !== lastReacted) { lastReacted = note.id; FlyStage.react(found ? found[1] : 'cruise'); }
     }
+
+    // A tap on the fly is a poke. It darts; with a Nostr signer the page also
+    // publishes a real mention, throttled, so a real reply follows. Without a
+    // signer it only dodges, and the hint says a signer makes it real.
+    let lastSplat = 0;
+    FlyStage.setSplatHandler(async () => {
+      const hint = $('#splat-hint');
+      if (!window.nostr) { if (hint) { hint.textContent = 'a Nostr signer makes it a real poke'; setTimeout(() => { hint.textContent = 'tap it to poke'; }, 2600); } return; }
+      if (Date.now() - lastSplat < 30000) { if (hint) { hint.textContent = 'give it a moment…'; setTimeout(() => { hint.textContent = 'tap it to poke'; }, 1800); } return; }
+      lastSplat = Date.now();
+      try {
+        const ev = { kind: 1, created_at: Math.floor(Date.now() / 1000), content: 'splat! 👋🪰', tags: [['p', FLY]] };
+        const signed = await window.nostr.signEvent(ev);
+        RELAYS.forEach(u => { try { const ws = new WebSocket(u); ws.onopen = () => { ws.send(JSON.stringify(['EVENT', signed])); setTimeout(() => { try { ws.close(); } catch {} }, 1800); }; } catch {} });
+        if (hint) { hint.textContent = 'poked — a real reply will follow'; setTimeout(() => { hint.textContent = 'tap it to poke'; }, 4000); }
+      } catch { if (hint) hint.textContent = 'tap it to poke'; }
+    });
 
     // A small relay client: one REQ per relay, events by id, live after EOSE.
     const events = new Map(), profiles = new Map();
@@ -346,7 +475,7 @@
       if (notes.length) react(notes[0]);
       const ul = $('#feed-list');
       if (!list.length) { ul.innerHTML = '<li class="empty" style="display:block">Nothing yet. Be the first to zap it.</li>'; return; }
-      ul.innerHTML = list.slice(0, 40).map(e => {
+      ul.innerHTML = list.slice(0, 80).map(e => {
         if (e.kind === 9735) {
           const zapper = zapperOf(e); const sats = satsOf(e); const comment = commentOf(e);
           const p = zapper && profiles.get(zapper);
@@ -402,6 +531,7 @@
         status('Paying…');
         await window.webln.sendPayment(invoice.pr);
         status('Paid. The mint will pay it out to the fly as a note; the reply follows when the fly is awake.', 'ok');
+        FlyStage.react('fed');
       } catch (error) {
         status(String(error && error.message || error).slice(0, 160), 'err');
       } finally { button.disabled = false; }
