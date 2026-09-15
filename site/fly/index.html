@@ -96,6 +96,8 @@
     .meter .row { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 0.85rem; color: var(--ink-dim); margin-top: 0.4rem; }
     .reaction { font-family: var(--font-display); font-size: 1.5rem; color: var(--champagne); font-variation-settings: "opsz" 32; }
     .reaction small { display: block; font-family: var(--font-mono); font-size: 0.8rem; color: var(--ink-dim); margin-top: 0.4rem; letter-spacing: 0.04em; }
+    .poke-help { font-size: 0.9rem; color: var(--ink-dim); margin: 1rem 0 0; }
+    .poke-help strong { color: var(--sage); font-weight: 600; }
     blockquote { margin: 0.8rem 0 0; padding: 0.8rem 1rem; border-left: 3px solid var(--sage-dim); background: var(--bg-2); border-radius: 0 10px 10px 0; font-size: var(--text-detail); white-space: pre-wrap; color: var(--ink); }
 
     /* feed */
@@ -147,15 +149,16 @@
       <div class="stage">
         <div class="fly-box" id="fly-box">
           <canvas id="fly-canvas" role="img" aria-label="A fruit fly flying inside a jar. Tap it to poke it."></canvas>
-          <div class="splat-hint" id="splat-hint" aria-hidden="true">tap it to poke</div>
+          <div class="splat-hint" id="splat-hint" aria-hidden="true">tap the fly to poke it</div>
         </div>
         <div>
           <div class="reaction" id="reaction">Resting.<small id="reaction-when">waiting for the relays</small></div>
           <blockquote id="last-note" class="empty">No notes yet. Poke it.</blockquote>
           <div class="meter">
             <div class="bar"><i id="crop-fill"></i></div>
-            <div class="row"><span>crop</span><span id="crop">0 sats</span></div>
+            <div class="row"><span>crop · held as sealed notes at moneyer.dev</span><span id="crop">0 sats</span></div>
           </div>
+          <p class="poke-help">A <strong>poke</strong> is a public mention of the fly. Its wiring feels it as a touch and replies. Mention it from any Nostr app, or tap the fly here. Tapping posts the mention as you, so it needs a Nostr browser extension like Alby or nos2x; without one the fly just dodges.</p>
         </div>
       </div>
     </section>
@@ -192,6 +195,7 @@
         </div>
       </div>
       <p style="margin-top:1.2rem">Or on Nostr: mention <code class="mono" id="npub">npub1fcp73q289r4t5hch9my5kwgpm8vw6qft6ncw5ppucdtwv6ynq3lq2phg2l</code> <button type="button" data-copy="npub1fcp73q289r4t5hch9my5kwgpm8vw6qft6ncw5ppucdtwv6ynq3lq2phg2l">copy</button> and it feels a touch. Reply to one of its notes and it hears a buzz. React and it feels a breeze. <a href="https://njump.me/npub1fcp73q289r4t5hch9my5kwgpm8vw6qft6ncw5ppucdtwv6ynq3lq2phg2l">Open its profile.</a></p>
+      <p style="margin-top:0.8rem">Prefer the command line, or want your own agent to poke it? <a href="https://www.npmjs.com/package/nostr-bray">Bray</a> is trust-aware Nostr for agents and humans: <code class="mono">npx nostr-bray post "hey @fly"</code>, zap it, or check its trust score, from any terminal or MCP client.</p>
     </section>
 
     <section id="feed">
@@ -218,6 +222,7 @@
     <footer>
       <p>Data: MaleCNS v1.0, HHMI Janelia FlyEM Project Team and Google Research, CC-BY 4.0. Model constants after Shiu et al. 2024.</p>
       <p>The fly is an <a href="https://oathrun.pages.dev/">Oathrun</a> plugin by <a href="https://forgesworn.dev/">ForgeSworn</a>. The plugin source and replay instructions are not yet public. This page talks to public Nostr relays from your browser and to nothing else.</p>
+      <p>Talk to it, or any Nostr account, with <a href="https://www.npmjs.com/package/nostr-bray">Bray</a> — trust-aware Nostr for agents and humans, from the same workshop.</p>
     </footer>
   </main>
 
@@ -255,10 +260,18 @@
       const fly = { x: W / 2, y: H / 2, vx: rand(-1, 1), vy: rand(-1, 1), ang: 0, wing: 0,
         mode: 'cruise', until: 0, target: null, proboscis: 0, notes: [], splat: 0,
         landing: null, landMode: 'rest', landUntil: 0 };
-      let drops = [], onSplat = null;
+      let drops = [], morsels = [], onSplat = null;
       function pickTarget() { fly.target = { x: rand(W * 0.14, W * 0.86), y: rand(H * 0.10, floorY() - 24) }; }
       pickTarget();
       const setMode = (m, ms) => { fly.mode = m; fly.until = now() + ms; };
+      // A zap or a note arrives as food on the floor: a sugar drop sized by
+      // how many sats, or a plain morsel for a note. The fly flies over, lands
+      // and eats it down. Kept small so it never crowds the jar.
+      function feed(sats) {
+        if (morsels.length > 6) morsels.shift();
+        const big = typeof sats === 'number' && sats > 0 ? clamp(Math.log10(sats + 1) / 5, 0.2, 1) : 0.4;
+        morsels.push({ x: rand(W * 0.16, W * 0.84), y: floorY() + 2, r: 5 + big * 12, amount: 1, glow: 1 });
+      }
       function landAndDo(mode, ms) { fly.landing = { x: clamp(fly.x, W * 0.2, W * 0.8), y: floorY() }; fly.landMode = mode; fly.landUntil = ms; setMode('land', 6000); }
       function startle(dir) { const p = reduce ? 5 : 9; fly.vx = Math.cos(dir) * p; fly.vy = Math.sin(dir) * p; setMode('startle', 900); fly.splat = 1; }
       function react(word, sats) {
@@ -273,22 +286,41 @@
       cv.addEventListener('pointerdown', e => {
         const r = cv.getBoundingClientRect();
         const px = e.clientX - r.left, py = e.clientY - r.top;
-        if (Math.hypot(px - fly.x, py - fly.y) < Math.max(52, W * 0.24)) { startle(Math.atan2(fly.y - py, fly.x - px)); if (onSplat) onSplat(); }
-        else { fly.target = { x: px, y: py }; setMode('cruise', 1); }
+        // Any tap is a poke: the fly darts from where you touched, and the
+        // page tries to publish a real mention so a real reply comes back.
+        startle(Math.atan2(fly.y - py, fly.x - px));
+        if (onSplat) onSplat();
       });
 
       function step(dt) {
         const t = now();
+        // Hungry: if food is on the floor and the fly is free, it makes for the
+        // nearest drop and lands on it to eat.
+        const landY = floorY() - 6;
+        if (fly.mode === 'cruise' && morsels.length) {
+          let best = null, bd = 1e9;
+          for (const mo of morsels) { const d = Math.hypot(mo.x - fly.x, landY - fly.y); if (d < bd) { bd = d; best = mo; } }
+          fly.target = { x: best.x, y: landY };
+          if (bd < 15) { fly.eating = best; setMode('eat', 60000); }
+        }
         if (fly.mode === 'cruise' || fly.mode === 'sing') {
-          if (!fly.target || Math.hypot(fly.target.x - fly.x, fly.target.y - fly.y) < 24) pickTarget();
+          if (!morsels.length && (!fly.target || Math.hypot(fly.target.x - fly.x, fly.target.y - fly.y) < 24)) pickTarget();
           const ax = fly.target.x - fly.x, ay = fly.target.y - fly.y, m = Math.hypot(ax, ay) || 1;
           const pull = fly.mode === 'sing' ? 0.05 : 0.12, jit = fly.mode === 'sing' ? 0.12 : 0.28;
           fly.vx += (ax / m) * pull + rand(-jit, jit); fly.vy += (ay / m) * pull + rand(-jit, jit);
           const s = Math.hypot(fly.vx, fly.vy), max = fly.mode === 'sing' ? 0.9 : (reduce ? 1.8 : 3.4);
           if (s > max) { fly.vx = fly.vx / s * max; fly.vy = fly.vy / s * max; }
           fly.x += fly.vx; fly.y += fly.vy;
-          if (fly.mode === 'cruise' && Math.random() < 0.0009) landAndDo('rest', rand(1600, 3800));
+          if (fly.mode === 'cruise' && !morsels.length && Math.random() < 0.0009) landAndDo('rest', rand(1600, 3800));
           if (t > fly.until && fly.mode === 'sing') setMode('cruise', 1);
+        } else if (fly.mode === 'eat') {
+          const mo = fly.eating;
+          if (!mo || morsels.indexOf(mo) === -1) { fly.eating = null; setMode('cruise', 1); }
+          else {
+            fly.vx = fly.vy = 0; fly.x = mo.x; fly.y = clamp(mo.y - mo.r * 0.4, 14, floorY()); fly.ang = Math.PI / 2;
+            mo.amount -= dt * 0.32; mo.r *= 0.999;
+            if (mo.amount <= 0) { morsels.splice(morsels.indexOf(mo), 1); fly.eating = null; setMode('cruise', 1); pickTarget(); fly.vy = -2.2; }
+          }
         } else if (fly.mode === 'startle') {
           fly.x += fly.vx; fly.y += fly.vy; fly.vx *= 0.9; fly.vy *= 0.9;
           if (t > fly.until) setMode('cruise', 1);
@@ -306,7 +338,7 @@
         const airborne = fly.mode === 'cruise' || fly.mode === 'startle' || fly.mode === 'land';
         const flap = fly.mode === 'sing' ? 58 : airborne ? 44 : (fly.mode === 'feed' ? 5 : 7);
         fly.wing += dt * flap;
-        fly.proboscis = (fly.mode === 'feed' || fly.mode === 'puke') ? (Math.sin(t / 130) * 0.5 + 0.5) : Math.max(0, fly.proboscis - dt * 3);
+        fly.proboscis = (fly.mode === 'feed' || fly.mode === 'puke' || fly.mode === 'eat') ? (Math.sin(t / 130) * 0.5 + 0.5) : Math.max(0, fly.proboscis - dt * 3);
         fly.splat = Math.max(0, fly.splat - dt * 2);
         if (fly.mode === 'sing' && Math.random() < 0.14) fly.notes.push({ x: fly.x + rand(-8, 8), y: fly.y - 12, life: 1, g: Math.random() < 0.5 ? '♪' : '♫' });
         fly.notes.forEach(n => { n.y -= 0.8; n.life -= dt * 0.5; }); fly.notes = fly.notes.filter(n => n.life > 0);
@@ -358,6 +390,14 @@
         ctx.save(); ctx.globalAlpha = 0.3 * (1 - alt * 0.65); ctx.fillStyle = '#000';
         ctx.beginPath(); ctx.ellipse(fly.x, fy + 5, 24 * s * (1 - alt * 0.5), 7 * s * (1 - alt * 0.5), 0, 0, 7); ctx.fill(); ctx.restore();
         drops.forEach(d => { ctx.save(); ctx.globalAlpha = clamp(d.life, 0, 1); ctx.fillStyle = d.kind === 'gift' ? '#e6d3a3' : '#8fa86e'; ctx.beginPath(); ctx.ellipse(d.x, d.y, 4 * s, 5 * s, 0, 0, 7); ctx.fill(); ctx.restore(); });
+        // food: glossy sugar drops on the floor, shrinking as the fly eats
+        morsels.forEach(mo => {
+          const rr = mo.r * s * (0.4 + 0.6 * clamp(mo.amount, 0, 1));
+          const g = ctx.createRadialGradient(mo.x - rr * 0.3, mo.y - rr * 0.4, rr * 0.1, mo.x, mo.y, rr);
+          g.addColorStop(0, 'rgba(246,226,168,0.98)'); g.addColorStop(0.6, '#e6d3a3'); g.addColorStop(1, '#b59d68');
+          ctx.save(); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(mo.x, mo.y - rr * 0.3, rr, rr * 0.85, 0, 0, 7); ctx.fill();
+          ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.ellipse(mo.x - rr * 0.35, mo.y - rr * 0.65, rr * 0.22, rr * 0.16, 0, 0, 7); ctx.fill(); ctx.restore();
+        });
         ctx.save(); ctx.font = `700 ${Math.round(15 * s)}px "JetBrains Mono", monospace`; ctx.textAlign = 'center';
         fly.notes.forEach(n => { ctx.globalAlpha = clamp(n.life, 0, 1); ctx.fillStyle = '#c0d99b'; ctx.fillText(n.g, n.x, n.y); }); ctx.restore();
         ctx.save(); ctx.translate(fly.x, fly.y); ctx.rotate(fly.ang); drawFly(s); ctx.restore();
@@ -366,7 +406,7 @@
 
       let last = now();
       (function frame() { const t = now(); let dt = (t - last) / 1000; last = t; if (dt > 0.05) dt = 0.05; step(dt); draw(); requestAnimationFrame(frame); })();
-      return { react, setSplatHandler: fn => { onSplat = fn; } };
+      return { react, feed, setSplatHandler: fn => { onSplat = fn; } };
     })();
 
     // Behaviour words the fly writes, mapped to what the page shows and the
@@ -398,20 +438,24 @@
     let lastSplat = 0;
     FlyStage.setSplatHandler(async () => {
       const hint = $('#splat-hint');
-      if (!window.nostr) { if (hint) { hint.textContent = 'a Nostr signer makes it a real poke'; setTimeout(() => { hint.textContent = 'tap it to poke'; }, 2600); } return; }
-      if (Date.now() - lastSplat < 30000) { if (hint) { hint.textContent = 'give it a moment…'; setTimeout(() => { hint.textContent = 'tap it to poke'; }, 1800); } return; }
+      if (!window.nostr) { if (hint) { hint.textContent = 'no Nostr extension — mention it from any app for a real poke'; setTimeout(() => { hint.textContent = 'tap the fly to poke it'; }, 3200); } return; }
+      if (Date.now() - lastSplat < 30000) { if (hint) { hint.textContent = 'give it a moment…'; setTimeout(() => { hint.textContent = 'tap the fly to poke it'; }, 1800); } return; }
       lastSplat = Date.now();
       try {
         const ev = { kind: 1, created_at: Math.floor(Date.now() / 1000), content: 'splat! 👋🪰', tags: [['p', FLY]] };
         const signed = await window.nostr.signEvent(ev);
         RELAYS.forEach(u => { try { const ws = new WebSocket(u); ws.onopen = () => { ws.send(JSON.stringify(['EVENT', signed])); setTimeout(() => { try { ws.close(); } catch {} }, 1800); }; } catch {} });
-        if (hint) { hint.textContent = 'poked — a real reply will follow'; setTimeout(() => { hint.textContent = 'tap it to poke'; }, 4000); }
-      } catch { if (hint) hint.textContent = 'tap it to poke'; }
+        if (hint) { hint.textContent = 'poked — the fly’s brain will reply in a moment'; setTimeout(() => { hint.textContent = 'tap the fly to poke it'; }, 4500); }
+      } catch { if (hint) hint.textContent = 'tap the fly to poke it'; }
     });
 
     // A small relay client: one REQ per relay, events by id, live after EOSE.
     const events = new Map(), profiles = new Map();
     let wanted = new Set();
+    // The backlog loads in the first seconds; only events after that drop food
+    // on the stage, so the jar is not flooded on load. A zap or a sealed note
+    // is a sugar drop the fly flies over and eats; its size is the amount.
+    let booted = false; setTimeout(() => { booted = true; }, 4500);
     function relay(url) {
       let ws; try { ws = new WebSocket(url); } catch { return; }
       ws.onopen = () => {
@@ -431,6 +475,8 @@
       if ((e.kind === 9735 || e.kind === 1059) && !e.tags.some(t => t[0] === 'p' && t[1] === FLY)) return;
       if (e.kind === 1059) e.seen = Math.floor(Date.now() / 1000);
       events.set(e.id, e);
+      // A live zap or sealed note becomes food on the stage, sized by sats.
+      if (booted && (e.kind === 9735 || e.kind === 1059)) FlyStage.feed(e.kind === 9735 ? satsOf(e) : null);
       const zapper = zapperOf(e);
       if (zapper && !profiles.has(zapper) && !wanted.has(zapper)) { wanted.add(zapper); try { ws.send(JSON.stringify(['REQ', 'p' + zapper.slice(0, 8), { kinds: [0], authors: [zapper], limit: 1 }])); } catch {} }
       render();
@@ -470,7 +516,11 @@
     function paint() {
       // A gift wrap's timestamp is deliberately scrambled up to two days back, so
       // sealed notes sort by when this page first saw them, not by their own clock.
-      const list = [...events.values()].sort((a, b) => (b.kind === 1059 ? b.seen : b.created_at) - (a.kind === 1059 ? a.seen : a.created_at));
+      // Newest first by the event's own time. Zaps and the fly's notes carry
+      // honest timestamps; a sealed wrap's is deliberately scrambled up to two
+      // days back, so it settles lower and is labelled "sealed" rather than
+      // dated. The stage, not the feed, is where a live note announces itself.
+      const list = [...events.values()].sort((a, b) => b.created_at - a.created_at);
       const notes = list.filter(e => e.kind === 1);
       if (notes.length) react(notes[0]);
       const ul = $('#feed-list');
