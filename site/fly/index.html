@@ -385,7 +385,7 @@
 
   <script type="module">
     import { createFlyStage } from './fly-stage.js?v=5';
-    import { parseMotorReport, motorSummary } from './motor.js';
+    import { parseMotorReport, motorSummary, replayLine } from './motor.js';
     import { verifySignedEvent } from './vendor/nostr-verify.js';
     import { verifiedZap } from './zap-receipt.js?v=5';
 
@@ -409,7 +409,7 @@
         const data = await recordings;
         if (data.kind !== 'offline-brain-recordings' || data.signed !== false) throw Error();
         const entry = data.recordings.find(r => r.name === button.dataset.brainRecording);
-        const motor = parseMotorReport(entry?.content); if (!motor) throw Error();
+        const motor = parseMotorReport(entry); if (!motor) throw Error();
         FlyStage.recording(motor, entry.name);
         $('#recording-status').textContent = `Recorded offline with brain ${data.pluginVersion}, seed ${motor.seed}. Input: ${entry.input.text}. ${motorSummary(motor)}. No live event or payment.`;
       } catch { recordings = null; $('#recording-status').textContent = 'The recorded brain response could not load. Try again.'; }
@@ -444,16 +444,18 @@
         .then(p => p.allowsNostr === true && /^[0-9a-f]{64}$/.test(p.nostrPubkey) ? p.nostrPubkey : null)
         .catch(() => { providerRequest = null; return null; });
     }
+    // What a zap brought, in the fly's words then and now.
+    const sats = text => /^Mmm, ([\d,]+) sats\./.exec(text) || /^The fly sensed [^\n]*\(([\d,]+) sats\)\.$/m.exec(text);
     let lastReacted = null;
     function react(note) {
-      const motor = parseMotorReport(note.content);
-      const gift = /^Trophallaxis\. The fly brought up \d[\d,]* sats\b/.test(note.content);
+      const motor = parseMotorReport(note);
+      const gift = /^(?:Trophallaxis\. The fly brought up|I shared my corn with you:) \d[\d,]* sats\b/.test(note.content);
       const label = motor ? motorSummary(motor) : gift ? 'Shared corn.' : 'Older report · no motor telemetry.';
       $('#reaction').firstChild.textContent = label;
       $('#reaction-when').textContent = ago(note.created_at);
       $('#last-note').textContent = note.content.split('\n').filter(line => !line.startsWith('Motor: ')).slice(0, 3).join('\n');
       $('#last-note').classList.remove('empty');
-      const crop = /(?:Corn|Crop): ([\d,]+) sats/.exec(note.content);
+      const crop = /(?:Corn|Crop|corn): ([\d,]+) sats/.exec(note.content);
       if (crop) { const sats = Number(crop[1].replace(/,/g, '')); $('#crop').textContent = sats.toLocaleString('en-GB') + ' sats'; $('#crop-fill').style.width = Math.min(100, Math.log10(sats + 1) / 6 * 100) + '%'; }
       if (note.id !== lastReacted) {
         lastReacted = note.id;
@@ -462,7 +464,7 @@
         if (gift && live) FlyStage.gift();
         // Plain Lightning payments have no public zap receipt. The fly's
         // authenticated report confirms the amount from the opened sealed note.
-        const received = /^The fly sensed [^\n]*\(([\d,]+) sats\)\.$/m.exec(note.content);
+        const received = sats(note.content);
         if (live && motor && received) {
           paymentFeed(note.id, `Fly confirmed ${received[1]} sats · feeding illustration`);
         }
@@ -534,8 +536,8 @@
       if (e.kind === 1059) e.seen = Math.floor(Date.now() / 1000);
       events.set(e.id, e);
       if (zap) rememberFeeding(e.created_at, `Mint confirmed ${zap.sats.toLocaleString('en-GB')} sats · feeding illustration`);
-      if (e.kind === 1 && parseMotorReport(e.content)) {
-        const amount = /^The fly sensed [^\n]*\(([\d,]+) sats\)\.$/m.exec(e.content)?.[1];
+      if (e.kind === 1 && parseMotorReport(e)) {
+        const amount = sats(e.content)?.[1];
         if (amount) rememberFeeding(e.created_at, `Fly confirmed ${amount} sats · feeding illustration`);
       }
       if (zap && e.created_at >= openedAt) paymentFeed(zap.invoice, `Mint confirmed ${zap.sats.toLocaleString('en-GB')} sats · feeding illustration`);
@@ -598,9 +600,9 @@
           return `<li><div class="who">✉</div><div><div class="head"><span><b>A sealed note</b> arrived for the fly</span><span>sealed</span></div><div class="body">A bearer note from the mint, wrapped to the fly's key. How much is inside shows when the fly next feeds. A plain Lightning payment leaves only this; a zap from a Nostr client also leaves a receipt with your name.</div></div></li>`;
         }
         const lines = e.content.split('\n');
-        const replay = lines.find(l => l.startsWith('Replay:'));
+        const replay = replayLine(e);
         const body = lines.filter(l => !l.startsWith('Replay:') && !l.startsWith('Motor:') && !l.startsWith('Leaky integrate')).join('\n');
-        return `<li><div class="who"><img src="emblem-1024.png" alt=""></div><div><div class="head"><span><b>The Fly</b></span><span>${ago(e.created_at)}</span></div><div class="body">${escapeHtml(body)}</div>${replay ? `<div class="replay">${escapeHtml(replay)}</div>` : ''}</div></li>`;
+        return `<li><div class="who"><img src="emblem-1024.png" alt=""></div><div><div class="head"><span><b>The Fly</b></span><span>${ago(e.created_at)}</span></div><div class="body">${escapeHtml(body)}</div>${replay ? `<div class="replay">Replay: ${escapeHtml(replay)}</div>` : ''}</div></li>`;
       }).join('');
     }
     RELAYS.forEach(relay);
