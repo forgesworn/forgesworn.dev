@@ -14,7 +14,7 @@ try {
     const page = await context.newPage(), sockets = [], errors = [], writes = [];
     page.on('pageerror', e => errors.push(e.message));
     // Only the local test replaces the identity with a synthetic fixture signer.
-    if (!process.env.FLY_TEST_URL) await page.route(base, route => route.fulfill({ contentType: 'text/html', body: readFileSync('site/fly/index.html', 'utf8').replace(/const FLY = '[0-9a-f]{64}'/, `const FLY = '${escape.pubkey}'`) }));
+    if (!process.env.FLY_TEST_URL) await page.route(base, route => route.fulfill({ contentType: 'text/html', body: readFileSync('site/fly/index.html', 'utf8').replace(/const FLY = '[0-9a-f]{64}'/, `const FLY = '${escape.pubkey}'`).replace('const openedAt = Math.floor(Date.now() / 1000);', 'const openedAt = 0;') }));
     await page.routeWebSocket(/.*/, ws => { sockets.push(ws); ws.onMessage(m => { if (String(m).includes('"EVENT"')) writes.push(m); }); });
     await page.goto(base); await page.locator('[data-artwork="ready"]').waitFor();
     const box = page.locator('#fly-box'), pixels = () => page.locator('canvas').evaluate(c => c.toDataURL());
@@ -37,8 +37,6 @@ try {
     await page.locator('#motion-pause').click();
     await page.waitForFunction(() => document.querySelector('#fly-box').dataset.activitySource === 'ambient');
     if (!process.env.FLY_TEST_URL) {
-      sockets[0].send(JSON.stringify(['EVENT', 'fly', quiet]));
-      await page.waitForTimeout(200); assert.equal(await box.getAttribute('data-activity-source'), 'ambient', 'Quiet reports do not stop exploring');
       sockets[0].send(JSON.stringify(['EVENT', 'fly', { ...escape, content: escape.content + 'tampered' }]));
       await page.waitForTimeout(200); assert.equal(await box.getAttribute('data-activity-source'), 'ambient');
       sockets[0].send(JSON.stringify(['EVENT', 'fly', escape]));
@@ -46,12 +44,27 @@ try {
       await page.waitForFunction(() => document.querySelector('#fly-box').dataset.motion === 'flight');
       await page.waitForFunction(() => document.querySelector('#fly-box').dataset.motion === 'landing');
       await page.waitForFunction(() => document.querySelector('#fly-box').dataset.activitySource === 'ambient');
+      sockets[0].send(JSON.stringify(['EVENT', 'fly', quiet]));
+      await page.waitForTimeout(200); assert.equal(await box.getAttribute('data-activity-source'), 'ambient', 'Quiet reports do not stop exploring');
     }
     assert.deepEqual(errors, []); assert.deepEqual(writes, []);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     results.push({ device: name, visibleOnArrival: true, autonomousFlight: true, pause: true, landingDrinkingRegurgitation: true, signedBrainInterrupt: !process.env.FLY_TEST_URL, errors, publications: writes.length });
     console.log(`${name}: visible arrival, flight, landing, drinking, regurgitation, pause and source labels pass`);
     await context.close();
+  }
+  if (!process.env.FLY_TEST_URL) {
+    const history = await browser.newPage(), relays = [];
+    await history.route(base, route => route.fulfill({ contentType: 'text/html', body: readFileSync('site/fly/index.html', 'utf8').replace(/const FLY = '[0-9a-f]{64}'/, `const FLY = '${escape.pubkey}'`) }));
+    await history.routeWebSocket(/.*/, ws => relays.push(ws));
+    await history.goto(base); await history.locator('[data-artwork="ready"]').waitFor();
+    relays[0].send(JSON.stringify(['EVENT', 'fly', escape]));
+    await history.waitForFunction(() => !document.querySelector('#last-note').classList.contains('empty'));
+    assert.equal(await history.locator('#fly-box').getAttribute('data-activity-source'), 'ambient', 'Historical report cannot interrupt arrival');
+    await history.locator('.motion-demos > summary').first().click(); await history.locator('#motion-live').click();
+    await history.waitForFunction(() => document.querySelector('#motion-status').textContent.includes('Brain replay'));
+    results.push({ historicalReportsDoNotInterruptArrival: true, explicitHistoricalReplay: true });
+    await history.close();
   }
   const page = await browser.newPage({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
   await page.routeWebSocket(/.*/, () => {}); await page.goto(base); await page.locator('[data-artwork="ready"]').waitFor();

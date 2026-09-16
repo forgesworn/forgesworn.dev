@@ -56,8 +56,9 @@ export function createFlyStage({ canvas, box, status, pause, previewButtons, ret
     if (latest) { playback = latest; if (paused) representative(latest); } else roam();
     draw(); wake();
   }
-  function report(value) {
+  function report(value, replay = true) {
     latest = value;
+    if (!replay) return;
     // A quiet result is still visible in the report panel. It must not freeze
     // the visitor's exploring cycle just because no motor channel fired.
     if (value && !value.samples.some(s => s.slice(0, 6).some(Boolean))) return;

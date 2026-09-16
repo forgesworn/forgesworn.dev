@@ -14,7 +14,8 @@ walking, turning, take-off, flight, landing and grooming.  A fixed camera makes
 travel visible.  Feeding a free visual drop or completing a wallet payment
 starts an approach, drinking, swallowing and regurgitation sequence.  These
 authored actions do not create neural telemetry or financial gifts.  Verified
-reports interrupt exploration; reports and gifts received during feeding wait
+new reports interrupt exploration; historical reports remain available for
+explicit replay. Quiet reports keep exploring. Reports and gifts received during feeding wait
 until the interaction finishes.  Reduced motion and pause stop both paths.
 
 `site/fly/assets/brain-recordings.json` contains actual offline brain runs from

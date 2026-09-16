@@ -335,6 +335,7 @@
       } catch { recordings = null; $('#recording-status').textContent = 'The recorded brain response could not load. Try again.'; }
     }));
 
+    const openedAt = Math.floor(Date.now() / 1000);
     let lastReacted = null;
     function react(note) {
       const motor = parseMotorReport(note.content);
@@ -346,7 +347,12 @@
       $('#last-note').classList.remove('empty');
       const crop = /(?:Corn|Crop): ([\d,]+) sats/.exec(note.content);
       if (crop) { const sats = Number(crop[1].replace(/,/g, '')); $('#crop').textContent = sats.toLocaleString('en-GB') + ' sats'; $('#crop-fill').style.width = Math.min(100, Math.log10(sats + 1) / 6 * 100) + '%'; }
-      if (note.id !== lastReacted) { lastReacted = note.id; FlyStage.report(motor); if (gift) FlyStage.gift(); }
+      if (note.id !== lastReacted) {
+        lastReacted = note.id;
+        const live = note.created_at >= openedAt;
+        FlyStage.report(motor, live);
+        if (gift && live) FlyStage.gift();
+      }
     }
 
     // A poke requests a real brain response. It never creates a local reflex.

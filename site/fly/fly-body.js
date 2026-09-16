@@ -167,8 +167,7 @@ export async function createFlyBody(canvas) {
     joint('head', feed * .12); joint('abdomen', body.air * -.1);
     sugar.visible = food > .001;
     if (sugar.visible) {
-      sugar.position.set(.12, 0, -.122); sugar.scale.setScalar(Math.cbrt(food));
-      if (body.feed > .1) { root.updateMatrixWorld(true); sugar.position.copy(names.get('labrum_left').getWorldPosition(V())); sugar.position.z = -.122; }
+      sugar.position.set(.098, 0, -.11); sugar.scale.setScalar(Math.cbrt(food));
     }
     drop.visible = share > .001;
     if (drop.visible) {
