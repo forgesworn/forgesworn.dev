@@ -14,6 +14,10 @@ try {
     const { BodyController } = await import('./body-controller.js');
     const { SceneDirector } = await import('./scene-director.js');
     const view = await createFlyBody(document.querySelector('canvas')), results = [];
+    // Sample the complete pose and projection without issuing thousands of GPU
+    // draws. Actual rendered flight and feeding are captured by the browser checks.
+    const render = view.renderer.render.bind(view.renderer);
+    view.renderer.render = (scene, camera) => { scene.updateMatrixWorld(true); camera.updateMatrixWorld(true); };
     for (const [width, height] of [[1208, 580], [358, 388], [288, 300]]) {
       view.resize(width, height);
       const body = new BodyController(), scene = new SceneDirector(); scene.limit = width < 600 ? .11 : .22;
@@ -34,6 +38,11 @@ try {
         results.push({ width, name, clippedFrames });
       }
     }
+    const airborne = new BodyController(); airborne.air = 1; airborne.z = .18;
+    view.pose(airborne, 0); const flyingWings = view.debug().wings;
+    airborne.air = 0; airborne.z = 0; view.pose(airborne, 1);
+    results.push({ name: 'wingExposure', flying: flyingWings, landed: view.debug().wings });
+    view.renderer.render = render;
     // Extension must emerge from below the head, and the drop must actually fall.
     const body = new BodyController(); body.feed = 1; view.resize(1000, 600);
     view.pose(body, 0, { share: 1 }); const attached = view.debug();
@@ -48,6 +57,9 @@ try {
     assert.ok(r.footLift > .03, 'Feet visibly lift');
     assert.ok(r.meanStanceError < .005, 'Planted feet hold their place');
   }
+  const wings = results.find(r => r.name === 'wingExposure');
+  assert.ok(wings.flying.blur && !wings.flying.sharp && wings.flying.samples === 64);
+  assert.ok(!wings.landed.blur && wings.landed.sharp);
   const drop = results.find(r => r.name === 'regurgitation');
   assert.ok(drop.attached[0] > .09 && drop.attached[2] < -.06, 'Extended mouthparts emerge below the head');
   assert.ok(drop.released[2] < drop.attached[2] - .025, 'Drop falls to the surface');

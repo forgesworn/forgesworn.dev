@@ -1,6 +1,6 @@
 import { motorSampleAt, PLAYBACK_SLOWDOWN } from './motor.js';
 import { BodyController } from './body-controller.js?v=4';
-import { createFlyBody } from './fly-body.js?v=4';
+import { createFlyBody } from './fly-body.js?v=5';
 import { SceneDirector } from './scene-director.js?v=4';
 const ZERO = [0, 0, 0, 0, 0, 0, 0];
 const labels = { rest: 'Resting', forward: 'Exploring', backward: 'Backing away', turn: 'Turning', feed: 'Drinking the sugar', swallow: 'Swallowing', sing: 'Wing song', takeoff: 'Taking off', flight: 'Flying', landing: 'Landing', groom: 'Grooming', share: 'Bringing up a drop' };
@@ -12,6 +12,7 @@ export function createFlyStage({ canvas, box, status, pause, previewButtons, ret
   let paused = motion.matches, visible = true, raf = 0, previous = 0, time = 0, elapsed = 0;
   let source = 'Animated behaviour', sample = ZERO, finishing = false, giftTime = 0;
   let pendingReport = false, pendingGift = false;
+  let pendingFeed = null;
   function announce() {
     if (failed) {
       status.textContent = '3D view unavailable in this browser. Brain reports are still shown below.';
@@ -30,7 +31,7 @@ export function createFlyStage({ canvas, box, status, pause, previewButtons, ret
     box.dataset.activitySource = ambient ? scene.meal ? 'interaction' : 'ambient' : 'brain-or-preview';
     box.dataset.food = scene.food.toFixed(3); box.dataset.drop = scene.share.toFixed(3);
     const feedButton = document.querySelector('#feed-drop');
-    if (feedButton) { feedButton.disabled = Boolean(scene.meal); feedButton.textContent = scene.meal ? 'Feeding…' : 'Feed a drop'; }
+    if (feedButton) { feedButton.disabled = Boolean(scene.meal); feedButton.textContent = scene.meal ? 'Feeding…' : 'Feed a free drop'; }
     pause.textContent = paused ? 'Play motion' : 'Pause motion'; pause.setAttribute('aria-pressed', String(paused));
   }
   function draw() {
@@ -70,7 +71,10 @@ export function createFlyStage({ canvas, box, status, pause, previewButtons, ret
     source = 'Animated behaviour';
   }
   function feed(origin = 'Sugar drop · visual interaction', gift = false) {
-    if (scene.meal) return;
+    if (scene.meal) {
+      if (!gift && origin !== 'Sugar drop · visual interaction') pendingFeed = origin;
+      return;
+    }
     playback = null; demo = null; finishing = false; giftTime = 0; sample = ZERO;
     ambient = true; source = origin; scene.feed(body, gift);
     if (paused) scene.step(body, gift ? 2 : 2.2);
@@ -101,6 +105,7 @@ export function createFlyStage({ canvas, box, status, pause, previewButtons, ret
       if (wasMeal && !scene.meal) {
         source = 'Animated behaviour';
         if (pendingGift) { pendingGift = false; gift(); }
+        else if (pendingFeed) { const origin = pendingFeed; pendingFeed = null; feed(origin); }
         else if (pendingReport) { pendingReport = false; playLatest(); }
       }
       return;
@@ -142,7 +147,8 @@ export function createFlyStage({ canvas, box, status, pause, previewButtons, ret
   announce();
   createFlyBody(canvas).then(result => {
     view = result; resize(); box.dataset.artwork = 'ready'; box.dataset.renderer = 'articulated'; wake();
-  }).catch(() => {
+  }).catch(error => {
+    console.error('Fly renderer could not start', error);
     failed = true; box.dataset.artwork = 'failed'; announce();
     canvas.style.background = 'center / contain no-repeat url(emblem-1024.png)';
     pause.disabled = true;

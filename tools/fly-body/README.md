@@ -6,7 +6,10 @@ controller.  It does not run MuJoCo or a neural low-level flight policy.
 `site/fly/body-controller.js` decodes verified Motor v1 samples into travel,
 heading, feeding and an escape-triggered take-off/flight/landing sequence.
 `site/fly/fly-body.js` renders the joint hierarchy and uses inverse kinematics
-to place six feet.  Feeding and backward travel can run together.  The fly
+to place six feet.  `wing-motion.js` supplies a phase-offset sweep and
+feathering stroke; 64 instanced samples create a translucent exposure during
+flight, blending back to folded wings at touchdown.  No measured wingbeat
+dataset is bundled.  Feeding and backward travel can run together.  The fly
 returns to exploring when the report and its bounded landing transition finish.
 
 `site/fly/scene-director.js` supplies the labelled visitor experience: forward
@@ -43,6 +46,7 @@ Preserve the source licence and NOTICE.txt when rebuilding.
 npm test
 node tools/captures/fly-living.mjs
 node tools/captures/fly-body.mjs
+node tools/captures/fly-payments.mjs
 ```
 
 Browser checks use an isolated headless browser, synthetic signatures and
@@ -53,3 +57,10 @@ stepping images as well as the assertions.  Checks cover visible screen travel,
 foot lift, stance slip, framing through complete cycles, reduced motion, pause,
 tampered events, authenticated neural interruption, failed and mocked successful
 wallet payments.  The legacy fly-motor.mjs entry point runs fly-living.mjs.
+
+External zaps are authenticated against the LNURL provider key using NIP-57,
+including the signed request, recipient, LNURL and invoice amount.  Invoice
+identity deduplicates wallet completion and relay receipts.  Plain payments
+use the fly's signed amount-bearing neural report; opaque NIP-59 envelopes
+never count as payment confirmation.  Test receipts use public synthetic keys
+and synthetic invoices; browser tests never send payments.

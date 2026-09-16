@@ -1,5 +1,6 @@
 import * as THREE from './vendor/three.module.min.js';
 import { clamp } from './body-controller.js?v=4';
+import { FOLDED_WING, WING_SAMPLES, wingStroke, wingDeployment } from './wing-motion.js?v=5';
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const quat = a => new THREE.Quaternion(a[1], a[2], a[3], a[0]);
 const TAU = Math.PI * 2;
@@ -48,7 +49,7 @@ export async function createFlyBody(canvas) {
     g.computeVertexNormals(); return g;
   });
   const root = new THREE.Group(); scene.add(root);
-  const bodies = new Map([[0, root]]), names = new Map(), joints = new Map();
+  const bodies = new Map([[0, root]]), names = new Map(), joints = new Map(), wingMeshes = [];
   for (const b of rig.bodies) {
     const frame = new THREE.Group(); frame.position.fromArray(b.pos); frame.quaternion.copy(quat(b.quat));
     bodies.get(b.parent).add(frame);
@@ -71,6 +72,7 @@ export async function createFlyBody(canvas) {
       const mesh = new THREE.Mesh(geometries[g.mesh], material);
       mesh.position.fromArray(g.pos); mesh.quaternion.copy(quat(g.quat));
       mesh.castShadow = !membrane; mesh.receiveShadow = false; tail.add(mesh);
+      if (name.startsWith('wing_')) wingMeshes.push({ mesh, side: b.name.endsWith('left') ? 'left' : 'right', membrane, opacity: material.opacity });
     }
   }
   function joint(name, angle) {
@@ -78,6 +80,26 @@ export async function createFlyBody(canvas) {
     j.value = clamp(angle, j.range[0], j.range[1]);
     j.pivot.quaternion.setFromAxisAngle(j.axis, j.value - j.rest);
   }
+  function setWing(side, angles) {
+    ['yaw', 'roll', 'pitch'].forEach((axis, i) => joint(`wing_${axis}_${side}`, angles[i]));
+  }
+  // Integrate a complete stroke instead of showing one aliased, sharp frame.
+  // Instancing keeps the four wing surfaces to four additional draw calls.
+  const wingBlur = new THREE.Group(); root.add(wingBlur);
+  for (const wing of wingMeshes) {
+    const material = new THREE.MeshBasicMaterial({ color: wing.membrane ? '#d7e5df' : '#998b69', transparent: true,
+      opacity: 0, depthWrite: false, side: THREE.DoubleSide });
+    const blur = new THREE.InstancedMesh(wing.mesh.geometry, material, WING_SAMPLES);
+    blur.frustumCulled = false; wingBlur.add(blur); wing.blur = blur;
+    for (let i = 0; i < WING_SAMPLES; i++) {
+      setWing(wing.side, wingStroke((i + .5) / WING_SAMPLES));
+      wing.mesh.updateWorldMatrix(true, false);
+      blur.setMatrixAt(i, wing.mesh.matrixWorld);
+    }
+    blur.instanceMatrix.needsUpdate = true; blur.computeBoundingBox();
+  }
+  for (const side of ['left', 'right']) setWing(side, FOLDED_WING);
+  wingBlur.visible = false;
   scene.updateMatrixWorld(true);
   const feet = [];
   for (const side of ['left', 'right']) for (let segment = 1; segment <= 3; segment++) {
@@ -110,7 +132,7 @@ export async function createFlyBody(canvas) {
   function pose(body, time, { share = 0, groom = false, food = 0, release = 0 } = {}) {
     // A fixed camera makes walking and flight visibly cross the scene.
     camera.position.copy(cameraBase);
-    camera.lookAt(0, 0, .045);
+    camera.lookAt(0, 0, .09);
     const moving = body.air > .015 || body.song || Math.abs(body.speed) > .002 || groom;
     const key = [body.x, body.y, body.z, body.heading, body.bank, body.pitch, body.phase, body.feed, body.air, body.song, share, release, food, groom, moving ? time : 0].join(',');
     if (key === lastPose) { renderer.render(scene, camera); return; }
@@ -149,15 +171,21 @@ export async function createFlyBody(canvas) {
       solve(foot, target); foot.swing = swing;
     }
     lastPhase = body.phase; lastAir = body.air;
+    const deployment = wingDeployment(body.air);
+    wingBlur.visible = deployment > .001;
+    for (const wing of wingMeshes) {
+      // Veins must fade as well as the membrane, or the wing still reads as
+      // a rigid panel. Full-stroke exposure is independent of display refresh.
+      wing.mesh.material.transparent = true;
+      wing.mesh.material.depthWrite = false;
+      wing.mesh.material.opacity = wing.opacity * (1 - deployment);
+      wing.mesh.visible = deployment < .999;
+      wing.mesh.castShadow = !wing.membrane && deployment < .1;
+      wing.blur.material.opacity = deployment * (wing.membrane ? .32 : .4) / WING_SAMPLES;
+    }
     for (const side of ['left', 'right']) {
-      const flying = body.air > .015;
-      // Display wing cycles at a readable rate; real Drosophila beats are much
-      // faster. This is an explicit display controller, not measured kinematics.
-      const beat = Math.sin(time * TAU * 21 + (side === 'left' ? 0 : .08));
-      joint(`wing_yaw_${side}`, flying ? .1 + beat * 1.15 : 1.5);
-      joint(`wing_roll_${side}`, flying ? .35 + Math.cos(time * TAU * 21) * .55 : .7);
-      joint(`wing_pitch_${side}`, flying ? .8 + beat * 1.15 : -1);
-      if (!flying && body.song && side === 'left') joint(`wing_yaw_${side}`, .25 + Math.sin(time * 80) * body.song * .3);
+      setWing(side, FOLDED_WING.map((angle, i) => angle + (wingStroke(.25)[i] - angle) * deployment));
+      if (!deployment && body.song && side === 'left') joint(`wing_yaw_${side}`, .25 + Math.sin(time * 80) * body.song * .3);
       joint(`antenna_${side}`, Math.abs(body.speed) > .002 ? Math.sin(time * 9 + (side === 'left' ? 0 : 1)) * .04 : 0);
     }
     const feed = Math.max(body.feed, share > 0 ? 1 : 0);
@@ -184,20 +212,33 @@ export async function createFlyBody(canvas) {
   }
   function resize(width, height) {
     renderer.setSize(width, height, false); camera.aspect = width / height;
-    const distance = camera.aspect < 1.3 ? 1.8 : 1.32;
+    const distance = camera.aspect < 1.3 ? 1.8 : 1.45;
     cameraBase.set(distance * .15, -distance, distance * .4);
     camera.position.copy(cameraBase);
     camera.lookAt(0, 0, .1); camera.updateProjectionMatrix();
   }
   function framed() {
-    const bounds = new THREE.Box3().setFromObject(root);
-    for (const x of [bounds.min.x, bounds.max.x]) for (const y of [bounds.min.y, bounds.max.y]) for (const z of [bounds.min.z, bounds.max.z]) {
-      const p = V(x, y, z).project(camera);
-      if (Math.abs(p.x) > .99 || Math.abs(p.y) > .99) return false;
-    }
-    return true;
+    root.updateWorldMatrix(true, true);
+    const point = V(), matrix = new THREE.Matrix4(), instance = new THREE.Matrix4();
+    let fits = true;
+    root.traverseVisible(node => {
+      if (!node.isMesh || !fits) return;
+      const shape = node.geometry;
+      if (!shape.boundingBox) shape.computeBoundingBox();
+      const bounds = shape.boundingBox;
+      for (let i = 0; i < (node.isInstancedMesh ? node.count : 1) && fits; i++) {
+        matrix.copy(node.matrixWorld);
+        if (node.isInstancedMesh) { node.getMatrixAt(i, instance); matrix.multiply(instance); }
+        for (const x of [bounds.min.x, bounds.max.x]) for (const y of [bounds.min.y, bounds.max.y]) for (const z of [bounds.min.z, bounds.max.z]) {
+          point.set(x, y, z).applyMatrix4(matrix).project(camera);
+          if (Math.abs(point.x) > .99 || Math.abs(point.y) > .99) fits = false;
+        }
+      }
+    });
+    return fits;
   }
   return { pose, resize, renderer, framed, debug: () => ({ joints: joints.size,
+    wings: { deployment: wingDeployment(lastAir), blur: wingBlur.visible, sharp: wingMeshes.some(w => w.mesh.visible), samples: WING_SAMPLES },
     screen: root.position.clone().project(camera).toArray(),
     drop: { visible: drop.visible, position: drop.position.toArray(), scale: drop.scale.toArray() },
     mouth: names.get('labrum_left').getWorldPosition(V()).toArray(),
