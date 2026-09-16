@@ -88,6 +88,14 @@
     .panel h3 { font-family: var(--font-display); font-size: 1.05rem; color: var(--champagne); margin: 0 0 0.35rem; }
     .panel ol { margin: 0.5rem 0 0; padding-left: 1.2rem; font-size: 0.92rem; color: var(--ink-dim); }
     .panel ol li { margin: 0.25rem 0; }
+    .scan { display: flex; gap: 1.2rem; align-items: flex-start; margin: 0 0 1.2rem; }
+    .scan .qr { flex: none; width: 190px; height: 190px; background: #fff; border-radius: 12px; padding: 10px; display: flex; align-items: center; justify-content: center; }
+    .scan .qr svg { width: 100%; height: 100%; display: block; }
+    .scan-words { min-width: 0; }
+    .scan-words h3 { font-family: var(--font-display); font-size: 1.15rem; color: var(--sage); margin: 0 0 0.35rem; }
+    @media (max-width: 620px) { .scan { flex-direction: column; align-items: center; text-align: center; } .scan-words { text-align: left; } }
+    .orline { display: flex; align-items: center; gap: 0.8rem; color: var(--ink-dim); font-size: 0.88rem; margin: 1.4rem 0 1rem; }
+    .orline::before, .orline::after { content: ""; flex: 1; height: 1px; background: var(--line); }
     .amount-line { font-family: var(--font-display); font-size: 1.35rem; color: var(--champagne); margin: 0 0 1rem; }
     .status { font-family: var(--font-mono); font-size: 0.86rem; color: var(--sage-dim); min-height: 1.4em; margin-top: 0.8rem; }
     .status.bad { color: var(--red); }
@@ -117,8 +125,23 @@
 
     <section class="card" id="step-send" hidden>
       <h2>Say where it should go</h2>
-      <p class="note">A Lightning address looks like an email address. If you have not got one, <a href="https://www.walletofsatoshi.com/" rel="noopener">Wallet of Satoshi</a>, <a href="https://www.blink.sv/" rel="noopener">Blink</a> and <a href="https://strike.me/" rel="noopener">Strike</a> each give you one in a couple of minutes, and all three work with this page. Plenty of good wallets refuse to talk to a web page at all, so if yours will not, paste an invoice instead. That works with every wallet there is.</p>
       <p class="amount-line" id="amount-line"></p>
+
+      <div class="scan">
+        <div class="qr" id="qr"></div>
+        <div class="scan-words">
+          <h3>Scan it with your wallet</h3>
+          <p class="note" id="scan-failed" hidden>This note could not be drawn as a code. Use one of the ways below.</p>
+          <p class="note">This note is an ordinary LNURL withdrawal, so any Lightning wallet can take it: Wallet of Satoshi, Phoenix, Blink, Zeus, anything. Open your wallet, scan, and it is yours. Nothing here needs your Nostr key.</p>
+          <div class="row">
+            <button class="ghost" id="copy-lnurl">Copy the link instead</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="orline"><span>or send it somewhere yourself</span></div>
+
+      <p class="note">A Lightning address looks like an email address. If you have not got one, <a href="https://www.walletofsatoshi.com/" rel="noopener">Wallet of Satoshi</a>, <a href="https://www.blink.sv/" rel="noopener">Blink</a> and <a href="https://strike.me/" rel="noopener">Strike</a> each give you one in a couple of minutes, and all three work with this page.</p>
       <label for="address">Your Lightning address</label>
       <input type="text" id="address" spellcheck="false" autocomplete="off" inputmode="email" placeholder="you@walletofsatoshi.com">
       <div class="row">
@@ -189,6 +212,7 @@
   </footer>
 </div>
 
+<script src="qrcode.js"></script>
 <script src="signet-login.iife.js"></script>
 <script>
 (() => {
@@ -248,6 +272,8 @@
   const hexBytes = hex => Uint8Array.from(hex.match(/../g).map(b => parseInt(b, 16)));
   const npub = hex => { try { return bech32('npub', hexBytes(hex)); } catch { return hex; } };
   const shortNpub = hex => { const n = npub(hex); return n.length > 20 ? n.slice(0, 12) + '…' + n.slice(-6) : n; };
+
+  const lnurlOf = url => bech32('lnurl', new TextEncoder().encode(url)).toUpperCase();
 
   async function sha256Hex(text) {
     const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
@@ -563,7 +589,23 @@
     const amount = sats(gift.info.maxWithdrawable) + ' sats';
     $('amount-line').textContent = 'There are ' + amount + ' in this note.';
     $('invoice-amount').textContent = 'exactly ' + amount;
-    $('address').focus({ preventScroll: true });
+    // The note as an LNURL withdrawal, which is what a wallet's camera wants.
+    const host = $('qr');
+    host.innerHTML = '';
+    try {
+      const lnurl = lnurlOf(gift.note);
+      const code = qrcode(0, 'L');
+      code.addData(lnurl, 'Alphanumeric');
+      code.make();
+      host.innerHTML = code.createSvgTag({ cellSize: 4, margin: 1, scalable: true });
+      $('copy-lnurl').dataset.lnurl = lnurl;
+    } catch {
+      host.innerHTML = '';
+      show('scan-failed');
+    }
+    // Arriving here from the key search means this section is above whatever
+    // the person was reading, so take them to it rather than hoping.
+    $('step-send').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   // ---- arriving with a link ----------------------------------------------
@@ -745,6 +787,16 @@
       const key = $('whoami-key'), was = key.textContent;
       key.textContent = 'copied';
       setTimeout(() => { key.textContent = was; }, 1200);
+    } catch {}
+  };
+  $('copy-lnurl').onclick = async () => {
+    const value = $('copy-lnurl').dataset.lnurl;
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      const b = $('copy-lnurl');
+      b.textContent = 'Copied';
+      setTimeout(() => { b.textContent = 'Copy the link instead'; }, 1400);
     } catch {}
   };
   $('rescan').onclick = () => { if (me) findGifts(); };
