@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>The Fly</title>
-  <meta name="description" content="A fruit-fly neural simulation on Nostr. Poke it for free and see signed motor activity replayed as motion. Built to make agent behaviour inspectable.">
+  <meta name="description" content="Watch the fly, mention it for free and you could receive sats when sharing is enabled. Get started on Nostr with Bark, Bray and Heartwood.">
   <meta property="og:title" content="The Fly">
-  <meta property="og:description" content="Poke a simulated fruit fly. Follow the input, the neural response and the signed record of what happened.">
+  <meta property="og:description" content="Mention the fly. You could win sats when sharing is enabled. Free to take part; zapping doesn’t improve your chances. Get started with Bark, Bray and Heartwood.">
   <meta property="og:image" content="https://forgesworn.dev/fly/banner-1500.png">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="emblem.svg" type="image/svg+xml">
@@ -146,8 +146,9 @@
     footer .fineprint { font-size: 0.85em; opacity: 0.72; margin-top: 0.9rem; line-height: 1.5; }
     .pill { display: inline-block; font-family: var(--font-mono); font-size: 0.78rem; padding: 0.15rem 0.55rem; border: 1px solid var(--line); border-radius: 999px; color: var(--sage-dim); margin-right: 0.4rem; }
     /* The moving fly is the first thing visitors see. */
-    .hero { max-width: 1240px; margin: auto; padding: 16px 24px; display: flex; justify-content: space-between; font: .8rem var(--font-mono); }
+    .hero { max-width: 1240px; margin: auto; padding: 16px 24px; display: flex; justify-content: space-between; gap: 16px; font: .8rem var(--font-mono); }
     .hero a { border: 0; }
+    .hero a:last-child { text-align: right; }
     .wrap { max-width: 1240px; }
     #stage { padding-top: 12px; }
     .stage-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin: 0 8px 12px; }
@@ -167,8 +168,23 @@
     .feeding-caption { text-align: center; margin: 8px 0 0; color: var(--ink-dim); font-size: .86rem; }
     .live-report { border-top: 1px solid var(--line); padding-top: 12px; font-size: .9rem; }
     .live-report summary { cursor: pointer; color: var(--sage); }
-    #why, #connect, #feed, #how, footer { max-width: 860px; margin-left: auto; margin-right: auto; }
+    #why, #connect, #install, #feed, #how, footer { max-width: 860px; margin-left: auto; margin-right: auto; }
+    .participation-teaser { text-align: center; font-size: .9rem; margin: 14px 0 0; }
+    .participation-teaser a { font-weight: 600; }
+    .join-actions, .install-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 16px 0; }
+    .join-actions .button, .install-actions .button { display: inline-block; text-align: center; }
+    .install-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .install-grid .card { min-width: 0; }
+    .install-grid .hardware { grid-column: 1 / -1; }
+    .install-grid p, .install-grid ol { font-size: .95rem; }
+    .install-grid ol { padding-left: 1.3rem; }
+    .install-grid li + li { margin-top: .65rem; }
+    .install-grid code { display: inline-block; max-width: 100%; }
+    #install, #connect { scroll-margin-top: 20px; }
+    #mention-status:empty { display: none; }
+    #signer-help { border-left: 3px solid var(--sage); padding-left: 16px; }
     @media (max-width: 600px) {
+      .install-grid { grid-template-columns: 1fr; }
       .hero { padding: 14px 16px; }
       .stage-heading { display: block; margin: 0 0 12px; }
       .stage-heading p { font-size: .9rem; margin-top: 4px; }
@@ -178,7 +194,7 @@
   </style>
 </head>
 <body>
-  <header class="hero"><a href="/">ForgeSworn</a><a href="#how">Meet the brain</a></header>
+  <header class="hero"><a href="/">ForgeSworn</a><a href="#install">Get Bark / Bray / Heartwood</a></header>
   <main class="wrap">
     <section id="stage">
       <div class="stage-heading"><h1>The Fly</h1><p>Watch it explore.  Give it a drop of sugar.</p></div>
@@ -206,6 +222,7 @@
             </div>
             <div class="status" id="zap-status" role="status"></div>
             <p class="feeding-caption">Feed it here.  Watch it land, drink and bring a drop back up.</p>
+            <p class="participation-teaser"><a href="#connect">Mention the fly.  You could win sats.</a><br>Free to take part.  Gifts depend on sharing being enabled.<br>Zapping doesn’t improve your chances.</p>
             <p class="feeding-caption"><button type="button" id="replay-feeding" hidden>Replay last confirmed feeding</button></p>
             <details class="wallet-options" id="wallet-options"><summary>QR code, wallet address or a comment</summary>
           <div class="qr">
@@ -259,18 +276,76 @@
       </div>
     </section>
 
+    <section id="connect" aria-labelledby="join-heading">
+      <div class="eyebrow">Say hello on Nostr</div>
+      <h2 id="join-heading">Mention the fly.  You could win sats.</h2>
+      <p>Mention it or reply to one of its posts.  Once your message reaches the fly, your Nostr key joins the pool for seven days, once per key.  When sharing is enabled and its feeding neurons fire in response to a written message, it can give its accumulated sats to someone drawn from that pool.</p>
+      <p><strong>Taking part is free.  Zapping doesn’t improve your chances.</strong>  Gifts depend on available funds and the host’s permission and limits.  This page doesn’t show whether sharing is currently enabled.  A free animated drop doesn’t enter you.</p>
+      <div class="join-actions">
+        <button type="button" class="primary" id="mention-fly">Mention the fly for free</button>
+        <a class="button" href="https://njump.me/npub1fcp73q289r4t5hch9my5kwgpm8vw6qft6ncw5ppucdtwv6ynq3lq2phg2l">Open its Nostr profile</a>
+      </div>
+      <p class="motion-note">The button asks your browser signer to sign a public “sugar” mention as you.  Review it in your signer.  Already using a Nostr app? Open the profile and mention the fly or reply there.</p>
+      <p id="mention-status" class="status" role="status"></p>
+      <p id="signer-help" hidden>No browser signer found.  <a href="#install">Install and connect Bark below</a>, enable it for this site, then return to this button.  If Bark is already installed, open its popup and enable it for this tab.</p>
+      <details class="wallet-options"><summary>Copy the fly’s Nostr identity</summary>
+        <p class="address"><code id="npub">npub1fcp73q289r4t5hch9my5kwgpm8vw6qft6ncw5ppucdtwv6ynq3lq2phg2l</code> <button type="button" data-copy="npub1fcp73q289r4t5hch9my5kwgpm8vw6qft6ncw5ppucdtwv6ynq3lq2phg2l">copy</button></p>
+      </details>
+      <p class="motion-note">Selected recipients get a Nostr notice.  <a href="claim/">Claim with the same Nostr identity</a> and collect through Lightning.  <a href="#how">How the brain and sharing work.</a></p>
+    </section>
+
+    <section id="install" aria-labelledby="install-heading">
+      <div class="eyebrow">Use the tools behind it</div>
+      <h2 id="install-heading">Get set up.  Come back and poke it.</h2>
+      <p>The fly gives you something to try straight away.  Use Bark to sign from your browser, Bray to talk to Nostr from a terminal or AI assistant, and Heartwood to keep your signing key on hardware.  You can take part with your existing Nostr app too.</p>
+      <div class="install-grid">
+        <article class="card">
+          <div class="eyebrow">From your browser</div>
+          <h3>Install Bark</h3>
+          <p>Bark connects this page to your Nostr signer.  Your Nostr private key stays with that signer.</p>
+          <div class="install-actions">
+            <a class="button" href="https://chromewebstore.google.com/detail/bark/gdpcaoemjjglcebpjjljmhndbpeckpln">Chrome / Brave / Edge</a>
+            <a class="button" href="https://addons.mozilla.org/en-GB/firefox/addon/bark-nostr/">Firefox / Android</a>
+          </div>
+          <ol>
+            <li>Install Bark for your browser.</li>
+            <li>Open Bark and pair your signer by QR or its <code>bunker://</code> connection.  Heartwood works here; so does another NIP-46 signer.</li>
+            <li>Enable Bark for this tab, then <a href="#connect">mention the fly</a> and approve the request.</li>
+          </ol>
+          <p>No signer yet? Start with the Heartwood setup below.  <a href="https://github.com/forgesworn/bark#works-with-any-nip-46-bunker">Other signer options and pairing help.</a></p>
+        </article>
+        <article class="card">
+          <div class="eyebrow">From your terminal or AI</div>
+          <h3>Install Bray</h3>
+          <p>Post, reply and read Nostr through a command line or an MCP connection to your AI assistant.</p>
+          <p>With Node.js 24 or later:</p>
+          <p><code>npm install -g nostr-bray</code></p>
+          <ol>
+            <li>Install the package, then follow the setup guide to connect your Nostr signer.</li>
+            <li>Run <code>npx nostr-bray whoami</code> to check which identity you’re using.</li>
+            <li>Ask your connected assistant to open the fly’s profile and reply to one of its posts.  Review the public reply before publishing.</li>
+          </ol>
+          <div class="install-actions"><a class="button" href="https://github.com/forgesworn/bray#quick-start">Set up Bray and your signer</a></div>
+        </article>
+        <article class="card hardware">
+          <div class="eyebrow">Keep your key on your own hardware</div>
+          <h3>Set up Heartwood</h3>
+          <p>Heartwood signs on a dedicated device.  Bark and Bray can both connect to it.  The ESP32 route needs a supported board, a USB cable and a Linux or Raspberry Pi bridge host.</p>
+          <p>Follow the hardware guide to flash and provision the signer, install the bridge, then pair Bark or Bray using the signer’s connection URI.</p>
+          <div class="install-actions">
+            <a class="button" href="https://github.com/forgesworn/heartwood/blob/main/docs/QUICKSTART.md">Set up Heartwood</a>
+            <a href="https://github.com/forgesworn/heartwood-esp32#readme">Supported boards and firmware</a>
+          </div>
+        </article>
+      </div>
+    </section>
+
     <section id="why">
       <div class="eyebrow">Why we built it</div>
       <h2>See what made it move</h2>
       <p>We want to make an agent’s behaviour something you can inspect.  With the fly, there’s a concrete chain to follow: a public input, a short neural simulation, a signed result and a visible response.  The interesting part is being able to check what caused an action and what the host allowed it to do.</p>
       <p>It’s also a small, public experiment for <a href="https://oathrun.pages.dev/">Oathrun</a>.  The brain computes a response inside a restricted sandbox.  The host handles messages and holds the corn, with separate permission to publish or give any away.  That separation matters when an agent can affect something outside its own process.</p>
       <p>This is a simplified model built from biological wiring.  Each input starts a fresh run; it doesn’t learn from previous pokes or simulate a continuously living animal.  The illustration makes the output easier to see.  It isn’t evidence that we’ve reproduced a fly’s mind.</p>
-    </section>
-
-    <section id="connect">
-      <h2>Find the fly on Nostr</h2>
-      <p style="margin-top:1.2rem">Or on Nostr: mention <code class="mono" id="npub">npub1fcp73q289r4t5hch9my5kwgpm8vw6qft6ncw5ppucdtwv6ynq3lq2phg2l</code> <button type="button" data-copy="npub1fcp73q289r4t5hch9my5kwgpm8vw6qft6ncw5ppucdtwv6ynq3lq2phg2l">copy</button> and it feels a touch. Reply to one of its notes and it hears a buzz. React and it feels a breeze. <a href="https://njump.me/npub1fcp73q289r4t5hch9my5kwgpm8vw6qft6ncw5ppucdtwv6ynq3lq2phg2l">Open its profile.</a></p>
-      <p style="margin-top:0.8rem">Prefer the command line, or want your own agent to poke it? <a href="https://www.npmjs.com/package/nostr-bray">Bray</a> is trust-aware Nostr for agents and humans: <code class="mono">npx nostr-bray post "hey @fly"</code>, zap it, or check its trust score, from any terminal or MCP client.</p>
     </section>
 
     <section id="feed">
@@ -398,18 +473,33 @@
     let lastSplat = 0;
     async function sendSensation(word = 'poke') {
       const hint = $('#splat-hint');
-      if (!window.nostr) { if (hint) { hint.textContent = 'no Nostr extension · mention it from any app'; setTimeout(() => { hint.textContent = 'poke it to ask the brain'; }, 3200); } return; }
-      if (Date.now() - lastSplat < 30000) { if (hint) { hint.textContent = 'give it a moment…'; setTimeout(() => { hint.textContent = 'poke it to ask the brain'; }, 1800); } return; }
+      const status = $('#mention-status');
+      if (!window.nostr?.signEvent) {
+        $('#signer-help').hidden = false;
+        $('#signer-help').scrollIntoView({ block: 'center' });
+        status.textContent = 'Connect a signer to send your free public mention.';
+        return;
+      }
+      $('#signer-help').hidden = true;
+      if (Date.now() - lastSplat < 30000) { status.textContent = 'Give it a moment before sending another mention.'; if (hint) { hint.textContent = 'give it a moment…'; setTimeout(() => { hint.textContent = 'poke it to ask the brain'; }, 1800); } return; }
       lastSplat = Date.now();
+      status.textContent = 'Review the public mention in your signer…';
+      $('#mention-fly').disabled = true;
       try {
         const ev = { kind: 1, created_at: Math.floor(Date.now() / 1000), content: word, tags: [['p', FLY]] };
         const signed = await window.nostr.signEvent(ev);
         RELAYS.forEach(u => { try { const ws = new WebSocket(u); ws.onopen = () => { ws.send(JSON.stringify(['EVENT', signed])); setTimeout(() => { try { ws.close(); } catch {} }, 1800); }; } catch {} });
+        status.textContent = 'Mention signed.  Waiting for the relays and an admitted brain response.  Signing alone doesn’t confirm that the fly received it.';
         if (hint) { hint.textContent = 'input sent · waiting for an admitted brain response'; setTimeout(() => { hint.textContent = 'poke it to ask the brain'; }, 4500); }
-      } catch { if (hint) hint.textContent = 'poke it to ask the brain'; }
+      } catch {
+        lastSplat = 0;
+        status.textContent = 'The mention wasn’t signed.  Check your signer connection or approval, then try again.';
+        if (hint) hint.textContent = 'poke it to ask the brain';
+      } finally { $('#mention-fly').disabled = false; }
     }
     FlyStage.setSplatHandler(() => sendSensation('poke'));
     $('#loom-fly').addEventListener('click', () => sendSensation('loom'));
+    $('#mention-fly').addEventListener('click', () => sendSensation('sugar'));
 
     // A small relay client: one REQ per relay, events by id, live after EOSE.
     const events = new Map(), profiles = new Map();
