@@ -196,7 +196,7 @@
 
   const FLY = '4e03e8814728eaba5f172ec94b3901d9d8ed012bd4f0ea043cc356e66893047e';
   const RELAYS = ['wss://nos.lol', 'wss://relay.primal.net', 'wss://relay.damus.io', 'wss://purplepag.es'];
-  const KIND_WRAP = 1059, KIND_SEAL = 13, KIND_CASH = 2525;
+  const KIND_WRAP = 1059, KIND_SEAL = 13, KIND_CASH = 2525, KIND_DM = 14;
   const GATHER_MS = 6000, WRAP_LIMIT = 400, HTTP_MS = 20000;
   // A gift wrap is deliberately indistinguishable from any other sealed
   // message, so the only way to recognise one is to open it. That would mean
@@ -417,13 +417,27 @@
   }
 
   function giftOf(rumour) {
+    const common = note => ({ rumourId: rumour.id, from: rumour.pubkey, at: rumour.created_at, note });
+    // A gift is an ordinary direct message carrying a claim link, which is
+    // what you already have if you can read the message. This is the way back
+    // in when the link itself has been lost.
+    if (rumour.kind === KIND_DM) {
+      const found = /https:\/\/\S+#n=([0-9a-f]+)/i.exec(String(rumour.content || ''));
+      if (!found || found[1].length % 2) return null;
+      let note;
+      try {
+        note = new TextDecoder().decode(Uint8Array.from(found[1].match(/../g).map(b => parseInt(b, 16))));
+      } catch { return null; }
+      if (!/^https:\/\/\S+$/.test(note) || note.length > 512) return null;
+      return { ...common(note), amountMsat: null };
+    }
+    // Gifts the fly sealed before it sent messages carried the note itself.
     if (rumour.kind !== KIND_CASH) return null;
     const note = String(rumour.content || '').trim();
     if (!/^https:\/\/\S+$/.test(note) || note.length > 512) return null;
     const amount = (rumour.tags || []).find(t => Array.isArray(t) && t[0] === 'amount');
     const msat = amount ? Number(amount[1]) : NaN;
-    return { rumourId: rumour.id, from: rumour.pubkey, at: rumour.created_at, note,
-             amountMsat: Number.isFinite(msat) && msat > 0 ? msat : null };
+    return { ...common(note), amountMsat: Number.isFinite(msat) && msat > 0 ? msat : null };
   }
 
   let windowIndex = 0;
@@ -561,7 +575,13 @@
   async function fromLink() {
     let note = '';
     try {
-      note = new URLSearchParams(location.hash.slice(1)).get('n') || '';
+      const raw = new URLSearchParams(location.hash.slice(1)).get('n') || '';
+      // Hex keeps the fragment free of anything needing escaping, and keeps a
+      // readable secret off the screen. A plain URL is still accepted, so a
+      // link typed or repaired by hand works too.
+      note = /^(?:[0-9a-f]{2})+$/i.test(raw)
+        ? new TextDecoder().decode(Uint8Array.from(raw.match(/../g).map(b => parseInt(b, 16))))
+        : raw;
     } catch { note = ''; }
     if (!note) return false;
     // Take it out of the address bar once it is read, so the note is not
