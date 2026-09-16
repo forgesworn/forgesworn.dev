@@ -7,3 +7,4 @@ forgesworn-repos.json
 tools/opsec-terms.json
 tools/*.local.json
 captures-out/
+output/imagegen/

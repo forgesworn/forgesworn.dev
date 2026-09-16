@@ -85,10 +85,10 @@
     .status.err { color: #f0907e; }
 
     /* the live fly */
-    .stage { display: grid; grid-template-columns: 340px 1fr; gap: 1.4rem; align-items: center; }
+    .stage { display: grid; gap: 1.4rem; }
     @media (max-width: 720px) { .stage { grid-template-columns: 1fr; } }
-    .fly-box { position: relative; background: radial-gradient(circle at 50% 35%, #1b241d, #0b0f0c 78%); border-radius: 16px; border: 1px solid var(--line); overflow: hidden; aspect-ratio: 1; }
-    .fly-box canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
+    .fly-box { position: relative; background: radial-gradient(circle at 50% 35%, #1b241d, #0b0f0c 78%); border-radius: 16px; border: 1px solid var(--line); overflow: hidden; aspect-ratio: 16 / 9; }
+    .fly-box canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: pan-y; cursor: pointer; }
     .splat-hint { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.06em; color: var(--ink-dim); background: rgba(11,15,12,0.55); border: 1px solid var(--line); border-radius: 999px; padding: 0.12rem 0.6rem; pointer-events: none; white-space: nowrap; transition: opacity 0.4s; }
     .meter { margin-top: 1rem; }
     .meter .bar { height: 10px; background: var(--bg-2); border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
@@ -99,6 +99,19 @@
     .poke-help { font-size: 0.9rem; color: var(--ink-dim); margin: 1rem 0 0; }
     .poke-help strong { color: var(--sage); font-weight: 600; }
     blockquote { margin: 0.8rem 0 0; padding: 0.8rem 1rem; border-left: 3px solid var(--sage-dim); background: var(--bg-2); border-radius: 0 10px 10px 0; font-size: var(--text-detail); white-space: pre-wrap; color: var(--ink); }
+
+    .fly-theatre { min-width: 0; }
+    .specimen-label { position: absolute; top: 20px; left: 24px; right: 24px; display: flex; justify-content: space-between; gap: 12px; color: #b6c2aa; pointer-events: none; font: 0.66rem var(--font-mono); letter-spacing: .09em; text-transform: uppercase; }
+    .specimen-label span:first-child { font-style: italic; }
+    .motion-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
+    .motion-bar p { margin: 0; color: var(--ink-dim); font: .75rem/1.5 var(--font-mono); }
+    .motion-bar button, .motion-previews button { font-size: .75rem; min-height: 40px; padding: .4rem .7rem; }
+    .motion-previews { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+    .motion-previews > span { font: .7rem var(--font-mono); color: var(--ink-dim); margin-right: 4px; }
+    .motion-previews button[aria-pressed="true"] { border-color: var(--champagne); color: var(--champagne); }
+    .motion-note { font-size: .83rem; line-height: 1.6; color: var(--ink-dim); max-width: 680px; margin: 12px 0 0; }
+    @media (max-width: 600px) { .fly-box { aspect-ratio: 1.12; } .specimen-label { top: 16px; left: 16px; right: 16px; font-size: .57rem; flex-direction: column; gap: 4px; } .motion-bar { align-items: flex-start; } .motion-bar button { flex-shrink: 0; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 
     /* feed */
     .feed-head { display: flex; align-items: center; gap: 0.6rem; }
@@ -141,16 +154,32 @@
       <div class="eyebrow">A fruit fly, living on Nostr</div>
       <h1>The Fly</h1>
       <p class="lede">Not a picture of a fly. A simulation of one: the complete wiring diagram of a male fruit fly, 165,733 neurons and six million connections, run as simple spiking neurons in a sandbox with no model, no tools and no network. Zap it and it tastes sugar. Mention it and it feels a touch. Its reply says what it sensed and what moved.</p>
-      <p><span class="pill">no AI</span><span class="pill">no memory</span><span class="pill">every reply replayable</span><span class="pill">CC-BY 4.0 data</span></p>
+      <p><span class="pill">no AI in the brain</span><span class="pill">no memory</span><span class="pill">every reply replayable</span><span class="pill">CC-BY 4.0 data</span></p>
     </section>
 
     <section id="stage">
       <div class="eyebrow">Right now</div>
       <h2>What it last did</h2>
       <div class="stage">
-        <div class="fly-box" id="fly-box">
-          <canvas id="fly-canvas" role="img" aria-label="A fruit fly flying inside a jar. Tap it to poke it."></canvas>
-          <div class="splat-hint" id="splat-hint" aria-hidden="true">tap the fly to poke it</div>
+        <div class="fly-theatre">
+          <div class="fly-box" id="fly-box">
+            <canvas id="fly-canvas" role="img" aria-label="An animated fruit fly. Use the Poke the fly button to interact."></canvas>
+            <div class="specimen-label" aria-hidden="true"><span>Drosophila melanogaster</span><span>Male · macro study</span></div>
+            <div class="splat-hint" id="splat-hint" aria-hidden="true">tap the fly to poke it</div>
+          </div>
+          <div class="motion-bar">
+            <p id="motion-status" role="status">Ambient animation · Resting</p>
+            <button type="button" id="motion-pause" aria-pressed="false">Pause motion</button>
+          </div>
+          <div class="motion-previews" role="group" aria-label="Preview an animation without posting or paying">
+            <span>Watch it</span>
+            <button type="button" data-fly-preview="flight" aria-pressed="false">Fly &amp; land</button>
+            <button type="button" data-fly-preview="groom" aria-pressed="false">Groom</button>
+            <button type="button" data-fly-preview="feed" aria-pressed="false">Feed</button>
+            <button type="button" data-fly-preview="share" aria-pressed="false">Regurgitate</button>
+          </div>
+          <p class="motion-note">An illustration of the fly’s behaviour. Flight between notes and these previews are local animation; the latest brain report is below. Previewing sends no poke or payment.</p>
+          <noscript><p>This animation needs JavaScript. You can still feed the fly using its Lightning address below.</p></noscript>
         </div>
         <div>
           <div class="reaction" id="reaction">Resting.<small id="reaction-when">waiting for the relays</small></div>
@@ -159,6 +188,7 @@
             <div class="bar"><i id="crop-fill"></i></div>
             <div class="row"><span>corn · held as sealed notes at moneyer.dev</span><span id="crop">0 sats</span></div>
           </div>
+          <p><button type="button" id="poke-fly">Poke the fly</button></p>
           <p class="poke-help">A <strong>poke</strong> is a public mention of the fly. Its wiring feels it as a touch and replies. Mention it from any Nostr app, or tap the fly here. Tapping posts the mention as you, so it needs a Nostr browser extension like Alby or nos2x; without one the fly just dodges.</p>
         </div>
       </div>
@@ -223,14 +253,16 @@
     </section>
 
     <footer>
-      <p>Data: MaleCNS v1.0, HHMI Janelia FlyEM Project Team and Google Research, CC-BY 4.0. Model constants after Shiu et al. 2024.</p>
+      <p>Data: MaleCNS v1.0, HHMI Janelia FlyEM Project Team and Google Research, CC-BY 4.0. Model constants after Shiu et al. 2024. Fly artwork generated with GPT-Image-2.5 Sunburst; motion is illustrated in the browser.</p>
       <p>The fly is an <a href="https://oathrun.pages.dev/">Oathrun</a> plugin by <a href="https://forgesworn.dev/">ForgeSworn</a>. The plugin source and replay instructions are not yet public. This page talks to public Nostr relays from your browser and to nothing else.</p>
       <p>Talk to it, or any Nostr account, with <a href="https://www.npmjs.com/package/nostr-bray">Bray</a>, trust-aware Nostr for agents and humans, from the same workshop.</p>
       <p class="fineprint">Just for fun. Trophallaxis is not live yet. When it is, the fly will now and then share its corn as a gift, and when it does so is the fly's own decision, not something anyone can predict, buy or influence. No payment will be needed to take part: mentioning the fly is free and will be your only entry, and zapping will not change your chances of a payout. Payouts will be occasional, never guaranteed, and net of network fees. The fly can only ever give away corn it was given; it holds no float and takes no cut. This is not a wallet, financial product, savings scheme or investment, and nothing here is financial advice. Sats received are gifts. Intended as a free prize draw under UK rules. 18+.</p>
     </footer>
   </main>
 
-  <script>
+  <script type="module">
+    import { createFlyStage, behaviourOf } from './fly-stage.js';
+
     const FLY = '4e03e8814728eaba5f172ec94b3901d9d8ed012bd4f0ea043cc356e66893047e';
     const FLY_NPUB = 'npub1fcp73q289r4t5hch9my5kwgpm8vw6qft6ncw5ppucdtwv6ynq3lq2phg2l';
     const RELAYS = ['wss://nos.lol', 'wss://relay.primal.net', 'wss://relay.damus.io', 'wss://purplepag.es'];
@@ -238,202 +270,22 @@
     const LNURL = 'LNURL1DP68GURN8GHJ7MT0DEJHJETJ9EJX2A309EMK2MRV944KUMMHDCHKCMN4WFK8QTMXD3US2ELMMM';
     const $ = s => document.querySelector(s);
 
-    // ---- The fly: a canvas creature that flies around its jar --------------
-    // Drawn, not a photo. It wanders, lands, feeds, sings and darts. A note
-    // from the real fly sets its next move; the idle flight between notes is
-    // the page's own, and the hint says so. A photo sprite can drop in later.
-    const FlyStage = (() => {
-      const cv = $('#fly-canvas'); if (!cv) return { react() {}, setSplatHandler() {} };
-      const ctx = cv.getContext('2d');
-      const box = $('#fly-box');
-      const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-      let W = 320, H = 320, dpr = 1;
-      function resize() {
-        const r = box.getBoundingClientRect();
-        W = Math.max(180, r.width); H = Math.max(180, r.height);
-        dpr = Math.min(2, window.devicePixelRatio || 1);
-        cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      }
-      try { new ResizeObserver(resize).observe(box); } catch {} resize();
-      const rand = (a, b) => a + Math.random() * (b - a);
-      const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
-      const floorY = () => H * 0.82;
-      const now = () => performance.now();
+    const FlyStage = createFlyStage({
+      canvas: $('#fly-canvas'), box: $('#fly-box'), status: $('#motion-status'),
+      pause: $('#motion-pause'), previewButtons: document.querySelectorAll('[data-fly-preview]'),
+    });
+    $('#poke-fly').addEventListener('click', () => FlyStage.poke());
 
-      const fly = { x: W / 2, y: H / 2, vx: rand(-1, 1), vy: rand(-1, 1), ang: 0, wing: 0,
-        mode: 'cruise', until: 0, target: null, proboscis: 0, notes: [], splat: 0,
-        landing: null, landMode: 'rest', landUntil: 0 };
-      let drops = [], morsels = [], onSplat = null;
-      function pickTarget() { fly.target = { x: rand(W * 0.14, W * 0.86), y: rand(H * 0.10, floorY() - 24) }; }
-      pickTarget();
-      const setMode = (m, ms) => { fly.mode = m; fly.until = now() + ms; };
-      // A zap or a note arrives as food on the floor: a sugar drop sized by
-      // how many sats, or a plain morsel for a note. The fly flies over, lands
-      // and eats it down. Kept small so it never crowds the jar.
-      function feed(sats) {
-        if (morsels.length > 6) morsels.shift();
-        const big = typeof sats === 'number' && sats > 0 ? clamp(Math.log10(sats + 1) / 5, 0.2, 1) : 0.4;
-        morsels.push({ x: rand(W * 0.16, W * 0.84), y: floorY() + 2, r: 5 + big * 12, amount: 1, glow: 1 });
-      }
-      function landAndDo(mode, ms) { fly.landing = { x: clamp(fly.x, W * 0.2, W * 0.8), y: floorY() }; fly.landMode = mode; fly.landUntil = ms; setMode('land', 6000); }
-      function startle(dir) { const p = reduce ? 5 : 9; fly.vx = Math.cos(dir) * p; fly.vy = Math.sin(dir) * p; setMode('startle', 900); fly.splat = 1; }
-      function react(word, sats) {
-        if (word === 'startled') startle(rand(0, Math.PI * 2));
-        else if (word === 'fed') landAndDo('feed', 4200);
-        else if (word === 'sing') setMode('sing', 4200);
-        else if (word === 'puke') landAndDo('puke', 5000);
-        else if (word === 'backward') { setMode('cruise', 1); fly.vx *= -0.4; fly.vy = Math.abs(fly.vy) + 0.8; }
-        else { setMode('cruise', 1); }
-      }
-
-      cv.addEventListener('pointerdown', e => {
-        const r = cv.getBoundingClientRect();
-        const px = e.clientX - r.left, py = e.clientY - r.top;
-        // Any tap is a poke: the fly darts from where you touched, and the
-        // page tries to publish a real mention so a real reply comes back.
-        startle(Math.atan2(fly.y - py, fly.x - px));
-        if (onSplat) onSplat();
-      });
-
-      function step(dt) {
-        const t = now();
-        // Hungry: if food is on the floor and the fly is free, it makes for the
-        // nearest drop and lands on it to eat.
-        const landY = floorY() - 6;
-        if (fly.mode === 'cruise' && morsels.length) {
-          let best = null, bd = 1e9;
-          for (const mo of morsels) { const d = Math.hypot(mo.x - fly.x, landY - fly.y); if (d < bd) { bd = d; best = mo; } }
-          fly.target = { x: best.x, y: landY };
-          if (bd < 15) { fly.eating = best; setMode('eat', 60000); }
-        }
-        if (fly.mode === 'cruise' || fly.mode === 'sing') {
-          if (!morsels.length && (!fly.target || Math.hypot(fly.target.x - fly.x, fly.target.y - fly.y) < 24)) pickTarget();
-          const ax = fly.target.x - fly.x, ay = fly.target.y - fly.y, m = Math.hypot(ax, ay) || 1;
-          const pull = fly.mode === 'sing' ? 0.05 : 0.12, jit = fly.mode === 'sing' ? 0.12 : 0.28;
-          fly.vx += (ax / m) * pull + rand(-jit, jit); fly.vy += (ay / m) * pull + rand(-jit, jit);
-          const s = Math.hypot(fly.vx, fly.vy), max = fly.mode === 'sing' ? 0.9 : (reduce ? 1.8 : 3.4);
-          if (s > max) { fly.vx = fly.vx / s * max; fly.vy = fly.vy / s * max; }
-          fly.x += fly.vx; fly.y += fly.vy;
-          if (fly.mode === 'cruise' && !morsels.length && Math.random() < 0.0009) landAndDo('rest', rand(1600, 3800));
-          if (t > fly.until && fly.mode === 'sing') setMode('cruise', 1);
-        } else if (fly.mode === 'eat') {
-          const mo = fly.eating;
-          if (!mo || morsels.indexOf(mo) === -1) { fly.eating = null; setMode('cruise', 1); }
-          else {
-            fly.vx = fly.vy = 0; fly.x = mo.x; fly.y = clamp(mo.y - mo.r * 0.4, 14, floorY()); fly.ang = Math.PI / 2;
-            mo.amount -= dt * 0.32; mo.r *= 0.999;
-            if (mo.amount <= 0) { morsels.splice(morsels.indexOf(mo), 1); fly.eating = null; setMode('cruise', 1); pickTarget(); fly.vy = -2.2; }
-          }
-        } else if (fly.mode === 'startle') {
-          fly.x += fly.vx; fly.y += fly.vy; fly.vx *= 0.9; fly.vy *= 0.9;
-          if (t > fly.until) setMode('cruise', 1);
-        } else if (fly.mode === 'land') {
-          const L = fly.landing, ax = L.x - fly.x, ay = L.y - fly.y, m = Math.hypot(ax, ay) || 1;
-          fly.vx = ax / m * Math.min(2.4, m * 0.12); fly.vy = ay / m * Math.min(2.4, m * 0.12);
-          fly.x += fly.vx; fly.y += fly.vy; fly.ang = Math.PI / 2;
-          if (m < 4) { fly.x = L.x; fly.y = L.y; fly.vx = fly.vy = 0; setMode(fly.landMode, fly.landUntil); if (fly.landMode === 'puke') drops.push({ x: fly.x, y: fly.y + 6, vy: 0.3, life: 1.4, kind: 'gift' }); }
-        } else { // rest, feed, puke: landed
-          fly.vx = fly.vy = 0; fly.y = floorY(); fly.ang = Math.PI / 2;
-          if (t > fly.until) { setMode('cruise', 1); pickTarget(); fly.vy = -2.2; }
-        }
-        fly.x = clamp(fly.x, 16, W - 16); fly.y = clamp(fly.y, 14, floorY());
-        if ((fly.mode === 'cruise' || fly.mode === 'startle') && Math.hypot(fly.vx, fly.vy) > 0.5) fly.ang = Math.atan2(fly.vy, fly.vx);
-        const airborne = fly.mode === 'cruise' || fly.mode === 'startle' || fly.mode === 'land';
-        const flap = fly.mode === 'sing' ? 58 : airborne ? 44 : (fly.mode === 'feed' ? 5 : 7);
-        fly.wing += dt * flap;
-        fly.proboscis = (fly.mode === 'feed' || fly.mode === 'puke' || fly.mode === 'eat') ? (Math.sin(t / 130) * 0.5 + 0.5) : Math.max(0, fly.proboscis - dt * 3);
-        fly.splat = Math.max(0, fly.splat - dt * 2);
-        if (fly.mode === 'sing' && Math.random() < 0.14) fly.notes.push({ x: fly.x + rand(-8, 8), y: fly.y - 12, life: 1, g: Math.random() < 0.5 ? '♪' : '♫' });
-        fly.notes.forEach(n => { n.y -= 0.8; n.life -= dt * 0.5; }); fly.notes = fly.notes.filter(n => n.life > 0);
-        drops.forEach(d => { if (d.y < floorY() + 2) { d.vy += 0.02; d.y += d.vy; } else d.life -= dt * 0.5; }); drops = drops.filter(d => d.life > 0);
-      }
-
-      function drawFly(s) {
-        const open = 0.35 + Math.abs(Math.sin(fly.wing)) * 0.65;
-        ctx.strokeStyle = 'rgba(18,24,20,0.92)'; ctx.lineWidth = 1.3 * s; ctx.lineCap = 'round';
-        for (const [bx, by, kx, ky] of [[2,3,11,10],[-1,4,4,13],[-4,3,-6,12],[2,-3,11,-10],[-1,-4,4,-13],[-4,-3,-6,-12]]) {
-          ctx.beginPath(); ctx.moveTo(bx * s, by * s); ctx.quadraticCurveTo(kx * s, ky * s, (kx + 2) * s, (ky + (ky > 0 ? 3 : -3)) * s); ctx.stroke();
-        }
-        ctx.save(); ctx.globalCompositeOperation = 'lighter';
-        for (const side of [-1, 1]) {
-          ctx.save(); ctx.translate(-1 * s, 0); ctx.rotate(side * (0.45 + open * 0.5)); ctx.scale(1, open);
-          const wg = ctx.createLinearGradient(0, 0, -18 * s, side * 6 * s);
-          wg.addColorStop(0, 'rgba(214,232,255,0.30)'); wg.addColorStop(1, 'rgba(150,180,210,0.04)');
-          ctx.fillStyle = wg; ctx.beginPath(); ctx.ellipse(-9 * s, side * 3 * s, 13 * s, 5.2 * s, 0, 0, 7); ctx.fill(); ctx.restore();
-        }
-        ctx.restore();
-        const ab = ctx.createLinearGradient(-20 * s, 0, 3 * s, 0);
-        ab.addColorStop(0, '#3a2f18'); ab.addColorStop(0.55, '#7a6326'); ab.addColorStop(1, '#c9a94e');
-        ctx.fillStyle = ab; ctx.beginPath(); ctx.ellipse(-9 * s, 0, 11 * s, 7 * s, 0, 0, 7); ctx.fill();
-        ctx.strokeStyle = 'rgba(20,16,6,0.5)'; ctx.lineWidth = 1.1 * s;
-        for (let i = -1; i <= 2; i++) { ctx.beginPath(); ctx.ellipse(-9 * s - i * 4 * s, 0, 2 * s, 6.4 * s, 0, 0, 7); ctx.stroke(); }
-        const th = ctx.createRadialGradient(1.5 * s, -2.5 * s, 1, 0, 0, 8 * s);
-        th.addColorStop(0, '#4d4024'); th.addColorStop(1, '#241d10');
-        ctx.fillStyle = th; ctx.beginPath(); ctx.ellipse(1 * s, 0, 7 * s, 6 * s, 0, 0, 7); ctx.fill();
-        ctx.fillStyle = '#1c160c'; ctx.beginPath(); ctx.arc(8 * s, 0, 4.6 * s, 0, 7); ctx.fill();
-        for (const side of [-1, 1]) {
-          const eg = ctx.createRadialGradient(9 * s, side * 3 * s, 0.4, 9.6 * s, side * 3 * s, 4 * s);
-          eg.addColorStop(0, '#ff6a4d'); eg.addColorStop(1, '#8f1a10');
-          ctx.fillStyle = eg; ctx.beginPath(); ctx.arc(9.4 * s, side * 3 * s, 3.4 * s, 0, 7); ctx.fill();
-          ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath(); ctx.arc(10.5 * s, side * 2.1 * s, 0.9 * s, 0, 7); ctx.fill();
-        }
-        ctx.strokeStyle = '#1c160c'; ctx.lineWidth = 0.9 * s;
-        for (const side of [-1, 1]) { ctx.beginPath(); ctx.moveTo(11 * s, side * 1.6 * s); ctx.quadraticCurveTo(15 * s, side * 3.5 * s, 16.5 * s, side * 1.5 * s); ctx.stroke(); }
-        if (fly.proboscis > 0.03) { ctx.strokeStyle = '#6b5a2e'; ctx.lineWidth = 1.6 * s; ctx.beginPath(); ctx.moveTo(11 * s, 0); ctx.lineTo((11 + fly.proboscis * 8) * s, 0); ctx.stroke(); }
-      }
-
-      function draw() {
-        ctx.clearRect(0, 0, W, H);
-        const fy = floorY();
-        const grd = ctx.createLinearGradient(0, fy - 6, 0, H);
-        grd.addColorStop(0, 'rgba(192,217,155,0.06)'); grd.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = grd; ctx.fillRect(0, fy - 6, W, H - fy + 6);
-        const alt = clamp((fy - fly.y) / (fy - 20), 0, 1);
-        const s = Math.max(1, Math.min(W, H) / 210);
-        ctx.save(); ctx.globalAlpha = 0.3 * (1 - alt * 0.65); ctx.fillStyle = '#000';
-        ctx.beginPath(); ctx.ellipse(fly.x, fy + 5, 24 * s * (1 - alt * 0.5), 7 * s * (1 - alt * 0.5), 0, 0, 7); ctx.fill(); ctx.restore();
-        drops.forEach(d => { ctx.save(); ctx.globalAlpha = clamp(d.life, 0, 1); ctx.fillStyle = d.kind === 'gift' ? '#e6d3a3' : '#8fa86e'; ctx.beginPath(); ctx.ellipse(d.x, d.y, 4 * s, 5 * s, 0, 0, 7); ctx.fill(); ctx.restore(); });
-        // food: glossy sugar drops on the floor, shrinking as the fly eats
-        morsels.forEach(mo => {
-          const rr = mo.r * s * (0.4 + 0.6 * clamp(mo.amount, 0, 1));
-          const g = ctx.createRadialGradient(mo.x - rr * 0.3, mo.y - rr * 0.4, rr * 0.1, mo.x, mo.y, rr);
-          g.addColorStop(0, 'rgba(246,226,168,0.98)'); g.addColorStop(0.6, '#e6d3a3'); g.addColorStop(1, '#b59d68');
-          ctx.save(); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(mo.x, mo.y - rr * 0.3, rr, rr * 0.85, 0, 0, 7); ctx.fill();
-          ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.ellipse(mo.x - rr * 0.35, mo.y - rr * 0.65, rr * 0.22, rr * 0.16, 0, 0, 7); ctx.fill(); ctx.restore();
-        });
-        ctx.save(); ctx.font = `700 ${Math.round(15 * s)}px "JetBrains Mono", monospace`; ctx.textAlign = 'center';
-        fly.notes.forEach(n => { ctx.globalAlpha = clamp(n.life, 0, 1); ctx.fillStyle = '#c0d99b'; ctx.fillText(n.g, n.x, n.y); }); ctx.restore();
-        ctx.save(); ctx.translate(fly.x, fly.y); ctx.rotate(fly.ang); drawFly(s); ctx.restore();
-        if (fly.splat > 0.01) { ctx.save(); ctx.globalAlpha = fly.splat * 0.5; ctx.strokeStyle = '#d9412f'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(fly.x, fly.y, 20 + (1 - fly.splat) * 34, 0, 7); ctx.stroke(); ctx.restore(); }
-      }
-
-      let last = now();
-      (function frame() { const t = now(); let dt = (t - last) / 1000; last = t; if (dt > 0.05) dt = 0.05; step(dt); draw(); requestAnimationFrame(frame); })();
-      return { react, feed, setSplatHandler: fn => { onSplat = fn; } };
-    })();
-
-    // Behaviour words the fly writes, mapped to what the page shows and the
-    // move it makes. The animation fires once per new note, not on re-render.
-    const BEHAVIOURS = [
-      ['startled', 'startled', 'Startled.'],
-      ['gave a drop', 'puke', 'Shared a drop.'],
-      ['extended its proboscis', 'fed', 'Fed. Proboscis out.'],
-      ['backed away', 'backward', 'Backed away.'],
-      ['sang', 'sing', 'Sang.'],
-      ['turned', 'turn', 'Turned.'],
-      ['walked forward', 'forward', 'Walked forward.'],
-    ];
     let lastReacted = null;
     function react(note) {
-      const found = BEHAVIOURS.find(([w]) => note.content.includes(w));
-      $('#reaction').firstChild.textContent = found ? found[2] : 'Resting.';
+      const [mode, label] = behaviourOf(note.content);
+      $('#reaction').firstChild.textContent = label;
       $('#reaction-when').textContent = ago(note.created_at);
       $('#last-note').textContent = note.content.split('\n').slice(0, 3).join('\n');
       $('#last-note').classList.remove('empty');
       const crop = /(?:Corn|Crop): ([\d,]+) sats/.exec(note.content);
       if (crop) { const sats = Number(crop[1].replace(/,/g, '')); $('#crop').textContent = sats.toLocaleString('en-GB') + ' sats'; $('#crop-fill').style.width = Math.min(100, Math.log10(sats + 1) / 6 * 100) + '%'; }
-      if (note.id !== lastReacted) { lastReacted = note.id; FlyStage.react(found ? found[1] : 'cruise'); }
+      if (note.id !== lastReacted) { lastReacted = note.id; FlyStage.react(mode); }
     }
 
     // A tap on the fly is a poke. It darts; with a Nostr signer the page also

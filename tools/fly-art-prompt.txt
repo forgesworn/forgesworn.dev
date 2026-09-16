@@ -1,0 +1,13 @@
+Use case: stylized-concept
+Asset type: production transparent sprite atlas for an animated fruit fly on a dark botanical website.
+Create one precisely aligned 3-column by 2-row atlas, 1536 x 1024 pixels, six equal 512 x 512 cells, on genuine transparent alpha. No grid lines, labels, typography, background, cast shadow or scenery.
+Subject: the SAME exquisite male Drosophila melanogaster in all six cells. Museum-quality macro natural-history rendering, anatomically convincing tiny fruit fly, ruby-red compound eye facets, honey-amber thorax with fine dark bristles, striped golden abdomen with a dark rounded male tip, exactly six delicate articulated legs, short aristate antennae, two translucent iridescent veined wings. Never a housefly, bee, mosquito, cartoon mascot or mechanical insect. Beautiful restrained photographic realism, finely resolved cuticle and hairs. Soft warm key light from upper left, subtle cool rim light, excellent leg and antenna visibility against a near-black site background.
+Camera and registration: identical side/three-quarter view in every cell, head pointing RIGHT, abdomen LEFT. Horizontal body. Each fly's thorax centre at local cell coordinate (248, 255), same scale, body from approximately x=130 to x=355. All appendages fully inside each cell with at least 40 pixels clear padding. Surface contact baseline y=365. No perspective or camera changes between frames.
+Cell order, read left to right then next row:
+1. Flight: legs lightly tucked underneath, wings raised mid-upstroke, clean sharp wings, no baked motion blur.
+2. Landing: legs reaching down and forward towards the contact baseline, wings half raised, abdomen level, preparing contact.
+3. Rest: six feet planted on the invisible baseline, wings folded neatly backwards over abdomen, antennae alert, proboscis retracted.
+4. Feeding: same planted stance, head inclined subtly, fleshy short articulated proboscis extended diagonally down-right, labellum at local (384,365), wings folded. No food or drop.
+5. Regurgitation: same stance and alignment as feeding, head lowered, proboscis extended to local (384,365), a single tiny clear amber nectar bead attached to the tip, no splatter, no additional objects, wings folded.
+6. Grooming: same body alignment, rear four feet planted, front pair of legs raised to rub together below the head, wings folded.
+Constraints: one complete fly per cell, consistent identity and proportions across all six poses, true transparent background including between legs and through translucent wings. Precision production sprite artwork, not a contact sheet of differing characters. No ground plane, no glow halo, no border, no text, no watermark.
