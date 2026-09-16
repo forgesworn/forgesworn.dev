@@ -74,6 +74,17 @@
     .gift .gone { color: var(--champagne-dim); font-size: 0.9rem; }
 
     .note { font-size: 0.93rem; color: var(--ink-dim); }
+    .whoami { display: flex; align-items: center; gap: 0.85rem; margin-top: 1rem; }
+    .whoami img { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; border: 1px solid var(--line); background: var(--bg-2); flex: none; }
+    .whoami .who { min-width: 0; }
+    .whoami .name { font-family: var(--font-display); font-size: 1.15rem; color: var(--champagne); line-height: 1.25; }
+    .whoami .key { font-family: var(--font-mono); font-size: 0.76rem; color: var(--ink-dim); overflow-wrap: anywhere;
+      background: none; border: 0; padding: 0; text-align: left; cursor: pointer; line-height: 1.4; }
+    .whoami .key:hover { color: var(--sage); }
+    .panel { border: 1px solid var(--champagne-dim); border-radius: 12px; padding: 0.9rem 1rem; margin-top: 1rem; background: rgba(230, 211, 163, 0.05); }
+    .panel h3 { font-family: var(--font-display); font-size: 1.05rem; color: var(--champagne); margin: 0 0 0.35rem; }
+    .panel ol { margin: 0.5rem 0 0; padding-left: 1.2rem; font-size: 0.92rem; color: var(--ink-dim); }
+    .panel ol li { margin: 0.25rem 0; }
     .amount-line { font-family: var(--font-display); font-size: 1.35rem; color: var(--champagne); margin: 0 0 1rem; }
     .status { font-family: var(--font-mono); font-size: 0.86rem; color: var(--sage-dim); min-height: 1.4em; margin-top: 0.8rem; }
     .status.bad { color: var(--red); }
@@ -102,17 +113,32 @@
         <button id="signin">Sign in with Nostr</button>
       </div>
       <div class="status" id="signin-status"></div>
-      <div id="no-extension" hidden>
-        <p class="note">If your browser extension is not offered, it may be hidden from this site rather than missing. Bark and some others only reveal themselves to sites you have allowed, so open the extension and allow <code>forgesworn.dev</code>, then reload. Failing that, any of the other ways in the picker work without an extension at all.</p>
+      <div class="whoami" id="whoami" hidden>
+        <img id="whoami-avatar" alt="" hidden>
+        <div class="who">
+          <div class="name" id="whoami-name"></div>
+          <button class="key" id="whoami-key" title="Copy your npub"></button>
+        </div>
+      </div>
+      <div class="panel" id="no-extension" hidden>
+        <h3>Your extension may be hidden, not missing</h3>
+        <p class="note" style="margin:0">Bark, and some others, only reveal themselves to sites you have allowed. To this page that looks exactly like having no extension at all, so if yours is installed and not offered:</p>
+        <ol>
+          <li>Open the extension and allow <code>forgesworn.dev</code>.</li>
+          <li>Reload this page.</li>
+        </ol>
+        <p class="note" style="margin:0.6rem 0 0">You do not have to. Every other way in the picker, including a Signet on your phone, works without an extension.</p>
       </div>
     </section>
 
     <section class="card" id="step-find" hidden>
       <h2>2. Find your gift</h2>
+      <p class="note">A sealed note looks like every other private message, so each one has to be opened before it can be recognised. That happens in your browser, and nothing that is not corn is kept or sent anywhere.</p>
       <div class="status" id="find-status"></div>
       <div id="gifts"></div>
       <div class="row" id="find-actions" hidden>
         <button class="ghost" id="rescan">Look again</button>
+        <button class="ghost" id="wider" hidden>Look further back</button>
       </div>
       <details id="paste-note" style="margin-top:1.1rem">
         <summary class="note" style="cursor:pointer">I already have a note link</summary>
@@ -163,7 +189,16 @@
   const FLY = '4e03e8814728eaba5f172ec94b3901d9d8ed012bd4f0ea043cc356e66893047e';
   const RELAYS = ['wss://nos.lol', 'wss://relay.primal.net', 'wss://relay.damus.io', 'wss://purplepag.es'];
   const KIND_WRAP = 1059, KIND_SEAL = 13, KIND_CASH = 2525;
-  const GATHER_MS = 6000, WRAP_LIMIT = 250, HTTP_MS = 20000;
+  const GATHER_MS = 6000, WRAP_LIMIT = 400, HTTP_MS = 20000;
+  // A gift wrap is deliberately indistinguishable from any other sealed
+  // message, so the only way to recognise one is to open it. That would mean
+  // opening a whole private history, which is slow and more than this page has
+  // any business reading, so it looks at a recent window first and offers to
+  // go further back. NIP-59 backdates a wrap by at most two days, so a gift
+  // sent today is always inside the first window.
+  const WINDOWS = [30, 180, 0];
+  const CHECKED_KEY = 'fly-claim-checked';
+  const AT_ONCE = 4;
 
   const $ = id => document.getElementById(id);
   const show = (id, on = true) => { $(id).hidden = !on; };
@@ -307,11 +342,24 @@
 
   // ---- finding the sealed gift on the relays ------------------------------
 
-  function gatherWraps() {
+  // Wrap ids already opened and found to hold no corn. A per-viewer
+  // convenience only: it makes looking again quick, and the page works
+  // correctly when it is empty, blocked or thrown away.
+  function checked(add) {
+    let ids = [];
+    try { ids = JSON.parse(localStorage.getItem(CHECKED_KEY)) || []; } catch {}
+    if (!Array.isArray(ids)) ids = [];
+    if (!add) return new Set(ids);
+    try { localStorage.setItem(CHECKED_KEY, JSON.stringify([...new Set([...ids, ...add])].slice(-3000))); } catch {}
+    return new Set(ids);
+  }
+
+  function gatherWraps(days) {
     return new Promise(resolve => {
       const found = new Map();
       const sockets = [];
       const filter = { kinds: [KIND_WRAP], '#p': [me], limit: WRAP_LIMIT };
+      if (days) filter.since = Math.floor(Date.now() / 1000) - days * 86400;
       let closed = false;
       const finish = () => {
         if (closed) return;
@@ -370,50 +418,84 @@
              amountMsat: Number.isFinite(msat) && msat > 0 ? msat : null };
   }
 
+  let windowIndex = 0;
+
   async function findGifts() {
+    const days = WINDOWS[windowIndex];
     show('step-find');
     show('find-actions', false);
     $('gifts').innerHTML = '';
     gifts = []; chosen = null;
-    say('find-status', 'Asking the relays for anything sealed to you…');
-    const wraps = await gatherWraps();
-    if (!wraps.length) {
-      say('find-status', 'Nothing sealed to you came back from the relays.', 'bad');
-      show('find-actions');
+    show('step-send', false);
+    say('find-status', 'Asking the relays for anything sealed to you' + (days ? ' in the last ' + days + ' days' : '') + '…');
+    const wraps = await gatherWraps(days);
+    const skip = checked();
+    const todo = wraps.filter(w => !skip.has(w.id)).sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+    if (!todo.length) {
+      say('find-status', wraps.length
+        ? 'Nothing new sealed to you here. ' + wraps.length + ' already looked at and none held corn.'
+        : 'Nothing sealed to you came back from the relays.', 'bad');
+      offerWider();
       return;
     }
-    wraps.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
-    const seen = new Set();
-    let opened = 0;
-    for (const wrap of wraps) {
-      opened += 1;
-      say('find-status', 'Opening ' + opened + ' of ' + wraps.length + '…');
-      const rumour = await unwrap(wrap);
-      if (!rumour || seen.has(rumour.id)) continue;
-      seen.add(rumour.id);
-      const gift = giftOf(rumour);
-      if (gift) { gifts.push(gift); render(); }
-    }
-    if (!gifts.length) {
-      say('find-status', 'Nothing here holds corn. If the fly has only just shared it, give the relays a minute and look again.', 'bad');
-      show('find-actions');
-      return;
-    }
-    say('find-status', 'Checking ' + (gifts.length === 1 ? 'the note' : 'the notes') + ' at the mint…');
-    for (const gift of gifts) {
-      try { gift.info = await noteInfo(gift.note); }
-      catch (error) { gift.spent = error.message; }
-      render();
-    }
+
+    // Opening is the only way to tell a gift from any other sealed message,
+    // so say that rather than showing a bare counter.
+    const total = todo.length;
+    let opened = 0, found = 0;
+    const progress = () => say('find-status',
+      'Opened ' + opened + ' of ' + total + (found ? ', ' + found + ' holding corn' : '') + '…');
+    progress();
+
+    const seen = new Set(), barren = [];
+    const queue = todo.slice();
+    const worker = async () => {
+      while (queue.length) {
+        const wrap = queue.shift();
+        const rumour = await unwrap(wrap);
+        opened += 1;
+        const gift = rumour && !seen.has(rumour.id) ? giftOf(rumour) : null;
+        if (rumour) seen.add(rumour.id);
+        if (!gift) { barren.push(wrap.id); progress(); continue; }
+        found += 1;
+        gifts.push(gift);
+        render();
+        progress();
+        // Check it at the mint straight away, and hand over the first one
+        // that is still good rather than making anybody wait for the rest.
+        try { gift.info = await noteInfo(gift.note); }
+        catch (error) { gift.spent = error.message; }
+        render();
+        if (gift.info && !chosen) choose(gift);
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(AT_ONCE, queue.length) }, worker));
+    checked(barren);
+
     const live = gifts.filter(g => g.info);
-    if (!live.length) {
-      say('find-status', 'Every note here has been claimed already.', 'bad');
+    if (live.length) {
+      say('find-status', live.length === 1
+        ? 'One note, and it is still yours to take.'
+        : live.length + ' notes waiting.', 'good');
       show('find-actions');
       return;
     }
-    say('find-status', live.length === 1 ? 'One note, and it is still yours to take.' : live.length + ' notes waiting.', 'good');
+    say('find-status', gifts.length
+      ? 'Every note sealed to you here has been claimed already.'
+      : 'Nothing here holds corn. If the fly has only just shared it, give the relays a minute and look again.', 'bad');
+    offerWider();
+  }
+
+  // Older gifts are rarer than recent ones, so going further back is offered
+  // rather than paid for by everybody on the first look.
+  function offerWider() {
     show('find-actions');
-    choose(live[0]);
+    const wider = $('wider');
+    if (windowIndex + 1 < WINDOWS.length) {
+      const next = WINDOWS[windowIndex + 1];
+      wider.textContent = next ? 'Look back ' + next + ' days' : 'Look back as far as the relays go';
+      wider.hidden = false;
+    } else wider.hidden = true;
   }
 
   function render() {
@@ -458,6 +540,55 @@
     $('amount-line').textContent = 'There are ' + amount + ' in this note.';
     $('invoice-amount').textContent = 'exactly ' + amount;
     $('address').focus({ preventScroll: true });
+  }
+
+  // ---- who you signed in as -----------------------------------------------
+
+  function profile() {
+    return new Promise(resolve => {
+      const sockets = [];
+      let best = null, closed = false;
+      const finish = () => {
+        if (closed) return;
+        closed = true;
+        for (const ws of sockets) { try { ws.close(); } catch {} }
+        resolve(best);
+      };
+      for (const url of RELAYS) {
+        let ws;
+        try { ws = new WebSocket(url); } catch { continue; }
+        sockets.push(ws);
+        const id = 'who' + Math.random().toString(36).slice(2, 10);
+        ws.onopen = () => { try { ws.send(JSON.stringify(['REQ', id, { kinds: [0], authors: [me], limit: 1 }])); } catch {} };
+        ws.onmessage = event => {
+          let message;
+          try { message = JSON.parse(event.data); } catch { return; }
+          if (message[0] === 'EVENT' && message[2] && message[2].kind === 0
+            && (!best || message[2].created_at > best.created_at)) best = message[2];
+        };
+        ws.onerror = () => {};
+      }
+      setTimeout(finish, 3500);
+    });
+  }
+
+  async function showWhoami() {
+    // The key is the identity; the name and face are how it is recognised, so
+    // the npub stays on screen underneath whatever the profile says.
+    $('whoami-name').textContent = 'Signed in';
+    $('whoami-key').textContent = npub(me);
+    show('whoami');
+    const event = await profile();
+    let meta = {};
+    try { meta = JSON.parse(event?.content || '{}') || {}; } catch {}
+    const name = [meta.display_name, meta.name].find(v => typeof v === 'string' && v.trim());
+    $('whoami-name').textContent = name ? name.slice(0, 60) : 'Signed in';
+    const avatar = $('whoami-avatar');
+    if (typeof meta.picture === 'string' && /^https:\/\//.test(meta.picture)) {
+      avatar.onerror = () => { avatar.hidden = true; };
+      avatar.onload = () => { avatar.hidden = false; };
+      avatar.src = meta.picture;
+    }
   }
 
   // ---- the claim itself ---------------------------------------------------
@@ -534,8 +665,10 @@
       }
       me = session.pubkey;
       signer = session.signer;
-      say('signin-status', 'Signed in as ' + shortNpub(me), 'good');
+      show('no-extension', false);
+      say('signin-status', 'Signed in with ' + (session.method || 'your signer') + '.', 'good');
       $('signin').textContent = 'Signed in';
+      showWhoami();
       await findGifts();
     } catch (error) {
       say('signin-status', error.message || 'your signer refused', 'bad');
@@ -543,7 +676,20 @@
     }
   };
 
+  $('whoami-key').onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(npub(me));
+      const key = $('whoami-key'), was = key.textContent;
+      key.textContent = 'copied';
+      setTimeout(() => { key.textContent = was; }, 1200);
+    } catch {}
+  };
   $('rescan').onclick = () => { if (me) findGifts(); };
+  $('wider').onclick = () => {
+    if (!me || windowIndex + 1 >= WINDOWS.length) return;
+    windowIndex += 1;
+    findGifts();
+  };
   $('claim').onclick = claim;
   $('claim-invoice').onclick = claimWithInvoice;
   $('address').addEventListener('keydown', e => { if (e.key === 'Enter') claim(); });
