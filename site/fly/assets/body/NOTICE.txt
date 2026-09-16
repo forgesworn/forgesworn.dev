@@ -16,6 +16,9 @@ Escape activity starts a bounded flight illustration. Foot placement, wing
 cycles, flight trajectory and landing are supplied by the browser controller.
 It is not a physical simulation or a complete connectome flight controller.
 The display wingbeat rate is illustrative, not the animal's actual frequency.
+Between reports, a separately labelled animation supplies exploring and flight.
+Free visual feeding and confirmed wallet payments start an authored drinking
+and regurgitation sequence. Animated droplets do not represent financial gifts.
 
 Rebuild the model with tools/fly-body/export-model.py in the public repository:
 https://github.com/forgesworn/forgesworn.dev

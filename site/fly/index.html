@@ -88,7 +88,7 @@
     .stage { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.4rem; }
     @media (max-width: 720px) { .stage { grid-template-columns: minmax(0, 1fr); } }
     .fly-box { position: relative; background: radial-gradient(circle at 50% 35%, #1b241d, #0b0f0c 78%); border-radius: 16px; border: 1px solid var(--line); overflow: hidden; aspect-ratio: 16 / 9; }
-    .fly-box canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: pan-y; cursor: pointer; }
+    .fly-box canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: pan-y; }
     .splat-hint { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.06em; color: var(--ink-dim); background: rgba(11,15,12,0.55); border: 1px solid var(--line); border-radius: 999px; padding: 0.12rem 0.6rem; pointer-events: none; white-space: nowrap; transition: opacity 0.4s; }
     .meter { margin-top: 1rem; }
     .meter .bar { height: 10px; background: var(--bg-2); border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
@@ -144,37 +144,53 @@
     footer p { margin: 0.3rem 0; }
     footer .fineprint { font-size: 0.85em; opacity: 0.72; margin-top: 0.9rem; line-height: 1.5; }
     .pill { display: inline-block; font-family: var(--font-mono); font-size: 0.78rem; padding: 0.15rem 0.55rem; border: 1px solid var(--line); border-radius: 999px; color: var(--sage-dim); margin-right: 0.4rem; }
+    /* The moving fly is the first thing visitors see. */
+    .hero { max-width: 1240px; margin: auto; padding: 16px 24px; display: flex; justify-content: space-between; font: .8rem var(--font-mono); }
+    .hero a { border: 0; }
+    .wrap { max-width: 1240px; }
+    #stage { padding-top: 12px; }
+    .stage-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin: 0 8px 12px; }
+    .stage-heading h1 { font-size: clamp(2.2rem, 5vw, 3.5rem); margin: 0; }
+    .stage-heading p { margin: 0; color: var(--ink-dim); }
+    .fly-box { aspect-ratio: auto; height: clamp(360px, 58svh, 620px); }
+    .feeding-controls { display: flex; justify-content: center; gap: 12px; margin-top: 16px; }
+    .feeding-controls button, .feeding-controls a { font-size: 1rem; padding: .8rem 1.5rem; }
+    .feeding-caption { text-align: center; margin: 8px 0 0; color: var(--ink-dim); font-size: .86rem; }
+    .live-report { border-top: 1px solid var(--line); padding-top: 12px; font-size: .9rem; }
+    .live-report summary { cursor: pointer; color: var(--sage); }
+    #why, #zap, #feed, #how, footer { max-width: 860px; margin-left: auto; margin-right: auto; }
+    @media (max-width: 600px) {
+      .hero { padding: 14px 16px; }
+      .stage-heading { display: block; margin: 0 0 12px; }
+      .stage-heading p { font-size: .9rem; margin-top: 4px; }
+      .fly-box { height: clamp(300px, 46svh, 420px); }
+      .feeding-controls button, .feeding-controls a { font-size: .9rem; padding: .7rem 1.1rem; }
+    }
   </style>
 </head>
 <body>
-  <header class="hero">
-    <img class="wide" src="banner-1500.png" alt="The Fly: a fruit fly drawn as its own wiring diagram. 165,733 neurons. No opinions." width="1500" height="500">
-    <img class="phone" src="emblem-1024.png" alt="The Fly emblem" width="1024" height="1024">
-  </header>
-
+  <header class="hero"><a href="/">ForgeSworn</a><a href="#how">Meet the brain</a></header>
   <main class="wrap">
-    <section>
-      <div class="eyebrow">A neural simulation you can poke</div>
-      <h1>The Fly</h1>
-      <p class="lede">Poke the fly and watch its simulated neurons respond.  Sugar can make it feed.  Touch can make it back away.  A looming shadow can trigger an escape.  The Fly connects a published fruit-fly wiring map to messages on Nostr, then gives those responses an articulated body.</p>
-      <p><span class="pill">no language model</span><span class="pill">fresh simulation per input</span><span class="pill">signed motor reports</span><span class="pill">CC-BY 4.0 data</span></p>
-    </section>
-
     <section id="stage">
-      <div class="eyebrow">From the brain</div>
-      <h2>What it last did</h2>
+      <div class="stage-heading"><h1>The Fly</h1><p>Watch it explore.  Give it a drop of sugar.</p></div>
       <div class="stage">
         <div class="fly-theatre">
           <div class="fly-box" id="fly-box">
-            <canvas id="fly-canvas" role="img" aria-label="An animated fruit fly. Use the Poke the fly button to interact."></canvas>
+            <canvas id="fly-canvas" role="img" aria-label="An animated fruit fly. Use Feed a drop to feed it."></canvas>
             <div class="specimen-label" aria-hidden="true"><span>Drosophila melanogaster</span><span>Male · macro study</span></div>
-            <div class="splat-hint" id="splat-hint" aria-hidden="true">poke it to ask the brain</div>
+            <div class="splat-hint" id="splat-hint" aria-hidden="true">a little life on the page</div>
           </div>
           <div class="motion-bar">
-            <p id="motion-status" role="status">Waiting for a motor report · Resting</p>
+            <p id="motion-status" role="status">Loading the fly…</p>
             <button type="button" id="motion-pause" aria-pressed="false">Pause motion</button>
           </div>
-          <p class="motion-note">Neural activity chooses the action.  A browser controller places the feet, beats the wings and completes the landing.  Live reports are signed and replayed 10× slower.  Escape activity triggers a bounded flight illustration; the flight path and landing are engineered, not additional brain output.  After the action finishes, the fly rests.</p>
+          <div class="feeding-controls">
+            <button type="button" id="feed-drop" class="primary">Feed a drop</button>
+            <a class="button" href="#zap">Feed sats</a>
+          </div>
+          <p class="feeding-caption">A drop is free.  Watch it land, drink and bring a little back up.</p>
+          <details class="motion-demos"><summary>Brain reports and recorded responses</summary>
+          <p class="motion-note">Between brain reports, an authored animation lets the fly explore, take off and land.  “Feed a drop” is a local visual interaction.  Live neural reports can interrupt the exploring; their source is shown above.  An animated droplet is not a transfer of sats.</p>
           <button type="button" id="motion-live">Replay latest brain report</button>
           <div class="motion-previews" role="group" aria-label="Recorded brain responses, not live events">
             <span>Recorded brain responses</span>
@@ -194,9 +210,10 @@
           </div>
           <p class="motion-note">These demonstrations use scripted motion and send no poke or payment. Choose “Replay latest brain report” to return to the brain.</p>
           </details>
+          </details>
           <noscript><p>This animation needs JavaScript. You can still feed the fly using its Lightning address below.</p></noscript>
         </div>
-        <div>
+        <details class="live-report"><summary>Latest from the brain</summary>
           <div class="reaction" id="reaction">Resting.<small id="reaction-when">waiting for the relays</small></div>
           <blockquote id="last-note" class="empty">No notes yet. Poke it.</blockquote>
           <div class="meter">
@@ -204,8 +221,8 @@
             <div class="row"><span>corn · held as sealed notes at moneyer.dev</span><span id="crop">0 sats</span></div>
           </div>
           <p><button type="button" id="poke-fly">Poke the fly</button> <button type="button" id="loom-fly">Loom over the fly</button></p>
-          <p class="poke-help">Both buttons send a free, public mention as you, using your Nostr browser signing extension.  A poke supplies touch input; “Loom over the fly” supplies an approaching-shadow input.  You can also mention it with “sugar”, “poke” or “loom” from another Nostr app.  Replies are rate-limited.  The live view moves only after a motor report arrives.</p>
-        </div>
+          <p class="poke-help">Both buttons send a free, public mention as you, using your Nostr browser signing extension.  A poke supplies touch input; “Loom over the fly” supplies an approaching-shadow input.  You can also mention it with “sugar”, “poke” or “loom” from another Nostr app.  Replies are rate-limited.  Those controls request real brain input.  Exploring and the free sugar drop are animated locally.</p>
+        </details>
       </div>
     </section>
 
@@ -267,7 +284,7 @@
         <p><strong>The brain.</strong> We use the <a href="https://male-cns.janelia.org/">MaleCNS v1.0 wiring map</a> from HHMI Janelia and its research collaborators.  Our processed graph has 165,733 neurons and about 6.16 million connections.  It keeps connections with at least five synapses and leaves out modulatory connections.  Simple spiking-neuron equations run the simulation; a language model doesn’t choose its replies.</p>
         <p><strong>The senses.</strong> A zap drives sugar-sensing neurons, faintly for 21 sats and flat out for 21,000.  A small vocabulary selects sensory inputs.  Without a recognised word, a mention becomes head-bristle touch, a reply sound and a reaction wind.  “Loom” drives the 185 LPLC2 visual projection neurons in our graph, following the <a href="https://www.nature.com/articles/nature24626">looming-to-escape pathway</a>.  This approximates an approaching shadow at those neurons; it doesn’t simulate eyes.  The plugin matches words; it doesn’t understand messages.</p>
         <p><strong>The reply.</strong> The plugin compares activity with a quiet run using the same seed.  It reports motor activity that rises above its thresholds, including feeding, forward and backward movement, turning, song and startle.  It uses fixed wording and never quotes the incoming message.</p>
-        <p><strong>The movement.</strong> The page verifies each live report’s Nostr signature and replays its motor samples ten times slower.  Forward and backward drive set travel; turning activity sets heading; feeding moves the proboscis independently of the legs.  Escape activity starts take-off.  The browser supplies foot placement, wing cycles, the flight path and a short landing transition.  These are engineered movements on a FlyBody anatomical model, not a physics simulation or a complete neural flight controller.</p>
+        <p><strong>The movement.</strong> The page verifies each live report’s Nostr signature and replays its motor samples ten times slower.  Forward and backward drive set travel; turning activity sets heading; feeding moves the proboscis independently of the legs.  Escape activity starts take-off.  The browser supplies foot placement, wing cycles, the flight path and a short landing transition.  Between reports, the fly explores in an authored walk, take-off, flight and landing cycle.  Feeding a free visual drop or completing a wallet payment starts a drinking and regurgitation illustration.  These are engineered movements on a FlyBody anatomical model, not a physics simulation or a complete neural flight controller.  A visible droplet does not mean a financial gift was sent.</p>
         <p><strong>What is still missing.</strong> Each input starts a fresh neural run.  Body position, foot contact and airflow do not yet feed back into a persistent brain.  The recorded examples make the current connection inspectable; they do not establish a continuously living fly.</p>
         <p><strong>Replay and its limits.</strong> The seed comes from the first eight hexadecimal characters of the event id.  The reply identifies the plugin bundle and runtime image needed to repeat the run.  Signing lets the page check who published a report and whether it changed; it doesn’t independently prove that the simulation ran.  Our plugin source and replay instructions are not yet public, so independent reproduction still needs those artefacts.</p>
         <p><strong>The corn.</strong> Payments arrive through <a href="https://moneyer.dev">moneyer.dev</a> as Lightning bearer notes, encrypted to the fly’s Nostr key.  Oathrun holds those notes as the fly’s corn.  Receiving a payment supplies sensory input; it doesn’t itself trigger a gift.</p>
@@ -288,7 +305,7 @@
   </main>
 
   <script type="module">
-    import { createFlyStage } from './fly-stage.js?v=3';
+    import { createFlyStage } from './fly-stage.js?v=4';
     import { parseMotorReport, motorSummary } from './motor.js';
     import { verifySignedEvent } from './vendor/nostr-verify.js';
 
@@ -304,6 +321,7 @@
       pause: $('#motion-pause'), returnButton: $('#motion-live'), previewButtons: document.querySelectorAll('[data-fly-preview]'),
     });
     $('#poke-fly').addEventListener('click', () => FlyStage.poke());
+    $('#feed-drop').addEventListener('click', () => FlyStage.feed());
     let recordings;
     document.querySelectorAll('[data-brain-recording]').forEach(button => button.addEventListener('click', async () => {
       try {
@@ -482,6 +500,8 @@
         if (!invoice.pr) throw new Error(invoice.reason || 'The mint did not return an invoice.');
         status('Paying…');
         await window.webln.sendPayment(invoice.pr);
+        FlyStage.feed('Payment confirmed · feeding illustration');
+        $('#stage').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
         status('Paid. The mint will pay it out to the fly as a note; the reply follows when the fly is awake.', 'ok');
       } catch (error) {
         status(String(error && error.message || error).slice(0, 160), 'err');
