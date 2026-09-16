@@ -1,0 +1,8 @@
+{
+  "builder": "esbuild@0.28.2",
+  "dependencies": {
+    "uqr": "0.1.3"
+  },
+  "source": "tools/qr-entry.mjs",
+  "sha256": "fc03ef22b9e6feb8b01f913110f4298188882d90750441a511d15a9949c844a0"
+}

@@ -78,6 +78,10 @@
     .amounts { display: flex; gap: 0.5rem; flex-wrap: wrap; }
     .amounts button[aria-pressed="true"] { border-color: var(--champagne); color: var(--champagne); }
     .qr { display: grid; grid-template-columns: 1fr; gap: 1rem; justify-items: start; }
+    .invoice { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; margin-top: 0.8rem; }
+    .invoice[hidden] { display: none; }
+    .invoice img { width: 220px; height: 220px; background: #fff; border-radius: 12px; padding: 8px; }
+    .invoice p { margin: 0 0 0.6rem; }
     .qr img { width: 200px; height: 200px; background: var(--bg-2); border-radius: 12px; padding: 8px; border: 1px solid var(--line); }
     .hero .phone { display: none; }
     @media (max-width: 600px) { .hero .wide { display: none; } .hero .phone { display: block; width: 62%; margin: 1.5rem auto 0; } }
@@ -221,14 +225,21 @@
               <button type="button" id="feed-drop">Feed a free drop</button>
             </div>
             <div class="status" id="zap-status" role="status"></div>
+            <div class="invoice" id="invoice" hidden>
+              <img id="invoice-qr" alt="" width="220" height="220">
+              <div>
+                <p id="invoice-label"></p>
+                <p><a class="button" id="invoice-open" href="#">open in wallet</a> <button type="button" id="invoice-copy">copy invoice</button></p>
+              </div>
+            </div>
             <p class="feeding-caption">Feed it here.  Watch it land, drink and bring a drop back up.</p>
             <p class="participation-teaser"><a href="#connect">Mention the fly.  You could win sats.</a><br>Free to take part.  Gifts depend on sharing being enabled.<br>Zapping doesn’t improve your chances.</p>
             <p class="feeding-caption"><button type="button" id="replay-feeding" hidden>Replay last confirmed feeding</button></p>
-            <details class="wallet-options" id="wallet-options"><summary>QR code, wallet address or a comment</summary>
+            <details class="wallet-options" id="wallet-options"><summary>Any amount: the address, or a comment</summary>
           <div class="qr">
             <img src="lnurl-qr.svg" alt="QR code of the fly's Lightning address" width="180" height="180">
             <div>
-              <p style="margin:0 0 0.6rem">Scan, or pay the address. Any amount from 3 sats. Add a comment if your wallet lets you; the fly cannot read it, but the word <em>sugar</em> is sugar.</p>
+              <p style="margin:0 0 0.6rem">This code has no amount in it, so your wallet asks how much (from 3 sats). For the amount above, press Zap. Add a comment if your wallet lets you; the fly cannot read it, but the word <em>sugar</em> is sugar.</p>
               <div class="address"><code>fly@moneyer.dev</code><button type="button" data-copy="fly@moneyer.dev">copy</button></div>
               <p style="margin:0.6rem 0 0"><a class="button" href="lightning:fly@moneyer.dev">open in wallet</a></p>
             </div>
@@ -386,6 +397,7 @@
   <script type="module">
     import { createFlyStage } from './fly-stage.js?v=5';
     import { parseMotorReport, motorSummary, replayLine } from './motor.js';
+    import { renderSVG } from './vendor/qr.js';
     import { verifySignedEvent } from './vendor/nostr-verify.js';
     import { verifiedZap } from './zap-receipt.js?v=5';
 
@@ -621,31 +633,54 @@
       $('#zap-button').textContent = `Zap ${amount.toLocaleString('en-GB')} sats`;
     }));
     const status = (text, kind) => { const s = $('#zap-status'); s.textContent = text; s.className = 'status' + (kind ? ' ' + kind : ''); };
+    // An invoice for exactly the chosen amount, as a zap when a signer is present.
+    async function requestInvoice(msat) {
+      const pay = await (await fetch(LNURLP)).json();
+      if (pay.tag !== 'payRequest') throw new Error('The mint did not answer with a pay request.');
+      if (msat < pay.minSendable || msat > pay.maxSendable) throw new Error('Amount outside what the mint accepts.');
+      const comment = $('#comment').value.trim().slice(0, 120);
+      let url = `${pay.callback}?amount=${msat}`;
+      if (window.nostr && pay.allowsNostr) {
+        const request = { kind: 9734, created_at: Math.floor(Date.now() / 1000), content: comment,
+          tags: [['p', FLY], ['amount', String(msat)], ['relays', ...RELAYS], ['lnurl', LNURL]] };
+        const signed = await window.nostr.signEvent(request);
+        url += '&nostr=' + encodeURIComponent(JSON.stringify(signed));
+      } else if (comment && pay.commentAllowed) {
+        url += '&comment=' + encodeURIComponent(comment.slice(0, pay.commentAllowed));
+      }
+      const invoice = await (await fetch(url)).json();
+      if (!invoice.pr) throw new Error(invoice.reason || 'The mint did not return an invoice.');
+      return invoice.pr;
+    }
+    const hideInvoice = () => { $('#invoice').hidden = true; };
+    document.querySelectorAll('[data-amount]').forEach(b => b.addEventListener('click', hideInvoice));
+    function showInvoice(pr, sats) {
+      const svg = renderSVG('lightning:' + pr.toUpperCase(), { ecc: 'M', border: 2, whiteColor: '#ffffff', blackColor: '#000000' });
+      $('#invoice-qr').src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+      $('#invoice-qr').alt = `QR code of a Lightning invoice for ${sats} sats`;
+      $('#invoice-label').textContent = `Scan to pay ${sats} sats.`;
+      $('#invoice-open').href = 'lightning:' + pr;
+      $('#invoice-copy').onclick = async () => {
+        try { await navigator.clipboard.writeText(pr); $('#invoice-copy').textContent = 'copied'; setTimeout(() => { $('#invoice-copy').textContent = 'copy invoice'; }, 1500); } catch {}
+      };
+      $('#invoice').hidden = false;
+    }
     $('#zap-button').addEventListener('click', async () => {
       const button = $('#zap-button'); button.disabled = true;
+      const sats = amount.toLocaleString('en-GB');
       try {
-        if (!window.webln) { $('#wallet-options').open = true; status('Scan the code or open the address in your wallet. Keep this page open to watch it feed.', ''); return; }
-        await window.webln.enable();
+        hideInvoice();
         status('Asking the mint for an invoice…');
-        const pay = await (await fetch(LNURLP)).json();
-        if (pay.tag !== 'payRequest') throw new Error('The mint did not answer with a pay request.');
-        const msat = amount * 1000;
-        if (msat < pay.minSendable || msat > pay.maxSendable) throw new Error('Amount outside what the mint accepts.');
-        const comment = $('#comment').value.trim().slice(0, 120);
-        let url = `${pay.callback}?amount=${msat}`;
-        if (window.nostr && pay.allowsNostr) {
-          const request = { kind: 9734, created_at: Math.floor(Date.now() / 1000), content: comment,
-            tags: [['p', FLY], ['amount', String(msat)], ['relays', ...RELAYS], ['lnurl', LNURL]] };
-          const signed = await window.nostr.signEvent(request);
-          url += '&nostr=' + encodeURIComponent(JSON.stringify(signed));
-        } else if (comment && pay.commentAllowed) {
-          url += '&comment=' + encodeURIComponent(comment.slice(0, pay.commentAllowed));
+        const pr = await requestInvoice(amount * 1000);
+        if (!window.webln) {
+          showInvoice(pr, sats);
+          status('Keep this page open to watch it feed.', '');
+          return;
         }
-        const invoice = await (await fetch(url)).json();
-        if (!invoice.pr) throw new Error(invoice.reason || 'The mint did not return an invoice.');
+        await window.webln.enable();
         status('Paying…');
-        await window.webln.sendPayment(invoice.pr);
-        paymentFeed(invoice.pr, 'Payment confirmed · feeding illustration');
+        await window.webln.sendPayment(pr);
+        paymentFeed(pr, 'Payment confirmed · feeding illustration');
         $('#stage').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
         status('Paid. The mint will pay it out to the fly as a note; the reply follows when the fly is awake.', 'ok');
       } catch (error) {
