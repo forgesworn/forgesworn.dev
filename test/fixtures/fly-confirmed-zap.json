@@ -1,0 +1,127 @@
+{
+  "synthetic": true,
+  "recipient": "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
+  "provider": "4d4b6cd1361032ca9bd2aeb9d900aa4d45d9ead80ac9423374c451a7254d0766",
+  "lnurl": "lnurl1synthetic",
+  "receipt": {
+    "kind": 9735,
+    "created_at": 1789557101,
+    "tags": [
+      [
+        "p",
+        "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f"
+      ],
+      [
+        "bolt11",
+        "lnbc2100n1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"
+      ],
+      [
+        "description",
+        "{\"kind\":9734,\"created_at\":1789557100,\"tags\":[[\"p\",\"1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f\"],[\"amount\",\"210000\"],[\"lnurl\",\"lnurl1synthetic\"],[\"relays\",\"wss://relay.invalid\"]],\"content\":\"\",\"pubkey\":\"1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f\",\"id\":\"4562b63de935c5b77aa43580d202924c1b1123adccf76ae142442fb6fdd4a364\",\"sig\":\"71eedae0704ae03042fbe3226845edeef72f1a781e3ba3f030266852eb6c1bad6808e61c534dda3cd0918636490494ad656b17904a56819207baa362b49c9822\"}"
+      ]
+    ],
+    "content": "",
+    "pubkey": "4d4b6cd1361032ca9bd2aeb9d900aa4d45d9ead80ac9423374c451a7254d0766",
+    "id": "d60ff4ab87cd34dc0c58dcf31b832ad179c0c15e10fc8707e0920a66e4295b3f",
+    "sig": "e6e0e5ad0d6587ff0ca6b4c519a59409bf42c76769f479d3863c8bab6fde660b0f9fcd1412e6109e6b707ecb60e2b89ff0817a97f7e1c0a0d9988100fc062939"
+  },
+  "invalid": {
+    "wrongProvider": {
+      "kind": 9735,
+      "created_at": 1789557101,
+      "tags": [
+        [
+          "p",
+          "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f"
+        ],
+        [
+          "bolt11",
+          "lnbc2100n1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"
+        ],
+        [
+          "description",
+          "{\"kind\":9734,\"created_at\":1789557100,\"tags\":[[\"p\",\"1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f\"],[\"amount\",\"210000\"],[\"lnurl\",\"lnurl1synthetic\"],[\"relays\",\"wss://relay.invalid\"]],\"content\":\"\",\"pubkey\":\"1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f\",\"id\":\"4562b63de935c5b77aa43580d202924c1b1123adccf76ae142442fb6fdd4a364\",\"sig\":\"71eedae0704ae03042fbe3226845edeef72f1a781e3ba3f030266852eb6c1bad6808e61c534dda3cd0918636490494ad656b17904a56819207baa362b49c9822\"}"
+        ]
+      ],
+      "content": "",
+      "pubkey": "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
+      "id": "da7ef486e276be004e3539cb5557bcc032fd26e0a413db7360448def8e30480b",
+      "sig": "2ced3aa47eae6e10341658da95b016ded9b3a72d329e576d85b9459d58dc638e6a8bf98edcfcdfe8dfc9ebebd0de5fb89909f5cba1423f92d40a45e5ed95b255"
+    },
+    "amountMismatch": {
+      "kind": 9735,
+      "created_at": 1789557101,
+      "tags": [
+        [
+          "p",
+          "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f"
+        ],
+        [
+          "bolt11",
+          "lnbc2200n1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"
+        ],
+        [
+          "description",
+          "{\"kind\":9734,\"created_at\":1789557100,\"tags\":[[\"p\",\"1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f\"],[\"amount\",\"210000\"],[\"lnurl\",\"lnurl1synthetic\"],[\"relays\",\"wss://relay.invalid\"]],\"content\":\"\",\"pubkey\":\"1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f\",\"id\":\"4562b63de935c5b77aa43580d202924c1b1123adccf76ae142442fb6fdd4a364\",\"sig\":\"71eedae0704ae03042fbe3226845edeef72f1a781e3ba3f030266852eb6c1bad6808e61c534dda3cd0918636490494ad656b17904a56819207baa362b49c9822\"}"
+        ]
+      ],
+      "content": "",
+      "pubkey": "4d4b6cd1361032ca9bd2aeb9d900aa4d45d9ead80ac9423374c451a7254d0766",
+      "id": "52dd1c39afed12888ca3d39d2b17aeedf4ddbddb7e088df9bd502f3c8f267308",
+      "sig": "4605bfeb5fd503d1f551d4de8488cb1c6b7159c41e7c33546be0932910cdba6502a65f3428edfeebf5caa22535e9399867136f4ff8943e3db85b7522dce684b1"
+    },
+    "wrongRecipient": {
+      "kind": 9735,
+      "created_at": 1789557101,
+      "tags": [
+        [
+          "p",
+          "4d4b6cd1361032ca9bd2aeb9d900aa4d45d9ead80ac9423374c451a7254d0766"
+        ],
+        [
+          "bolt11",
+          "lnbc2100n1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"
+        ],
+        [
+          "description",
+          "{\"kind\":9734,\"created_at\":1789557100,\"tags\":[[\"p\",\"1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f\"],[\"amount\",\"210000\"],[\"lnurl\",\"lnurl1synthetic\"],[\"relays\",\"wss://relay.invalid\"]],\"content\":\"\",\"pubkey\":\"1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f\",\"id\":\"4562b63de935c5b77aa43580d202924c1b1123adccf76ae142442fb6fdd4a364\",\"sig\":\"71eedae0704ae03042fbe3226845edeef72f1a781e3ba3f030266852eb6c1bad6808e61c534dda3cd0918636490494ad656b17904a56819207baa362b49c9822\"}"
+        ]
+      ],
+      "content": "",
+      "pubkey": "4d4b6cd1361032ca9bd2aeb9d900aa4d45d9ead80ac9423374c451a7254d0766",
+      "id": "ccb8327bfb6f49dc416cbff9670dcc651491938da6ffc4cf56a31e620c13a4b2",
+      "sig": "56746964dbbb35e9cd824d1524a7bd6110d873187672268c9c2b6e2aee6e4e61be99a25078dadd82d3297ec32816dae4c9cc6728e1f5fdaa3d1c54879065505b"
+    },
+    "badInvoice": {
+      "kind": 9735,
+      "created_at": 1789557101,
+      "tags": [
+        [
+          "p",
+          "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f"
+        ],
+        [
+          "bolt11",
+          "invalid"
+        ],
+        [
+          "description",
+          "{\"kind\":9734,\"created_at\":1789557100,\"tags\":[[\"p\",\"1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f\"],[\"amount\",\"210000\"],[\"lnurl\",\"lnurl1synthetic\"],[\"relays\",\"wss://relay.invalid\"]],\"content\":\"\",\"pubkey\":\"1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f\",\"id\":\"4562b63de935c5b77aa43580d202924c1b1123adccf76ae142442fb6fdd4a364\",\"sig\":\"71eedae0704ae03042fbe3226845edeef72f1a781e3ba3f030266852eb6c1bad6808e61c534dda3cd0918636490494ad656b17904a56819207baa362b49c9822\"}"
+        ]
+      ],
+      "content": "",
+      "pubkey": "4d4b6cd1361032ca9bd2aeb9d900aa4d45d9ead80ac9423374c451a7254d0766",
+      "id": "94bc2966febd96a7fcc3b987e4c52b22788202d61155c72ca566e1272c6d3386",
+      "sig": "32b2b55d33d4cd3d433db18673f5f2ccfc4c4097218b771cbde7d62a24067655b33e511e2a57fb15598c6edecdd6f3e830cc1ea24fbe3009b9795f59c9a8b718"
+    }
+  },
+  "plainPaymentReport": {
+    "kind": 1,
+    "created_at": 1789557201,
+    "tags": [],
+    "content": "The fly sensed sweet=0.05 (19 sats).\nReplay: seed 7f3a2c10.\nMotor: {\"v\":1,\"windowMs\":300,\"stepMs\":50,\"seed\":2134518800,\"channels\":[\"escape\",\"feed\",\"forward\",\"turn\",\"backward\",\"song\"],\"sides\":[\"L\",\"R\",\"X\"],\"neurons\":[[4,4,0],[1,1,0],[1,1,0],[1,1,0],[2,2,0],[1,1,0]],\"spikes\":[[0,0,0],[63,8,0],[0,0,0],[0,0,0],[0,0,0],[0,2,0]],\"baseline\":[[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]],\"samples\":[[0,25,0,0,0,0,0],[0,55,0,0,0,0,0],[0,60,0,0,0,0,0],[0,70,0,0,0,0,0],[0,70,0,0,0,0,0],[0,75,0,0,0,0,0]]}",
+    "pubkey": "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
+    "id": "d365aa5f15529d3524d718dd2fe20df718fb137ec0d801055fe7102af6596a34",
+    "sig": "ccecd919ed241dcae4903ef8e0dffabba96186e93c0d90952d1233bc589e7bf6960d75ee42f29bae6c8d377b6c00a40f7a7075f2b9fb6e15c506ac6745b411b5"
+  }
+}

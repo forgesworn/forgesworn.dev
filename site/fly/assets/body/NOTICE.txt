@@ -15,7 +15,10 @@ samples choose actions and drive travel, turning and proboscis extension.
 Escape activity starts a bounded flight illustration. Foot placement, wing
 cycles, flight trajectory and landing are supplied by the browser controller.
 It is not a physical simulation or a complete connectome flight controller.
-The display wingbeat rate is illustrative, not the animal's actual frequency.
+Flight uses 64 samples of an engineered wing stroke to render a translucent
+full-cycle exposure without frame-rate aliasing. Sweep and feathering are
+phase-offset, with a smooth blend to the folded anatomical pose at touchdown.
+This display stroke is not measured wing data or a neural flight policy.
 Between reports, a separately labelled animation supplies exploring and flight.
 Free visual feeding and confirmed wallet payments start an authored drinking
 and regurgitation sequence. Animated droplets do not represent financial gifts.

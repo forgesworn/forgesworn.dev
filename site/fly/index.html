@@ -67,6 +67,7 @@
       background: var(--bg-2); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 0.55rem 0.9rem;
       transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
     }
+    [hidden] { display: none !important; }
     button:hover, .button:hover { border-color: var(--sage); color: var(--sage); }
     button:focus-visible, .button:focus-visible, input:focus-visible, textarea:focus-visible { outline: none; border-color: var(--sage); box-shadow: 0 0 0 3px rgba(192, 217, 155, 0.28); }
     button.primary { background: var(--champagne); color: #1a1408; border-color: var(--champagne); font-weight: 700; }
@@ -153,12 +154,20 @@
     .stage-heading h1 { font-size: clamp(2.2rem, 5vw, 3.5rem); margin: 0; }
     .stage-heading p { margin: 0; color: var(--ink-dim); }
     .fly-box { aspect-ratio: auto; height: clamp(360px, 58svh, 620px); }
+    .feeding-dock { max-width: 680px; margin: 12px auto 0; scroll-margin-top: 16px; }
+    .feeding-dock .amounts { display: flex; justify-content: center; align-items: center; gap: 8px; margin: 0; }
+    .feeding-dock .amounts span { font: .75rem var(--font-mono); color: var(--ink-dim); }
+    .feeding-dock .amounts button { padding: .35rem .6rem; min-height: 36px; }
+    .feeding-dock .status:empty { display: none; }
+    .wallet-options { margin-top: 12px; font-size: .82rem; color: var(--ink-dim); }
+    .wallet-options summary { cursor: pointer; text-align: center; }
+    .wallet-options .qr { margin-top: 14px; }
     .feeding-controls { display: flex; justify-content: center; gap: 12px; margin-top: 16px; }
     .feeding-controls button, .feeding-controls a { font-size: 1rem; padding: .8rem 1.5rem; }
     .feeding-caption { text-align: center; margin: 8px 0 0; color: var(--ink-dim); font-size: .86rem; }
     .live-report { border-top: 1px solid var(--line); padding-top: 12px; font-size: .9rem; }
     .live-report summary { cursor: pointer; color: var(--sage); }
-    #why, #zap, #feed, #how, footer { max-width: 860px; margin-left: auto; margin-right: auto; }
+    #why, #connect, #feed, #how, footer { max-width: 860px; margin-left: auto; margin-right: auto; }
     @media (max-width: 600px) {
       .hero { padding: 14px 16px; }
       .stage-heading { display: block; margin: 0 0 12px; }
@@ -176,7 +185,7 @@
       <div class="stage">
         <div class="fly-theatre">
           <div class="fly-box" id="fly-box">
-            <canvas id="fly-canvas" role="img" aria-label="An animated fruit fly. Use Feed a drop to feed it."></canvas>
+            <canvas id="fly-canvas" role="img" aria-label="An animated fruit fly. Use Feed a free drop to feed it."></canvas>
             <div class="specimen-label" aria-hidden="true"><span>Drosophila melanogaster</span><span>Male · macro study</span></div>
             <div class="splat-hint" id="splat-hint" aria-hidden="true">a little life on the page</div>
           </div>
@@ -184,13 +193,37 @@
             <p id="motion-status" role="status">Loading the fly…</p>
             <button type="button" id="motion-pause" aria-pressed="false">Pause motion</button>
           </div>
-          <div class="feeding-controls">
-            <button type="button" id="feed-drop" class="primary">Feed a drop</button>
-            <a class="button" href="#zap">Feed sats</a>
+          <div class="feeding-dock" id="zap">
+            <div class="amounts" role="group" aria-label="Zap amount in sats">
+              <span>sats</span><button type="button" data-amount="21" aria-pressed="false">21</button>
+              <button type="button" data-amount="210" aria-pressed="true">210</button>
+              <button type="button" data-amount="2100" aria-pressed="false">2,100</button>
+              <button type="button" data-amount="10000" aria-pressed="false">10,000</button>
+            </div>
+            <div class="feeding-controls">
+              <button type="button" id="zap-button" class="primary">Zap 210 sats</button>
+              <button type="button" id="feed-drop">Feed a free drop</button>
+            </div>
+            <div class="status" id="zap-status" role="status"></div>
+            <p class="feeding-caption">Feed it here.  Watch it land, drink and bring a drop back up.</p>
+            <p class="feeding-caption"><button type="button" id="replay-feeding" hidden>Replay last confirmed feeding</button></p>
+            <details class="wallet-options" id="wallet-options"><summary>QR code, wallet address or a comment</summary>
+          <div class="qr">
+            <img src="lnurl-qr.svg" alt="QR code of the fly's Lightning address" width="180" height="180">
+            <div>
+              <p style="margin:0 0 0.6rem">Scan, or pay the address. Any amount from 3 sats. Add a comment if your wallet lets you; the fly cannot read it, but the word <em>sugar</em> is sugar.</p>
+              <div class="address"><code>fly@moneyer.dev</code><button type="button" data-copy="fly@moneyer.dev">copy</button></div>
+              <p style="margin:0.6rem 0 0"><a class="button" href="lightning:fly@moneyer.dev">open in wallet</a></p>
+            </div>
           </div>
-          <p class="feeding-caption">A drop is free.  Watch it land, drink and bring a little back up.</p>
+
+              <label for="comment">Zap comment (optional, with a Nostr browser signer)</label>
+              <input id="comment" maxlength="120" placeholder="sugar, please">
+              <p class="motion-note">The zap button uses your browser wallet.  Zaps from another wallet animate when the mint’s verified receipt arrives.  Plain Lightning payments animate when the fly confirms receiving its sealed note.  A free drop is a visual interaction.</p>
+            </details>
+          </div>
           <details class="motion-demos"><summary>Brain reports and recorded responses</summary>
-          <p class="motion-note">Between brain reports, an authored animation lets the fly explore, take off and land.  “Feed a drop” is a local visual interaction.  Live neural reports can interrupt the exploring; their source is shown above.  An animated droplet is not a transfer of sats.</p>
+          <p class="motion-note">Between brain reports, an authored animation lets the fly explore, take off and land.  “Feed a free drop” is a local visual interaction.  Live neural reports can interrupt the exploring; their source is shown above.  An animated droplet is not a transfer of sats.</p>
           <button type="button" id="motion-live">Replay latest brain report</button>
           <div class="motion-previews" role="group" aria-label="Recorded brain responses, not live events">
             <span>Recorded brain responses</span>
@@ -234,37 +267,8 @@
       <p>This is a simplified model built from biological wiring.  Each input starts a fresh run; it doesn’t learn from previous pokes or simulate a continuously living animal.  The illustration makes the output easier to see.  It isn’t evidence that we’ve reproduced a fly’s mind.</p>
     </section>
 
-    <section id="zap">
-      <div class="eyebrow">Feed it</div>
-      <h2>Zap the fly</h2>
-      <div class="grid">
-        <div class="card">
-          <h3>From any wallet</h3>
-          <div class="qr">
-            <img src="lnurl-qr.svg" alt="QR code of the fly's Lightning address" width="180" height="180">
-            <div>
-              <p style="margin:0 0 0.6rem">Scan, or pay the address. Any amount from 3 sats. Add a comment if your wallet lets you; the fly cannot read it, but the word <em>sugar</em> is sugar.</p>
-              <div class="address"><code>fly@moneyer.dev</code><button type="button" data-copy="fly@moneyer.dev">copy</button></div>
-              <p style="margin:0.6rem 0 0"><a class="button" href="lightning:fly@moneyer.dev">open in wallet</a></p>
-            </div>
-          </div>
-        </div>
-        <div class="card">
-          <h3>From this page</h3>
-          <p style="margin:0">Needs a browser wallet (WebLN). With a Nostr signer as well, it goes out as a proper zap with your name on it.</p>
-          <label for="amount">sats</label>
-          <div class="amounts" role="group" aria-label="amount">
-            <button type="button" data-amount="21">21</button>
-            <button type="button" data-amount="210" aria-pressed="true">210</button>
-            <button type="button" data-amount="2100">2,100</button>
-            <button type="button" data-amount="21000">21,000</button>
-          </div>
-          <label for="comment">comment</label>
-          <input id="comment" maxlength="120" placeholder="sugar, please">
-          <p style="margin:0.9rem 0 0"><button type="button" class="primary" id="zap-button">Zap the fly</button></p>
-          <div class="status" id="zap-status"></div>
-        </div>
-      </div>
+    <section id="connect">
+      <h2>Find the fly on Nostr</h2>
       <p style="margin-top:1.2rem">Or on Nostr: mention <code class="mono" id="npub">npub1fcp73q289r4t5hch9my5kwgpm8vw6qft6ncw5ppucdtwv6ynq3lq2phg2l</code> <button type="button" data-copy="npub1fcp73q289r4t5hch9my5kwgpm8vw6qft6ncw5ppucdtwv6ynq3lq2phg2l">copy</button> and it feels a touch. Reply to one of its notes and it hears a buzz. React and it feels a breeze. <a href="https://njump.me/npub1fcp73q289r4t5hch9my5kwgpm8vw6qft6ncw5ppucdtwv6ynq3lq2phg2l">Open its profile.</a></p>
       <p style="margin-top:0.8rem">Prefer the command line, or want your own agent to poke it? <a href="https://www.npmjs.com/package/nostr-bray">Bray</a> is trust-aware Nostr for agents and humans: <code class="mono">npx nostr-bray post "hey @fly"</code>, zap it, or check its trust score, from any terminal or MCP client.</p>
     </section>
@@ -305,9 +309,10 @@
   </main>
 
   <script type="module">
-    import { createFlyStage } from './fly-stage.js?v=4';
+    import { createFlyStage } from './fly-stage.js?v=5';
     import { parseMotorReport, motorSummary } from './motor.js';
     import { verifySignedEvent } from './vendor/nostr-verify.js';
+    import { verifiedZap } from './zap-receipt.js?v=5';
 
     const FLY = '4e03e8814728eaba5f172ec94b3901d9d8ed012bd4f0ea043cc356e66893047e';
     const FLY_NPUB = 'npub1fcp73q289r4t5hch9my5kwgpm8vw6qft6ncw5ppucdtwv6ynq3lq2phg2l';
@@ -336,6 +341,33 @@
     }));
 
     const openedAt = Math.floor(Date.now() / 1000);
+    const fedInvoices = new Set(); let lastPaymentIllustration = 0, providerRequest;
+    let lastConfirmedFeeding = null;
+    function rememberFeeding(time, source) {
+      if (!lastConfirmedFeeding || time > lastConfirmedFeeding.time) lastConfirmedFeeding = { time, source };
+      $('#replay-feeding').hidden = false;
+    }
+    $('#replay-feeding').addEventListener('click', () => {
+      if (lastConfirmedFeeding) FlyStage.feed(`Replay · ${lastConfirmedFeeding.source}`);
+    });
+    function paymentFeed(invoice, source) {
+      const key = invoice.toLowerCase();
+      if (fedInvoices.has(key)) return;
+      fedInvoices.add(key);
+      if (fedInvoices.size > 256) fedInvoices.delete(fedInvoices.values().next().value);
+      lastPaymentIllustration = Date.now();
+      FlyStage.feed(source);
+      if ($('#wallet-options').open) {
+        $('#wallet-options').open = false;
+        $('#stage').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+      }
+    }
+    function paymentProvider() {
+      return providerRequest ||= fetch(LNURLP, { signal: AbortSignal.timeout(10000) })
+        .then(r => { if (!r.ok) throw Error(); return r.json(); })
+        .then(p => p.allowsNostr === true && /^[0-9a-f]{64}$/.test(p.nostrPubkey) ? p.nostrPubkey : null)
+        .catch(() => { providerRequest = null; return null; });
+    }
     let lastReacted = null;
     function react(note) {
       const motor = parseMotorReport(note.content);
@@ -352,6 +384,12 @@
         const live = note.created_at >= openedAt;
         FlyStage.report(motor, live);
         if (gift && live) FlyStage.gift();
+        // Plain Lightning payments have no public zap receipt. The fly's
+        // authenticated report confirms the amount from the opened sealed note.
+        const received = /^The fly sensed [^\n]*\(([\d,]+) sats\)\.$/m.exec(note.content);
+        if (live && motor && received && Date.now() - lastPaymentIllustration > 90000) {
+          paymentFeed(note.id, `Fly confirmed ${received[1]} sats · feeding illustration`);
+        }
       }
     }
 
@@ -400,9 +438,16 @@
       if (e.kind === 0) { try { profiles.set(e.pubkey, JSON.parse(e.content)); } catch {} render(); return; }
       if (e.kind === 1 && e.pubkey !== FLY) return;
       if ((e.kind === 9735 || e.kind === 1059) && !e.tags.some(t => t[0] === 'p' && t[1] === FLY)) return;
+      const zap = e.kind === 9735 ? await verifiedZap(e, { recipient: FLY, provider: await paymentProvider(), lnurl: LNURL }) : null;
+      if (e.kind === 9735 && !zap || events.has(e.id)) return;
       if (e.kind === 1059) e.seen = Math.floor(Date.now() / 1000);
       events.set(e.id, e);
-      // Payments are sensory input. Only a subsequent motor report moves the fly.
+      if (zap) rememberFeeding(e.created_at, `Mint confirmed ${zap.sats.toLocaleString('en-GB')} sats · feeding illustration`);
+      if (e.kind === 1 && parseMotorReport(e.content)) {
+        const amount = /^The fly sensed [^\n]*\(([\d,]+) sats\)\.$/m.exec(e.content)?.[1];
+        if (amount) rememberFeeding(e.created_at, `Fly confirmed ${amount} sats · feeding illustration`);
+      }
+      if (zap && e.created_at >= openedAt) paymentFeed(zap.invoice, `Mint confirmed ${zap.sats.toLocaleString('en-GB')} sats · feeding illustration`);
       const zapper = zapperOf(e);
       if (zapper && !profiles.has(zapper) && !wanted.has(zapper)) { wanted.add(zapper); try { ws.send(JSON.stringify(['REQ', 'p' + zapper.slice(0, 8), { kinds: [0], authors: [zapper], limit: 1 }])); } catch {} }
       render();
@@ -480,12 +525,13 @@
     document.querySelectorAll('[data-amount]').forEach(b => b.addEventListener('click', () => {
       amount = Number(b.dataset.amount);
       document.querySelectorAll('[data-amount]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+      $('#zap-button').textContent = `Zap ${amount.toLocaleString('en-GB')} sats`;
     }));
     const status = (text, kind) => { const s = $('#zap-status'); s.textContent = text; s.className = 'status' + (kind ? ' ' + kind : ''); };
     $('#zap-button').addEventListener('click', async () => {
       const button = $('#zap-button'); button.disabled = true;
       try {
-        if (!window.webln) { status('No browser wallet found. Scan the code or open the address in your wallet.', 'err'); return; }
+        if (!window.webln) { $('#wallet-options').open = true; status('Scan the code or open the address in your wallet. Keep this page open to watch it feed.', ''); return; }
         await window.webln.enable();
         status('Asking the mint for an invoice…');
         const pay = await (await fetch(LNURLP)).json();
@@ -506,7 +552,7 @@
         if (!invoice.pr) throw new Error(invoice.reason || 'The mint did not return an invoice.');
         status('Paying…');
         await window.webln.sendPayment(invoice.pr);
-        FlyStage.feed('Payment confirmed · feeding illustration');
+        paymentFeed(invoice.pr, 'Payment confirmed · feeding illustration');
         $('#stage').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
         status('Paid. The mint will pay it out to the fly as a note; the reply follows when the fly is awake.', 'ok');
       } catch (error) {
