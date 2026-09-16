@@ -1,0 +1,571 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Claim your corn</title>
+  <meta name="description" content="The fly shared its corn with you. Sign in with your Nostr key, and send it to any Lightning address.">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="../emblem.svg" type="image/svg+xml">
+  <style>
+    @font-face { font-family: "Fraunces"; src: url("/fonts/fraunces-latin.woff2") format("woff2"); font-weight: 300 700; font-style: normal; font-display: swap; }
+    @font-face { font-family: "Fraunces"; src: url("/fonts/fraunces-italic-latin.woff2") format("woff2"); font-weight: 300 700; font-style: italic; font-display: swap; }
+    @font-face { font-family: "Inter"; src: url("/fonts/inter-latin.woff2") format("woff2"); font-weight: 400 600; font-style: normal; font-display: swap; }
+    @font-face { font-family: "JetBrains Mono"; src: url("/fonts/jetbrains-mono-latin.woff2") format("woff2"); font-weight: 400 700; font-style: normal; font-display: swap; }
+
+    :root {
+      --bg: #0b0f0c; --bg-2: #111713; --card: #151c17; --line: #263029;
+      --ink: #EAE6DC; --ink-dim: #b8b3a6;
+      --sage: #c0d99b; --sage-dim: #8fa86e;
+      --champagne: #e6d3a3; --champagne-dim: #b59d68;
+      --red: #d9412f;
+      --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+      --font-body: "Inter", ui-sans-serif, -apple-system, "Segoe UI", sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+      --text: 1.0625rem;
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--bg); }
+    body {
+      margin: 0; color: var(--ink); background: var(--bg);
+      font-family: var(--font-body); font-size: var(--text); line-height: 1.7; letter-spacing: -0.003em;
+    }
+    a { color: var(--champagne); text-decoration: none; border-bottom: 1px solid rgba(230, 211, 163, 0.35); }
+    a:hover { color: var(--sage); border-color: var(--sage); }
+    h1, h2 { font-family: var(--font-display); font-weight: 500; color: var(--champagne); margin: 0 0 0.4em; line-height: 1.1; }
+    h1 { font-size: clamp(2.1rem, 5vw, 3.1rem); font-variation-settings: "opsz" 144; letter-spacing: -0.01em; }
+    h2 { font-size: 1.28rem; font-variation-settings: "opsz" 32; color: var(--sage); margin-bottom: 0.3em; }
+    .wrap { max-width: 660px; margin: 0 auto; padding: 0 16px; }
+    header { padding: 2.6rem 0 0; }
+    header img { width: 62px; height: 62px; display: block; margin-bottom: 1rem; }
+    .lede { color: var(--ink-dim); max-width: 46ch; }
+    .eyebrow { font-family: var(--font-mono); font-size: 0.8rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--sage-dim); margin-bottom: 0.6rem; }
+    main { padding-bottom: 3rem; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 1.3rem 1.4rem; margin-top: 1.4rem; }
+    .card[hidden] { display: none; }
+    code, .mono { font-family: var(--font-mono); font-size: 0.9em; overflow-wrap: anywhere; }
+
+    button {
+      font: inherit; font-weight: 600; cursor: pointer;
+      background: var(--sage); color: #10160f; border: 1px solid var(--sage);
+      border-radius: 10px; padding: 0.68rem 1.25rem; transition: filter .15s ease;
+    }
+    button:hover:not(:disabled) { filter: brightness(1.08); }
+    button:disabled { opacity: 0.5; cursor: default; }
+    button.ghost { background: transparent; color: var(--ink); border-color: var(--line); font-weight: 400; }
+    button.ghost:hover:not(:disabled) { border-color: var(--sage-dim); color: var(--sage); }
+
+    label { display: block; font-size: 0.93rem; color: var(--ink-dim); margin-bottom: 0.4rem; }
+    input[type=text] {
+      font: inherit; width: 100%; color: var(--ink); background: var(--bg-2);
+      border: 1px solid var(--line); border-radius: 10px; padding: 0.7rem 0.85rem;
+      transition: border-color .15s ease, box-shadow .15s ease;
+    }
+    input[type=text]:focus {
+      outline: none; border-color: var(--sage-dim);
+      box-shadow: 0 0 0 3px rgba(192, 217, 155, 0.16);
+    }
+    .row { display: flex; gap: 0.7rem; flex-wrap: wrap; align-items: center; margin-top: 1rem; }
+
+    .gift { border: 1px solid var(--line); border-radius: 12px; padding: 0.9rem 1rem; margin-top: 0.8rem; background: var(--bg-2); }
+    .gift.chosen { border-color: var(--sage-dim); }
+    .gift .amount { font-family: var(--font-display); font-size: 1.6rem; color: var(--champagne); line-height: 1.2; }
+    .gift .from { font-size: 0.88rem; color: var(--ink-dim); overflow-wrap: anywhere; }
+    .gift .gone { color: var(--champagne-dim); font-size: 0.9rem; }
+
+    .note { font-size: 0.93rem; color: var(--ink-dim); }
+    .amount-line { font-family: var(--font-display); font-size: 1.35rem; color: var(--champagne); margin: 0 0 1rem; }
+    .status { font-family: var(--font-mono); font-size: 0.86rem; color: var(--sage-dim); min-height: 1.4em; margin-top: 0.8rem; }
+    .status.bad { color: var(--red); }
+    .status.good { color: var(--sage); }
+    .done { font-family: var(--font-display); font-size: 1.5rem; color: var(--sage); }
+    ol.steps { padding-left: 1.2rem; color: var(--ink-dim); font-size: 0.95rem; }
+    ol.steps li { margin: 0.35rem 0; }
+    footer { border-top: 1px solid var(--line); margin-top: 2.6rem; padding: 1.4rem 0 2.6rem; }
+    .fineprint { font-size: 0.85em; opacity: 0.72; line-height: 1.5; color: var(--ink-dim); }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="../emblem.svg" alt="" aria-hidden="true">
+    <div class="eyebrow">Trophallaxis</div>
+    <h1>Claim your corn</h1>
+    <p class="lede">The fly shares its corn by sealing a Lightning bearer note to your Nostr key. Only you can open it. This page opens it in your browser and sends it wherever you like.</p>
+  </header>
+
+  <main>
+    <section class="card" id="step-signin">
+      <h2>1. Prove it is you</h2>
+      <p class="note">The note is encrypted to your Nostr key, so your signing extension has to open it. Your key never reaches this page, and nothing is signed: the extension decrypts and hands back the result.</p>
+      <div class="row">
+        <button id="signin">Sign in with Nostr</button>
+      </div>
+      <div class="status" id="signin-status"></div>
+      <div id="no-extension" hidden>
+        <p class="note">No Nostr signing extension was found in this browser. You need one to open a sealed note. Common ones are <a href="https://github.com/fiatjaf/nos2x" rel="noopener">nos2x</a> and <a href="https://getalby.com/" rel="noopener">Alby</a> on desktop, or a mobile browser with a signer built in. Install one, add your key, then reload this page.</p>
+      </div>
+    </section>
+
+    <section class="card" id="step-find" hidden>
+      <h2>2. Find your gift</h2>
+      <div class="status" id="find-status"></div>
+      <div id="gifts"></div>
+      <div class="row" id="find-actions" hidden>
+        <button class="ghost" id="rescan">Look again</button>
+      </div>
+      <details id="paste-note" style="margin-top:1.1rem">
+        <summary class="note" style="cursor:pointer">I already have a note link</summary>
+        <p class="note" style="margin-top:0.7rem">If someone sent you an LNURLcash note directly, paste it here instead. It stays in this browser and goes only to the mint that issued it.</p>
+        <label for="note-url">Note link</label>
+        <input type="text" id="note-url" spellcheck="false" autocomplete="off" placeholder="https://…">
+        <div class="row"><button class="ghost" id="use-note">Use this note</button></div>
+      </details>
+    </section>
+
+    <section class="card" id="step-send" hidden>
+      <h2>3. Say where it should go</h2>
+      <p class="note">A Lightning address looks like an email address. If you have not got one, <a href="https://www.walletofsatoshi.com/" rel="noopener">Wallet of Satoshi</a>, <a href="https://www.blink.sv/" rel="noopener">Blink</a> and <a href="https://strike.me/" rel="noopener">Strike</a> each give you one in a couple of minutes, and all three work with this page. Plenty of good wallets refuse to talk to a web page at all, so if yours will not, paste an invoice instead. That works with every wallet there is.</p>
+      <p class="amount-line" id="amount-line"></p>
+      <label for="address">Your Lightning address</label>
+      <input type="text" id="address" spellcheck="false" autocomplete="off" inputmode="email" placeholder="you@walletofsatoshi.com">
+      <div class="row">
+        <button id="claim">Send it to me</button>
+      </div>
+      <div class="status" id="claim-status"></div>
+      <details id="paste-invoice" style="margin-top:1.2rem">
+        <summary class="note" style="cursor:pointer">Paste an invoice instead</summary>
+        <p class="note" style="margin-top:0.7rem">Some wallets will not talk to a web page directly. An invoice always works. Ask your wallet to receive <strong id="invoice-amount"></strong>, then paste what it gives you.</p>
+        <label for="invoice">Your invoice</label>
+        <input type="text" id="invoice" spellcheck="false" autocomplete="off" placeholder="lnbc…">
+        <div class="row"><button class="ghost" id="claim-invoice">Pay this invoice</button></div>
+      </details>
+    </section>
+
+    <section class="card" id="step-done" hidden>
+      <div class="done" id="done-line"></div>
+      <p class="note" id="done-detail"></p>
+      <ol class="steps" id="done-steps"></ol>
+    </section>
+  </main>
+
+  <footer>
+    <p class="fineprint">The fly is an <a href="https://oathrun.pages.dev/">Oathrun</a> plugin by <a href="https://forgesworn.dev/">ForgeSworn</a>. <a href="../">About the fly</a>.</p>
+    <p class="fineprint">Just for fun. The fly shares its corn now and then, and when it does so is the fly's own decision. Anyone who mentions the fly is eligible. Zapping is not required and does not help. Nothing is guaranteed, and the fly can only ever give away corn it was given. This is not a wallet, financial product, savings scheme or investment, and nothing here is financial advice. Intended as a free prize draw under UK rules. 18+.</p>
+  </footer>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const FLY = '4e03e8814728eaba5f172ec94b3901d9d8ed012bd4f0ea043cc356e66893047e';
+  const RELAYS = ['wss://nos.lol', 'wss://relay.primal.net', 'wss://relay.damus.io', 'wss://purplepag.es'];
+  const KIND_WRAP = 1059, KIND_SEAL = 13, KIND_CASH = 2525;
+  const GATHER_MS = 6000, WRAP_LIMIT = 250, HTTP_MS = 20000;
+
+  const $ = id => document.getElementById(id);
+  const show = (id, on = true) => { $(id).hidden = !on; };
+  const say = (id, text, tone = '') => { const el = $(id); el.textContent = text; el.className = 'status' + (tone ? ' ' + tone : ''); };
+
+  let me = null;          // our pubkey, hex
+  let gifts = [];         // {rumourId, from, note, amountMsat, info|null, spent}
+  let chosen = null;
+
+  // ---- small helpers, no dependencies -------------------------------------
+
+  const CHARSET = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+  function bech32(hrp, bytes) {
+    // Enough of BIP-173 to render an npub. Display only.
+    const words = [];
+    let acc = 0, bits = 0;
+    for (const b of bytes) {
+      acc = (acc << 8) | b; bits += 8;
+      while (bits >= 5) { bits -= 5; words.push((acc >> bits) & 31); }
+    }
+    if (bits > 0) words.push((acc << (5 - bits)) & 31);
+    const polymod = values => {
+      const GEN = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
+      let chk = 1;
+      for (const v of values) {
+        const top = chk >> 25;
+        chk = ((chk & 0x1ffffff) << 5) ^ v;
+        for (let i = 0; i < 5; i++) if ((top >> i) & 1) chk ^= GEN[i];
+      }
+      return chk;
+    };
+    const expand = s => [...s].map(c => c.charCodeAt(0) >> 5).concat([0], [...s].map(c => c.charCodeAt(0) & 31));
+    const chk = polymod(expand(hrp).concat(words, [0, 0, 0, 0, 0, 0])) ^ 1;
+    const sum = [];
+    for (let i = 0; i < 6; i++) sum.push((chk >> (5 * (5 - i))) & 31);
+    return hrp + '1' + words.concat(sum).map(w => CHARSET[w]).join('');
+  }
+  const hexBytes = hex => Uint8Array.from(hex.match(/../g).map(b => parseInt(b, 16)));
+  const npub = hex => { try { return bech32('npub', hexBytes(hex)); } catch { return hex; } };
+  const shortNpub = hex => { const n = npub(hex); return n.length > 20 ? n.slice(0, 12) + '…' + n.slice(-6) : n; };
+
+  async function sha256Hex(text) {
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+  // NIP-01 event id: sha256 of the canonical serialisation.
+  const eventId = ev => sha256Hex(JSON.stringify([0, ev.pubkey, ev.created_at, ev.kind, ev.tags, ev.content]));
+
+  const isHex64 = v => typeof v === 'string' && /^[0-9a-f]{64}$/.test(v);
+  const sats = msat => (msat / 1000).toLocaleString('en-GB', { maximumFractionDigits: 3 });
+
+  async function getJson(url) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), HTTP_MS);
+    try {
+      const response = await fetch(url, { signal: controller.signal, redirect: 'follow' });
+      const body = await response.json();
+      if (!body || typeof body !== 'object') throw new Error('that service did not answer with JSON');
+      if (body.status === 'ERROR') throw new Error(body.reason || 'the service refused');
+      return body;
+    } catch (error) {
+      if (error.name === 'AbortError') throw new Error('that service did not answer in time');
+      // A cross-origin refusal and a dead host look identical from here, and
+      // both are answered the same way: use an invoice instead.
+      if (error instanceof TypeError) { const blocked = new Error('could not reach that service'); blocked.unreachable = true; throw blocked; }
+      throw error;
+    } finally { clearTimeout(timer); }
+  }
+
+  // ---- the note's own protocol (LUD-03 withdrawRequest) --------------------
+
+  // An informational GET on the note. The signature parameter is dropped, as
+  // lnurlcash-core does: it signs the delivery, not the query.
+  async function noteInfo(noteUrl) {
+    const url = new URL(noteUrl);
+    if (url.protocol !== 'https:') throw new Error('a note link must be https');
+    const queried = url.searchParams.get('k1');
+    url.searchParams.delete('sig');
+    const body = await getJson(url.toString());
+    if (body.tag !== 'withdrawRequest') throw new Error('that link is not an LNURL withdraw request');
+    if (typeof body.callback !== 'string' || typeof body.k1 !== 'string') throw new Error('that mint answered with an incomplete note');
+    // The k1 that comes back IS the bearer secret. A different one means the
+    // note moved, which almost always means it was already redeemed.
+    if (queried && body.k1.trim().toLowerCase() !== queried.trim().toLowerCase()) {
+      throw new Error('this note has been redeemed already, or moved to a new secret');
+    }
+    const max = Number(body.maxWithdrawable);
+    if (!Number.isFinite(max) || max <= 0) throw new Error('this note has nothing left in it');
+    return { callback: body.callback, k1: body.k1, maxWithdrawable: max, minWithdrawable: Number(body.minWithdrawable) || 0 };
+  }
+
+  // The amount a BOLT11 invoice actually asks for, read off its human-readable
+  // part. Checked rather than trusted, so a wrong invoice is caught here and
+  // not after the note has been spent on it.
+  function invoiceMsat(pr) {
+    const match = /^ln[a-z]{2,6}?(\d+)([munp])?1/.exec(pr.trim().toLowerCase());
+    if (!match) return null;
+    const amount = BigInt(match[1]);
+    const scale = { m: 100000000n, u: 100000n, n: 100n };
+    if (match[2] === 'p') return amount % 10n === 0n ? Number(amount / 10n) : null;
+    return Number(amount * (match[2] ? scale[match[2]] : 100000000000n));
+  }
+
+  async function invoiceFor(address, msat) {
+    const at = address.trim().toLowerCase();
+    const parts = at.split('@');
+    if (parts.length !== 2 || !parts[0] || !/^[a-z0-9.-]+\.[a-z]{2,}$/.test(parts[1])) {
+      throw new Error('that does not look like a Lightning address (it should read name@example.com)');
+    }
+    if (!/^[a-z0-9._-]+$/.test(parts[0])) throw new Error('that Lightning address has characters in it that are not allowed');
+    let pay;
+    try { pay = await getJson('https://' + parts[1] + '/.well-known/lnurlp/' + encodeURIComponent(parts[0])); }
+    catch (error) {
+      if (error.unreachable) throw new Error(parts[1] + ' will not let a web page talk to it, so this route cannot work. Use "Paste an invoice instead" just below, which works with every wallet.');
+      throw error;
+    }
+    if (pay.tag !== 'payRequest' || typeof pay.callback !== 'string') throw new Error('that address is not accepting payments');
+    const min = Number(pay.minSendable) || 0, max = Number(pay.maxSendable) || 0;
+    if (min && msat < min) throw new Error('this note is worth ' + sats(msat) + ' sats, which is below the smallest payment that wallet takes (' + sats(min) + ' sats). Try an address at a different wallet.');
+    if (max && msat > max) throw new Error('this note is worth ' + sats(msat) + ' sats, which is more than that wallet will take at once (' + sats(max) + ' sats).');
+    const callback = new URL(pay.callback);
+    callback.searchParams.set('amount', String(msat));
+    const answer = await getJson(callback.toString());
+    if (typeof answer.pr !== 'string' || !answer.pr) throw new Error('that wallet did not give an invoice back');
+    const asked = invoiceMsat(answer.pr);
+    if (asked !== null && asked !== msat) {
+      throw new Error('that wallet asked for ' + sats(asked) + ' sats instead of ' + sats(msat) + ', so nothing was sent');
+    }
+    return answer.pr;
+  }
+
+  async function melt(info, pr) {
+    const url = new URL(info.callback);
+    url.searchParams.set('k1', info.k1);
+    url.searchParams.set('pr', pr);
+    const body = await getJson(url.toString());
+    if (body.status && String(body.status).toUpperCase() !== 'OK') throw new Error(body.reason || 'the mint refused to pay');
+    return true;
+  }
+
+  // ---- finding the sealed gift on the relays ------------------------------
+
+  function gatherWraps() {
+    return new Promise(resolve => {
+      const found = new Map();
+      const sockets = [];
+      const filter = { kinds: [KIND_WRAP], '#p': [me], limit: WRAP_LIMIT };
+      let closed = false;
+      const finish = () => {
+        if (closed) return;
+        closed = true;
+        for (const ws of sockets) { try { ws.close(); } catch {} }
+        resolve([...found.values()]);
+      };
+      for (const url of RELAYS) {
+        let ws;
+        try { ws = new WebSocket(url); } catch { continue; }
+        sockets.push(ws);
+        const id = 'claim' + Math.random().toString(36).slice(2, 10);
+        ws.onopen = () => { try { ws.send(JSON.stringify(['REQ', id, filter])); } catch {} };
+        ws.onmessage = event => {
+          let message;
+          try { message = JSON.parse(event.data); } catch { return; }
+          if (message[0] === 'EVENT' && message[1] === id && message[2] && message[2].kind === KIND_WRAP) {
+            found.set(message[2].id, message[2]);
+          }
+        };
+        ws.onerror = () => {};
+      }
+      setTimeout(finish, GATHER_MS);
+    });
+  }
+
+  // Peel one wrap. The extension holds the key and does both decryptions, so
+  // nothing secret is ever in this page's reach.
+  //
+  // Decrypting the seal already proves whoever made it held the private key
+  // of the pubkey it claims, because a NIP-44 conversation key needs both
+  // sides. So the checks that matter are structural: the rumour must be
+  // unsigned and must be authored by the same key that sealed it, and its id
+  // must be the hash of its own content. Without the second rule anyone could
+  // forward somebody else's rumour as if they had written it.
+  async function unwrap(event) {
+    let seal, rumour;
+    try { seal = JSON.parse(await window.nostr.nip44.decrypt(event.pubkey, event.content)); }
+    catch { return null; }
+    if (!seal || seal.kind !== KIND_SEAL || !isHex64(seal.pubkey) || !Array.isArray(seal.tags) || seal.tags.length !== 0) return null;
+    try { rumour = JSON.parse(await window.nostr.nip44.decrypt(seal.pubkey, seal.content)); }
+    catch { return null; }
+    if (!rumour || typeof rumour !== 'object' || 'sig' in rumour) return null;
+    if (rumour.pubkey !== seal.pubkey) return null;
+    if (!isHex64(rumour.id) || await eventId(rumour) !== rumour.id) return null;
+    return rumour;
+  }
+
+  function giftOf(rumour) {
+    if (rumour.kind !== KIND_CASH) return null;
+    const note = String(rumour.content || '').trim();
+    if (!/^https:\/\/\S+$/.test(note) || note.length > 512) return null;
+    const amount = (rumour.tags || []).find(t => Array.isArray(t) && t[0] === 'amount');
+    const msat = amount ? Number(amount[1]) : NaN;
+    return { rumourId: rumour.id, from: rumour.pubkey, at: rumour.created_at, note,
+             amountMsat: Number.isFinite(msat) && msat > 0 ? msat : null };
+  }
+
+  async function findGifts() {
+    show('step-find');
+    show('find-actions', false);
+    $('gifts').innerHTML = '';
+    gifts = []; chosen = null;
+    say('find-status', 'Asking the relays for anything sealed to you…');
+    const wraps = await gatherWraps();
+    if (!wraps.length) {
+      say('find-status', 'Nothing sealed to you came back from the relays.', 'bad');
+      show('find-actions');
+      return;
+    }
+    wraps.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+    const seen = new Set();
+    let opened = 0;
+    for (const wrap of wraps) {
+      opened += 1;
+      say('find-status', 'Opening ' + opened + ' of ' + wraps.length + '…');
+      const rumour = await unwrap(wrap);
+      if (!rumour || seen.has(rumour.id)) continue;
+      seen.add(rumour.id);
+      const gift = giftOf(rumour);
+      if (gift) { gifts.push(gift); render(); }
+    }
+    if (!gifts.length) {
+      say('find-status', 'Nothing here holds corn. If the fly has only just shared it, give the relays a minute and look again.', 'bad');
+      show('find-actions');
+      return;
+    }
+    say('find-status', 'Checking ' + (gifts.length === 1 ? 'the note' : 'the notes') + ' at the mint…');
+    for (const gift of gifts) {
+      try { gift.info = await noteInfo(gift.note); }
+      catch (error) { gift.spent = error.message; }
+      render();
+    }
+    const live = gifts.filter(g => g.info);
+    if (!live.length) {
+      say('find-status', 'Every note here has been claimed already.', 'bad');
+      show('find-actions');
+      return;
+    }
+    say('find-status', live.length === 1 ? 'One note, and it is still yours to take.' : live.length + ' notes waiting.', 'good');
+    show('find-actions');
+    choose(live[0]);
+  }
+
+  function render() {
+    const host = $('gifts');
+    host.innerHTML = '';
+    for (const gift of gifts) {
+      const box = document.createElement('div');
+      box.className = 'gift' + (gift === chosen ? ' chosen' : '');
+      const msat = gift.info ? gift.info.maxWithdrawable : gift.amountMsat;
+      const amount = document.createElement('div');
+      amount.className = 'amount';
+      amount.textContent = msat ? sats(msat) + ' sats' : 'a note';
+      box.appendChild(amount);
+      const from = document.createElement('div');
+      from.className = 'from';
+      from.textContent = gift.from === FLY ? 'from the fly' : 'from ' + shortNpub(gift.from);
+      box.appendChild(from);
+      if (gift.spent) {
+        const gone = document.createElement('div');
+        gone.className = 'gone';
+        gone.textContent = gift.spent;
+        box.appendChild(gone);
+      } else if (gift.info && gifts.filter(g => g.info).length > 1) {
+        const pick = document.createElement('button');
+        pick.className = 'ghost';
+        pick.style.marginTop = '0.6rem';
+        pick.textContent = gift === chosen ? 'Chosen' : 'Claim this one';
+        pick.disabled = gift === chosen;
+        pick.onclick = () => choose(gift);
+        box.appendChild(pick);
+      }
+      host.appendChild(box);
+    }
+  }
+
+  function choose(gift) {
+    chosen = gift;
+    render();
+    show('step-send');
+    say('claim-status', '');
+    const amount = sats(gift.info.maxWithdrawable) + ' sats';
+    $('amount-line').textContent = 'There are ' + amount + ' in this note.';
+    $('invoice-amount').textContent = 'exactly ' + amount;
+    $('address').focus({ preventScroll: true });
+  }
+
+  // ---- the claim itself ---------------------------------------------------
+
+  // `getInvoice` is the only difference between the two routes: one asks a
+  // wallet for an invoice, the other is handed one. Everything after the
+  // invoice exists is identical, and happens exactly once.
+  async function settle(button, describe, getInvoice) {
+    say('claim-status', '');
+    if (!chosen || !chosen.info) return;
+    const info = chosen.info, msat = info.maxWithdrawable;
+    $(button).disabled = true;
+    try {
+      const pr = await getInvoice(msat);
+      say('claim-status', 'Telling the mint to pay it…');
+      await melt(info, pr);
+      chosen.spent = 'claimed just now';
+      chosen.info = null;
+      render();
+      show('step-find', false);
+      show('step-send', false);
+      show('step-done');
+      $('done-line').textContent = sats(msat) + ' sats are on their way.';
+      $('done-detail').textContent = 'The mint has paid ' + describe + '. It usually lands in a second or two. If your wallet shows nothing after a minute, check what you gave it and get in touch with the fly.';
+      const steps = $('done-steps');
+      steps.innerHTML = '';
+      for (const line of ['The note is spent, so this link cannot be used again.', 'Nothing about you was stored here.', 'Say hello to the fly if you like. It will taste it.']) {
+        const li = document.createElement('li'); li.textContent = line; steps.appendChild(li);
+      }
+    } catch (error) {
+      say('claim-status', error.message, 'bad');
+    } finally {
+      $(button).disabled = false;
+    }
+  }
+
+  const claim = () => {
+    const address = $('address').value.trim();
+    if (!address) { say('claim-status', 'Put your Lightning address in first, or paste an invoice below.', 'bad'); return; }
+    return settle('claim', 'an invoice from ' + address, msat => {
+      say('claim-status', 'Asking your wallet for an invoice…');
+      return invoiceFor(address, msat);
+    });
+  };
+
+  const claimWithInvoice = () => {
+    const pr = $('invoice').value.trim();
+    if (!/^ln[a-z0-9]+$/i.test(pr)) { say('claim-status', 'That does not look like a Lightning invoice. It starts with "lnbc".', 'bad'); return; }
+    return settle('claim-invoice', 'the invoice you pasted', msat => {
+      const asked = invoiceMsat(pr);
+      if (asked === null) throw new Error('that invoice does not name an amount, and the mint needs one. Ask your wallet to receive exactly ' + sats(msat) + ' sats.');
+      if (asked !== msat) throw new Error('that invoice asks for ' + sats(asked) + ' sats, but this note holds ' + sats(msat) + '. Ask your wallet for exactly ' + sats(msat) + ' sats.');
+      return pr;
+    });
+  };
+
+  // ---- wiring -------------------------------------------------------------
+
+  $('signin').onclick = async () => {
+    if (!window.nostr || typeof window.nostr.getPublicKey !== 'function') {
+      show('no-extension');
+      say('signin-status', 'No signing extension answered.', 'bad');
+      return;
+    }
+    $('signin').disabled = true;
+    say('signin-status', 'Waiting for your extension…');
+    try {
+      const key = await window.nostr.getPublicKey();
+      if (!isHex64(key)) throw new Error('your extension gave back something that is not a public key');
+      if (!window.nostr.nip44 || typeof window.nostr.nip44.decrypt !== 'function') {
+        throw new Error('your extension cannot decrypt NIP-44 yet, which is what opens a sealed note. Update it, or try nos2x or Alby.');
+      }
+      me = key;
+      say('signin-status', 'Signed in as ' + shortNpub(me), 'good');
+      $('signin').textContent = 'Signed in';
+      await findGifts();
+    } catch (error) {
+      say('signin-status', error.message || 'your extension refused', 'bad');
+      $('signin').disabled = false;
+    }
+  };
+
+  $('rescan').onclick = () => { if (me) findGifts(); };
+  $('claim').onclick = claim;
+  $('claim-invoice').onclick = claimWithInvoice;
+  $('address').addEventListener('keydown', e => { if (e.key === 'Enter') claim(); });
+  $('invoice').addEventListener('keydown', e => { if (e.key === 'Enter') claimWithInvoice(); });
+
+  $('use-note').onclick = async () => {
+    const value = $('note-url').value.trim();
+    if (!value) return;
+    $('use-note').disabled = true;
+    say('find-status', 'Checking that note at the mint…');
+    try {
+      const info = await noteInfo(value);
+      const gift = { rumourId: 'pasted', from: 'pasted', note: value, amountMsat: info.maxWithdrawable, info };
+      gifts = [gift];
+      say('find-status', 'That note is good for ' + sats(info.maxWithdrawable) + ' sats.', 'good');
+      choose(gift);
+    } catch (error) {
+      say('find-status', error.message, 'bad');
+    } finally { $('use-note').disabled = false; }
+  };
+
+  // A signing extension usually injects late, so do not decide it is missing
+  // until the page has settled.
+  window.addEventListener('load', () => {
+    setTimeout(() => { if (!window.nostr) show('no-extension'); }, 900);
+  });
+})();
+</script>
+</body>
+</html>
