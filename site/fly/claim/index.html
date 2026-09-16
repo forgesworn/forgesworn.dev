@@ -127,7 +127,7 @@
       <h2>Say where it should go</h2>
       <p class="amount-line" id="amount-line"></p>
 
-      <div class="scan">
+      <div class="scan" id="scan">
         <div class="qr" id="qr"></div>
         <div class="scan-words">
           <h3>Scan it with your wallet</h3>
@@ -139,7 +139,7 @@
         </div>
       </div>
 
-      <div class="orline"><span>or send it somewhere yourself</span></div>
+      <div class="orline" id="orline"><span>or send it somewhere yourself</span></div>
 
       <p class="note">A Lightning address looks like an email address. If you have not got one, <a href="https://www.walletofsatoshi.com/" rel="noopener">Wallet of Satoshi</a>, <a href="https://www.blink.sv/" rel="noopener">Blink</a> and <a href="https://strike.me/" rel="noopener">Strike</a> each give you one in a couple of minutes, and all three work with this page.</p>
       <label for="address">Your Lightning address</label>
@@ -586,22 +586,32 @@
     render();
     show('step-send');
     say('claim-status', '');
-    const amount = sats(gift.info.maxWithdrawable) + ' sats';
-    $('amount-line').textContent = 'There are ' + amount + ' in this note.';
-    $('invoice-amount').textContent = 'exactly ' + amount;
-    // The note as an LNURL withdrawal, which is what a wallet's camera wants.
-    const host = $('qr');
-    host.innerHTML = '';
-    try {
-      const lnurl = lnurlOf(gift.note);
-      const code = qrcode(0, 'L');
-      code.addData(lnurl, 'Alphanumeric');
-      code.make();
-      host.innerHTML = code.createSvgTag({ cellSize: 4, margin: 1, scalable: true });
-      $('copy-lnurl').dataset.lnurl = lnurl;
-    } catch {
+    const live = gifts.filter(g => g.info);
+    const total = live.reduce((sum, g) => sum + g.info.maxWithdrawable, 0);
+    $('amount-line').textContent = live.length > 1
+      ? 'There are ' + sats(total) + ' sats here, across ' + live.length + ' notes.'
+      : 'There are ' + sats(total) + ' sats in this note.';
+    // One note scans as one LNURL withdrawal, which is what a wallet's camera
+    // wants. Several cannot: a code is one note, and asking somebody to scan
+    // a dozen is worse than typing an address once, which collects the lot.
+    const single = live.length === 1;
+    show('scan', single);
+    show('paste-invoice', single);
+    if (single) {
+      $('invoice-amount').textContent = 'exactly ' + sats(total) + ' sats';
+      const host = $('qr');
       host.innerHTML = '';
-      show('scan-failed');
+      try {
+        const lnurl = lnurlOf(live[0].note);
+        const code = qrcode(0, 'L');
+        code.addData(lnurl, 'Alphanumeric');
+        code.make();
+        host.innerHTML = code.createSvgTag({ cellSize: 4, margin: 1, scalable: true });
+        $('copy-lnurl').dataset.lnurl = lnurl;
+      } catch {
+        host.innerHTML = '';
+        show('scan-failed');
+      }
     }
     // Arriving here from the key search means this section is above whatever
     // the person was reading, so take them to it rather than hoping.
@@ -615,35 +625,48 @@
   // out of request logs, out of Referer headers, and out of the link previews
   // clients fetch. Nobody has to sign in to anything to spend their own note.
   async function fromLink() {
-    let note = '';
-    try {
-      const raw = new URLSearchParams(location.hash.slice(1)).get('n') || '';
-      // Hex keeps the fragment free of anything needing escaping, and keeps a
-      // readable secret off the screen. A plain URL is still accepted, so a
-      // link typed or repaired by hand works too.
-      note = /^(?:[0-9a-f]{2})+$/i.test(raw)
-        ? new TextDecoder().decode(Uint8Array.from(raw.match(/../g).map(b => parseInt(b, 16))))
-        : raw;
-    } catch { note = ''; }
-    if (!note) return false;
+    let raws = [];
+    try { raws = new URLSearchParams(location.hash.slice(1)).getAll('n'); } catch { raws = []; }
+    // Hex keeps the fragment free of anything needing escaping, and keeps a
+    // readable secret off the screen. A plain URL is still accepted, so a link
+    // typed or repaired by hand works too.
+    const notes = raws.map(raw => {
+      try {
+        return /^(?:[0-9a-f]{2})+$/i.test(raw)
+          ? new TextDecoder().decode(Uint8Array.from(raw.match(/../g).map(b => parseInt(b, 16))))
+          : raw;
+      } catch { return ''; }
+    }).filter(Boolean);
+    if (!notes.length) return false;
     // Take it out of the address bar once it is read, so the note is not
     // sitting in a shared screen or a copied URL after it has been spent.
     try { history.replaceState(null, '', location.pathname); } catch {}
     show('step-note');
     show('fallback', false);
-    say('note-status', 'Checking your note at the mint…');
-    try {
-      const info = await noteInfo(note);
-      const gift = { rumourId: 'link', from: 'link', note, amountMsat: info.maxWithdrawable, info };
-      gifts = [gift];
+    say('note-status', notes.length === 1
+      ? 'Checking your note at the mint…'
+      : 'Checking your ' + notes.length + ' notes at the mint…');
+    gifts = [];
+    let bad = '';
+    for (const note of notes) {
+      try {
+        const info = await noteInfo(note);
+        gifts.push({ rumourId: 'link', from: 'link', note, amountMsat: info.maxWithdrawable, info });
+      } catch (error) { bad = error.message; }
       render();
-      say('note-status', 'The fly shared ' + sats(info.maxWithdrawable) + ' sats with you.', 'good');
-      choose(gift);
-    } catch (error) {
-      say('note-status', error.message, 'bad');
+    }
+    const live = gifts.filter(g => g.info);
+    if (!live.length) {
+      say('note-status', bad || 'that link holds nothing that can still be claimed', 'bad');
       show('fallback');
       $('fallback').open = true;
+      return true;
     }
+    const total = live.reduce((sum, g) => sum + g.info.maxWithdrawable, 0);
+    say('note-status', 'The fly shared ' + sats(total) + ' sats with you'
+      + (live.length > 1 ? ', in ' + live.length + ' notes.' : '.')
+      + (bad ? ' One part of it could not be claimed.' : ''), 'good');
+    choose(live[0]);
     return true;
   }
 
@@ -704,23 +727,52 @@
   async function settle(button, describe, getInvoice) {
     say('claim-status', '');
     if (!chosen || !chosen.info) return;
-    const info = chosen.info, msat = info.maxWithdrawable;
+    // A gift is the whole crop, so it can be several notes. They are collected
+    // one at a time rather than merged at the mint: a merge that succeeds while
+    // the browser dies would strand the lot, and each melt here stands alone.
+    const batch = gifts.filter(g => g.info);
     $(button).disabled = true;
+    let paid = 0, failed = 0, lastError = '';
     try {
-      const pr = await getInvoice(msat);
-      say('claim-status', 'Telling the mint to pay it…');
-      await melt(info, pr);
-      chosen.spent = 'claimed just now';
-      chosen.info = null;
+      for (const [index, gift] of batch.entries()) {
+        const msat = gift.info.maxWithdrawable;
+        if (batch.length > 1) {
+          say('claim-status', 'Collecting note ' + (index + 1) + ' of ' + batch.length + '…');
+        }
+        try {
+          const pr = await getInvoice(msat);
+          say('claim-status', batch.length > 1
+            ? 'Paying note ' + (index + 1) + ' of ' + batch.length + '…'
+            : 'Telling the mint to pay it…');
+          await melt(gift.info, pr);
+          gift.spent = 'claimed just now';
+          gift.info = null;
+          paid += msat;
+        } catch (error) {
+          failed += 1;
+          lastError = error.message;
+          // An address that will not serve one note will not serve the next.
+          if (!index && batch.length > 1) throw error;
+        }
+        render();
+      }
+      if (!paid) throw new Error(lastError || 'nothing could be collected');
+      chosen = batch.find(g => g.info) || null;
       render();
       show('step-find', false);
       show('step-send', false);
       show('step-done');
-      $('done-line').textContent = sats(msat) + ' sats are on their way.';
-      $('done-detail').textContent = 'The mint has paid ' + describe + '. It usually lands in a second or two. If your wallet shows nothing after a minute, check what you gave it and get in touch with the fly.';
+      $('done-line').textContent = sats(paid) + ' sats are on their way.';
+      $('done-detail').textContent = 'The mint has paid ' + describe
+        + (batch.length > 1 ? ', across ' + (batch.length - failed) + ' notes' : '')
+        + '. It usually lands in a second or two. If your wallet shows nothing after a minute, check what you gave it and get in touch with the fly.';
       const steps = $('done-steps');
       steps.innerHTML = '';
-      for (const line of ['The note is spent, so this link cannot be used again.', 'Nothing about you was stored here.', 'Say hello to the fly if you like. It will taste it.']) {
+      const lines = ['Nothing about you was stored here.', 'Say hello to the fly if you like. It will taste it.'];
+      lines.unshift(failed
+        ? failed + ' of ' + batch.length + ' notes could not be collected. Keep this link and try those again.'
+        : 'It is all spent, so this link cannot be used again.');
+      for (const line of lines) {
         const li = document.createElement('li'); li.textContent = line; steps.appendChild(li);
       }
     } catch (error) {
