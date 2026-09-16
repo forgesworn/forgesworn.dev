@@ -4,7 +4,7 @@ import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { safeShot } from '../shotguard.mjs';
 const f = JSON.parse(readFileSync('test/fixtures/fly-confirmed-zap.json'));
-const base = 'http://127.0.0.1:8826/fly/';
+const base = process.env.FLY_TEST_URL || 'http://127.0.0.1:8826/fly/';
 const html = readFileSync('site/fly/index.html','utf8').replace(/const FLY = '[0-9a-f]{64}'/, `const FLY = '${f.recipient}'`).replace(/const LNURL = '[^']+'/, `const LNURL = '${f.lnurl}'`).replace('const openedAt = Math.floor(Date.now() / 1000);', 'const openedAt = 0;');
 mkdirSync('captures-out/fly-payments', { recursive: true });
 const browser = await chromium.launch(), results = [];

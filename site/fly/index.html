@@ -357,6 +357,8 @@
       if (fedInvoices.size > 256) fedInvoices.delete(fedInvoices.values().next().value);
       lastPaymentIllustration = Date.now();
       FlyStage.feed(source);
+      $('#zap-status').textContent = source;
+      $('#zap-status').className = 'status ok';
       if ($('#wallet-options').open) {
         $('#wallet-options').open = false;
         $('#stage').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
