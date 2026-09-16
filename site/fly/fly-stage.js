@@ -6,11 +6,15 @@ const labels = { rest: 'Resting', forward: 'Walking', backward: 'Backing away', 
 
 export function createFlyStage({ canvas, box, status, pause, previewButtons, returnButton }) {
   const body = new BodyController(), motion = matchMedia('(prefers-reduced-motion: reduce)');
-  let view = null, latest = null, playback = null, demo = null, onPoke = null;
+  let view = null, latest = null, playback = null, demo = null, onPoke = null, failed = false;
   let paused = motion.matches, visible = true, raf = 0, previous = 0, time = 0, elapsed = 0;
   let source = 'Waiting for a motor report', sample = ZERO, finishing = false, giftTime = 0;
   let completion = 'Brain replay complete · waiting for the next report';
   function announce() {
+    if (failed) {
+      status.textContent = '3D view unavailable in this browser. Brain reports are still shown below.';
+      box.dataset.motion = 'unavailable'; return;
+    }
     const mode = demo === 'groom' ? 'groom' : giftTime > 0 ? 'share' : body.mode;
     status.textContent = `${source} · ${labels[mode]}${paused ? ' · paused' : ''}`;
     canvas.setAttribute('aria-label', `Articulated fruit fly. ${labels[mode]}. ${source}.`);
@@ -101,7 +105,7 @@ export function createFlyStage({ canvas, box, status, pause, previewButtons, ret
   createFlyBody(canvas).then(result => {
     view = result; resize(); box.dataset.artwork = 'ready'; box.dataset.renderer = 'articulated'; wake();
   }).catch(() => {
-    box.dataset.artwork = 'failed'; status.textContent = '3D view unavailable in this browser. Brain reports are still shown below.';
+    failed = true; box.dataset.artwork = 'failed'; announce();
     canvas.style.background = 'center / contain no-repeat url(emblem-1024.png)';
     pause.disabled = true;
   });
