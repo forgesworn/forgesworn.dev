@@ -56,8 +56,9 @@ try {
     const startX = Number(await page.locator('#fly-box').getAttribute('data-position'));
     send(walk);
     await page.waitForFunction(() => document.querySelector('#fly-box').dataset.turnBalance === '-100');
-    await page.waitForTimeout(350);
-    assert.ok(Number(await page.locator('#fly-box').getAttribute('data-position')) < startX, 'Left-heavy turning and forward drive move left');
+    // Heading now turns continuously; allow the articulated body to finish the
+    // turn before checking travel, rather than expecting a one-frame mirror flip.
+    await page.waitForFunction(start => Number(document.querySelector('#fly-box').dataset.position) < start - .001, startX);
     send(quiet); await page.waitForTimeout(150);
     const quietX = await page.locator('#fly-box').getAttribute('data-position');
     await page.waitForTimeout(300);

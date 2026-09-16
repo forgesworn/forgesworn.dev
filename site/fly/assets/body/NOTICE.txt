@@ -1,0 +1,32 @@
+Articulated fly model
+
+Source: FlyBody, Google DeepMind and HHMI Janelia
+https://github.com/TuragaLab/flybody
+Commit: d015e9bfe441bd90ae431bac24c55cb74bdbce26
+Licence: Apache-2.0, reproduced in LICENSE-FLYBODY beside this file.
+
+Modified by ForgeSworn, 16 September 2026: compiled anatomical joint frames
+exported to rig.json; mesh vertices welded and surfaces simplified for browser
+rendering. Fine bristle meshes are preserved. No trained policy, measured
+wingbeat dataset or MuJoCo runtime is distributed with this viewer.
+
+The browser controller is engineered forward/inverse kinematics. Motor report
+samples choose actions and drive travel, turning and proboscis extension.
+Escape activity starts a bounded flight illustration. Foot placement, wing
+cycles, flight trajectory and landing are supplied by the browser controller.
+It is not a physical simulation or a complete connectome flight controller.
+The display wingbeat rate is illustrative, not the animal's actual frequency.
+
+Rebuild the model with tools/fly-body/export-model.py in the public repository:
+https://github.com/forgesworn/forgesworn.dev
+Dependencies used: Python 3.12, mujoco 3.13.0, numpy 1.26.4,
+trimesh 5.1.0, fast-simplification 0.2.0.
+
+Rendering: Three.js 0.169.0, MIT licence in ../../vendor/LICENSE-THREE.
+Vendored from https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js
+
+Brain data: MaleCNS v1.0, CC-BY 4.0, HHMI Janelia FlyEM and collaborators.
+https://male-cns.janelia.org/
+The unsigned offline examples in ../brain-recordings.json contain the input,
+seed, source/image hashes and Motor v1 report. They are labelled recordings,
+not signed live events. The brain plugin source is currently private.

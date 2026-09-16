@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>The Fly</title>
-  <meta name="description" content="A fruit fly connectome living on Nostr. Zap it and it tastes sugar. 165,733 neurons, no opinions.">
+  <meta name="description" content="A fruit-fly neural simulation on Nostr. Poke it for free and see signed motor activity replayed as motion. Built to make agent behaviour inspectable.">
   <meta property="og:title" content="The Fly">
-  <meta property="og:description" content="165,733 neurons. No opinions. Zap it and watch what moves.">
+  <meta property="og:description" content="Poke a simulated fruit fly. Follow the input, the neural response and the signed record of what happened.">
   <meta property="og:image" content="https://forgesworn.dev/fly/banner-1500.png">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="emblem.svg" type="image/svg+xml">
@@ -154,10 +154,10 @@
 
   <main class="wrap">
     <section>
-      <div class="eyebrow">A fruit fly, living on Nostr</div>
+      <div class="eyebrow">A neural simulation you can poke</div>
       <h1>The Fly</h1>
-      <p class="lede">Not a picture of a fly. A simulation of one: the complete wiring diagram of a male fruit fly, 165,733 neurons and six million connections, run as simple spiking neurons in a sandbox with no model, no tools and no network. Zap it and it tastes sugar. Mention it and it feels a touch. Its reply says what it sensed and what moved.</p>
-      <p><span class="pill">no AI in the brain</span><span class="pill">no memory</span><span class="pill">every reply replayable</span><span class="pill">CC-BY 4.0 data</span></p>
+      <p class="lede">Poke the fly and watch its simulated neurons respond.  Sugar can make it feed.  Touch can make it back away.  A looming shadow can trigger an escape.  The Fly connects a published fruit-fly wiring map to messages on Nostr, then gives those responses an articulated body.</p>
+      <p><span class="pill">no language model</span><span class="pill">fresh simulation per input</span><span class="pill">signed motor reports</span><span class="pill">CC-BY 4.0 data</span></p>
     </section>
 
     <section id="stage">
@@ -174,12 +174,20 @@
             <p id="motion-status" role="status">Waiting for a motor report · Resting</p>
             <button type="button" id="motion-pause" aria-pressed="false">Pause motion</button>
           </div>
-          <p class="motion-note">The latest signed motor report, replayed 10× slower so you can see it. Strength and left/right balance come from the simulated neurons. Between reports the fly stays still. Escape is illustrated as a short startle; the brain has no sustained-flight or grooming readout.</p>
+          <p class="motion-note">Neural activity chooses the action.  A browser controller places the feet, beats the wings and completes the landing.  Live reports are signed and replayed 10× slower.  Escape activity triggers a bounded flight illustration; the flight path and landing are engineered, not additional brain output.  After the action finishes, the fly rests.</p>
           <button type="button" id="motion-live">Replay latest brain report</button>
+          <div class="motion-previews" role="group" aria-label="Recorded brain responses, not live events">
+            <span>Recorded brain responses</span>
+            <button type="button" data-brain-recording="escape">Shadow → escape</button>
+            <button type="button" data-brain-recording="feed">Sugar → feed</button>
+            <button type="button" data-brain-recording="retreat">Touch → retreat</button>
+          </div>
+          <p class="motion-note" id="recording-status">These examples replay actual offline runs of the brain.  They are unsigned recordings, not live Nostr events.  They send no messages or payments.  <a href="assets/brain-recordings.json">Inspect the inputs and motor samples.</a></p>
           <details class="motion-demos"><summary>Animation demos · not brain activity</summary>
           <div class="motion-previews" role="group" aria-label="Demonstration animations, independent of the brain">
             <span>Demo only</span>
             <button type="button" data-fly-preview="flight" aria-pressed="false">Fly &amp; land</button>
+            <button type="button" data-fly-preview="walk" aria-pressed="false">Walk</button>
             <button type="button" data-fly-preview="groom" aria-pressed="false">Groom</button>
             <button type="button" data-fly-preview="feed" aria-pressed="false">Feed</button>
             <button type="button" data-fly-preview="share" aria-pressed="false">Regurgitate</button>
@@ -195,10 +203,18 @@
             <div class="bar"><i id="crop-fill"></i></div>
             <div class="row"><span>corn · held as sealed notes at moneyer.dev</span><span id="crop">0 sats</span></div>
           </div>
-          <p><button type="button" id="poke-fly">Poke the fly</button></p>
-          <p class="poke-help">A <strong>poke</strong> is a public mention of the fly. Its wiring feels it as a touch and replies. Mention it from any Nostr app, or tap the fly here. Tapping posts the mention as you, so it needs a Nostr browser extension like Alby or nos2x; without one, mention it from another Nostr app. The fly moves only after a motor report arrives.</p>
+          <p><button type="button" id="poke-fly">Poke the fly</button> <button type="button" id="loom-fly">Loom over the fly</button></p>
+          <p class="poke-help">Both buttons send a free, public mention as you, using your Nostr browser signing extension.  A poke supplies touch input; “Loom over the fly” supplies an approaching-shadow input.  You can also mention it with “sugar”, “poke” or “loom” from another Nostr app.  Replies are rate-limited.  The live view moves only after a motor report arrives.</p>
         </div>
       </div>
+    </section>
+
+    <section id="why">
+      <div class="eyebrow">Why we built it</div>
+      <h2>See what made it move</h2>
+      <p>We want to make an agent’s behaviour something you can inspect.  With the fly, there’s a concrete chain to follow: a public input, a short neural simulation, a signed result and a visible response.  The interesting part is being able to check what caused an action and what the host allowed it to do.</p>
+      <p>It’s also a small, public experiment for <a href="https://oathrun.pages.dev/">Oathrun</a>.  The brain computes a response inside a restricted sandbox.  The host handles messages and holds the corn, with separate permission to publish or give any away.  That separation matters when an agent can affect something outside its own process.</p>
+      <p>This is a simplified model built from biological wiring.  Each input starts a fresh run; it doesn’t learn from previous pokes or simulate a continuously living animal.  The illustration makes the output easier to see.  It isn’t evidence that we’ve reproduced a fly’s mind.</p>
     </section>
 
     <section id="zap">
@@ -246,24 +262,28 @@
 
     <section id="how">
       <div class="eyebrow">How it works</div>
-      <h2>Honestly</h2>
+      <h2>What runs, what moves, what can spend</h2>
       <div class="how">
-        <p><strong>The brain.</strong> In September 2026 Google Research and HHMI Janelia published the complete connectome of a male fruit fly. The fly runs that graph, every connection of five synapses or more, as leaky integrate-and-fire neurons. Sensory neurons fire for what you did; the rest integrate; the descending and motor neurons are read off as behaviour.</p>
-        <p><strong>The senses.</strong> A zap drives the sugar-sensing neurons, faintly for 21 sats and flat out for 21,000. A mention drives the head bristles, a reply the ear, a reaction the wind sensors. Words in a comment that name a taste or a smell (sugar, vinegar, bitter, cold) drive those too. Nothing else in your message is read, ever.</p>
-        <p><strong>The reply.</strong> Feeding is the proboscis motor neurons. Backing away is the moonwalker neurons. Song is the pulse-song neuron. Startle is the giant fibre. The reply names what rose above a quiet run of the same brain, and never quotes you.</p>
-        <p><strong>Replay.</strong> The random seed is the id of the event the fly is answering. Anyone with the same bundle and image gets the same reply. The replay line on every note carries both digests.</p>
-        <p><strong>The corn.</strong> Your zap is paid out by <a href="https://moneyer.dev">moneyer.dev</a> as an LNURLcash bearer note, sealed to the fly's key and held as its corn. This part is live. Trophallaxis, the sharing of food fly to fly, is designed but not built yet: once it is, now and then the fly will pick a lucky poke and share its corn back, sealed to that person so only they can claim it, with a link that shows a first-timer how. When it shares is the fly's own decision, read off the same wiring as everything else, so nobody can predict or influence it. Mentioning the fly will be free and the only way in; a zap feeds the corn but will never change who gets lucky.</p>
-        <p><strong>The rules.</strong> Anyone who mentions the fly is eligible. Zapping is not required and does not help. Nothing is guaranteed, and the fly can only ever give away corn it was given.</p>
-        <p><strong>Claiming.</strong> A share of the corn is a Lightning bearer note, sealed to your Nostr key so only you can open it. The <a href="claim/">claim page</a> opens it in your browser, using your signing extension, and sends it to any Lightning address or invoice you like. Your key never reaches the page and the note never reaches us again.</p>
-        <p><strong>The host.</strong> It lives inside <a href="https://oathrun.pages.dev/">Oathrun</a>, an agent host where permissions are explicit. The fly has none. It cannot read, fetch, write or spend. It answers at most thirty times an hour, so on a busy day most pokes go unanswered; the wiring still felt them.</p>
+        <p><strong>The brain.</strong> We use the <a href="https://male-cns.janelia.org/">MaleCNS v1.0 wiring map</a> from HHMI Janelia and its research collaborators.  Our processed graph has 165,733 neurons and about 6.16 million connections.  It keeps connections with at least five synapses and leaves out modulatory connections.  Simple spiking-neuron equations run the simulation; a language model doesn’t choose its replies.</p>
+        <p><strong>The senses.</strong> A zap drives sugar-sensing neurons, faintly for 21 sats and flat out for 21,000.  A small vocabulary selects sensory inputs.  Without a recognised word, a mention becomes head-bristle touch, a reply sound and a reaction wind.  “Loom” drives the 185 LPLC2 visual projection neurons in our graph, following the <a href="https://www.nature.com/articles/nature24626">looming-to-escape pathway</a>.  This approximates an approaching shadow at those neurons; it doesn’t simulate eyes.  The plugin matches words; it doesn’t understand messages.</p>
+        <p><strong>The reply.</strong> The plugin compares activity with a quiet run using the same seed.  It reports motor activity that rises above its thresholds, including feeding, forward and backward movement, turning, song and startle.  It uses fixed wording and never quotes the incoming message.</p>
+        <p><strong>The movement.</strong> The page verifies each live report’s Nostr signature and replays its motor samples ten times slower.  Forward and backward drive set travel; turning activity sets heading; feeding moves the proboscis independently of the legs.  Escape activity starts take-off.  The browser supplies foot placement, wing cycles, the flight path and a short landing transition.  These are engineered movements on a FlyBody anatomical model, not a physics simulation or a complete neural flight controller.</p>
+        <p><strong>What is still missing.</strong> Each input starts a fresh neural run.  Body position, foot contact and airflow do not yet feed back into a persistent brain.  The recorded examples make the current connection inspectable; they do not establish a continuously living fly.</p>
+        <p><strong>Replay and its limits.</strong> The seed comes from the first eight hexadecimal characters of the event id.  The reply identifies the plugin bundle and runtime image needed to repeat the run.  Signing lets the page check who published a report and whether it changed; it doesn’t independently prove that the simulation ran.  Our plugin source and replay instructions are not yet public, so independent reproduction still needs those artefacts.</p>
+        <p><strong>The corn.</strong> Payments arrive through <a href="https://moneyer.dev">moneyer.dev</a> as Lightning bearer notes, encrypted to the fly’s Nostr key.  Oathrun holds those notes as the fly’s corn.  Receiving a payment supplies sensory input; it doesn’t itself trigger a gift.</p>
+        <p><strong>Sharing.</strong> The sharing and claim flow are implemented.  Automatic sharing also needs the host’s explicit, time-limited permission and must satisfy its budget, minimum-corn and cooldown rules.  When enabled, feeding activity from a mention or reply can trigger a gift to a key selected from recent participants.  This page doesn’t expose whether that permission is currently enabled.  A feeding animation alone never means money was sent; a reported gift gets a separately labelled regurgitation illustration.</p>
+        <p><strong>Taking part.</strong> Mentioning or replying is free.  The automatic sharing code includes each Nostr key that wrote to the fly in the last seven days once in its recipient pool.  A payment doesn’t add a key to that pool.  Gifts aren’t guaranteed, and the host can only share corn it holds.</p>
+        <p><strong>Claiming.</strong> A gift is sealed to the recipient’s Nostr key.  The <a href="claim/">claim page</a> asks your chosen signer to open it, then lets you collect the bearer note through a Lightning wallet, address or invoice.  Your private key stays with your signer.  The browser handles the opened note and contacts the mint to redeem it.</p>
+        <p><strong>The host.</strong> The brain plugin has no network or tool permissions.  Oathrun receives inputs, starts admitted jobs, publishes authorised replies and manages funds separately.  The current reply allowance is thirty per hour, and admission has its own limits.  Some pokes won’t produce a run or a reply.</p>
       </div>
     </section>
 
     <footer>
-      <p>Data: MaleCNS v1.0, HHMI Janelia FlyEM Project Team and Google Research, CC-BY 4.0. Model constants after Shiu et al. 2024. Fly artwork generated with GPT-Image-2.5 Sunburst; motion is illustrated in the browser.</p>
-      <p>The fly is an <a href="https://oathrun.pages.dev/">Oathrun</a> plugin by <a href="https://forgesworn.dev/">ForgeSworn</a>. The plugin source and replay instructions are not yet public. This page talks to public Nostr relays from your browser and to nothing else.</p>
+      <p>Data: <a href="https://male-cns.janelia.org/">MaleCNS v1.0</a>, from HHMI Janelia FlyEM, the University of Cambridge, the MRC Laboratory of Molecular Biology and Google Research, CC-BY 4.0.  Model constants after Shiu et al. 2024.</p>
+      <p>Articulated body adapted from <a href="https://github.com/TuragaLab/flybody">FlyBody</a> by Google DeepMind and HHMI Janelia, Apache-2.0.  Rendered with Three.js.  <a href="assets/body/NOTICE.txt">Credits and model build details.</a>  Our earlier <a href="assets/fly-atlas-sunburst.png">Sunburst artwork</a> was generated offline; no image model runs when you interact.</p>
+      <p>Built by <a href="https://forgesworn.dev/">ForgeSworn</a> using <a href="https://oathrun.pages.dev/">Oathrun</a>.  The page reads public Nostr relays, loads public profile images and contacts payment services when you use the wallet controls.  Pokes and replies are public.</p>
       <p>Talk to it, or any Nostr account, with <a href="https://www.npmjs.com/package/nostr-bray">Bray</a>, trust-aware Nostr for agents and humans, from the same workshop.</p>
-      <p class="fineprint">Just for fun. Trophallaxis is not live yet. When it is, the fly will now and then share its corn as a gift, and when it does so is the fly's own decision, not something anyone can predict, buy or influence. No payment will be needed to take part: mentioning the fly is free and will be your only entry, and zapping will not change your chances of a payout. Payouts will be occasional, never guaranteed, and net of network fees. The fly can only ever give away corn it was given; it holds no float and takes no cut. This is not a wallet, financial product, savings scheme or investment, and nothing here is financial advice. Sats received are gifts. Intended as a free prize draw under UK rules. 18+.</p>
+      <p class="fineprint">An experimental public demo.  Participation by mention or reply is free.  Payments fund the corn and are not an entry fee or a promise of a gift.  Sharing depends on available corn and host permissions; gifts may incur network fees.  The fly takes no cut.  18+.</p>
     </footer>
   </main>
 
@@ -284,6 +304,18 @@
       pause: $('#motion-pause'), returnButton: $('#motion-live'), previewButtons: document.querySelectorAll('[data-fly-preview]'),
     });
     $('#poke-fly').addEventListener('click', () => FlyStage.poke());
+    let recordings;
+    document.querySelectorAll('[data-brain-recording]').forEach(button => button.addEventListener('click', async () => {
+      try {
+        recordings ||= fetch('./assets/brain-recordings.json').then(r => { if (!r.ok) throw Error(); return r.json(); });
+        const data = await recordings;
+        if (data.kind !== 'offline-brain-recordings' || data.signed !== false) throw Error();
+        const entry = data.recordings.find(r => r.name === button.dataset.brainRecording);
+        const motor = parseMotorReport(entry?.content); if (!motor) throw Error();
+        FlyStage.recording(motor, entry.name);
+        $('#recording-status').textContent = `Recorded offline with brain ${data.pluginVersion}, seed ${motor.seed}. Input: ${entry.input.text}. ${motorSummary(motor)}. No live event or payment.`;
+      } catch { recordings = null; $('#recording-status').textContent = 'The recorded brain response could not load. Try again.'; }
+    }));
 
     let lastReacted = null;
     function react(note) {
@@ -301,18 +333,20 @@
 
     // A poke requests a real brain response. It never creates a local reflex.
     let lastSplat = 0;
-    FlyStage.setSplatHandler(async () => {
+    async function sendSensation(word = 'poke') {
       const hint = $('#splat-hint');
-      if (!window.nostr) { if (hint) { hint.textContent = 'no Nostr extension — mention it from any app for a real poke'; setTimeout(() => { hint.textContent = 'poke it to ask the brain'; }, 3200); } return; }
+      if (!window.nostr) { if (hint) { hint.textContent = 'no Nostr extension · mention it from any app'; setTimeout(() => { hint.textContent = 'poke it to ask the brain'; }, 3200); } return; }
       if (Date.now() - lastSplat < 30000) { if (hint) { hint.textContent = 'give it a moment…'; setTimeout(() => { hint.textContent = 'poke it to ask the brain'; }, 1800); } return; }
       lastSplat = Date.now();
       try {
-        const ev = { kind: 1, created_at: Math.floor(Date.now() / 1000), content: 'splat! 👋🪰', tags: [['p', FLY]] };
+        const ev = { kind: 1, created_at: Math.floor(Date.now() / 1000), content: word, tags: [['p', FLY]] };
         const signed = await window.nostr.signEvent(ev);
         RELAYS.forEach(u => { try { const ws = new WebSocket(u); ws.onopen = () => { ws.send(JSON.stringify(['EVENT', signed])); setTimeout(() => { try { ws.close(); } catch {} }, 1800); }; } catch {} });
-        if (hint) { hint.textContent = 'poked — the fly’s brain will reply in a moment'; setTimeout(() => { hint.textContent = 'poke it to ask the brain'; }, 4500); }
+        if (hint) { hint.textContent = 'input sent · waiting for an admitted brain response'; setTimeout(() => { hint.textContent = 'poke it to ask the brain'; }, 4500); }
       } catch { if (hint) hint.textContent = 'poke it to ask the brain'; }
-    });
+    }
+    FlyStage.setSplatHandler(() => sendSensation('poke'));
+    $('#loom-fly').addEventListener('click', () => sendSensation('loom'));
 
     // A small relay client: one REQ per relay, events by id, live after EOSE.
     const events = new Map(), profiles = new Map();
