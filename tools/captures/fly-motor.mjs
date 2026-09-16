@@ -28,6 +28,15 @@ try {
     await page.locator('#poke-fly').click();
     await page.locator('#stage').evaluate(el => el.scrollIntoView());
     assert.equal(await pixels(), initial, 'A local poke must wait for the brain');
+    // A successful wallet result is still sensory input, never motor output.
+    await page.route('https://moneyer.dev/.well-known/lnurlp/fly', route => route.fulfill({ json: { tag: 'payRequest', minSendable: 1000, maxSendable: 10000000, callback: 'https://mint.invalid/invoice' } }));
+    await page.route('https://mint.invalid/invoice?*', route => route.fulfill({ json: { pr: 'synthetic-test-invoice' } }));
+    await page.evaluate(() => { window.webln = { enable: async () => {}, sendPayment: async invoice => { if (invoice !== 'synthetic-test-invoice') throw Error('Unexpected invoice'); window.testPaymentCalls = (window.testPaymentCalls || 0) + 1; } }; });
+    await page.locator('#zap-button').click();
+    await page.waitForFunction(() => document.querySelector('#zap-status').textContent.startsWith('Paid.'));
+    assert.equal(await page.evaluate(() => window.testPaymentCalls), 1);
+    await page.locator('#stage').evaluate(el => el.scrollIntoView());
+    assert.equal(await pixels(), initial, 'Successful wallet payment waits for the brain');
     const send = e => sockets[0].send(JSON.stringify(['EVENT', 'fly', e]));
     send(zap); await page.waitForTimeout(150);
     assert.equal(await pixels(), initial, 'Payment receipt is not a motor report');
