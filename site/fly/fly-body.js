@@ -18,6 +18,7 @@ export async function createFlyBody(canvas) {
   scene.background = new THREE.Color('#101e19');
   scene.fog = new THREE.Fog('#101e19', 2.8, 5);
   const camera = new THREE.PerspectiveCamera(30, 1, .01, 12);
+  const cameraBase = V(); let cameraFollow = 0;
   camera.up.set(0, 0, 1);
   scene.add(new THREE.HemisphereLight('#e6f4e9', '#4d3020', 1.3));
   const key = new THREE.DirectionalLight('#ffdfb8', 2.5);
@@ -105,6 +106,10 @@ export async function createFlyBody(canvas) {
   let lastPhase = 0, lastAir = 0;
   let lastPose = '';
   function pose(body, time, { share = 0, groom = false } = {}) {
+    // A macro camera follows travel on narrow screens so the head and feet
+    // remain visible at touchdown. The stage rings still show displacement.
+    camera.position.copy(cameraBase).add(V(body.x * cameraFollow, body.y * cameraFollow));
+    camera.lookAt(body.x * cameraFollow, body.y * cameraFollow, .1);
     const moving = body.air > .015 || body.song || Math.abs(body.speed) > .002 || groom;
     const key = [body.x, body.y, body.z, body.heading, body.bank, body.pitch, body.phase, body.feed, body.air, body.song, share, groom, moving ? time : 0].join(',');
     if (key === lastPose) { renderer.render(scene, camera); return; }
@@ -169,8 +174,18 @@ export async function createFlyBody(canvas) {
   function resize(width, height) {
     renderer.setSize(width, height, false); camera.aspect = width / height;
     const distance = camera.aspect < 1 ? 1.65 : 1.12;
-    camera.position.set(distance * .32, -distance, distance * .53);
+    cameraBase.set(distance * .32, -distance, distance * .53);
+    cameraFollow = camera.aspect < 1.4 ? .8 : .25;
+    camera.position.copy(cameraBase);
     camera.lookAt(0, 0, .1); camera.updateProjectionMatrix();
   }
-  return { pose, resize, renderer, debug: () => ({ joints: joints.size, feet: feet.map(f => ({ actual: f.tip.getWorldPosition(V()).toArray(), planted: f.planted.toArray(), swing: f.swing })) }) };
+  function framed() {
+    const bounds = new THREE.Box3().setFromObject(root);
+    for (const x of [bounds.min.x, bounds.max.x]) for (const y of [bounds.min.y, bounds.max.y]) for (const z of [bounds.min.z, bounds.max.z]) {
+      const p = V(x, y, z).project(camera);
+      if (Math.abs(p.x) > .99 || Math.abs(p.y) > .99) return false;
+    }
+    return true;
+  }
+  return { pose, resize, renderer, framed, debug: () => ({ joints: joints.size, feet: feet.map(f => ({ actual: f.tip.getWorldPosition(V()).toArray(), planted: f.planted.toArray(), swing: f.swing })) }) };
 }

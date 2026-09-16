@@ -22,6 +22,7 @@ try {
     sockets[0].send(JSON.stringify(['EVENT', 'fly', escape]));
     await page.waitForFunction(() => document.querySelector('#fly-box').dataset.motion === 'flight');
     assert.ok(Number(await page.locator('#fly-box').getAttribute('data-altitude')) > .17);
+    assert.equal(await page.locator('#fly-box').getAttribute('data-framed'), 'true', 'Flight fits the viewport');
     await safeShot(page, `captures-out/fly-body/${name}-flight.png`, { allow: [escape.pubkey] });
     await page.locator('#motion-pause').click();
     const still = await page.locator('canvas').evaluate(c => c.toDataURL());
@@ -30,6 +31,7 @@ try {
     await page.locator('#motion-pause').click();
     await page.locator('#fly-box').scrollIntoViewIfNeeded();
     await page.waitForFunction(() => document.querySelector('#fly-box').dataset.motion === 'landing');
+    assert.equal(await page.locator('#fly-box').getAttribute('data-framed'), 'true', 'Landing fits the viewport');
     await safeShot(page, `captures-out/fly-body/${name}-landing.png`, { allow: [escape.pubkey] });
     await page.waitForFunction(() => document.querySelector('#motion-status').textContent.includes('replay complete'));
     assert.equal(await page.locator('#fly-box').getAttribute('data-altitude'), '0.00000');

@@ -24,6 +24,7 @@ export function createFlyStage({ canvas, box, status, pause, previewButtons, ret
   }
   function draw() {
     view?.pose(body, time, { groom: demo === 'groom', share: giftTime > 0 ? Math.min(1, giftTime / 1.3) : 0 });
+    if (view) box.dataset.framed = String(view.framed());
     announce();
   }
   function clear() {
