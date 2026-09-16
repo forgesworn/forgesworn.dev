@@ -449,7 +449,6 @@
         status('Paying…');
         await window.webln.sendPayment(invoice.pr);
         status('Paid. The mint will pay it out to the fly as a note; the reply follows when the fly is awake.', 'ok');
-        FlyStage.react('fed');
       } catch (error) {
         status(String(error && error.message || error).slice(0, 160), 'err');
       } finally { button.disabled = false; }
