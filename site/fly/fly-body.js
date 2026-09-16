@@ -1,5 +1,5 @@
 import * as THREE from './vendor/three.module.min.js';
-import { clamp } from './body-controller.js';
+import { clamp } from './body-controller.js?v=4';
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const quat = a => new THREE.Quaternion(a[1], a[2], a[3], a[0]);
 const TAU = Math.PI * 2;
@@ -18,7 +18,7 @@ export async function createFlyBody(canvas) {
   scene.background = new THREE.Color('#101e19');
   scene.fog = new THREE.Fog('#101e19', 2.8, 5);
   const camera = new THREE.PerspectiveCamera(30, 1, .01, 12);
-  const cameraBase = V(); let cameraFollow = 0;
+  const cameraBase = V();
   camera.up.set(0, 0, 1);
   scene.add(new THREE.HemisphereLight('#e6f4e9', '#4d3020', 1.3));
   const key = new THREE.DirectionalLight('#ffdfb8', 2.5);
@@ -89,7 +89,7 @@ export async function createFlyBody(canvas) {
   }
   function solve(foot, target) {
     // Cyclic coordinate descent in each anatomical hinge plane.
-    for (let pass = 0; pass < 4; pass++) for (const j of foot.chain) {
+    for (let pass = 0; pass < 6; pass++) for (const j of foot.chain) {
       j.pivot.updateWorldMatrix(true, true);
       const origin = j.pivot.getWorldPosition(V());
       const axis = j.axis.clone().applyQuaternion(j.pivot.getWorldQuaternion(new THREE.Quaternion())).normalize();
@@ -101,20 +101,22 @@ export async function createFlyBody(canvas) {
       joint(j.name, j.value + clamp(angle, -.25, .25));
     }
   }
-  const drop = new THREE.Mesh(new THREE.SphereGeometry(.009, 24, 16), new THREE.MeshPhysicalMaterial({ color: '#dfb748', roughness: .13, metalness: .06, clearcoat: 1 }));
+  const drop = new THREE.Mesh(new THREE.SphereGeometry(.022, 24, 16), new THREE.MeshPhysicalMaterial({ color: '#ffd66b', emissive: '#80600c', emissiveIntensity: .3, roughness: .1, metalness: .06, clearcoat: 1 }));
   drop.visible = false; scene.add(drop);
+  const sugar = drop.clone(); sugar.visible = false; scene.add(sugar);
+  const detached = V(); let wasReleased = false;
   let lastPhase = 0, lastAir = 0;
   let lastPose = '';
-  function pose(body, time, { share = 0, groom = false } = {}) {
-    // A macro camera follows travel on narrow screens so the head and feet
-    // remain visible at touchdown. The stage rings still show displacement.
-    camera.position.copy(cameraBase).add(V(body.x * cameraFollow, body.y * cameraFollow));
-    camera.lookAt(body.x * cameraFollow, body.y * cameraFollow, .04 + body.air * .15);
+  function pose(body, time, { share = 0, groom = false, food = 0, release = 0 } = {}) {
+    // A fixed camera makes walking and flight visibly cross the scene.
+    camera.position.copy(cameraBase);
+    camera.lookAt(0, 0, .045);
     const moving = body.air > .015 || body.song || Math.abs(body.speed) > .002 || groom;
-    const key = [body.x, body.y, body.z, body.heading, body.bank, body.pitch, body.phase, body.feed, body.air, body.song, share, groom, moving ? time : 0].join(',');
+    const key = [body.x, body.y, body.z, body.heading, body.bank, body.pitch, body.phase, body.feed, body.air, body.song, share, release, food, groom, moving ? time : 0].join(',');
     if (key === lastPose) { renderer.render(scene, camera); return; }
     lastPose = key;
-    root.position.set(body.x, body.y, body.z);
+    const stepping = Math.abs(body.speed) > .002 && body.air < .12;
+    root.position.set(body.x, body.y, body.z + (stepping ? Math.sin(body.phase * TAU * 2) * .003 : 0));
     root.rotation.set(body.bank, body.pitch, body.heading, 'ZYX');
     root.updateMatrixWorld(true);
     for (const foot of feet) {
@@ -139,7 +141,7 @@ export async function createFlyBody(canvas) {
       let target = foot.planted.clone();
       if (swing) {
         const p = (phase - .62) / .38, ease = p * p * (3 - 2 * p);
-        target.copy(foot.from).lerp(foot.target, ease); target.z += Math.sin(p * Math.PI) * .023;
+        target.copy(foot.from).lerp(foot.target, ease); target.z += Math.sin(p * Math.PI) * .042;
       } else if (foot.swing) { foot.planted.copy(foot.target); target.copy(foot.planted); }
       if (groom && foot.segment === 1) {
         target.copy(V(.105, foot.side === 'left' ? .027 : -.027, -.005 + Math.sin(time * 13) * .015).applyAxisAngle(V(0, 0, 1), body.heading)).add(root.position);
@@ -159,23 +161,31 @@ export async function createFlyBody(canvas) {
       joint(`antenna_${side}`, Math.abs(body.speed) > .002 ? Math.sin(time * 9 + (side === 'left' ? 0 : 1)) * .04 : 0);
     }
     const feed = Math.max(body.feed, share > 0 ? 1 : 0);
-    joint('rostrum', feed * .75); joint('haustellum', feed * 1.3);
+    // These anatomical hinges extend in the negative direction. Positive
+    // values fold the mouthparts back into the head and hide the droplet.
+    joint('rostrum', feed * -1.05); joint('haustellum', feed * -.85);
     joint('head', feed * .12); joint('abdomen', body.air * -.1);
-    drop.visible = share > 0 || body.feed > .08;
+    sugar.visible = food > .001;
+    if (sugar.visible) {
+      sugar.position.set(.098, 0, -.11); sugar.scale.setScalar(Math.cbrt(food));
+    }
+    drop.visible = share > .001;
     if (drop.visible) {
       root.updateMatrixWorld(true);
-      drop.position.copy(names.get('labrum_left').getWorldPosition(V()));
-      drop.position.z = -.124;
-      const amount = share > 0 ? share : Math.max(.12, 1 - body.feed * .7);
-      drop.scale.setScalar(Math.cbrt(amount));
+      const mouth = names.get('labrum_left').getWorldPosition(V()); mouth.z = Math.max(-.086, mouth.z);
+      if (release <= 0) { drop.position.copy(mouth); wasReleased = false; }
+      else {
+        if (!wasReleased) { detached.copy(mouth); wasReleased = true; }
+        drop.position.copy(detached); drop.position.z = detached.z + (-.122 - detached.z) * release * release;
+      }
+      drop.scale.set(Math.cbrt(share), Math.cbrt(share), Math.cbrt(share) * (1 - release * .28));
     }
     renderer.render(scene, camera);
   }
   function resize(width, height) {
     renderer.setSize(width, height, false); camera.aspect = width / height;
-    const distance = camera.aspect < 1 ? 1.65 : 1.25;
-    cameraBase.set(distance * .32, -distance, distance * .53);
-    cameraFollow = .95;
+    const distance = camera.aspect < 1.3 ? 1.8 : 1.32;
+    cameraBase.set(distance * .15, -distance, distance * .4);
     camera.position.copy(cameraBase);
     camera.lookAt(0, 0, .1); camera.updateProjectionMatrix();
   }
@@ -187,5 +197,9 @@ export async function createFlyBody(canvas) {
     }
     return true;
   }
-  return { pose, resize, renderer, framed, debug: () => ({ joints: joints.size, feet: feet.map(f => ({ actual: f.tip.getWorldPosition(V()).toArray(), planted: f.planted.toArray(), swing: f.swing })) }) };
+  return { pose, resize, renderer, framed, debug: () => ({ joints: joints.size,
+    screen: root.position.clone().project(camera).toArray(),
+    drop: { visible: drop.visible, position: drop.position.toArray(), scale: drop.scale.toArray() },
+    mouth: names.get('labrum_left').getWorldPosition(V()).toArray(),
+    feet: feet.map(f => ({ actual: f.tip.getWorldPosition(V()).toArray(), planted: f.planted.toArray(), swing: f.swing })) }) };
 }

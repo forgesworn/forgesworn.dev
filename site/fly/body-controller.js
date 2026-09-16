@@ -8,6 +8,7 @@ export class BodyController {
     this.phase = 0; this.speed = 0; this.feed = 0; this.song = 0;
     this.air = 0; this.bank = 0; this.pitch = 0; this.mode = 'rest';
     this.escapeLatched = false; this.finishing = false; this.landingTime = 0;
+    this.limitX = .38;
   }
   reset() {
     this.speed = this.feed = this.song = this.bank = this.pitch = this.air = this.z = 0;
@@ -32,7 +33,7 @@ export class BodyController {
     const drive = forward - backward;
     this.speed = approach(this.speed, this.finishing ? 0 : this.escapeLatched ? .22 : drive * .14, dt, 12);
     const oldX = this.x, oldY = this.y;
-    this.x = clamp(this.x + Math.cos(this.heading) * this.speed * dt, -.38, .38);
+    this.x = clamp(this.x + Math.cos(this.heading) * this.speed * dt, -this.limitX, this.limitX);
     this.y = clamp(this.y + Math.sin(this.heading) * this.speed * dt, -.15, .15);
     const travelled = Math.hypot(this.x - oldX, this.y - oldY);
     this.phase += travelled / .042;
