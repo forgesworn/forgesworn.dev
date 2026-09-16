@@ -1,0 +1,9 @@
+{
+  "kind": 1,
+  "created_at": 1789557001,
+  "tags": [],
+  "content": "The fly sensed looming=1.\nIt startled: its escape descending neurons fired.\nReplay: seed 00000001.\nLeaky integrate-and-fire over 165,733 neurons of MaleCNS v1.0. Spike counts, not comprehension.\nMotor: {\"v\":1,\"windowMs\":300,\"stepMs\":50,\"seed\":1,\"channels\":[\"escape\",\"feed\",\"forward\",\"turn\",\"backward\",\"song\"],\"sides\":[\"L\",\"R\",\"X\"],\"neurons\":[[4,4,0],[1,1,0],[1,1,0],[1,1,0],[2,2,0],[1,1,0]],\"spikes\":[[148,148,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]],\"baseline\":[[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]],\"samples\":[[60,0,0,0,0,0,0],[60,0,0,0,0,0,0],[65,0,0,0,0,0,0],[60,0,0,0,0,0,0],[65,0,0,0,0,0,0],[60,0,0,0,0,0,0]]}",
+  "pubkey": "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
+  "id": "201f2e519276618493da1cfbd29d409e982e263806ec27f5393fcb31d423237f",
+  "sig": "ef219dc56f907cc2b3b7d599a964d06261dc251b394df3106d0e93bff442e2776b14064c7f218af020f4fc5c430a3088cb1bcb7bf34aaaba43f15647acd44f0a"
+}

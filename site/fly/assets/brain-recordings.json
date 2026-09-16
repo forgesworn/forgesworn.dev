@@ -1,0 +1,55 @@
+{
+  "kind": "offline-brain-recordings",
+  "signed": false,
+  "recordedAt": "2026-09-16",
+  "pluginVersion": "0.3.0",
+  "image": "sha256:a31709c94744d9a8a28a8d139ac678fea4bb11a58ba1bd8c8a68d6076c351228",
+  "sourceSha256": "f912dd2df10ddbc3ae94e57a7a8fabdbda0412e21baf4756935795c1a682878a",
+  "graphSha256": "9a2a32d0814410aaf103d4d5a02b3c499c30421106f4dd68750fe5df0fec49e4",
+  "recordings": [
+    {
+      "name": "escape",
+      "input": {
+        "text": "loom",
+        "messageId": "0000000100000000000000000000000000000000000000000000000000000000",
+        "stimulus": {
+          "kind": "mention"
+        }
+      },
+      "content": "The fly sensed looming=1.\nIt startled: its escape descending neurons fired.\nReplay: seed 00000001.\nLeaky integrate-and-fire over 165,733 neurons of MaleCNS v1.0. Spike counts, not comprehension.\nMotor: {\"v\":1,\"windowMs\":300,\"stepMs\":50,\"seed\":1,\"channels\":[\"escape\",\"feed\",\"forward\",\"turn\",\"backward\",\"song\"],\"sides\":[\"L\",\"R\",\"X\"],\"neurons\":[[4,4,0],[1,1,0],[1,1,0],[1,1,0],[2,2,0],[1,1,0]],\"spikes\":[[148,148,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]],\"baseline\":[[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]],\"samples\":[[60,0,0,0,0,0,0],[60,0,0,0,0,0,0],[65,0,0,0,0,0,0],[60,0,0,0,0,0,0],[65,0,0,0,0,0,0],[60,0,0,0,0,0,0]]}"
+    },
+    {
+      "name": "feed",
+      "input": {
+        "text": "sugar",
+        "messageId": "0000000100000000000000000000000000000000000000000000000000000000",
+        "stimulus": {
+          "kind": "mention"
+        }
+      },
+      "content": "The fly sensed sweet=1.\nIt extended its proboscis to feed.\nReplay: seed 00000001.\nLeaky integrate-and-fire over 165,733 neurons of MaleCNS v1.0. Spike counts, not comprehension.\nMotor: {\"v\":1,\"windowMs\":300,\"stepMs\":50,\"seed\":1,\"channels\":[\"escape\",\"feed\",\"forward\",\"turn\",\"backward\",\"song\"],\"sides\":[\"L\",\"R\",\"X\"],\"neurons\":[[4,4,0],[1,1,0],[1,1,0],[1,1,0],[2,2,0],[1,1,0]],\"spikes\":[[0,0,0],[63,8,0],[0,0,0],[0,0,0],[0,0,0],[0,2,0]],\"baseline\":[[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]],\"samples\":[[0,20,0,0,0,0,0],[0,55,0,0,0,0,0],[0,65,0,0,0,0,0],[0,65,0,0,0,0,0],[0,75,0,0,0,0,0],[0,75,0,0,0,0,0]]}"
+    },
+    {
+      "name": "retreat",
+      "input": {
+        "text": "poke",
+        "messageId": "0000000100000000000000000000000000000000000000000000000000000000",
+        "stimulus": {
+          "kind": "mention"
+        }
+      },
+      "content": "The fly sensed touch=1.\nIt extended its proboscis to feed, backed away.\nReplay: seed 00000001.\nLeaky integrate-and-fire over 165,733 neurons of MaleCNS v1.0. Spike counts, not comprehension.\nMotor: {\"v\":1,\"windowMs\":300,\"stepMs\":50,\"seed\":1,\"channels\":[\"escape\",\"feed\",\"forward\",\"turn\",\"backward\",\"song\"],\"sides\":[\"L\",\"R\",\"X\"],\"neurons\":[[4,4,0],[1,1,0],[1,1,0],[1,1,0],[2,2,0],[1,1,0]],\"spikes\":[[0,0,0],[47,0,0],[0,0,0],[0,0,0],[71,72,0],[0,0,0]],\"baseline\":[[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]],\"samples\":[[0,30,0,0,60,0,0],[0,40,0,0,98,0,0],[0,40,0,0,28,0,0],[0,45,0,0,50,0,0],[0,40,0,0,70,0,0],[0,40,0,0,53,0,0]]}"
+    },
+    {
+      "name": "quiet",
+      "input": {
+        "text": "light",
+        "messageId": "0000000100000000000000000000000000000000000000000000000000000000",
+        "stimulus": {
+          "kind": "mention"
+        }
+      },
+      "content": "The fly sensed light=1.\nIt did not do anything above its resting twitch.\nReplay: seed 00000001.\nLeaky integrate-and-fire over 165,733 neurons of MaleCNS v1.0. Spike counts, not comprehension.\nMotor: {\"v\":1,\"windowMs\":300,\"stepMs\":50,\"seed\":1,\"channels\":[\"escape\",\"feed\",\"forward\",\"turn\",\"backward\",\"song\"],\"sides\":[\"L\",\"R\",\"X\"],\"neurons\":[[4,4,0],[1,1,0],[1,1,0],[1,1,0],[2,2,0],[1,1,0]],\"spikes\":[[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]],\"baseline\":[[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]],\"samples\":[[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0]]}"
+    }
+  ]
+}
