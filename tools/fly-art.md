@@ -18,12 +18,24 @@ gift selection and live agent deployment are outside this change.
 - Official reference: [Sunburst](https://developers.openai.com/api/docs/models/gpt-image-2.5-sunburst)
   and [image generation](https://developers.openai.com/api/docs/guides/image-generation).
 
-The atlas is illustrative artwork, not measured biological motion. Flight uses
-local paths, depth scaling and wing compositing. Landing transitions into a
-grounded pose. Feeding consumes a surface drop; sharing grows one and retracts
-the head. The browser recognises the runtime's public `Trophallaxis. The fly
-brought up … sats` notice as sharing as well as the older `gave a drop` phrase.
-Ambient movement and preview controls are labelled separately from brain reports.
+The atlas is illustrative artwork. The default view replays signed `Motor:`
+telemetry from the brain, ten times slower: 50 ms bins of escape, feeding,
+forward walking, turning, backward walking and song drive. Strength and turning
+balance come from the readouts. The fly stays still between reports. Pokes and
+incoming payments never manufacture a motor response, and older prose-only
+reports have no movement fallback. A gift notice has a separately labelled
+illustration; it is not inferred from feeding activity.
+
+There is no sustained-flight or grooming readout in the current graph. Those
+scripted animations live in the explicitly labelled demonstration disclosure.
+The renderer maps readouts to visual motion; it is not a physical flight model.
+
+The locally served `vendor/nostr-verify.js` verifies event hashes and Schnorr
+signatures before relay events enter the page state. It contains pinned Noble
+code, with licences and build provenance beside the bundle. Rebuild with
+`FLY_BUILD_NODE_MODULES=/path/to/node_modules node tools/build-nostr-verifier.mjs`
+using esbuild 0.28.2, @noble/curves 2.0.1 and its @noble/hashes 2.0.1 dependency.
+No remote scripts are loaded.
 
 ## Review locally
 
@@ -35,8 +47,13 @@ With Playwright available, `node tools/captures/fly.mjs` captures desktop and
 390px phone previews and a motion recording under ignored `captures-out/fly/`.
 It uses fresh headless contexts and intercepted relay connections; previews
 must publish no Nostr events. Screenshots pass through the existing shotguard.
-The script checks flight → landing → grooming, feeding, sharing, no horizontal
-overflow, no page errors, reduced motion and a frozen paused canvas.
+The script checks the demonstration animations, no horizontal overflow, no page
+errors, reduced motion and a frozen paused canvas. `node tools/captures/fly-motor.mjs`
+checks the real report-to-renderer path using a full-connectome output signed by
+an explicitly synthetic identity. Intercepted relays prove idle time, a poke,
+a payment and a forged report stay still; an authentic report replays and stops;
+and a quiet report stays still. The production fly identity is substituted only
+in intercepted test HTML, never through a production test hook.
 
 The artwork is 1.9 MB, self-hosted and loaded once. Motion stops when the stage
 is offscreen, the tab is hidden, or the user pauses. Reduced-motion preferences
@@ -51,3 +68,6 @@ Validation on 2026-09-16: build and 22 Node tests passed; Chromium desktop/phone
 captures and motion checks passed; Firefox at 390px loaded the artwork and
 sharing preview with reduced motion. The installed WebKit engine stalled at
 startup and was stopped, so Safari remains unverified.
+
+Motor telemetry update: all 28 Node tests and desktop/phone motor-path browser
+checks pass. The neural model and image remain unchanged.

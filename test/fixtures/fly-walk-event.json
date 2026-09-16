@@ -1,0 +1,9 @@
+{
+  "kind": 1,
+  "created_at": 1789557003,
+  "pubkey": "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
+  "tags": [],
+  "content": "Synthetic left-turn and forward-walk test.\nReplay: seed 7f3a2c10.\nMotor: {\"v\":1,\"windowMs\":300,\"stepMs\":50,\"seed\":2134518800,\"channels\":[\"escape\",\"feed\",\"forward\",\"turn\",\"backward\",\"song\"],\"sides\":[\"L\",\"R\",\"X\"],\"neurons\":[[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0]],\"spikes\":[[0,0,0],[0,0,0],[72,0,0],[36,0,0],[0,0,0],[0,0,0]],\"baseline\":[[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]],\"samples\":[[0,0,60,30,0,0,-100],[0,0,60,30,0,0,-100],[0,0,60,30,0,0,-100],[0,0,60,30,0,0,-100],[0,0,60,30,0,0,-100],[0,0,60,30,0,0,-100]]}",
+  "id": "d13733bf1e9241ed97f1ef869f3d1ee29cb3ce3878d9f64980e6337a8a803aef",
+  "sig": "903b5ee8841c50bf1a15e4a71d31b95f1af6d5ca7205085264247f57250dc882b0e93f0a59d4d3ffc18f12644bd1d30b6d23ef7c18bf4796400b2ffd0de86b5c"
+}

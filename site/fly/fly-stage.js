@@ -1,3 +1,4 @@
+import { motorSampleAt, motorSummary, PLAYBACK_SLOWDOWN } from './motor.js';
 // Artwork is generated offline. This renderer has no wallet, signer or network access.
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 const mix = (a, b, t) => a + (b - a) * t;
@@ -7,33 +8,20 @@ const POSES = { flight: 0, landing: 1, rest: 2, feed: 3, share: 4, groom: 5 };
 // Grounded poses share the same 175px pivot-to-contact distance after registration.
 const PIVOTS = [[320, 280], [320, 300], [326, 300], [316, 225], [320, 225], [328, 235]];
 
-export function behaviourOf(content) {
-  // A public gift notice is emitted by the runtime, separately from brain prose.
-  if (/Trophallaxis\. The fly brought up \d[\d,]* sats\b/.test(content) || content.includes('gave a drop')) return ['puke', 'Shared a drop.'];
-  for (const [phrase, mode, label] of [
-    ['startled', 'startled', 'Startled.'],
-    ['extended its proboscis', 'fed', 'Fed. Proboscis out.'],
-    ['backed away', 'backward', 'Backed away.'],
-    ['sang', 'sing', 'Sang.'],
-    ['turned', 'turn', 'Turned.'],
-    ['walked forward', 'forward', 'Walked forward.'],
-  ]) if (content.includes(phrase)) return [mode, label];
-  return ['cruise', 'Resting.'];
-}
-
-export function createFlyStage({ canvas, box, status, pause, previewButtons }) {
+export function createFlyStage({ canvas, box, status, pause, previewButtons, returnButton }) {
   const ctx = canvas.getContext('2d');
-  if (!ctx) { status.textContent = 'Animation unavailable.'; return { react() {}, feed() {}, poke() {}, setSplatHandler() {} }; }
+  if (!ctx) { status.textContent = 'Animation unavailable.'; return { report() {}, gift() {}, poke() {}, setSplatHandler() {} }; }
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   const atlas = new Image();
   atlas.src = new URL('./assets/fly-atlas-sunburst.png', import.meta.url).href;
   let ready = false, failed = false, width = 800, height = 460, size = 360;
   let time = 0, previous = 0, raf = 0, visible = true, paused = motion.matches;
-  let onPoke = null, source = 'Ambient animation', pending = null;
+  let onPoke = null, source = 'Waiting for a motor report', pending = null;
   let state = 'rest', elapsed = 0, duration = 3.5, facing = 1, bank = 0, depth = 1;
   let x = 0, y = 0, startX = 0, startY = 0, endX = 0, endY = 0;
   let pose = POSES.rest, oldPose = pose, blend = 1;
-  let drop = null, mealScale = 1;
+  let drop = null;
+  let demo = false, latest = null, playback = null, motor = [0, 0, 0, 0, 0, 0, 0];
   const ground = () => height * .81;
   const standingY = () => ground() - size * 175 / 512;
   const labels = { rest: 'Resting', groom: 'Grooming', flight: 'Flying', landing: 'Landing', takeoff: 'Taking off', feed: 'Feeding', share: 'Regurgitating a drop', startled: 'Startled', sing: 'Wing song', backward: 'Walking backwards', forward: 'Walking', turn: 'Turning' };
@@ -62,7 +50,7 @@ export function createFlyStage({ canvas, box, status, pause, previewButtons }) {
     if (next === 'landing') { endX = clamp(x + facing * width * .1, width * .3, width * .7); endY = standingY(); }
     if (next === 'feed' || next === 'share') {
       // The labellum and surface droplet meet; the droplet grows before it detaches.
-      drop = { x: x + facing * size * 130 / 512, amount: next === 'feed' ? 1 : 0, scale: next === 'feed' ? mealScale : 1, life: 1 };
+      drop = { x: x + facing * size * 130 / 512, amount: next === 'feed' ? 1 : 0, scale: 1, life: 1 };
     }
     if (next === 'turn') facing *= -1;
     announce();
@@ -93,22 +81,45 @@ export function createFlyStage({ canvas, box, status, pause, previewButtons }) {
     } else { pending = null; enter(mode, mode === 'startled' ? .65 : mode === 'flight' ? 3 : 4.5); }
     wake();
   }
-  function react(word) {
-    const mode = { fed: 'feed', puke: 'share', startled: 'startled', sing: 'sing', backward: 'backward', forward: 'forward', turn: 'turn' }[word];
-    // Quiet notes do not interrupt an illustrative preview or make up a brain action.
-    if (mode) act(mode, 'Latest reported behaviour');
+  function settle(label) {
+    playback = null; pending = null; state = 'rest'; elapsed = 0; duration = Infinity;
+    motor = [0, 0, 0, 0, 0, 0, 0]; drop = null; bank = 0; depth = 1; y = standingY();
+    box.dataset.motor = '0,0,0,0,0,0'; box.dataset.turnBalance = '0';
+    pose = oldPose = POSES.rest; blend = 1; source = label;
+    announce(); draw();
   }
-  function feed(sats) {
-    mealScale = typeof sats === 'number' && sats > 0 ? .65 + clamp(Math.log10(sats + 1) / 5, 0, 1) * .7 : 1;
-    act('feed', 'Incoming payment illustration');
+  function playLatest() {
+    demo = false;
+    for (const button of previewButtons) button.setAttribute('aria-pressed', 'false');
+    settle(latest ? `Brain replay · ${PLAYBACK_SLOWDOWN}× slower` : 'No motor telemetry in the latest report');
+    if (latest) {
+      playback = latest; elapsed = 0; state = 'motor';
+      labels.motor = motorSummary(latest);
+      if (paused) {
+        // A representative still, explicitly labelled; never start playback on reduced motion.
+        const index = latest.samples.findIndex(row => row.slice(0, 6).some(Boolean));
+        applyMotor(motorSampleAt(latest, Math.max(0, index) * latest.stepMs * PLAYBACK_SLOWDOWN / 1000), 0);
+      }
+      announce(); draw(); wake();
+    }
+  }
+  function report(value) {
+    latest = value;
+    if (!demo) playLatest();
+  }
+  function gift() {
+    if (demo) return;
+    settle('Reported gift · illustrated regurgitation');
+    act('share', 'Reported gift · illustrated regurgitation');
   }
   function preview(mode) {
-    mealScale = 1;
-    act(mode, 'Animation preview');
+    demo = true; playback = null; motor = [0, 0, 0, 0, 0, 0, 0];
+    act(mode, 'Animation demo · not brain activity');
     for (const button of previewButtons) button.setAttribute('aria-pressed', String(button.dataset.flyPreview === mode));
   }
   for (const button of previewButtons) button.addEventListener('click', () => preview(button.dataset.flyPreview));
-  function poke() { act('startled', 'Local poke'); onPoke?.(); }
+  returnButton?.addEventListener('click', playLatest);
+  function poke() { onPoke?.(); }
   canvas.addEventListener('pointerdown', e => { if (e.button === 0 && e.isPrimary) poke(); });
   pause.addEventListener('click', () => {
     paused = !paused;
@@ -123,8 +134,31 @@ export function createFlyStage({ canvas, box, status, pause, previewButtons }) {
     announce(); draw();
   });
 
+  function applyMotor(sample, dt) {
+    motor = sample;
+    const [escape, feed, forward, turn, backward, song, balance] = sample;
+    if (turn > 0 && balance) facing = balance < 0 ? -1 : 1;
+    x = clamp(x + facing * (forward - backward) * dt * 65, width * .27, width * .73);
+    // Escape is a short illustrated startle, never a claim of sustained flight.
+    y = standingY() - escape * size * .13;
+    depth = 1; bank = balance * turn * .09;
+    const next = escape > 0 ? POSES.flight : feed > 0 ? POSES.feed : POSES.rest;
+    pose = next; oldPose = POSES.rest;
+    blend = 1;
+    box.dataset.motor = sample.slice(0, 6).map(n => Math.round(n * 100)).join(',');
+    box.dataset.turnBalance = String(Math.round(balance * 100));
+    box.dataset.position = x.toFixed(2);
+  }
   function update(dt) {
-    time += dt; elapsed += dt; blend = Math.min(1, blend + dt * 9);
+    time += dt; elapsed += dt;
+    if (playback) {
+      if (elapsed * 1000 >= playback.windowMs * PLAYBACK_SLOWDOWN) {
+        settle('Brain replay complete · waiting for the next report');
+      } else applyMotor(motorSampleAt(playback, elapsed), dt);
+      return;
+    }
+    if (state === 'rest' && !demo) return;
+    blend = Math.min(1, blend + dt * 9);
     const p = clamp(elapsed / duration, 0, 1), ease = smooth(p);
     if (['flight', 'startled', 'takeoff'].includes(state)) {
       depth = mix(depth, .68, 1 - Math.exp(-dt * 6));
@@ -133,31 +167,20 @@ export function createFlyStage({ canvas, box, status, pause, previewButtons }) {
       if (state === 'takeoff' && p > .25) setPose(POSES.flight);
     } else if (state === 'landing') {
       depth = mix(depth, 1, 1 - Math.exp(-dt * 4));
-      x = mix(startX, endX, ease); y = mix(startY, endY, ease);
-      bank *= Math.exp(-dt * 8);
+      x = mix(startX, endX, ease); y = mix(startY, endY, ease); bank *= Math.exp(-dt * 8);
       if (p > .8) setPose(POSES.rest);
     } else {
-      depth = mix(depth, 1, 1 - Math.exp(-dt * 8));
-      y = standingY(); bank *= Math.exp(-dt * 8);
-      if (state === 'forward' || state === 'backward') x = clamp(x + facing * (state === 'backward' ? -1 : 1) * dt * 13, width * .25, width * .75);
+      depth = mix(depth, 1, 1 - Math.exp(-dt * 8)); y = standingY(); bank *= Math.exp(-dt * 8);
       if (state === 'groom') setPose(Math.sin(time * 7) > -.65 ? POSES.groom : POSES.rest);
       if (state === 'feed' || state === 'share') {
         if (drop) drop.amount = state === 'feed' ? 1 - ease : smooth(clamp(p * 1.7, 0, 1));
-        if (state === 'share' && p > .72) setPose(POSES.rest);
-        if (state === 'feed' && p > .9) setPose(POSES.rest);
+        if (state === 'share' && p > .72 || state === 'feed' && p > .9) setPose(POSES.rest);
       }
     }
-    if (drop && !['feed', 'share'].includes(state)) { drop.life -= dt * .22; if (drop.life <= 0) drop = null; }
     if (elapsed >= duration) {
-      if (state === 'landing') { const next = pending || 'rest'; pending = null; enter(next, 4.5); }
-      else if (state === 'flight') { pending = 'groom'; enter('landing', 1.5); }
-      else if (state === 'takeoff' || state === 'startled') enter('flight', 3.2);
-      else if (state === 'rest') { source = 'Ambient animation'; enter('takeoff', 1.2); }
-      else {
-        source = 'Ambient animation';
-        for (const button of previewButtons) button.setAttribute('aria-pressed', 'false');
-        enter('rest', 3 + Math.random() * 2);
-      }
+      if (demo && state === 'flight') { pending = 'groom'; enter('landing', 1.5); }
+      else if (demo && state === 'landing') { const next = pending || 'rest'; pending = null; enter(next, 2); }
+      else { settle(demo ? 'Animation demo complete · not brain activity' : 'Gift animation complete · waiting for a motor report'); }
     }
   }
 
@@ -214,10 +237,11 @@ export function createFlyStage({ canvas, box, status, pause, previewButtons }) {
     drawDrop();
     if (ready) {
       ctx.save(); ctx.translate(x, y); ctx.scale(facing * depth, depth); ctx.rotate(bank);
-      const airborne = ['flight', 'takeoff', 'startled'].includes(state) || state === 'landing' && elapsed / duration < .7;
+      const airborne = motor[0] > 0 || ['flight', 'takeoff', 'startled'].includes(state) || state === 'landing' && elapsed / duration < .7;
       // Wing persistence is rendered independently of the body: no whole-fly flashing.
-      if (airborne || state === 'sing') {
+      if (airborne || state === 'sing' || motor[5] > 0) {
         ctx.save(); ctx.globalCompositeOperation = 'screen';
+        ctx.globalAlpha = state === 'motor' ? Math.max(motor[0], motor[5]) : 1;
         for (let i = 0; i < 4; i++) {
           ctx.save(); ctx.translate(-size * .025, -size * .015);
           ctx.rotate(-.5 - i * .22 + Math.sin(time * 115 + i) * .11);
@@ -238,7 +262,7 @@ export function createFlyStage({ canvas, box, status, pause, previewButtons }) {
     raf = 0;
     if (paused || !visible || document.hidden) return;
     const dt = Math.min((stamp - (previous || stamp)) / 1000, .04); previous = stamp;
-    update(dt); draw(); raf = requestAnimationFrame(frame);
+    update(dt); draw(); if (playback || state !== 'rest') raf = requestAnimationFrame(frame);
   }
   function wake() { previous = 0; if (!raf && !paused && visible && !document.hidden && ready) raf = requestAnimationFrame(frame); }
   document.addEventListener('visibilitychange', () => {
@@ -252,6 +276,6 @@ export function createFlyStage({ canvas, box, status, pause, previewButtons }) {
   new ResizeObserver(resize).observe(box);
   atlas.onload = () => { ready = true; box.dataset.artwork = 'ready'; draw(); wake(); };
   atlas.onerror = () => { failed = true; box.dataset.artwork = 'failed'; announce(); draw(); };
-  resize(); announce();
-  return { react, feed, poke, setSplatHandler: fn => { onPoke = fn; } };
+  resize(); settle('Waiting for a motor report');
+  return { report, gift, poke, setSplatHandler: fn => { onPoke = fn; } };
 }

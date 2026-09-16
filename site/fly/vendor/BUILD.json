@@ -1,0 +1,9 @@
+{
+  "builder": "esbuild@0.28.2",
+  "dependencies": {
+    "@noble/curves": "2.0.1",
+    "@noble/hashes": "2.0.1"
+  },
+  "source": "tools/nostr-verify-entry.mjs",
+  "sha256": "6580779506514c2dd01d03d79706bf681ef2d6690cb46ddf5ac356986b89e3d3"
+}

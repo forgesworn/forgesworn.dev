@@ -1,0 +1,9 @@
+{
+  "kind": 1,
+  "created_at": 1789557004,
+  "pubkey": "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
+  "tags": [],
+  "content": "It did not do anything above its resting twitch.\nReplay: seed 7f3a2c10.\nMotor: {\"v\":1,\"windowMs\":300,\"stepMs\":50,\"seed\":2134518800,\"channels\":[\"escape\",\"feed\",\"forward\",\"turn\",\"backward\",\"song\"],\"sides\":[\"L\",\"R\",\"X\"],\"neurons\":[[4,4,0],[1,1,0],[1,1,0],[1,1,0],[2,2,0],[1,1,0]],\"spikes\":[[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]],\"baseline\":[[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]],\"samples\":[[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0]]}",
+  "id": "26d66b8e1113ee57ae34c205f51c26c0b05e7cff0ea5ed0c2419cc542b22b950",
+  "sig": "6ebcd07bb852637331b25fed0e60dc8c1d3b0f8150164d233703ff20affe42eb0b285af6ffa2a4e2e51166585e607909b9a5ef0eb56b613b5cb9f038d5cbdffa"
+}

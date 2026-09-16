@@ -1,0 +1,14 @@
+{
+  "kind": 9735,
+  "created_at": 1789557001,
+  "pubkey": "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
+  "tags": [
+    [
+      "p",
+      "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f"
+    ]
+  ],
+  "content": "",
+  "id": "bdd4bd27777595a93443b35d75cda39e085ba7abe2df64b73a701fc98d6b05c2",
+  "sig": "b3c678673640b4f6a1ad424ebf61f09ef388949db6b9100da08f57a50f9119c539d0bfe227f84091ce81934fecb0d7b89ce363098ca8575a5aba9ed82d0fe1f9"
+}
