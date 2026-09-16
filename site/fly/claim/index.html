@@ -42,6 +42,9 @@
     .eyebrow { font-family: var(--font-mono); font-size: 0.8rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--sage-dim); margin-bottom: 0.6rem; }
     main { padding-bottom: 3rem; }
     .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 1.3rem 1.4rem; margin-top: 1.4rem; }
+    details.card > summary { cursor: pointer; color: var(--ink-dim); }
+    details.card[open] > summary { margin-bottom: 0.6rem; }
+    #fallback section { padding-top: 0.8rem; }
     .card[hidden] { display: none; }
     code, .mono { font-family: var(--font-mono); font-size: 0.9em; overflow-wrap: anywhere; }
 
@@ -102,13 +105,44 @@
     <img src="../emblem.svg" alt="" aria-hidden="true">
     <div class="eyebrow">Trophallaxis</div>
     <h1>Claim your corn</h1>
-    <p class="lede">The fly shares its corn by sealing a Lightning bearer note to your Nostr key. Only you can open it. This page opens it in your browser and sends it wherever you like.</p>
+    <p class="lede">The fly shared some of its corn with you. Send it to any Lightning wallet from here. Nothing to pay, nothing to join, and no account to make.</p>
   </header>
 
   <main>
-    <section class="card" id="step-signin">
-      <h2>1. Prove it is you</h2>
-      <p class="note">The note is encrypted to your Nostr key, so your signer has to open it. Your key never reaches this page and nothing is signed: your signer decrypts and hands back the result. A browser extension, a hardware Signet, or any bunker you can paste or scan will all do.</p>
+    <section class="card" id="step-note" hidden>
+      <h2>Your corn</h2>
+      <div class="status" id="note-status"></div>
+      <div id="gifts"></div>
+    </section>
+
+    <section class="card" id="step-send" hidden>
+      <h2>Say where it should go</h2>
+      <p class="note">A Lightning address looks like an email address. If you have not got one, <a href="https://www.walletofsatoshi.com/" rel="noopener">Wallet of Satoshi</a>, <a href="https://www.blink.sv/" rel="noopener">Blink</a> and <a href="https://strike.me/" rel="noopener">Strike</a> each give you one in a couple of minutes, and all three work with this page. Plenty of good wallets refuse to talk to a web page at all, so if yours will not, paste an invoice instead. That works with every wallet there is.</p>
+      <p class="amount-line" id="amount-line"></p>
+      <label for="address">Your Lightning address</label>
+      <input type="text" id="address" spellcheck="false" autocomplete="off" inputmode="email" placeholder="you@walletofsatoshi.com">
+      <div class="row">
+        <button id="claim">Send it to me</button>
+      </div>
+      <div class="status" id="claim-status"></div>
+      <details id="paste-invoice" style="margin-top:1.2rem">
+        <summary class="note" style="cursor:pointer">Paste an invoice instead</summary>
+        <p class="note" style="margin-top:0.7rem">Some wallets will not talk to a web page directly. An invoice always works. Ask your wallet to receive <strong id="invoice-amount"></strong>, then paste what it gives you.</p>
+        <label for="invoice">Your invoice</label>
+        <input type="text" id="invoice" spellcheck="false" autocomplete="off" placeholder="lnbc…">
+        <div class="row"><button class="ghost" id="claim-invoice">Pay this invoice</button></div>
+      </details>
+    </section>
+    <section class="card" id="step-done" hidden>
+      <div class="done" id="done-line"></div>
+      <p class="note" id="done-detail"></p>
+      <ol class="steps" id="done-steps"></ol>
+    </section>
+    <details class="card" id="fallback">
+      <summary><strong>I have not got a link</strong></summary>
+    <section id="step-signin">
+      <h2>Find it with your Nostr key</h2>
+      <p class="note">If you have not got a link, the fly also sealed the note to your Nostr key, and signing in will find it. Your key never reaches this page and nothing is signed: your signer decrypts and hands back the result. A browser extension, a hardware Signet, or any bunker you can paste or scan will all do.</p>
       <div class="row">
         <button id="signin">Sign in with Nostr</button>
       </div>
@@ -130,12 +164,10 @@
         <p class="note" style="margin:0.6rem 0 0">You do not have to. Every other way in the picker, including a Signet on your phone, works without an extension.</p>
       </div>
     </section>
-
-    <section class="card" id="step-find" hidden>
-      <h2>2. Find your gift</h2>
+    <section id="step-find" hidden>
+      <h2>What was sealed to you</h2>
       <p class="note">A sealed note looks like every other private message, so each one has to be opened before it can be recognised. That happens in your browser, and nothing that is not corn is kept or sent anywhere.</p>
       <div class="status" id="find-status"></div>
-      <div id="gifts"></div>
       <div class="row" id="find-actions" hidden>
         <button class="ghost" id="rescan">Look again</button>
         <button class="ghost" id="wider" hidden>Look further back</button>
@@ -148,31 +180,7 @@
         <div class="row"><button class="ghost" id="use-note">Use this note</button></div>
       </details>
     </section>
-
-    <section class="card" id="step-send" hidden>
-      <h2>3. Say where it should go</h2>
-      <p class="note">A Lightning address looks like an email address. If you have not got one, <a href="https://www.walletofsatoshi.com/" rel="noopener">Wallet of Satoshi</a>, <a href="https://www.blink.sv/" rel="noopener">Blink</a> and <a href="https://strike.me/" rel="noopener">Strike</a> each give you one in a couple of minutes, and all three work with this page. Plenty of good wallets refuse to talk to a web page at all, so if yours will not, paste an invoice instead. That works with every wallet there is.</p>
-      <p class="amount-line" id="amount-line"></p>
-      <label for="address">Your Lightning address</label>
-      <input type="text" id="address" spellcheck="false" autocomplete="off" inputmode="email" placeholder="you@walletofsatoshi.com">
-      <div class="row">
-        <button id="claim">Send it to me</button>
-      </div>
-      <div class="status" id="claim-status"></div>
-      <details id="paste-invoice" style="margin-top:1.2rem">
-        <summary class="note" style="cursor:pointer">Paste an invoice instead</summary>
-        <p class="note" style="margin-top:0.7rem">Some wallets will not talk to a web page directly. An invoice always works. Ask your wallet to receive <strong id="invoice-amount"></strong>, then paste what it gives you.</p>
-        <label for="invoice">Your invoice</label>
-        <input type="text" id="invoice" spellcheck="false" autocomplete="off" placeholder="lnbc…">
-        <div class="row"><button class="ghost" id="claim-invoice">Pay this invoice</button></div>
-      </details>
-    </section>
-
-    <section class="card" id="step-done" hidden>
-      <div class="done" id="done-line"></div>
-      <p class="note" id="done-detail"></p>
-      <ol class="steps" id="done-steps"></ol>
-    </section>
+    </details>
   </main>
 
   <footer>
@@ -509,10 +517,12 @@
       amount.className = 'amount';
       amount.textContent = msat ? sats(msat) + ' sats' : 'a note';
       box.appendChild(amount);
-      const from = document.createElement('div');
-      from.className = 'from';
-      from.textContent = gift.from === FLY ? 'from the fly' : 'from ' + shortNpub(gift.from);
-      box.appendChild(from);
+      if (gift.from !== 'link' && gift.from !== 'pasted') {
+        const from = document.createElement('div');
+        from.className = 'from';
+        from.textContent = gift.from === FLY ? 'from the fly' : 'from ' + shortNpub(gift.from);
+        box.appendChild(from);
+      }
       if (gift.spent) {
         const gone = document.createElement('div');
         gone.className = 'gone';
@@ -540,6 +550,39 @@
     $('amount-line').textContent = 'There are ' + amount + ' in this note.';
     $('invoice-amount').textContent = 'exactly ' + amount;
     $('address').focus({ preventScroll: true });
+  }
+
+  // ---- arriving with a link ----------------------------------------------
+
+  // The fly sends the link in a sealed direct message, and the note itself
+  // rides in the fragment. A fragment is never sent to a server, so it stays
+  // out of request logs, out of Referer headers, and out of the link previews
+  // clients fetch. Nobody has to sign in to anything to spend their own note.
+  async function fromLink() {
+    let note = '';
+    try {
+      note = new URLSearchParams(location.hash.slice(1)).get('n') || '';
+    } catch { note = ''; }
+    if (!note) return false;
+    // Take it out of the address bar once it is read, so the note is not
+    // sitting in a shared screen or a copied URL after it has been spent.
+    try { history.replaceState(null, '', location.pathname); } catch {}
+    show('step-note');
+    show('fallback', false);
+    say('note-status', 'Checking your note at the mint…');
+    try {
+      const info = await noteInfo(note);
+      const gift = { rumourId: 'link', from: 'link', note, amountMsat: info.maxWithdrawable, info };
+      gifts = [gift];
+      render();
+      say('note-status', 'The fly shared ' + sats(info.maxWithdrawable) + ' sats with you.', 'good');
+      choose(gift);
+    } catch (error) {
+      say('note-status', error.message, 'bad');
+      show('fallback');
+      $('fallback').open = true;
+    }
+    return true;
   }
 
   // ---- who you signed in as -----------------------------------------------
@@ -714,7 +757,12 @@
   // An extension that hides itself from unapproved sites looks exactly like
   // one that is not installed, so say so where it helps rather than guessing
   // at load time.
-  window.addEventListener('load', () => {
+  window.addEventListener('load', async () => {
+    if (await fromLink()) return;
+    // No link, so the fallback is the whole page. An extension that hides
+    // itself from unapproved sites looks exactly like one that is not
+    // installed, so say so rather than guessing.
+    $('fallback').open = true;
     setTimeout(() => {
       if (window.Signet && !window.Signet.hasNip07?.()) show('no-extension');
     }, 900);
