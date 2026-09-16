@@ -109,7 +109,7 @@ export async function createFlyBody(canvas) {
     // A macro camera follows travel on narrow screens so the head and feet
     // remain visible at touchdown. The stage rings still show displacement.
     camera.position.copy(cameraBase).add(V(body.x * cameraFollow, body.y * cameraFollow));
-    camera.lookAt(body.x * cameraFollow, body.y * cameraFollow, .1);
+    camera.lookAt(body.x * cameraFollow, body.y * cameraFollow, .04 + body.air * .15);
     const moving = body.air > .015 || body.song || Math.abs(body.speed) > .002 || groom;
     const key = [body.x, body.y, body.z, body.heading, body.bank, body.pitch, body.phase, body.feed, body.air, body.song, share, groom, moving ? time : 0].join(',');
     if (key === lastPose) { renderer.render(scene, camera); return; }
