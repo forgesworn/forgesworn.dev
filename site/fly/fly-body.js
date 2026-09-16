@@ -173,9 +173,9 @@ export async function createFlyBody(canvas) {
   }
   function resize(width, height) {
     renderer.setSize(width, height, false); camera.aspect = width / height;
-    const distance = camera.aspect < 1 ? 1.65 : 1.12;
+    const distance = camera.aspect < 1 ? 1.65 : 1.25;
     cameraBase.set(distance * .32, -distance, distance * .53);
-    cameraFollow = camera.aspect < 1.4 ? .8 : .25;
+    cameraFollow = .95;
     camera.position.copy(cameraBase);
     camera.lookAt(0, 0, .1); camera.updateProjectionMatrix();
   }

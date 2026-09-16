@@ -46,5 +46,28 @@ try {
     console.log(`${name}: signed escape takes off, flies, pauses and lands; recorded retreat stays labelled`);
     await context.close();
   }
+  const probe = await browser.newPage();
+  await probe.route('http://127.0.0.1:8826/fly/rig-test', route => route.fulfill({ contentType: 'text/html', body: '<canvas></canvas>' }));
+  await probe.goto('http://127.0.0.1:8826/fly/rig-test');
+  const framing = await probe.evaluate(async () => {
+    const { createFlyBody } = await import('./fly-body.js');
+    const { BodyController } = await import('./body-controller.js');
+    const view = await createFlyBody(document.querySelector('canvas')), results = [];
+    for (const [width, height] of [[828, 465], [358, 318]]) {
+      view.resize(width, height);
+      for (const [name, sample] of [['forward', [0,0,1,0,0,0,0]], ['backward', [0,.5,0,0,1,0,0]], ['escape', [1,0,0,0,0,0,0]]]) {
+        const body = new BodyController(); let clippedFrames = 0;
+        for (let i = 0; i < 150; i++) {
+          body.step(sample, 1 / 30); view.pose(body, i / 30);
+          if (!view.framed()) clippedFrames++;
+        }
+        results.push({ width, name, clippedFrames });
+      }
+    }
+    return results;
+  });
+  assert.ok(framing.every(r => r.clippedFrames === 0), JSON.stringify(framing));
+  results.push({ completeMotionFraming: framing });
+  console.log('900 walking/retreat/flight frames fit desktop and phone views.');
 } finally { await browser.close(); }
 writeFileSync('captures-out/fly-body/checks.json', JSON.stringify(results, null, 2) + '\n');
