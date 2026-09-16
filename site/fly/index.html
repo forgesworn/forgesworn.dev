@@ -341,7 +341,7 @@
     }));
 
     const openedAt = Math.floor(Date.now() / 1000);
-    const fedInvoices = new Set(); let lastPaymentIllustration = 0, providerRequest;
+    const fedInvoices = new Set(); let providerRequest;
     let lastConfirmedFeeding = null;
     function rememberFeeding(time, source) {
       if (!lastConfirmedFeeding || time > lastConfirmedFeeding.time) lastConfirmedFeeding = { time, source };
@@ -355,7 +355,6 @@
       if (fedInvoices.has(key)) return;
       fedInvoices.add(key);
       if (fedInvoices.size > 256) fedInvoices.delete(fedInvoices.values().next().value);
-      lastPaymentIllustration = Date.now();
       FlyStage.feed(source);
       $('#zap-status').textContent = source;
       $('#zap-status').className = 'status ok';
@@ -389,7 +388,7 @@
         // Plain Lightning payments have no public zap receipt. The fly's
         // authenticated report confirms the amount from the opened sealed note.
         const received = /^The fly sensed [^\n]*\(([\d,]+) sats\)\.$/m.exec(note.content);
-        if (live && motor && received && Date.now() - lastPaymentIllustration > 90000) {
+        if (live && motor && received) {
           paymentFeed(note.id, `Fly confirmed ${received[1]} sats · feeding illustration`);
         }
       }

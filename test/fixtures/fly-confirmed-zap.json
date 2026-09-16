@@ -123,5 +123,14 @@
     "pubkey": "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
     "id": "d365aa5f15529d3524d718dd2fe20df718fb137ec0d801055fe7102af6596a34",
     "sig": "ccecd919ed241dcae4903ef8e0dffabba96186e93c0d90952d1233bc589e7bf6960d75ee42f29bae6c8d377b6c00a40f7a7075f2b9fb6e15c506ac6745b411b5"
+  },
+  "secondPlainPaymentReport": {
+    "kind": 1,
+    "tags": [],
+    "created_at": 1789557202,
+    "content": "The fly sensed sweet=0.05 (40 sats).\nReplay: seed 7f3a2c10.\nMotor: {\"v\":1,\"windowMs\":300,\"stepMs\":50,\"seed\":2134518800,\"channels\":[\"escape\",\"feed\",\"forward\",\"turn\",\"backward\",\"song\"],\"sides\":[\"L\",\"R\",\"X\"],\"neurons\":[[4,4,0],[1,1,0],[1,1,0],[1,1,0],[2,2,0],[1,1,0]],\"spikes\":[[0,0,0],[63,8,0],[0,0,0],[0,0,0],[0,0,0],[0,2,0]],\"baseline\":[[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]],\"samples\":[[0,25,0,0,0,0,0],[0,55,0,0,0,0,0],[0,60,0,0,0,0,0],[0,70,0,0,0,0,0],[0,70,0,0,0,0,0],[0,75,0,0,0,0,0]]}",
+    "pubkey": "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
+    "id": "8a8d0614e6d09986309f906053c77f1e4af53d12a83d598b102f6cd2204a33e6",
+    "sig": "f95de091f832b0ab8aacf150c88c9f80810de039f5fd04bf5f6920be51d9793e1a844eb9d0c8fea509145bf2a31cbf2865467731392c67e815c9dad01c650d98"
   }
 }

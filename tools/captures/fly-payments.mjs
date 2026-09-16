@@ -49,6 +49,11 @@ try {
       await page.locator('#zap-button').click(); await page.waitForFunction(() => document.querySelector('#zap-status').textContent.startsWith('Paid.'));
       assert.equal(await page.locator('#fly-box').getAttribute('data-activity-source'), 'ambient', 'Wallet completion for the same invoice cannot repeat receipt feeding');
     }
+    if (kind === 'brain') {
+      send(f.secondPlainPaymentReport);
+      await page.waitForFunction(() => document.querySelector('#motion-status').textContent.includes('Fly confirmed 40 sats'));
+      assert.equal(await page.locator('#fly-box').getAttribute('data-activity-source'), 'interaction', 'A second plain payment must not be suppressed by a cooldown');
+    }
     assert.deepEqual(writes,[]); assert.deepEqual(errors,[]);
     results.push({name,source:kind,controlsAndFlyVisible:true,confirmedPaymentDrinksAndRegurgitates:true,duplicatesIgnored:kind==='receipt',noPublicWrites:true});
     await page.close(); console.log(`${name}: ${kind} confirmation feeds, regurgitates and keeps payment controls beside the fly`);
