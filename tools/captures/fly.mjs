@@ -18,6 +18,7 @@ try {
     await page.goto(process.env.FLY_PREVIEW_URL || 'http://127.0.0.1:8826/fly/');
     await page.locator('[data-artwork="ready"]').waitFor();
     await page.locator('#stage').scrollIntoViewIfNeeded();
+    await page.locator('.motion-demos summary').click();
     const still = await page.locator('canvas').evaluate(c => c.toDataURL());
     await page.waitForTimeout(250);
     assert.equal(await page.locator('canvas').evaluate(c => c.toDataURL()), still, 'Reduced motion must remain still');
@@ -40,6 +41,7 @@ try {
   await page.goto(process.env.FLY_PREVIEW_URL || 'http://127.0.0.1:8826/fly/');
   await page.locator('[data-artwork="ready"]').waitFor();
   await page.locator('#stage').evaluate(el => el.scrollIntoView());
+  await page.locator('.motion-demos summary').click();
   await page.locator('[data-fly-preview="flight"]').click();
   await page.waitForTimeout(1500);
   await safeShot(page, `${out}/desktop-flight.png`);

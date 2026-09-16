@@ -85,8 +85,8 @@
     .status.err { color: #f0907e; }
 
     /* the live fly */
-    .stage { display: grid; gap: 1.4rem; }
-    @media (max-width: 720px) { .stage { grid-template-columns: 1fr; } }
+    .stage { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.4rem; }
+    @media (max-width: 720px) { .stage { grid-template-columns: minmax(0, 1fr); } }
     .fly-box { position: relative; background: radial-gradient(circle at 50% 35%, #1b241d, #0b0f0c 78%); border-radius: 16px; border: 1px solid var(--line); overflow: hidden; aspect-ratio: 16 / 9; }
     .fly-box canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: pan-y; cursor: pointer; }
     .splat-hint { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.06em; color: var(--ink-dim); background: rgba(11,15,12,0.55); border: 1px solid var(--line); border-radius: 999px; padding: 0.12rem 0.6rem; pointer-events: none; white-space: nowrap; transition: opacity 0.4s; }
@@ -98,13 +98,16 @@
     .reaction small { display: block; font-family: var(--font-mono); font-size: 0.8rem; color: var(--ink-dim); margin-top: 0.4rem; letter-spacing: 0.04em; }
     .poke-help { font-size: 0.9rem; color: var(--ink-dim); margin: 1rem 0 0; }
     .poke-help strong { color: var(--sage); font-weight: 600; }
-    blockquote { margin: 0.8rem 0 0; padding: 0.8rem 1rem; border-left: 3px solid var(--sage-dim); background: var(--bg-2); border-radius: 0 10px 10px 0; font-size: var(--text-detail); white-space: pre-wrap; color: var(--ink); }
+    blockquote { margin: 0.8rem 0 0; padding: 0.8rem 1rem; border-left: 3px solid var(--sage-dim); background: var(--bg-2); border-radius: 0 10px 10px 0; font-size: var(--text-detail); white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink); }
 
     .fly-theatre { min-width: 0; }
+    .motion-demos { margin-top: 1rem; color: var(--ink-dim); font-size: .83rem; }
+    .motion-demos summary { cursor: pointer; }
+    #motion-live { margin-top: .8rem; font-size: .75rem; }
     .specimen-label { position: absolute; top: 20px; left: 24px; right: 24px; display: flex; justify-content: space-between; gap: 12px; color: #b6c2aa; pointer-events: none; font: 0.66rem var(--font-mono); letter-spacing: .09em; text-transform: uppercase; }
     .specimen-label span:first-child { font-style: italic; }
     .motion-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
-    .motion-bar p { margin: 0; color: var(--ink-dim); font: .75rem/1.5 var(--font-mono); }
+    .motion-bar p { min-width: 0; overflow-wrap: anywhere; margin: 0; color: var(--ink-dim); font: .75rem/1.5 var(--font-mono); }
     .motion-bar button, .motion-previews button { font-size: .75rem; min-height: 40px; padding: .4rem .7rem; }
     .motion-previews { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
     .motion-previews > span { font: .7rem var(--font-mono); color: var(--ink-dim); margin-right: 4px; }
@@ -158,27 +161,31 @@
     </section>
 
     <section id="stage">
-      <div class="eyebrow">Right now</div>
+      <div class="eyebrow">From the brain</div>
       <h2>What it last did</h2>
       <div class="stage">
         <div class="fly-theatre">
           <div class="fly-box" id="fly-box">
             <canvas id="fly-canvas" role="img" aria-label="An animated fruit fly. Use the Poke the fly button to interact."></canvas>
             <div class="specimen-label" aria-hidden="true"><span>Drosophila melanogaster</span><span>Male · macro study</span></div>
-            <div class="splat-hint" id="splat-hint" aria-hidden="true">tap the fly to poke it</div>
+            <div class="splat-hint" id="splat-hint" aria-hidden="true">poke it to ask the brain</div>
           </div>
           <div class="motion-bar">
-            <p id="motion-status" role="status">Ambient animation · Resting</p>
+            <p id="motion-status" role="status">Waiting for a motor report · Resting</p>
             <button type="button" id="motion-pause" aria-pressed="false">Pause motion</button>
           </div>
-          <div class="motion-previews" role="group" aria-label="Preview an animation without posting or paying">
-            <span>Watch it</span>
+          <p class="motion-note">The latest signed motor report, replayed 10× slower so you can see it. Strength and left/right balance come from the simulated neurons. Between reports the fly stays still. Escape is illustrated as a short startle; the brain has no sustained-flight or grooming readout.</p>
+          <button type="button" id="motion-live">Replay latest brain report</button>
+          <details class="motion-demos"><summary>Animation demos · not brain activity</summary>
+          <div class="motion-previews" role="group" aria-label="Demonstration animations, independent of the brain">
+            <span>Demo only</span>
             <button type="button" data-fly-preview="flight" aria-pressed="false">Fly &amp; land</button>
             <button type="button" data-fly-preview="groom" aria-pressed="false">Groom</button>
             <button type="button" data-fly-preview="feed" aria-pressed="false">Feed</button>
             <button type="button" data-fly-preview="share" aria-pressed="false">Regurgitate</button>
           </div>
-          <p class="motion-note">An illustration of the fly’s behaviour. Flight between notes and these previews are local animation; the latest brain report is below. Previewing sends no poke or payment.</p>
+          <p class="motion-note">These demonstrations use scripted motion and send no poke or payment. Choose “Replay latest brain report” to return to the brain.</p>
+          </details>
           <noscript><p>This animation needs JavaScript. You can still feed the fly using its Lightning address below.</p></noscript>
         </div>
         <div>
@@ -189,7 +196,7 @@
             <div class="row"><span>corn · held as sealed notes at moneyer.dev</span><span id="crop">0 sats</span></div>
           </div>
           <p><button type="button" id="poke-fly">Poke the fly</button></p>
-          <p class="poke-help">A <strong>poke</strong> is a public mention of the fly. Its wiring feels it as a touch and replies. Mention it from any Nostr app, or tap the fly here. Tapping posts the mention as you, so it needs a Nostr browser extension like Alby or nos2x; without one the fly just dodges.</p>
+          <p class="poke-help">A <strong>poke</strong> is a public mention of the fly. Its wiring feels it as a touch and replies. Mention it from any Nostr app, or tap the fly here. Tapping posts the mention as you, so it needs a Nostr browser extension like Alby or nos2x; without one, mention it from another Nostr app. The fly moves only after a motor report arrives.</p>
         </div>
       </div>
     </section>
@@ -261,7 +268,9 @@
   </main>
 
   <script type="module">
-    import { createFlyStage, behaviourOf } from './fly-stage.js';
+    import { createFlyStage } from './fly-stage.js';
+    import { parseMotorReport, motorSummary } from './motor.js';
+    import { verifySignedEvent } from './vendor/nostr-verify.js';
 
     const FLY = '4e03e8814728eaba5f172ec94b3901d9d8ed012bd4f0ea043cc356e66893047e';
     const FLY_NPUB = 'npub1fcp73q289r4t5hch9my5kwgpm8vw6qft6ncw5ppucdtwv6ynq3lq2phg2l';
@@ -272,67 +281,70 @@
 
     const FlyStage = createFlyStage({
       canvas: $('#fly-canvas'), box: $('#fly-box'), status: $('#motion-status'),
-      pause: $('#motion-pause'), previewButtons: document.querySelectorAll('[data-fly-preview]'),
+      pause: $('#motion-pause'), returnButton: $('#motion-live'), previewButtons: document.querySelectorAll('[data-fly-preview]'),
     });
     $('#poke-fly').addEventListener('click', () => FlyStage.poke());
 
     let lastReacted = null;
     function react(note) {
-      const [mode, label] = behaviourOf(note.content);
+      const motor = parseMotorReport(note.content);
+      const gift = /^Trophallaxis\. The fly brought up \d[\d,]* sats\b/.test(note.content);
+      const label = motor ? motorSummary(motor) : gift ? 'Shared corn.' : 'Older report · no motor telemetry.';
       $('#reaction').firstChild.textContent = label;
       $('#reaction-when').textContent = ago(note.created_at);
-      $('#last-note').textContent = note.content.split('\n').slice(0, 3).join('\n');
+      $('#last-note').textContent = note.content.split('\n').filter(line => !line.startsWith('Motor: ')).slice(0, 3).join('\n');
       $('#last-note').classList.remove('empty');
       const crop = /(?:Corn|Crop): ([\d,]+) sats/.exec(note.content);
       if (crop) { const sats = Number(crop[1].replace(/,/g, '')); $('#crop').textContent = sats.toLocaleString('en-GB') + ' sats'; $('#crop-fill').style.width = Math.min(100, Math.log10(sats + 1) / 6 * 100) + '%'; }
-      if (note.id !== lastReacted) { lastReacted = note.id; FlyStage.react(mode); }
+      if (note.id !== lastReacted) { lastReacted = note.id; FlyStage.report(motor); if (gift) FlyStage.gift(); }
     }
 
-    // A tap on the fly is a poke. It darts; with a Nostr signer the page also
-    // publishes a real mention, throttled, so a real reply follows. Without a
-    // signer it only dodges, and the hint says a signer makes it real.
+    // A poke requests a real brain response. It never creates a local reflex.
     let lastSplat = 0;
     FlyStage.setSplatHandler(async () => {
       const hint = $('#splat-hint');
-      if (!window.nostr) { if (hint) { hint.textContent = 'no Nostr extension — mention it from any app for a real poke'; setTimeout(() => { hint.textContent = 'tap the fly to poke it'; }, 3200); } return; }
-      if (Date.now() - lastSplat < 30000) { if (hint) { hint.textContent = 'give it a moment…'; setTimeout(() => { hint.textContent = 'tap the fly to poke it'; }, 1800); } return; }
+      if (!window.nostr) { if (hint) { hint.textContent = 'no Nostr extension — mention it from any app for a real poke'; setTimeout(() => { hint.textContent = 'poke it to ask the brain'; }, 3200); } return; }
+      if (Date.now() - lastSplat < 30000) { if (hint) { hint.textContent = 'give it a moment…'; setTimeout(() => { hint.textContent = 'poke it to ask the brain'; }, 1800); } return; }
       lastSplat = Date.now();
       try {
         const ev = { kind: 1, created_at: Math.floor(Date.now() / 1000), content: 'splat! 👋🪰', tags: [['p', FLY]] };
         const signed = await window.nostr.signEvent(ev);
         RELAYS.forEach(u => { try { const ws = new WebSocket(u); ws.onopen = () => { ws.send(JSON.stringify(['EVENT', signed])); setTimeout(() => { try { ws.close(); } catch {} }, 1800); }; } catch {} });
-        if (hint) { hint.textContent = 'poked — the fly’s brain will reply in a moment'; setTimeout(() => { hint.textContent = 'tap the fly to poke it'; }, 4500); }
-      } catch { if (hint) hint.textContent = 'tap the fly to poke it'; }
+        if (hint) { hint.textContent = 'poked — the fly’s brain will reply in a moment'; setTimeout(() => { hint.textContent = 'poke it to ask the brain'; }, 4500); }
+      } catch { if (hint) hint.textContent = 'poke it to ask the brain'; }
     });
 
     // A small relay client: one REQ per relay, events by id, live after EOSE.
     const events = new Map(), profiles = new Map();
     let wanted = new Set();
-    // The backlog loads in the first seconds; only events after that drop food
-    // on the stage, so the jar is not flooded on load. A zap or a sealed note
-    // is a sugar drop the fly flies over and eats; its size is the amount.
-    let booted = false; setTimeout(() => { booted = true; }, 4500);
+    // Verify signed events before they can affect the latest report or feed.
+    const verifying = new Set();
     function relay(url) {
       let ws; try { ws = new WebSocket(url); } catch { return; }
       ws.onopen = () => {
         ws.send(JSON.stringify(['REQ', 'fly', { kinds: [0, 1], authors: [FLY], limit: 60 }, { kinds: [9735], '#p': [FLY], limit: 60 }, { kinds: [1059], '#p': [FLY], limit: 30 }]));
       };
       ws.onmessage = m => {
+        if (typeof m.data !== 'string' || m.data.length > 128000) return;
         let frame; try { frame = JSON.parse(m.data); } catch { return; }
         if (frame[0] === 'EVENT') take(frame[2], ws);
         if (frame[0] === 'EOSE') render();
       };
       ws.onclose = () => setTimeout(() => relay(url), 15000 + Math.random() * 15000);
     }
-    function take(e, ws) {
-      if (!e || typeof e.id !== 'string' || events.has(e.id)) return;
+    async function take(e, ws) {
+      if (!e || typeof e.id !== 'string' || events.has(e.id) || verifying.has(e.id) || verifying.size >= 128) return;
+      if (![0, 1, 9735, 1059].includes(e.kind) || e.created_at > Date.now() / 1000 + 60) return;
+      verifying.add(e.id);
+      const verified = await verifySignedEvent(e);
+      verifying.delete(e.id);
+      if (!verified) return;
       if (e.kind === 0) { try { profiles.set(e.pubkey, JSON.parse(e.content)); } catch {} render(); return; }
       if (e.kind === 1 && e.pubkey !== FLY) return;
       if ((e.kind === 9735 || e.kind === 1059) && !e.tags.some(t => t[0] === 'p' && t[1] === FLY)) return;
       if (e.kind === 1059) e.seen = Math.floor(Date.now() / 1000);
       events.set(e.id, e);
-      // A live zap or sealed note becomes food on the stage, sized by sats.
-      if (booted && (e.kind === 9735 || e.kind === 1059)) FlyStage.feed(e.kind === 9735 ? satsOf(e) : null);
+      // Payments are sensory input. Only a subsequent motor report moves the fly.
       const zapper = zapperOf(e);
       if (zapper && !profiles.has(zapper) && !wanted.has(zapper)) { wanted.add(zapper); try { ws.send(JSON.stringify(['REQ', 'p' + zapper.slice(0, 8), { kinds: [0], authors: [zapper], limit: 1 }])); } catch {} }
       render();
@@ -393,7 +405,7 @@
         }
         const lines = e.content.split('\n');
         const replay = lines.find(l => l.startsWith('Replay:'));
-        const body = lines.filter(l => !l.startsWith('Replay:') && !l.startsWith('Leaky integrate')).join('\n');
+        const body = lines.filter(l => !l.startsWith('Replay:') && !l.startsWith('Motor:') && !l.startsWith('Leaky integrate')).join('\n');
         return `<li><div class="who"><img src="emblem-1024.png" alt=""></div><div><div class="head"><span><b>The Fly</b></span><span>${ago(e.created_at)}</span></div><div class="body">${escapeHtml(body)}</div>${replay ? `<div class="replay">${escapeHtml(replay)}</div>` : ''}</div></li>`;
       }).join('');
     }
