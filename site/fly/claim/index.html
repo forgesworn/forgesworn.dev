@@ -97,13 +97,13 @@
   <main>
     <section class="card" id="step-signin">
       <h2>1. Prove it is you</h2>
-      <p class="note">The note is encrypted to your Nostr key, so your signing extension has to open it. Your key never reaches this page, and nothing is signed: the extension decrypts and hands back the result.</p>
+      <p class="note">The note is encrypted to your Nostr key, so your signer has to open it. Your key never reaches this page and nothing is signed: your signer decrypts and hands back the result. A browser extension, a hardware Signet, or any bunker you can paste or scan will all do.</p>
       <div class="row">
         <button id="signin">Sign in with Nostr</button>
       </div>
       <div class="status" id="signin-status"></div>
       <div id="no-extension" hidden>
-        <p class="note">No Nostr signing extension was found in this browser. You need one to open a sealed note. Common ones are <a href="https://github.com/fiatjaf/nos2x" rel="noopener">nos2x</a> and <a href="https://getalby.com/" rel="noopener">Alby</a> on desktop, or a mobile browser with a signer built in. Install one, add your key, then reload this page.</p>
+        <p class="note">If your browser extension is not offered, it may be hidden from this site rather than missing. Bark and some others only reveal themselves to sites you have allowed, so open the extension and allow <code>forgesworn.dev</code>, then reload. Failing that, any of the other ways in the picker work without an extension at all.</p>
       </div>
     </section>
 
@@ -155,6 +155,7 @@
   </footer>
 </div>
 
+<script src="signet-login.iife.js"></script>
 <script>
 (() => {
   'use strict';
@@ -169,6 +170,7 @@
   const say = (id, text, tone = '') => { const el = $(id); el.textContent = text; el.className = 'status' + (tone ? ' ' + tone : ''); };
 
   let me = null;          // our pubkey, hex
+  let signer = null;      // whatever the person signed in with
   let gifts = [];         // {rumourId, from, note, amountMsat, info|null, spent}
   let chosen = null;
 
@@ -347,10 +349,10 @@
   // forward somebody else's rumour as if they had written it.
   async function unwrap(event) {
     let seal, rumour;
-    try { seal = JSON.parse(await window.nostr.nip44.decrypt(event.pubkey, event.content)); }
+    try { seal = JSON.parse(await signer.nip44.decrypt(event.pubkey, event.content)); }
     catch { return null; }
     if (!seal || seal.kind !== KIND_SEAL || !isHex64(seal.pubkey) || !Array.isArray(seal.tags) || seal.tags.length !== 0) return null;
-    try { rumour = JSON.parse(await window.nostr.nip44.decrypt(seal.pubkey, seal.content)); }
+    try { rumour = JSON.parse(await signer.nip44.decrypt(seal.pubkey, seal.content)); }
     catch { return null; }
     if (!rumour || typeof rumour !== 'object' || 'sig' in rumour) return null;
     if (rumour.pubkey !== seal.pubkey) return null;
@@ -515,25 +517,28 @@
   // ---- wiring -------------------------------------------------------------
 
   $('signin').onclick = async () => {
-    if (!window.nostr || typeof window.nostr.getPublicKey !== 'function') {
-      show('no-extension');
-      say('signin-status', 'No signing extension answered.', 'bad');
+    if (!window.Signet || typeof window.Signet.login !== 'function') {
+      say('signin-status', 'The signer picker did not load. Reload the page and try again.', 'bad');
       return;
     }
     $('signin').disabled = true;
-    say('signin-status', 'Waiting for your extension…');
+    say('signin-status', 'Waiting for your signer…');
     try {
-      const key = await window.nostr.getPublicKey();
-      if (!isHex64(key)) throw new Error('your extension gave back something that is not a public key');
-      if (!window.nostr.nip44 || typeof window.nostr.nip44.decrypt !== 'function') {
-        throw new Error('your extension cannot decrypt NIP-44 yet, which is what opens a sealed note. Update it, or try nos2x or Alby.');
+      // The fly's own relays, so signing in needs nothing of ours running.
+      const session = await window.Signet.login({ appName: 'The Fly', theme: 'dark', relayUrls: RELAYS });
+      if (!session) { say('signin-status', ''); $('signin').disabled = false; return; }
+      if (!isHex64(session.pubkey)) throw new Error('that signer gave back something that is not a public key');
+      if (!session.signer || !session.signer.nip44 || typeof session.signer.nip44.decrypt !== 'function') {
+        show('no-extension');
+        throw new Error('that signer cannot decrypt NIP-44, which is what opens a sealed note. Try another way in the picker.');
       }
-      me = key;
+      me = session.pubkey;
+      signer = session.signer;
       say('signin-status', 'Signed in as ' + shortNpub(me), 'good');
       $('signin').textContent = 'Signed in';
       await findGifts();
     } catch (error) {
-      say('signin-status', error.message || 'your extension refused', 'bad');
+      say('signin-status', error.message || 'your signer refused', 'bad');
       $('signin').disabled = false;
     }
   };
@@ -560,10 +565,13 @@
     } finally { $('use-note').disabled = false; }
   };
 
-  // A signing extension usually injects late, so do not decide it is missing
-  // until the page has settled.
+  // An extension that hides itself from unapproved sites looks exactly like
+  // one that is not installed, so say so where it helps rather than guessing
+  // at load time.
   window.addEventListener('load', () => {
-    setTimeout(() => { if (!window.nostr) show('no-extension'); }, 900);
+    setTimeout(() => {
+      if (window.Signet && !window.Signet.hasNip07?.()) show('no-extension');
+    }, 900);
   });
 })();
 </script>
