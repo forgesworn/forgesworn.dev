@@ -13,7 +13,7 @@
 
 - [flock](https://flock.forgesworn.dev): coercion-resistant group locator; end-to-end encrypted location over Nostr, guidance by voice, sound and vibration (source: https://github.com/forgesworn/flock)
 - [KithMoot](https://kithmoot.forgesworn.dev): multi-device video rooms over Nostr; a room is a secret held by whoever has the link, and a person on two devices appears as one participant (source: https://github.com/forgesworn/kithmoot, Android: https://github.com/forgesworn/kithmoot-android)
-- [DonkeyRide](https://ride.trotters.dev/about): ride-hailing and dispatch with nobody in the middle taking a cut; reference implementation of the TROTT protocol (source: https://github.com/TheCryptoDonkey/donkeyride)
+- [DonkeyRide](https://donkeyride.forgesworn.dev/about): ride-hailing and dispatch with nobody in the middle taking a cut; reference implementation of the TROTT protocol (source: https://github.com/TheCryptoDonkey/donkeyride)
 - [Wildbloom](https://wildbloom.forgesworn.dev): local-first encrypted publishing and storage over Nostr and Blossom, with a self-hosted node (source: https://github.com/forgesworn/wildbloom)
 - notecase and moneyer: an LNURLcash (LUD-25) bearer-note wallet and mint (npm: @forgesworn/notecase, @forgesworn/moneyer)
 - [Heartwood](https://heartwood.forgesworn.dev): hardware Nostr signer on an ESP32 with a keyless bridge; clients bark (browser, https://bark.forgesworn.dev) and cambium (Android, https://cambium.forgesworn.dev)
