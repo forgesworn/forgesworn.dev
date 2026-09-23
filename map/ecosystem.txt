@@ -1,0 +1,121 @@
+# ForgeSworn ecosystem map.
+#
+# This file is the whole map. Edit it and run `npm run map`; the renderer lays
+# it out and writes map/ecosystem-map.html and map/ecosystem-map.png.
+#
+#   key: value                    header settings, before the first section
+#   ## Section title | colour     starts a section (gold, blue, green, red,
+#                                 purple, teal, rose, amber or a #hex)
+#   repo-name                     an entry, labelled with the repo name
+#   repo-name = Display Label     an entry with its own label
+#
+# Blank lines and lines starting with # are ignored. An entry's icon is
+# map/icons/<repo-name>.svg when that file exists, a monogram otherwise.
+# Names are checked against forgesworn-repos.json, so a typo or a repo that
+# left the catalogue is reported rather than drawn.
+
+title: ForgeSworn
+subtitle: Ecosystem Map
+version: v0.1
+footer: forgesworn.dev
+
+## Wallets & NWC | gold
+nwc-kit = NWC Kit
+nwc-lnd-bridge = NWC LND Bridge
+farrier-kit = Farrier Kit
+
+## Paid APIs · L402 & x402 | gold
+toll-booth = Toll Booth
+toll-booth-rs = Toll Booth (Rust)
+toll-booth-dvm = Toll Booth DVM
+aperture-phoenixd = Aperture Phoenixd
+
+## AI agents & MCP | blue
+bray = Bray
+402-mcp = 402 MCP
+toll-booth-mcp = Toll Booth MCP
+rendezvous-mcp = Rendezvous MCP
+
+## Paid API discovery | amber
+402-pub = 402.pub
+402-indexer = 402 Indexer
+402-announce = 402 Announce
+toll-booth-announce = Toll Booth Announce
+aperture-announce = Aperture Announce
+
+## Protocols & specs | amber
+nip-drafts = NIP Drafts
+payment-methods = Payment Methods
+trott-conformance = TROTT Conformance
+gopherkind-protocol-py = Gopherkind (Python)
+
+## Hardware signers | green
+heartwood = Heartwood
+heartwood-esp32 = Heartwood ESP32
+heartwood-ledger = Heartwood Ledger
+sapwood = Sapwood
+
+## Signers & login | green
+bark = Bark
+cambium = Cambium
+signet-login = Signet Login
+keystore-kit = Keystore Kit
+
+## Developer tools | red
+anvil = Anvil
+forgesworn-demos = Demos
+jurisdiction-kit = Jurisdiction Kit
+
+## Keys & recovery | teal
+nsec-tree = nsec-tree
+nsec-tree-cli = nsec-tree CLI
+nsec-tree-py = nsec-tree (Python)
+shamir-words = Shamir Words
+shamir-core = Shamir Core
+
+## Identity & verification | purple
+signet = Signet
+signet-credentials = Signet Credentials
+signet-verify = Signet Verify
+signet-protocol-rs = Signet (Rust)
+canary-kit = Canary Kit
+spoken-token = Spoken Token
+nostr-attestations = Attestations
+
+## Privacy & trust | purple
+nostr-veil = Nostr Veil
+nostr-anon-vote = Anon Vote
+dominion = Dominion
+
+## Cryptographic primitives | rose
+ring-sig = Ring Sig
+range-proof = Range Proof
+private-equality = Private Equality
+
+## Private circles | teal
+covey-kit = Covey Kit
+roost-kit = Roost Kit
+flock-kit = Flock Kit
+
+## Apps | gold
+kithmoot = KithMoot
+flock = Flock
+wildbloom = Wildbloom
+gopherkind = Gopherkind
+
+## Storage | blue
+wildbloom-node = Wildbloom Node
+shelter-kit = Shelter Kit
+
+## Mesh & location | green
+mesh-kit = Mesh Kit
+mesh-nostr-kit = Mesh Nostr Kit
+capacitor-mesh-ble = Mesh BLE
+geohash-kit = Geohash Kit
+rendezvous-kit = Rendezvous Kit
+
+# Bearer notes are left off for now. Uncomment to add them.
+# ## Bearer notes · LNURLcash | amber
+# moneyer = Moneyer
+# notecase = Notecase
+# notelocker = Notelocker
