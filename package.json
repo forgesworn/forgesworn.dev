@@ -8,7 +8,11 @@
     "sync": "curl -fsSL https://raw.githubusercontent.com/forgesworn/.github/main/forgesworn-repos.json -o forgesworn-repos.json",
     "build": "node scripts/build-site.mjs",
     "check:drift": "node scripts/check-catalogue-drift.mjs",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "map": "node scripts/build-map.mjs"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "playwright": "^1.62.1"
+  }
 }
