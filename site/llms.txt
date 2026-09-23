@@ -23,7 +23,7 @@
 
 ## Key libraries
 
-- [toll-booth](https://github.com/forgesworn/toll-booth): L402 middleware, any HTTP API becomes Lightning-payable in one line (npm: @forgesworn/toll-booth). Try `npx @forgesworn/toll-booth demo` or the live demo at https://jokes.trotters.dev
+- [toll-booth](https://github.com/forgesworn/toll-booth): L402 middleware, any HTTP API becomes Lightning-payable in one line (npm: @forgesworn/toll-booth). Try `npx @forgesworn/toll-booth demo` or the live demo at https://jokes.forgesworn.dev
 - [402-mcp](https://github.com/forgesworn/402-mcp): MCP client so AI agents can discover, pay for, and consume L402/x402 APIs (npm: 402-mcp)
 - [nwc-kit](https://github.com/forgesworn/nwc-kit): small, security-focused NIP-47 Nostr Wallet Connect client (npm: @forgesworn/nwc-kit); site at https://nwc-kit.forgesworn.dev
 - [nwc-lnd-bridge](https://github.com/forgesworn/nwc-lnd-bridge): minimal NIP-47 wallet service in front of an LND node, invoice-only by default
