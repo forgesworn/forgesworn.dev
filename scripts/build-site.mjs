@@ -54,7 +54,7 @@ const REPO_WEBSITES = {
 
 // Repos with a live demo (presentation config, not in JSON)
 const REPO_DEMOS = {
-  'toll-booth': 'https://jokes.trotters.dev',
+  'toll-booth': 'https://jokes.forgesworn.dev',
 };
 
 // Repos with architecture documentation (presentation config, not in JSON)
