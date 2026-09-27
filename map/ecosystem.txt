@@ -47,6 +47,7 @@ kintrinsic = Kintrinsic
 ## Bearer notes · LNURLcash | amber
 moneyer = Moneyer
 notecase = Notecase
++ LUD-25 = the LNURLcash spec, co-authored
 
 ## Wallets & NWC | gold
 nwc-kit = NWC Kit
@@ -128,11 +129,6 @@ shelter-kit = Shelter Kit
 
 ## Live streams | rose
 relayswarm = RelaySwarm | early
-
-## Protocols & standards | amber
-nip-drafts = NIP Drafts | spec
-payment-methods = HTTP Payment Methods | spec
-+ LUD-25 = LNURLcash bearer notes, co-authored
 
 ## Developer tools | red
 anvil = Anvil
