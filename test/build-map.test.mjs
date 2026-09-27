@@ -71,3 +71,17 @@ test('inlines a glyph without losing the sizes of its inner shapes', () => {
   assert.equal(iconFor('nwc-kit').kind, 'logo')
   assert.equal(iconFor('no-such-repo'), null)
 })
+
+test('parses standards badges and their caption, and escapes them', () => {
+  const map = parseMap('## Specs\nnip-drafts | spec\n+ Drafts we author\n+ NIP-VA = attestations, kind 31000\n+ <b> = x & y')
+  assert.equal(map.sections[0].note, 'Drafts we author')
+  assert.deepEqual(map.sections[0].standards, [
+    { name: 'NIP-VA', detail: 'attestations, kind 31000' },
+    { name: '<b>', detail: 'x & y' },
+  ])
+  const html = renderHtml(map)
+  assert.ok(html.includes('<li><b>NIP-VA</b> attestations, kind 31000</li>'))
+  assert.ok(html.includes('<li><b>&lt;b&gt;</b> x &amp; y</li>'))
+  assert.ok(html.includes('<p>Drafts we author</p>'))
+  assert.throws(() => parseMap('## X\n+ = nothing'), /empty standard/)
+})

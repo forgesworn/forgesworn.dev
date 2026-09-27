@@ -54,7 +54,7 @@ export function parseMap(text) {
       const hex = COLOURS[colour] ?? (/^#[0-9a-f]{3,8}$/i.test(colour) ? colour : null)
       if (!title) throw new Error(`${where}: section needs a title`)
       if (!hex) throw new Error(`${where}: unknown colour "${colour}"`)
-      current = { title, colour: hex, entries: [] }
+      current = { title, colour: hex, entries: [], standards: [] }
       sections.push(current)
       return
     }
@@ -62,6 +62,15 @@ export function parseMap(text) {
       const m = line.match(/^([a-z0-9-]+)\s*:\s*(.*)$/i)
       if (!m) throw new Error(`${where}: expected "key: value" before the first section`)
       meta[m[1].toLowerCase()] = m[2]
+      return
+    }
+    // "+ Name = detail" is a standard shown as a badge under the section's
+    // tiles; "+ text" with no "=" is the caption over those badges.
+    if (line.startsWith('+')) {
+      const [name, detail] = line.slice(1).split('=').map((s) => s.trim())
+      if (!name) throw new Error(`${where}: empty standard`)
+      if (detail === undefined) current.note = name
+      else current.standards.push({ name, detail })
       return
     }
     const [entry, status] = line.split('|').map((s) => s.trim())
@@ -146,10 +155,16 @@ export function renderHtml({ meta, sections }, { format = 'screen', theme = 'dar
   const count = sections.reduce((n, s) => n + s.entries.length, 0)
   const body = sections
     .map((s) => {
-      const n = s.entries.length
+      // Badges widen a section as two tiles' worth of room would.
+      const n = s.entries.length + Math.ceil(s.standards.length / 2)
+      const standards = s.standards.length
+        ? `\n  <div class="standards">${s.note ? `<p>${esc(s.note)}</p>` : ''}<ul>${s.standards
+            .map((b) => `<li><b>${esc(b.name)}</b> ${esc(b.detail)}</li>`)
+            .join('')}</ul></div>`
+        : ''
       return `<section style="--c:${s.colour};--n:${n};flex-grow:${n}">
   <h2>${esc(s.title)}</h2>
-  <div class="tiles">${s.entries.map((e) => tile(e, s.colour)).join('')}</div>
+  <div class="tiles">${s.entries.map((e) => tile(e, s.colour)).join('')}</div>${standards}
 </section>`
     })
     .join('\n')
@@ -206,6 +221,19 @@ h2 {
   letter-spacing: .06em; text-transform: uppercase;
 }
 .tiles { display: flex; flex-wrap: wrap; justify-content: space-evenly; gap: 14em 0; }
+.standards { margin-top: 16em; display: flex; flex-direction: column; align-items: center; gap: 8em; }
+.standards p { font-family: Inter, sans-serif; font-size: 11em; color: var(--muted); letter-spacing: .02em; }
+.standards ul { list-style: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 7em; }
+.standards li {
+  font-family: Inter, sans-serif; font-size: 11.5em; color: var(--text); white-space: nowrap;
+  padding: .3em .8em; border-radius: 1em;
+  border: .1em solid color-mix(in srgb, var(--c) 70%, transparent);
+  background: color-mix(in srgb, var(--c) 10%, transparent);
+}
+.standards b {
+  font-family: "JetBrains Mono", monospace; font-weight: 700; margin-right: .3em;
+  color: color-mix(in srgb, var(--c) calc(100% - var(--ink)), black);
+}
 .tile { width: var(--tile); display: flex; flex-direction: column; align-items: center; gap: 8em; }
 .icon {
   --ring: color-mix(in srgb, var(--c, var(--muted)) 55%, transparent);
@@ -238,6 +266,8 @@ figcaption {
 .a4 section { padding: 22em 10em 11em; }
 .a4 h2 { font-size: 11.5em; }
 .a4 .tiles { gap: 10em 0; }
+.a4 .standards { margin-top: 12em; gap: 6em; }
+.a4 .standards li { font-size: 10.5em; }
 .a4 .tile { gap: 5em; }
 .a4 .icon { width: 42em; height: 42em; outline-width: 1.6em; }
 .a4 .icon img { width: 28em; height: 28em; }
