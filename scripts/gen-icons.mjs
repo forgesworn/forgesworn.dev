@@ -18,7 +18,7 @@
 // with --only to redo just the trace step for one icon.
 
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -351,14 +351,16 @@ function vectorise(name) {
 // the existing potrace output with no new API call.
 function vectoriseTrace(name, rawSvg, out) {
   const traced = readFileSync(rawSvg, 'utf8')
-  const pathMatch = traced.match(/<path[^>]*\sd="([^"]+)"/)
-  if (!pathMatch) throw new Error(`${name}: could not read potrace output`)
+  // potrace writes each separate shape as its own <path>; every one starts
+  // with an absolute M, so their data joins into a single path.
+  const paths = [...traced.matchAll(/<path[^>]*\sd="([^"]+)"/g)].map((m) => m[1])
+  if (!paths.length) throw new Error(`${name}: could not read potrace output`)
   // potrace draws in a y-down coordinate space translated/scaled inside a <g>.
   const transformMatch = traced.match(/<g transform="translate\(([-\d.]+),([-\d.]+)\) scale\(([-\d.]+),([-\d.]+)\)"/)
   if (!transformMatch) throw new Error(`${name}: unexpected potrace transform`)
   const [tx, ty, sx, sy] = transformMatch.slice(1).map(Number)
 
-  const subpaths = walkPath(pathMatch[1], tx, ty, sx, sy)
+  const subpaths = walkPath(paths.join(' '), tx, ty, sx, sy)
 
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
   const see = ([px, py]) => {
@@ -378,9 +380,9 @@ function vectoriseTrace(name, rawSvg, out) {
   const boxH = maxY - minY
   const cx = minX + boxW / 2
   const cy = minY + boxH / 2
-  // Normalise so the artwork's longest side fills 70% of a 100x100 viewBox,
+  // Normalise so the artwork's longest side fills 88% of a 100x100 viewBox,
   // centred, giving every icon the same visual weight regardless of its shape.
-  const norm = 70 / Math.max(boxW, boxH)
+  const norm = 88 / Math.max(boxW, boxH)
   const map = ([px, py]) => [((px - cx) * norm + 50).toFixed(2), ((py - cy) * norm + 50).toFixed(2)]
 
   const d = subpaths
@@ -427,4 +429,21 @@ if (args.includes('--redo')) {
     }
   }
   await Promise.all([...Array(CONCURRENCY)].map(worker))
+}
+
+// Language ports are left off the map but keep an exact copy of their parent's
+// icon, refreshed on every run so a redrawn parent never leaves a port behind.
+const PORTS = {
+  'kithmoot-android': 'kithmoot',
+  'toll-booth-rs': 'toll-booth',
+  'nsec-tree-py': 'nsec-tree',
+  'signet-protocol-rs': 'signet',
+  'gopherkind-protocol-py': 'gopherkind',
+  'relayswarm-kit': 'relayswarm',
+}
+for (const [port, parent] of Object.entries(PORTS)) {
+  for (const ext of ['png', 'svg']) {
+    const src = join(iconsDir, `${parent}.${ext}`)
+    if (existsSync(src)) copyFileSync(src, join(iconsDir, `${port}.${ext}`))
+  }
 }
