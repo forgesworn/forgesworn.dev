@@ -62,7 +62,9 @@ test('the A4 page is fixed to the sheet and carries the fitting script', () => {
 })
 
 test('inlines a glyph without losing the sizes of its inner shapes', () => {
-  const icon = iconFor('keystore-kit')
+  // notelocker is still a Lucide stand-in (see map/icons/LICENCE-lucide.txt);
+  // its <rect> is what proves inner shapes keep their own width when inlined.
+  const icon = iconFor('notelocker')
   assert.equal(icon.kind, 'glyph')
   assert.ok(!/<svg[^>]*\swidth=/.test(icon.svg), 'root svg keeps no fixed width')
   assert.ok(/<rect[^>]*\swidth=/.test(icon.svg), 'inner rect keeps its width')
