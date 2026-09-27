@@ -298,16 +298,21 @@ figcaption {
 .a4 .glyph svg { width: 22em; height: 22em; }
 .a4 .mono { font-size: 17em; }
 .a4 figcaption { font-size: 13.2em; line-height: 1.2; }
-.a4 footer { margin-top: 30em; }
-footer { margin-top: 44em; display: flex; align-items: center; justify-content: space-between; gap: 24em; }
-footer .site {
+.a4 footer { margin-top: 18em; }
+.a4 header .qr { width: 80em; height: 80em; }
+.a4 header .site { font-size: 34em; }
+/* The address and its QR code sit top right, where a reader looks first. */
+header .where { margin-left: auto; text-align: right; align-self: center; }
+header .site {
   font-family: Fraunces, Georgia, serif; font-variation-settings: "opsz" 72;
-  font-size: 40em; font-weight: 600; color: var(--accent);
+  font-size: 40em; font-weight: 600; color: var(--accent); line-height: 1.1;
 }
-footer .note { font-family: "JetBrains Mono", monospace; font-size: 11em; color: var(--muted); letter-spacing: .02em; margin-top: .6em; }
-footer .qr { width: 84em; height: 84em; flex: none; }
-footer .qr svg { width: 100%; height: 100%; display: block; }
-.legend { list-style: none; display: flex; flex-direction: column; gap: 9em; }
+header .note { font-family: "JetBrains Mono", monospace; font-size: 11em; color: var(--muted); letter-spacing: .02em; margin-top: .6em; }
+header .qr { width: 96em; height: 96em; flex: none; align-self: center; }
+header .qr svg { width: 100%; height: 100%; display: block; }
+header .tagline + .where { margin-left: 0; }
+footer { margin-top: 30em; display: flex; justify-content: center; }
+.legend { list-style: none; display: flex; gap: 28em; }
 .map .legend li {
   width: auto; flex-direction: row; gap: .8em; font-family: Inter, sans-serif; font-size: 12em; color: var(--muted);
 }
@@ -325,15 +330,13 @@ footer .qr svg { width: 100%; height: 100%; display: block; }
   </svg>
   <h1>${esc(meta.title ?? 'ForgeSworn')}<span>${esc(meta.subtitle ?? 'Ecosystem Map')}<small class="ver">${esc(meta.version ?? '')}</small></span></h1>
   ${meta.tagline ? `<p class="tagline">${esc(meta.tagline)}</p>` : ''}
+  <div class="where">${meta.footer ? `<div class="site">${esc(meta.footer)}</div>` : ''}<div class="note">${count} open-source projects · MIT${meta.date ? ` · ${esc(meta.date)}` : ''}</div></div>
+  ${qr ? `<div class="qr">${qr}</div>` : ''}
 </header>
 <div class="grid">
 ${body}
 </div>
-<footer>
-  ${legend(sections)}
-  <div>${meta.footer ? `<div class="site">${esc(meta.footer)}</div>` : ''}<div class="note">${count} open-source projects · MIT${meta.date ? ` · ${esc(meta.date)}` : ''}</div></div>
-  ${qr ? `<div class="qr">${qr}</div>` : '<span></span>'}
-</footer>
+${legend(sections) ? `<footer>\n  ${legend(sections)}\n</footer>` : ''}
 </main>
 ${a4 ? FIT_SCRIPT : ''}
 </body>
