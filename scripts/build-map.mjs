@@ -211,7 +211,8 @@ html, body { background: var(--bg); color: var(--text); -webkit-print-color-adju
     radial-gradient(900px 700px at 100% 100%, rgba(74,158,255,.10), transparent 60%),
     var(--bg);
 }
-.map.a4 { width: 210mm; height: 297mm; padding: 11mm 10mm 8mm; overflow: hidden; background: var(--bg); }
+/* 5mm clears the 4.2mm unprintable edge of a typical laser printer. */
+.map.a4 { width: 210mm; height: 297mm; padding: 5mm; overflow: hidden; background: var(--bg); }
 header { display: flex; align-items: flex-end; gap: 28em; margin: 0 0 44em 8em; }
 header .mark { width: 96em; height: 96em; flex: none; }
 header h1 {
@@ -284,27 +285,31 @@ figcaption {
   text-align: center; color: var(--text);
 }
 /* On paper the captions are what people read, so they take a larger share of
-   each tile than on screen, the icons a smaller one, and the header shrinks. */
+   each tile than on screen, the header shrinks, and the rows pack tighter
+   so the icons can stay large. */
 .a4 { --tile: 92em; }
-.a4 header { margin-bottom: 30em; gap: 22em; }
-.a4 header .mark { width: 70em; height: 70em; }
-.a4 header h1 { font-size: 56em; }
-.a4 .grid { gap: 24em 12em; }
-.a4 section { padding: 22em 10em 11em; }
-.a4 h2 { font-size: 11.5em; }
-.a4 .tiles { gap: 10em 0; }
+.a4 header { margin-bottom: 22em; gap: 22em; }
+.a4 header .mark { width: 60em; height: 60em; }
+.a4 header h1 { font-size: 50em; }
+/* Sections stretch to fill their rows, so spare height becomes bigger
+   icons (--iz, fitted below) rather than wider gaps. */
+.a4 { --iz: 1; }
+.a4 .grid { gap: 12em 8em; align-content: stretch; }
+.a4 section { padding: 17em 10em 8em; }
+.a4 h2 { font-size: 12.5em; }
+.a4 .tiles { gap: 8em 0; }
 .a4 .standards { margin-top: 12em; gap: 6em; }
-.a4 .medal { top: -3.5em; left: calc(50% + 11em); width: 17em; height: 17em; }
-.a4 .standards li { font-size: 10.5em; }
-.a4 .tile { gap: 5em; }
-.a4 .icon { width: 42em; height: 42em; outline-width: 1.6em; }
-.a4 .icon img { width: 28em; height: 28em; }
-.a4 .glyph svg { width: 22em; height: 22em; }
-.a4 .mono { font-size: 17em; }
-.a4 figcaption { font-size: 13.2em; line-height: 1.2; }
-.a4 footer { margin-top: 18em; }
-.a4 header .qr { width: 80em; height: 80em; }
-.a4 header .site { font-size: 34em; }
+.a4 .medal { top: -3.5em; left: calc(50% + 18em * var(--iz)); width: 17em; height: 17em; }
+.a4 .standards li { font-size: 11.5em; }
+/* Tiles share their section's width, so captions in roomy sections stay on one line. */
+.a4 .tile { gap: 4em; flex: 1 0 var(--tile); }
+.a4 .icon { width: calc(62em * var(--iz)); height: calc(62em * var(--iz)); outline-width: calc(1.8em * var(--iz)); }
+.a4 .icon img { width: calc(48em * var(--iz)); height: calc(48em * var(--iz)); }
+.a4 .glyph svg { width: calc(36em * var(--iz)); height: calc(36em * var(--iz)); }
+.a4 .mono { font-size: calc(25em * var(--iz)); }
+.a4 figcaption { font-size: 14.6em; line-height: 1.2; }
+.a4 header .qr { width: 72em; height: 72em; }
+.a4 header .site { font-size: 31em; }
 /* The address and its QR code sit top right, where a reader looks first. */
 header .where { margin-left: auto; text-align: right; align-self: center; }
 header .site {
@@ -340,7 +345,7 @@ footer { margin-top: 30em; display: flex; justify-content: center; }
 <div class="grid">
 ${body}
 </div>
-${legend(sections) ? `<footer>\n  ${legend(sections)}\n</footer>` : ''}
+${!a4 && legend(sections) ? `<footer>\n  ${legend(sections)}\n</footer>` : ''}
 </main>
 ${a4 ? FIT_SCRIPT : ''}
 </body>
@@ -349,21 +354,41 @@ ${a4 ? FIT_SCRIPT : ''}
 }
 
 // Binary-search the unit size that makes the map fill the page without
-// spilling over. Runs in the page, so printing the HTML directly works too.
+// spilling over, then grow the icons into any height left over. Runs in the
+// page, so printing the HTML directly works too.
 const FIT_SCRIPT = `<script>
 (() => {
   const map = document.querySelector('.map[data-fit]')
   const fits = () => map.scrollHeight <= map.clientHeight + 0.5 && map.scrollWidth <= map.clientWidth + 0.5
-  const fit = () => {
-    let lo = 0.2, hi = 2
+  const search = (prop, lo, hi) => {
     for (let i = 0; i < 24; i++) {
       const mid = (lo + hi) / 2
-      map.style.setProperty('--u', mid)
+      map.style.setProperty(prop, mid)
       if (fits()) lo = mid
       else hi = mid
     }
-    map.style.setProperty('--u', lo)
-    document.documentElement.dataset.fitted = lo.toFixed(3)
+    map.style.setProperty(prop, lo)
+    return lo
+  }
+  // Icons are capped at 84em across, short of the 92em tile, so rings never touch.
+  const grow = u => {
+    map.style.setProperty('--u', u)
+    map.style.setProperty('--iz', 1)
+    return fits() ? search('--iz', 1, 84 / 62) : 0
+  }
+  const fit = () => {
+    map.style.setProperty('--iz', 1)
+    const max = search('--u', 0.2, 2)
+    // A slightly smaller unit can let sections pack into fewer rows, which
+    // frees height for the icons. Give up at most 4% of the text size for it.
+    let best = { u: max, icon: 0 }
+    for (let i = 0; i <= 16; i++) {
+      const u = max * (1 - 0.04 * i / 16)
+      const icon = u * grow(u)
+      if (icon > best.icon) best = { u, icon }
+    }
+    grow(best.u)
+    document.documentElement.dataset.fitted = best.u.toFixed(3)
   }
   document.fonts.ready.then(fit)
 })()
