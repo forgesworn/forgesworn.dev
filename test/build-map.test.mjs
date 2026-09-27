@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { parseMap, renderHtml } from '../scripts/build-map.mjs'
+import { parseMap, renderHtml, iconFor } from '../scripts/build-map.mjs'
 
 test('parses header, sections, labels and colours', () => {
   const map = parseMap(`# comment
@@ -32,4 +32,40 @@ test('escapes labels in the rendered page', () => {
   const html = renderHtml(parseMap('## A & B\nx = <script>'))
   assert.ok(html.includes('&lt;script&gt;'))
   assert.ok(!html.includes('<script>'))
+})
+
+test('parses an optional status and rejects an unknown one', () => {
+  const map = parseMap('## X\nheartwood-ledger = Heartwood Ledger | early\nnip-drafts | spec\nanvil')
+  assert.deepEqual(map.sections[0].entries, [
+    { name: 'heartwood-ledger', label: 'Heartwood Ledger', status: 'early' },
+    { name: 'nip-drafts', label: 'nip-drafts', status: 'spec' },
+    { name: 'anvil', label: 'anvil' },
+  ])
+  assert.throws(() => parseMap('## X\na | beta'), /unknown status "beta"/)
+})
+
+test('marks status on the tile and only shows the legend when a status is used', () => {
+  const plain = renderHtml(parseMap('## X\nanvil'))
+  assert.ok(!plain.includes('class="legend"'))
+  const marked = renderHtml(parseMap('## X\nanvil\nnip-drafts | spec'))
+  assert.ok(marked.includes('class="tile is-spec"'))
+  assert.ok(marked.includes('class="legend"'))
+  assert.ok(marked.includes('Specification'))
+})
+
+test('the A4 page is fixed to the sheet and carries the fitting script', () => {
+  const html = renderHtml(parseMap('## X\nanvil'), { format: 'a4', theme: 'light' })
+  assert.ok(html.includes('class="map a4" data-fit'))
+  assert.ok(html.includes('@page { size: A4'))
+  assert.ok(html.includes('document.fonts.ready.then(fit)'))
+  assert.ok(!renderHtml(parseMap('## X\nanvil')).includes('data-fit'))
+})
+
+test('inlines a glyph without losing the sizes of its inner shapes', () => {
+  const icon = iconFor('keystore-kit')
+  assert.equal(icon.kind, 'glyph')
+  assert.ok(!/<svg[^>]*\swidth=/.test(icon.svg), 'root svg keeps no fixed width')
+  assert.ok(/<rect[^>]*\swidth=/.test(icon.svg), 'inner rect keeps its width')
+  assert.equal(iconFor('nwc-kit').kind, 'logo')
+  assert.equal(iconFor('no-such-repo'), null)
 })

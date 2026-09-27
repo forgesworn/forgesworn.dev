@@ -1,11 +1,17 @@
 #!/usr/bin/env node
 // Build the ForgeSworn ecosystem map from map/ecosystem.txt.
 //
-// Writes map/ecosystem-map.html (self-contained: fonts and icons inlined) and,
-// unless --html-only is given, renders map/ecosystem-map.png from it with a
-// headless browser. The text file is the source; both outputs are derived.
+// Writes two self-contained pages (fonts and icons inlined) and renders each
+// with a headless browser:
 //
-//   node scripts/build-map.mjs              HTML + PNG
+//   map/ecosystem-map.html     dark, 1400px wide  ->  map/ecosystem-map.png
+//   map/ecosystem-map-a4.html  light, one A4 page  ->  map/ecosystem-map-a4.pdf
+//
+// The A4 page sizes itself: a small script shrinks or grows everything until
+// the map exactly fills the sheet, so adding entries never needs a layout edit.
+// The text file is the source; every output is derived.
+//
+//   node scripts/build-map.mjs              HTML, PNG and PDF
 //   node scripts/build-map.mjs --html-only  HTML only
 //   node scripts/build-map.mjs --strict     fail on names outside the catalogue
 
@@ -28,6 +34,13 @@ const COLOURS = {
   purple: '#a78bfa',
 }
 
+// An entry's status draws its ring: solid by default, dashed for early work,
+// dotted for a specification with no runtime of its own.
+const STATUSES = {
+  early: 'Early or prototype',
+  spec: 'Specification',
+}
+
 export function parseMap(text) {
   const meta = {}
   const sections = []
@@ -46,26 +59,29 @@ export function parseMap(text) {
       return
     }
     if (!current) {
-      const m = line.match(/^([a-z]+)\s*:\s*(.*)$/i)
+      const m = line.match(/^([a-z0-9-]+)\s*:\s*(.*)$/i)
       if (!m) throw new Error(`${where}: expected "key: value" before the first section`)
       meta[m[1].toLowerCase()] = m[2]
       return
     }
-    const [name, label] = line.split('=').map((s) => s.trim())
+    const [entry, status] = line.split('|').map((s) => s.trim())
+    const [name, label] = entry.split('=').map((s) => s.trim())
     if (!/^[a-z0-9][a-z0-9._-]*$/i.test(name)) throw new Error(`${where}: bad repo name "${name}"`)
-    current.entries.push({ name, label: label || name })
+    if (status !== undefined && !(status in STATUSES))
+      throw new Error(`${where}: unknown status "${status}" (use ${Object.keys(STATUSES).join(' or ')})`)
+    current.entries.push({ name, label: label || name, ...(status && { status }) })
   })
   return { meta, sections }
 }
 
-function knownRepos() {
+function catalogue() {
   const path = join(root, 'forgesworn-repos.json')
   if (!existsSync(path)) return null
   const cat = JSON.parse(readFileSync(path, 'utf8'))
-  const names = new Set()
-  for (const c of cat.categories ?? []) for (const r of c.repos ?? c.projects ?? []) names.add(r.name)
-  for (const r of cat.excludedPublicRepos ?? []) names.add(r.name)
-  return names
+  const listed = new Set()
+  for (const c of cat.categories ?? []) for (const r of c.repos ?? c.projects ?? []) listed.add(r.name)
+  const excluded = new Set((cat.excludedPublicRepos ?? []).map((r) => r.name))
+  return { listed, known: new Set([...listed, ...excluded]) }
 }
 
 const esc = (s) =>
@@ -77,19 +93,57 @@ function monogram(label) {
   return /^\d/.test(letters) ? letters : letters[0].toUpperCase() + (letters[1] ?? '').toLowerCase()
 }
 
+// A glyph is a single-colour line icon drawn in currentColor, so it takes the
+// section's colour. Anything else, SVG or PNG, is a logo and is shown as drawn.
+export function iconFor(name) {
+  const png = join(mapDir, 'icons', `${name}.png`)
+  if (existsSync(png)) return { kind: 'logo', src: `data:image/png;base64,${readFileSync(png).toString('base64')}` }
+  const path = join(mapDir, 'icons', `${name}.svg`)
+  if (!existsSync(path)) return null
+  const svg = readFileSync(path, 'utf8')
+  if (!svg.includes('currentColor'))
+    return { kind: 'logo', src: `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}` }
+  const inline = svg
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<svg\b[^>]*>/, (tag) => tag.replace(/\s(class|width|height)="[^"]*"/g, '').replace('<svg', '<svg aria-hidden="true"'))
+    .trim()
+  return { kind: 'glyph', svg: inline }
+}
+
 function tile(entry, colour) {
-  const iconPath = join(mapDir, 'icons', `${entry.name}.svg`)
-  const inner = existsSync(iconPath)
-    ? `<img alt="" src="data:image/svg+xml;base64,${readFileSync(iconPath).toString('base64')}">`
-    : `<span class="mono" style="--c:${colour}">${esc(monogram(entry.label))}</span>`
-  return `<figure class="tile"><div class="icon" style="--c:${colour}">${inner}</div><figcaption>${esc(entry.label)}</figcaption></figure>`
+  const icon = iconFor(entry.name)
+  const inner = !icon
+    ? `<span class="mono">${esc(monogram(entry.label))}</span>`
+    : icon.kind === 'glyph'
+      ? `<span class="glyph">${icon.svg}</span>`
+      : `<img alt="" src="${icon.src}">`
+  const cls = entry.status ? ` is-${entry.status}` : ''
+  return `<figure class="tile${cls}"><div class="icon" style="--c:${colour}">${inner}</div><figcaption>${esc(entry.label)}</figcaption></figure>`
 }
 
 function font(file) {
   return `data:font/woff2;base64,${readFileSync(join(root, 'site', 'fonts', file)).toString('base64')}`
 }
 
-export function renderHtml({ meta, sections }) {
+function legend(sections) {
+  const used = new Set(sections.flatMap((s) => s.entries.map((e) => e.status)).filter(Boolean))
+  const items = [['', 'Working code'], ...Object.entries(STATUSES).filter(([k]) => used.has(k))]
+  if (items.length < 2) return ''
+  return `<ul class="legend">${items
+    .map(([k, text]) => `<li class="tile${k ? ` is-${k}` : ''}"><span class="icon"></span>${esc(text)}</li>`)
+    .join('')}</ul>`
+}
+
+const THEMES = {
+  dark: `--bg:#0a0a0f; --card:#111118; --text:#e8e6e3; --muted:#9896a1; --accent:#e8a838;
+    --chip-text:#0a0a0f; --icon-bg:#0d0d14; --fill:12%; --edge:70%; --ink:0%;`,
+  light: `--bg:#ffffff; --card:#ffffff; --text:#17161c; --muted:#55535e; --accent:#c27c0e;
+    --chip-text:#111016; --icon-bg:#ffffff; --fill:7%; --edge:85%; --ink:38%;`,
+}
+
+export function renderHtml({ meta, sections }, { format = 'screen', theme = 'dark', qr = '' } = {}) {
+  const a4 = format === 'a4'
+  const count = sections.reduce((n, s) => n + s.entries.length, 0)
   const body = sections
     .map((s) => {
       const n = s.entries.length
@@ -110,94 +164,176 @@ export function renderHtml({ meta, sections }) {
 @font-face { font-family: Fraunces; src: url(${font('fraunces-latin.woff2')}) format("woff2"); font-weight: 300 700; }
 @font-face { font-family: Inter; src: url(${font('inter-latin.woff2')}) format("woff2"); font-weight: 400 600; }
 @font-face { font-family: "JetBrains Mono"; src: url(${font('jetbrains-mono-latin.woff2')}) format("woff2"); font-weight: 400 700; }
-:root { --bg: #0a0a0f; --card: #111118; --text: #e8e6e3; --muted: #9896a1; --gold: #e8a838; }
-* { box-sizing: border-box; margin: 0; }
-html, body { background: var(--bg); color: var(--text); }
-.map {
+@page { size: A4; margin: 0; }
+:root { ${THEMES[theme]} }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--bg); color: var(--text); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+/* Every size below is in em against .map, whose font-size is one "unit".
+   The screen map uses 1px units; the A4 map's units are fitted to the page. */
+.map { --u: 1; --tile: 98em; font-size: calc(var(--u) * 1px); display: flex; flex-direction: column; }
+.map.screen {
   width: 1400px; padding: 64px 56px 48px;
   background:
     radial-gradient(1200px 600px at 15% -10%, rgba(232,168,56,.14), transparent 60%),
     radial-gradient(900px 700px at 100% 100%, rgba(74,158,255,.10), transparent 60%),
     var(--bg);
 }
-header { display: flex; align-items: flex-end; gap: 28px; margin: 0 0 44px 8px; }
-header .mark { width: 96px; height: 96px; flex: none; }
+.map.a4 { width: 210mm; height: 297mm; padding: 11mm 10mm 8mm; overflow: hidden; background: var(--bg); }
+header { display: flex; align-items: flex-end; gap: 28em; margin: 0 0 44em 8em; }
+header .mark { width: 96em; height: 96em; flex: none; }
 header h1 {
   font-family: Fraunces, Georgia, serif; font-variation-settings: "opsz" 144;
-  font-weight: 600; font-size: 76px; line-height: .98; letter-spacing: -.02em;
+  font-weight: 600; font-size: 76em; line-height: .98; letter-spacing: -.02em;
 }
-header h1 span { display: block; color: var(--gold); }
-header .ver { font-family: "JetBrains Mono", monospace; font-size: 18px; color: var(--muted); margin-left: 10px; }
-.grid { display: flex; flex-wrap: wrap; gap: 30px 18px; }
+header h1 span { display: block; color: var(--accent); }
+header .ver { font-family: "JetBrains Mono", monospace; font-size: .24em; color: var(--muted); margin-left: .5em; letter-spacing: 0; }
+header .tagline {
+  margin-left: auto; max-width: 30em; text-align: right; align-self: center;
+  font-family: Inter, sans-serif; font-size: 14em; line-height: 1.45; color: var(--muted);
+}
+.grid { flex: 1 1 auto; display: flex; flex-wrap: wrap; align-content: space-evenly; gap: 30em 18em; }
 section {
-  position: relative; flex-basis: calc(min(var(--n), 7) * 98px + 40px);
+  position: relative; flex-basis: calc(min(var(--n), 8) * var(--tile) + 40em);
   display: flex; flex-direction: column; justify-content: center;
-  border: 1.5px solid color-mix(in srgb, var(--c) 70%, transparent); border-radius: 14px;
-  background: color-mix(in srgb, var(--card) 88%, var(--c) 12%);
-  padding: 30px 18px 16px;
+  border: 1.5em solid color-mix(in srgb, var(--c) var(--edge), transparent); border-radius: 14em;
+  background: color-mix(in srgb, var(--card) calc(100% - var(--fill)), var(--c) var(--fill));
+  padding: 30em 18em 16em;
 }
 h2 {
   position: absolute; top: 0; left: 50%; transform: translate(-50%, -50%); white-space: nowrap;
-  background: var(--c); color: #0a0a0f; border-radius: 6px; padding: 4px 12px;
-  font-family: "JetBrains Mono", monospace; font-size: 13px; font-weight: 700;
+  background: var(--c); color: var(--chip-text); border-radius: 6em; padding: .3em .9em;
+  font-family: "JetBrains Mono", monospace; font-size: 13em; font-weight: 700;
   letter-spacing: .06em; text-transform: uppercase;
 }
-.tiles { display: flex; flex-wrap: wrap; justify-content: space-evenly; gap: 14px 0; }
-.tile { width: 98px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.tiles { display: flex; flex-wrap: wrap; justify-content: space-evenly; gap: 14em 0; }
+.tile { width: var(--tile); display: flex; flex-direction: column; align-items: center; gap: 8em; }
 .icon {
-  width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center; overflow: hidden;
-  background: #0d0d14; box-shadow: 0 0 0 2px color-mix(in srgb, var(--c) 45%, transparent);
+  --ring: color-mix(in srgb, var(--c, var(--muted)) 55%, transparent);
+  width: 60em; height: 60em; border-radius: 50%; display: grid; place-items: center; overflow: hidden;
+  background: color-mix(in srgb, var(--icon-bg) 86%, var(--c, var(--muted)) 14%);
+  outline: 2em solid var(--ring); outline-offset: 0;
 }
-.icon img { width: 40px; height: 40px; }
+.is-early .icon { outline: 2.5em dashed color-mix(in srgb, var(--c, var(--muted)) 90%, transparent); outline-offset: 2em; }
+.is-spec .icon { outline: 3em dotted color-mix(in srgb, var(--c, var(--muted)) 90%, transparent); outline-offset: 2em; }
+.icon img { width: 40em; height: 40em; }
+.glyph { display: grid; place-items: center; color: color-mix(in srgb, var(--c) calc(100% - var(--ink)), black); }
+.glyph svg { width: 30em; height: 30em; stroke-width: 1.75; }
 .mono {
   width: 100%; height: 100%; display: grid; place-items: center;
   background: radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--c) 85%, white 15%), color-mix(in srgb, var(--c) 55%, #0a0a0f));
   color: #0a0a0f; font-family: Fraunces, Georgia, serif; font-variation-settings: "opsz" 48;
-  font-weight: 700; font-size: 24px; letter-spacing: -.02em;
+  font-weight: 700; font-size: 24em; letter-spacing: -.02em;
 }
 figcaption {
-  font-family: Inter, sans-serif; font-size: 12.5px; font-weight: 500; line-height: 1.25;
+  font-family: Inter, sans-serif; font-size: 12.5em; font-weight: 500; line-height: 1.25;
   text-align: center; color: var(--text);
 }
-footer {
-  margin-top: 48px; text-align: center;
+/* On paper the captions are what people read, so they take a larger share of
+   each tile than on screen, the icons a smaller one, and the header shrinks. */
+.a4 { --tile: 92em; }
+.a4 header { margin-bottom: 30em; gap: 22em; }
+.a4 header .mark { width: 70em; height: 70em; }
+.a4 header h1 { font-size: 56em; }
+.a4 .grid { gap: 24em 12em; }
+.a4 section { padding: 22em 10em 11em; }
+.a4 h2 { font-size: 11.5em; }
+.a4 .tiles { gap: 10em 0; }
+.a4 .tile { gap: 5em; }
+.a4 .icon { width: 42em; height: 42em; outline-width: 1.6em; }
+.a4 .icon img { width: 28em; height: 28em; }
+.a4 .glyph svg { width: 22em; height: 22em; }
+.a4 .mono { font-size: 17em; }
+.a4 figcaption { font-size: 13.2em; line-height: 1.2; }
+.a4 footer { margin-top: 30em; }
+footer { margin-top: 44em; display: flex; align-items: center; justify-content: space-between; gap: 24em; }
+footer .site {
   font-family: Fraunces, Georgia, serif; font-variation-settings: "opsz" 72;
-  font-size: 40px; font-weight: 600; color: var(--gold);
+  font-size: 40em; font-weight: 600; color: var(--accent);
 }
+footer .note { font-family: "JetBrains Mono", monospace; font-size: 11em; color: var(--muted); letter-spacing: .02em; margin-top: .6em; }
+footer .qr { width: 84em; height: 84em; flex: none; }
+footer .qr svg { width: 100%; height: 100%; display: block; }
+.legend { list-style: none; display: flex; flex-direction: column; gap: 9em; }
+.map .legend li {
+  width: auto; flex-direction: row; gap: .8em; font-family: Inter, sans-serif; font-size: 12em; color: var(--muted);
+}
+.map .legend .icon { width: 1.25em; height: 1.25em; outline-width: .15em; background: none; }
+.map .legend .is-early .icon, .map .legend .is-spec .icon { outline-offset: .08em; }
+.map .legend .is-spec .icon { outline-width: .22em; }
 </style>
 </head>
 <body>
-<main class="map">
+<main class="map ${a4 ? 'a4' : 'screen'}"${a4 ? ' data-fit' : ''}>
 <header>
   <svg class="mark" viewBox="0 0 96 96" aria-hidden="true">
     <rect x="2" y="2" width="92" height="92" rx="22" fill="#14141d" stroke="#e8a838" stroke-width="3"/>
     <path transform="translate(16 14) scale(2.67)" d="M4 18h16v2H4v-2zm2-2h12l1-4H5l1 4zm3-6h6l0.5-2h-7l0.5 2zm2-4h2V4h-2v2z" fill="#e8a838"/>
   </svg>
   <h1>${esc(meta.title ?? 'ForgeSworn')}<span>${esc(meta.subtitle ?? 'Ecosystem Map')}<small class="ver">${esc(meta.version ?? '')}</small></span></h1>
+  ${meta.tagline ? `<p class="tagline">${esc(meta.tagline)}</p>` : ''}
 </header>
 <div class="grid">
 ${body}
 </div>
-${meta.footer ? `<footer>${esc(meta.footer)}</footer>` : ''}
+<footer>
+  ${legend(sections)}
+  <div>${meta.footer ? `<div class="site">${esc(meta.footer)}</div>` : ''}<div class="note">${count} open-source projects · MIT${meta.date ? ` · ${esc(meta.date)}` : ''}</div></div>
+  ${qr ? `<div class="qr">${qr}</div>` : '<span></span>'}
+</footer>
 </main>
+${a4 ? FIT_SCRIPT : ''}
 </body>
 </html>
 `
 }
 
-async function renderPng(htmlPath, pngPath) {
+// Binary-search the unit size that makes the map fill the page without
+// spilling over. Runs in the page, so printing the HTML directly works too.
+const FIT_SCRIPT = `<script>
+(() => {
+  const map = document.querySelector('.map[data-fit]')
+  const fits = () => map.scrollHeight <= map.clientHeight + 0.5 && map.scrollWidth <= map.clientWidth + 0.5
+  const fit = () => {
+    let lo = 0.2, hi = 2
+    for (let i = 0; i < 24; i++) {
+      const mid = (lo + hi) / 2
+      map.style.setProperty('--u', mid)
+      if (fits()) lo = mid
+      else hi = mid
+    }
+    map.style.setProperty('--u', lo)
+    document.documentElement.dataset.fitted = lo.toFixed(3)
+  }
+  document.fonts.ready.then(fit)
+})()
+</script>`
+
+async function qrSvg(url) {
+  const { renderSVG } = await import(pathToFileURL(join(root, 'site', 'fly', 'vendor', 'qr.js')).href)
+  return renderSVG(url, { border: 0 }).replace('<svg', '<svg aria-label="QR code for ' + esc(url) + '"')
+}
+
+async function render(outputs) {
   let chromium
   try {
     ;({ chromium } = await import('playwright'))
   } catch {
-    throw new Error('PNG needs playwright (npm i -D playwright), or pass --html-only')
+    throw new Error('PNG and PDF need playwright (npm i -D playwright), or pass --html-only')
   }
   const browser = await chromium.launch()
   try {
-    const page = await browser.newPage({ viewport: { width: 1400, height: 1000 }, deviceScaleFactor: 2 })
-    await page.goto(pathToFileURL(htmlPath).href)
-    await page.evaluate(() => document.fonts.ready)
-    await page.locator('.map').screenshot({ path: pngPath })
+    for (const { html, png, pdf } of outputs) {
+      const page = await browser.newPage({ viewport: { width: 1400, height: 1000 }, deviceScaleFactor: 2 })
+      await page.goto(pathToFileURL(html).href)
+      await page.evaluate(() => document.fonts.ready)
+      if (png) await page.locator('.map').screenshot({ path: png })
+      if (pdf) {
+        await page.emulateMedia({ media: 'print' })
+        await page.waitForFunction(() => document.documentElement.dataset.fitted)
+        await page.pdf({ path: pdf, preferCSSPageSize: true, printBackground: true })
+      }
+      await page.close()
+    }
   } finally {
     await browser.close()
   }
@@ -206,25 +342,35 @@ async function renderPng(htmlPath, pngPath) {
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const map = parseMap(readFileSync(join(mapDir, 'ecosystem.txt'), 'utf8'))
 
-  const known = knownRepos()
+  const cat = catalogue()
   const seen = new Set()
   const problems = []
   for (const s of map.sections)
     for (const e of s.entries) {
       if (seen.has(e.name)) problems.push(`${e.name} appears twice`)
       seen.add(e.name)
-      if (known && !known.has(e.name)) problems.push(`${e.name} is not in forgesworn-repos.json`)
+      if (cat && !cat.known.has(e.name)) problems.push(`${e.name} is not in forgesworn-repos.json`)
     }
   for (const p of problems) console.warn(`warning: ${p}`)
+  if (cat) {
+    const missing = [...cat.listed].filter((n) => !seen.has(n))
+    if (missing.length) console.log(`not on the map (${missing.length}): ${missing.join(', ')}`)
+  }
   if (problems.length && args.has('--strict')) process.exit(1)
 
-  const htmlPath = join(mapDir, 'ecosystem-map.html')
-  writeFileSync(htmlPath, renderHtml(map))
   const count = map.sections.reduce((n, s) => n + s.entries.length, 0)
-  console.log(`wrote map/ecosystem-map.html (${map.sections.length} sections, ${count} entries)`)
+  const screenHtml = join(mapDir, 'ecosystem-map.html')
+  const a4Html = join(mapDir, 'ecosystem-map-a4.html')
+  writeFileSync(screenHtml, renderHtml(map))
+  const qr = map.meta.qr ? await qrSvg(map.meta.qr) : ''
+  writeFileSync(a4Html, renderHtml(map, { format: 'a4', theme: 'light', qr }))
+  console.log(`wrote map/ecosystem-map.html and map/ecosystem-map-a4.html (${map.sections.length} sections, ${count} entries)`)
 
   if (!args.has('--html-only')) {
-    await renderPng(htmlPath, join(mapDir, 'ecosystem-map.png'))
-    console.log('wrote map/ecosystem-map.png')
+    await render([
+      { html: screenHtml, png: join(mapDir, 'ecosystem-map.png') },
+      { html: a4Html, pdf: join(mapDir, 'ecosystem-map-a4.pdf') },
+    ])
+    console.log('wrote map/ecosystem-map.png and map/ecosystem-map-a4.pdf')
   }
 }
