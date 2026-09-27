@@ -18,6 +18,10 @@
 # left the catalogue is reported rather than drawn, and catalogued repos that
 # are missing from the map are listed.
 #
+# The map shows one entry per product a person could pick up on its own or
+# with someone else's software. A language port or a piece that only works
+# with one other ForgeSworn product stays off the map; see map/README.md.
+#
 # Status markers come from reading the code, not from version numbers: see
 # map/README.md for how they were judged.
 
@@ -30,11 +34,14 @@ date: September 2026
 
 ## Apps | gold
 kithmoot = KithMoot
-kithmoot-android = KithMoot Android
 flock = Flock
 wildbloom = Wildbloom
 gopherkind = Gopherkind
 kintrinsic = Kintrinsic
+
+## Bearer notes · LNURLcash | amber
+moneyer = Moneyer
+notecase = Notecase
 
 ## Wallets & NWC | gold
 nwc-kit = NWC Kit
@@ -43,7 +50,6 @@ farrier-kit = Farrier Kit
 
 ## Paid APIs · L402 | gold
 toll-booth = Toll Booth
-toll-booth-rs = Toll Booth (Rust)
 toll-booth-dvm = Toll Booth DVM
 aperture-phoenixd = Aperture Phoenixd
 
@@ -51,7 +57,6 @@ aperture-phoenixd = Aperture Phoenixd
 402-pub = 402.pub
 402-indexer = 402 Indexer
 402-announce = 402 Announce
-toll-booth-announce = Toll Booth Announce
 aperture-announce = Aperture Announce
 
 ## AI agents & MCP | blue
@@ -63,8 +68,6 @@ context = Context
 
 ## Hardware signers | green
 heartwood = Heartwood
-heartwood-esp32 = Heartwood ESP32
-heartwood-ledger = Heartwood Ledger | early
 sapwood = Sapwood
 
 ## Signers & login | green
@@ -78,7 +81,6 @@ signet-lite = My Signet Lite
 ## Keys & recovery | teal
 nsec-tree = nsec-tree
 nsec-tree-cli = nsec-tree CLI
-nsec-tree-py = nsec-tree (Python)
 shamir-words = Shamir Words
 shamir-core = Shamir Core
 nostr-succession = Succession
@@ -87,12 +89,11 @@ nostr-succession = Succession
 signet = Signet
 signet-credentials = Signet Credentials
 signet-verify = Signet Verify
-signet-protocol-rs = Signet (Rust) | early
 canary-kit = Canary Kit
 spoken-token = Spoken Token
 nostr-attestations = Attestations
 nostr-contact-card = Contact Card
-signet-contacts = Signet Contacts
+signet-contacts = Signet Contacts | early
 
 ## Privacy & trust | purple
 nostr-veil = Nostr Veil
@@ -115,7 +116,6 @@ flock-kit = Flock Kit
 
 ## Mesh & location | green
 mesh-kit = Mesh Kit
-mesh-nostr-kit = Mesh Nostr Kit
 capacitor-mesh-ble = Mesh BLE
 geohash-kit = Geohash Kit
 rendezvous-kit = Rendezvous Kit
@@ -123,25 +123,19 @@ rendezvous-kit = Rendezvous Kit
 ## Storage | blue
 wildbloom-node = Wildbloom Node
 shelter-kit = Shelter Kit
-forgesworn-link = ForgeSworn Link
 
 ## Live streams | rose
 relayswarm = RelaySwarm | early
-relayswarm-kit = RelaySwarm Kit
 
 ## Protocols & specs | amber
 nip-drafts = NIP Drafts | spec
 payment-methods = Payment Methods | spec
 trott-conformance = TROTT Conformance | early
-gopherkind-protocol-py = Gopherkind (Python)
 
 ## Developer tools | red
 anvil = Anvil
 forgesworn-demos = Demos
 jurisdiction-kit = Jurisdiction Kit
 
-# Bearer notes are left off for now. Uncomment to add them.
-# ## Bearer notes · LNURLcash | amber
-# moneyer = Moneyer
-# notecase = Notecase
+# Bearer notes has moneyer and notecase above; notelocker is left off for now.
 # notelocker = Notelocker
