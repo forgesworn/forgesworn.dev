@@ -78,6 +78,9 @@ const PROMPTS = {
   bray:
     'A pictogram of a friendly donkey head in profile with both ears raised, ' +
     'simplified to bold rounded shapes. ' + STYLE,
+  'canary-kit':
+    'A pictogram of a small plump songbird perched on a short branch, seen side-on and facing right, beak open as it sings. ' +
+    'Body in black, its folded wing in blue, and two short curved sound arcs in red coming from the beak. ' + STYLE,
   'capacitor-mesh-ble':
     'A pictogram of two identical rounded rectangle phone shapes side by side ' +
     'with a visible gap between them, and three small concentric arcs like a ' +
@@ -95,6 +98,9 @@ const PROMPTS = {
   'epoch-seal':
     'A pictogram of a round wax seal stamped with an hourglass shape at its ' +
     'centre. ' + STYLE,
+  'farrier-kit':
+    'A pictogram of a single classic horseshoe hung the Rutland way: rounded crown at the top and both open ends pointing straight down, like an arch. ' +
+    'The shoe in black with a row of small red nail holes around it, and a small bold blue lightning bolt hanging in the space under the arch. ' + STYLE,
   'flock-kit':
     'A pictogram of a round radar screen: a thick circle, a single solid sweep wedge from the centre, and two small dots inside the circle. ' + STYLE,
   'forgesworn-demos':

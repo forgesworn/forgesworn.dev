@@ -39,7 +39,7 @@ date: September 2026
 signet-app = My Signet
 kithmoot = KithMoot
 heartwood = Heartwood
-flock = Flock
+flock = Homing
 wildbloom = Wildbloom
 gopherkind = Gopherkind
 kintrinsic = Kintrinsic
@@ -70,7 +70,6 @@ bray = Bray
 402-mcp = 402 MCP
 toll-booth-mcp = Toll Booth MCP
 rendezvous-mcp = Rendezvous MCP
-context = Context
 
 ## Signers & login | green
 sapwood = Sapwood
@@ -115,7 +114,7 @@ private-equality = Private Equality
 ## Private circles | teal
 covey-kit = Covey Kit
 roost-kit = Roost Kit
-flock-kit = Flock Kit
+flock-kit = Homing Kit
 
 ## Mesh & location | green
 mesh-kit = Mesh Kit
@@ -132,8 +131,7 @@ relayswarm = RelaySwarm | early
 
 ## Developer tools | red
 anvil = Anvil
-forgesworn-demos = Demos
-jurisdiction-kit = Jurisdiction Kit
+context = Context
 
 # Bearer notes has moneyer and notecase above; notelocker is left off for now.
 # notelocker = Notelocker

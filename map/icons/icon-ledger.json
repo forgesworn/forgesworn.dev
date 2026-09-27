@@ -1,7 +1,7 @@
 {
   "model": "gpt-image-2.5-sunburst-2026-09-08",
   "capUsd": 15,
-  "spentUsd": 6.669065000000004,
+  "spentUsd": 6.776235000000004,
   "calls": [
     {
       "at": "2026-09-27T13:14:43.470Z",
@@ -2681,6 +2681,50 @@
         "total_tokens": 1916
       },
       "usd": 0.0535,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T19:39:03.064Z",
+      "name": "farrier-kit",
+      "prompt": "A pictogram of a single classic horseshoe hung the Rutland way: rounded crown at the top and both open ends pointing straight down, like an arch. The shoe in black with a row of small red nail holes around it, and a small bold blue lightning bolt hanging in the space under the arch. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 185,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 185
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1941
+      },
+      "usd": 0.0536,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T19:39:03.045Z",
+      "name": "canary-kit",
+      "prompt": "A pictogram of a small plump songbird perched on a short branch, seen side-on and facing right, beak open as it sings. Body in black, its folded wing in blue, and two short curved sound arcs in red coming from the beak. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 177,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 177
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1933
+      },
+      "usd": 0.0536,
       "error": null
     }
   ]
