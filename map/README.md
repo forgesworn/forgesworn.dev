@@ -51,7 +51,7 @@ untouched. Everything else is a glyph generated with GPT-Image Sunburst by
 `scripts/gen-icons.mjs`:
 
 ```bash
-node scripts/gen-icons.mjs                    # draw everything queued, within the spend cap
+node scripts/gen-icons.mjs                    # draw any entry with no icon yet, within the spend cap
 node scripts/gen-icons.mjs --only kenspeckle  # names starting with this; comma-separate several
 node scripts/gen-icons.mjs --force            # regenerate, keeping the old original
 node scripts/gen-icons.mjs --redo             # rebuild every glyph and tile from its trace, no API call
@@ -59,7 +59,7 @@ node scripts/gen-icons.mjs --redo             # rebuild every glyph and tile fro
 
 Each call is logged to `icons/icon-ledger.json` with its token usage and cost;
 the run stops before any call that could take total spend past its cap. The
-untouched generated original for `<name>` is kept at
+untouched generated original for `<name>` is
 `icons/originals/<name>.png`, snapped to its three drawn tones and traced with
 potrace into one `icons/originals/<name>.<tone>.trace.svg` per tone (the model draws in
 black, red and blue, which become ivory, gold and the section's own colour),
@@ -73,6 +73,12 @@ that doesn't read well, edit its prompt in
 `scripts/gen-icons.mjs` and re-run with `--only <name> --force`; a bad
 trace alone can be redone from the original with `--redo`, no new spend. `--force` never overwrites a paid original: the old one is kept
 alongside with a timestamp.
+
+The original PNGs are archived outside the repository and ignored by git (about
+90MB); only their traces are committed. Without the PNGs, `--redo` rebuilds every
+tile and glyph from the traces, which is enough to recolour or restyle them, and
+a plain run skips any entry that already has an icon, so it never pays to redraw
+one. To re-trace from the originals, copy them back into `icons/originals/` first.
 
 One glyph, `icons/notelocker.svg`, is still a stand-in from
 [Lucide](https://lucide.dev) (ISC licence, `icons/LICENCE-lucide.txt`) for an

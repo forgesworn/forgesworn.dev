@@ -6,16 +6,18 @@
 //   node scripts/gen-icons.mjs                 draw everything queued
 //   node scripts/gen-icons.mjs --only kenspeckle   names starting with this (comma-separate several)
 //   node scripts/gen-icons.mjs --force          regenerate, keeping the old original
-//   node scripts/gen-icons.mjs --redo           re-trace every existing original, no API call
+//   node scripts/gen-icons.mjs --redo           rebuild every glyph and tile, no API call
 //
 // Every call is logged to map/icons/icon-ledger.json with its token usage and
 // cost. The run stops before any call that could take total spend past
 // CAP_USD. Refusals and errors are logged and never retried automatically.
 //
-// Each generated original is a black pictogram on white (map/icons/originals/
-// <name>.png), then vectorised into a currentColor glyph at map/icons/<name>.svg
-// so the renderer tints it with the section colour. Re-run vectorise() alone
-// with --only to redo just the trace step for one icon.
+// Each original is a three-tone emblem on white (map/icons/originals/
+// <name>.png), traced into one layer per tone (originals/<name>.<tone>.trace.svg)
+// and composed into a tile at map/icons/<name>.svg and a currentColor glyph at
+// map/icons/glyphs/<name>.svg. The paid PNGs are archived outside the repo and
+// ignored by git; the traces are committed, so --redo can rebuild every tile
+// from them when the PNG is not in the checkout.
 
 import { execFileSync } from 'node:child_process'
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -38,10 +40,6 @@ const MAX_CALL_USD = 0.5
 const CONCURRENCY = 4
 
 const KEY = process.env.OPENAI_API_KEY
-if (!KEY) {
-  console.error('OPENAI_API_KEY is not set.')
-  process.exit(1)
-}
 
 // The shared style suffix. The model draws in three flat tones, which the
 // vectoriser separates and recolours (see LAYERS below).
@@ -283,9 +281,18 @@ let inFlight = 0
 let stopped = false
 const queue = Object.entries(PROMPTS).filter(([name]) => picked(name))
 
+// An entry that already has a tile or logo is never redrawn without --force,
+// even when its paid original is not in this checkout.
+const drawn = (name) => ['svg', 'png'].some((ext) => existsSync(join(iconsDir, `${name}.${ext}`)))
+
 async function generate(name, prompt) {
   const original = join(originalsDir, `${name}.png`)
   if (existsSync(original) && !force) return true
+  if (!KEY) {
+    console.error(`${name}: OPENAI_API_KEY is not set, so nothing is drawn.`)
+    stopped = true
+    return false
+  }
   if (existsSync(original)) {
     // --force never overwrites a paid original: it is kept alongside with a timestamp.
     const kept = join(originalsDir, `${name}.${Date.now()}.png`)
@@ -389,6 +396,17 @@ function readTrace(file) {
   return walkPath(paths.join(' '), tx, ty, sx, sy)
 }
 
+const traceOf = (name, layer) => join(originalsDir, `${name}.${layer.label}.trace.svg`)
+
+// Rebuild from the committed traces when the original PNG is not here.
+function fromTraces(name) {
+  const layers = LAYERS.map((layer) => ({ ...layer, subpaths: existsSync(traceOf(name, layer)) ? readTrace(traceOf(name, layer)) : [] }))
+    .filter((l) => l.subpaths.length)
+  if (!layers.length) return false
+  compose(name, layers)
+  return true
+}
+
 function vectorise(name) {
   const original = join(originalsDir, `${name}.png`)
   const tmp = mkdtempSync(join(tmpdir(), 'gen-icons-'))
@@ -401,7 +419,7 @@ function vectorise(name) {
     execFileSync('magick', [original, '-background', 'white', '-flatten', '-resize', '512x512', '-dither', 'None', '-remap', palette, quantised])
     layers = LAYERS.map((layer) => {
       const mask = join(tmp, `${layer.label}.pbm`)
-      const trace = join(originalsDir, `${name}.${layer.label}.trace.svg`)
+      const trace = traceOf(name, layer)
       execFileSync('magick', [quantised, '-fill', 'white', '+opaque', layer.tone, '-fill', 'black', '-opaque', layer.tone, mask])
       execFileSync('potrace', [mask, '--svg', '--turdsize', '20', '--opttolerance', '0.4', '-o', trace])
       const subpaths = readTrace(trace)
@@ -414,7 +432,10 @@ function vectorise(name) {
   if (!layers.length) throw new Error(`${name}: nothing to trace`)
   // The single-tone trace this replaces.
   for (const old of [`${name}.trace.svg`, `${name}.pbm`]) rmSync(join(originalsDir, old), { force: true })
+  compose(name, layers)
+}
 
+function compose(name, layers) {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
   const see = ([px, py]) => {
     if (px < minX) minX = px
@@ -469,19 +490,22 @@ ${ds.map(({ fill, d }) => `    <path fill="${fill}" stroke="${fill}" d="${d}"/>`
 </svg>
 `
   writeFileSync(join(iconsDir, `${name}.svg`), tile)
-  console.log(`${name}: traced ${layers.map((l) => l.label).join(' + ')} -> map/icons/${name}.svg`)
+  console.log(`${name}: ${layers.map((l) => l.label).join(' + ')} -> map/icons/${name}.svg`)
 }
 
 if (args.includes('--redo')) {
-  // Rebuild every glyph and tile from its original, with no API call.
+  // Rebuild every glyph and tile, re-tracing the original where it is here and
+  // otherwise composing from the committed traces. No API call.
   for (const name of Object.keys(PROMPTS)) {
-    if (!picked(name) || !existsSync(join(originalsDir, `${name}.png`))) continue
-    vectorise(name)
+    if (!picked(name)) continue
+    if (existsSync(join(originalsDir, `${name}.png`))) vectorise(name)
+    else fromTraces(name)
   }
 } else {
   async function worker() {
     while (queue.length && !stopped) {
       const [name, prompt] = queue.shift()
+      if (!force && drawn(name) && !existsSync(join(originalsDir, `${name}.png`))) continue
       inFlight++
       try {
         const ok = await generate(name, prompt)

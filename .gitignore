@@ -9,3 +9,5 @@ tools/*.local.json
 captures-out/
 output/imagegen/
 map/icons/originals/*.pbm
+# Paid Sunburst originals are archived outside the repo; see map/README.md.
+map/icons/originals/*.png
