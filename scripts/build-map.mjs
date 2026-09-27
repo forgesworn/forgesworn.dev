@@ -1,23 +1,24 @@
 #!/usr/bin/env node
 // Build the ForgeSworn ecosystem map from map/ecosystem.txt.
 //
-// Writes two self-contained pages (fonts and icons inlined) and renders each
-// with a headless browser:
+// Writes two self-contained pages (fonts and icons inlined), lays each out in
+// a headless browser and serialises the result as a native SVG:
 //
-//   map/ecosystem-map.html     dark, 1400px wide  ->  map/ecosystem-map.png
-//   map/ecosystem-map-a4.html  light, one A4 page  ->  map/ecosystem-map-a4.pdf
+//   map/ecosystem-map.html     dark, 1400px wide  ->  .svg  ->  .png
+//   map/ecosystem-map-a4.html  light, one A4 page  ->  .svg, and .pdf
 //
 // The A4 page sizes itself: a small script shrinks or grows everything until
 // the map exactly fills the sheet, so adding entries never needs a layout edit.
 // The text file is the source; every output is derived.
 //
-//   node scripts/build-map.mjs              HTML, PNG and PDF
+//   node scripts/build-map.mjs              HTML, SVG, PNG and PDF
 //   node scripts/build-map.mjs --html-only  HTML only
 //   node scripts/build-map.mjs --strict     fail on names outside the catalogue
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { serialiseMap } from './map-svg.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const mapDir = join(root, 'map')
@@ -148,6 +149,11 @@ function font(file) {
   return `data:font/woff2;base64,${readFileSync(join(root, 'site', 'fonts', file)).toString('base64')}`
 }
 
+// Shared by the HTML pages and the SVGs serialised from them.
+const FONT_FACES = `@font-face { font-family: Fraunces; src: url(${font('fraunces-latin.woff2')}) format("woff2"); font-weight: 300 700; }
+@font-face { font-family: Inter; src: url(${font('inter-latin.woff2')}) format("woff2"); font-weight: 400 600; }
+@font-face { font-family: "JetBrains Mono"; src: url(${font('jetbrains-mono-latin.woff2')}) format("woff2"); font-weight: 400 700; }`
+
 function legend(sections) {
   const used = new Set(sections.flatMap((s) => s.entries.map((e) => e.status)).filter(Boolean))
   const items = [['', 'Working code'], ...Object.entries(STATUSES).filter(([k]) => used.has(k))]
@@ -190,9 +196,7 @@ export function renderHtml({ meta, sections }, { format = 'screen', theme = 'dar
 <title>${esc(meta.title ?? 'ForgeSworn')} ${esc(meta.subtitle ?? 'Ecosystem Map')}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-@font-face { font-family: Fraunces; src: url(${font('fraunces-latin.woff2')}) format("woff2"); font-weight: 300 700; }
-@font-face { font-family: Inter; src: url(${font('inter-latin.woff2')}) format("woff2"); font-weight: 400 600; }
-@font-face { font-family: "JetBrains Mono"; src: url(${font('jetbrains-mono-latin.woff2')}) format("woff2"); font-weight: 400 700; }
+${FONT_FACES}
 @page { size: A4; margin: 0; }
 :root { ${THEMES[theme]} }
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -375,19 +379,25 @@ async function render(outputs) {
   try {
     ;({ chromium } = await import('playwright'))
   } catch {
-    throw new Error('PNG and PDF need playwright (npm i -D playwright), or pass --html-only')
+    throw new Error('SVG, PNG and PDF need playwright (npm i -D playwright), or pass --html-only')
   }
   const browser = await chromium.launch()
   try {
-    for (const { html, png, pdf } of outputs) {
+    for (const { html, svg, png, pdf } of outputs) {
       const page = await browser.newPage({ viewport: { width: 1400, height: 1000 }, deviceScaleFactor: 2 })
       await page.goto(pathToFileURL(html).href)
       await page.evaluate(() => document.fonts.ready)
-      if (png) await page.locator('.map').screenshot({ path: png })
       if (pdf) {
         await page.emulateMedia({ media: 'print' })
         await page.waitForFunction(() => document.documentElement.dataset.fitted)
         await page.pdf({ path: pdf, preferCSSPageSize: true, printBackground: true })
+      }
+      writeFileSync(svg, await page.evaluate(serialiseMap, { fontFaces: FONT_FACES }))
+      // The PNG is drawn from the SVG, so the SVG is what every raster shows.
+      if (png) {
+        await page.goto(pathToFileURL(svg).href)
+        await page.evaluate(() => document.fonts.ready)
+        await page.locator('svg').first().screenshot({ path: png })
       }
       await page.close()
     }
@@ -425,9 +435,9 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
 
   if (!args.has('--html-only')) {
     await render([
-      { html: screenHtml, png: join(mapDir, 'ecosystem-map.png') },
-      { html: a4Html, pdf: join(mapDir, 'ecosystem-map-a4.pdf') },
+      { html: screenHtml, svg: join(mapDir, 'ecosystem-map.svg'), png: join(mapDir, 'ecosystem-map.png') },
+      { html: a4Html, svg: join(mapDir, 'ecosystem-map-a4.svg'), pdf: join(mapDir, 'ecosystem-map-a4.pdf') },
     ])
-    console.log('wrote map/ecosystem-map.png and map/ecosystem-map-a4.pdf')
+    console.log('wrote map/ecosystem-map.svg, map/ecosystem-map.png, map/ecosystem-map-a4.svg and map/ecosystem-map-a4.pdf')
   }
 }

@@ -3,7 +3,7 @@
 `ecosystem.txt` is the map. Edit it, then run:
 
 ```bash
-npm run map              # writes both HTML pages, the PNG and the A4 PDF
+npm run map              # writes both HTML pages, both SVGs, the PNG and the A4 PDF
 npm run map -- --strict  # also fail on names missing from forgesworn-repos.json
 npm run map -- --html-only
 ```
@@ -12,9 +12,18 @@ It produces two versions from the same source:
 
 | File | What it is |
 |------|------------|
-| `ecosystem-map.png` | Dark, 1400px wide at 2x, for the web and social posts |
-| `ecosystem-map-a4.pdf` | Light, one A4 page, vector, for printing |
-| `ecosystem-map.html`, `ecosystem-map-a4.html` | The self-contained pages both are rendered from |
+| `ecosystem-map.svg` | Dark, 1400px wide, vector, for the web and anywhere it needs to scale |
+| `ecosystem-map.png` | The dark SVG rasterised at 2x, for social posts |
+| `ecosystem-map-a4.svg` | Light, one A4 page, vector |
+| `ecosystem-map-a4.pdf` | The light page printed to PDF, for printing |
+| `ecosystem-map.html`, `ecosystem-map-a4.html` | The self-contained pages the rest are laid out from |
+
+The SVGs are standalone: every box, ring and line of text is a native SVG
+element, the fonts are embedded and each icon's own vector is inlined, with no
+`<foreignObject>`. The HTML is still the layout engine: once a browser has laid
+the page out, `scripts/map-svg.mjs` redraws it as SVG at the positions the
+browser chose, so the map's layout lives in one place. Tools that do not load
+embedded WOFF2 fonts (Inkscape, for one) fall back to a similar local face.
 
 The format is documented at the top of `ecosystem.txt`. Section order is layout
 order: sections flow left to right and wrap, so move a section to change which
@@ -86,4 +95,4 @@ entry that is currently commented out in `ecosystem.txt`; its comment names
 the Lucide icon it copies. Once notelocker is drawn or dropped for good, and
 no other Lucide file remains, delete `icons/LICENCE-lucide.txt` too.
 
-The PNG and PDF need Playwright's Chromium (`npx playwright install chromium`).
+The SVG, PNG and PDF need Playwright's Chromium (`npx playwright install chromium`).
