@@ -1,0 +1,4 @@
+{
+  "version": 1,
+  "exclude": ["site/forge-realms/assets", "site/fly/vendor", "site/assets/vendor"]
+}
