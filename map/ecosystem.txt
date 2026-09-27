@@ -35,6 +35,7 @@ date: September 2026
 ## Apps | gold
 signet-app = My Signet
 kithmoot = KithMoot
+heartwood = Heartwood
 flock = Flock
 wildbloom = Wildbloom
 gopherkind = Gopherkind
@@ -67,11 +68,8 @@ toll-booth-mcp = Toll Booth MCP
 rendezvous-mcp = Rendezvous MCP
 context = Context
 
-## Hardware signers | green
-heartwood = Heartwood
-sapwood = Sapwood
-
 ## Signers & login | green
+sapwood = Sapwood
 bark = Bark
 cambium = Cambium
 signet-login = Signet Login
