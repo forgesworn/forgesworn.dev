@@ -25,6 +25,7 @@ import { fileURLToPath } from 'node:url'
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const iconsDir = join(root, 'map', 'icons')
 const originalsDir = join(iconsDir, 'originals')
+const glyphsDir = join(iconsDir, 'glyphs')
 const ledgerPath = join(iconsDir, 'icon-ledger.json')
 
 const MODEL = 'gpt-image-2.5-sunburst-2026-09-08'
@@ -86,7 +87,8 @@ const PROMPTS = {
     'joined by lines, with the centre circle wearing a wax-seal ring like a ' +
     'signature. ' + STYLE,
   'covey-kit':
-    'A pictogram of three plump round partridges huddled close together side by side on the ground, seen from the side, simple rounded bodies and small heads. ' + STYLE,
+    'A pictogram of a small flock of three birds flying together in a tight ' +
+    'V formation, wings simplified to bold triangular shapes. ' + STYLE,
   dominion:
     'A pictogram of a stylised castle keep tower with a single crenellated ' +
     'battlement and a small padlock set into its gate. ' + STYLE,
@@ -220,6 +222,38 @@ const PROMPTS = {
     'A pictogram of a rectangular clipboard with a small clip at the top and ' +
     'three short horizontal ruled lines below it, a single bold oversized ' +
     'checkmark stamped diagonally across the whole clipboard. ' + STYLE,
+}
+
+// Every drawn icon is set on a tile in the style of My Signet's app icon: a
+// deep rounded square in its map section's colour, a thin gold ring and the
+// glyph in ivory. The section colours match build-map.mjs; the tile is a
+// quarter of that colour over near-black.
+const SECTION_COLOURS = {
+  gold: '#e8a838', amber: '#f59e0b', blue: '#4a9eff', green: '#34d399',
+  teal: '#2dd4bf', red: '#f87171', rose: '#fb7185', purple: '#a78bfa',
+}
+const RING = '#C9A962'
+const IVORY = '#FAF7ED'
+const BASE = [6, 8, 15]
+
+function deepen(hex) {
+  const rgb = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
+  return '#' + rgb.map((c, i) => Math.round(c * 0.25 + BASE[i] * 0.75).toString(16).padStart(2, '0')).join('')
+}
+
+// Section colour for each entry in map/ecosystem.txt; entries not on the map
+// (language ports copy their parent's icon anyway) fall back to blue.
+const sectionOf = new Map()
+{
+  let colour = 'gold'
+  for (const line of readFileSync(join(root, 'map', 'ecosystem.txt'), 'utf8').split('\n')) {
+    if (line.startsWith('## ')) colour = (line.split('|')[1] ?? 'gold').trim()
+    else if (/^[a-z0-9][a-z0-9.-]*\s*=/.test(line)) sectionOf.set(line.split('=')[0].trim(), colour)
+  }
+}
+const tileColour = (name) => {
+  const c = sectionOf.get(name) ?? 'blue'
+  return deepen(SECTION_COLOURS[c] ?? (c.startsWith('#') ? c : SECTION_COLOURS.blue))
 }
 
 const args = process.argv.slice(2)
@@ -388,11 +422,19 @@ function vectoriseTrace(name, rawSvg, out) {
     })
     .join(' ')
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  const glyph = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
   <path fill="currentColor" d="${d}"/>
 </svg>
 `
-  writeFileSync(out, svg)
+  mkdirSync(glyphsDir, { recursive: true })
+  writeFileSync(join(glyphsDir, `${name}.svg`), glyph)
+  const tile = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100" height="100" rx="22" fill="${tileColour(name)}"/>
+  <circle cx="50" cy="50" r="38.4" fill="none" stroke="${RING}" stroke-width="1.4"/>
+  <path fill="${IVORY}" transform="translate(20 20) scale(0.6)" d="${d}"/>
+</svg>
+`
+  writeFileSync(out, tile)
   console.log(`${name}: traced -> map/icons/${name}.svg`)
 }
 

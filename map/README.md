@@ -52,18 +52,22 @@ untouched. Everything else is a glyph generated with GPT-Image Sunburst by
 
 ```bash
 node scripts/gen-icons.mjs                    # draw everything queued, within the spend cap
-node scripts/gen-icons.mjs --only kenspeckle  # names starting with this
+node scripts/gen-icons.mjs --only kenspeckle  # names starting with this; comma-separate several
 node scripts/gen-icons.mjs --force            # regenerate, keeping the old original
-node scripts/gen-icons.mjs --redo             # re-trace every existing original, no API call
+node scripts/gen-icons.mjs --redo             # rebuild every glyph and tile from its trace, no API call
 ```
 
 Each call is logged to `icons/icon-ledger.json` with its token usage and cost;
 the run stops before any call that could take total spend past its cap. The
 untouched generated original for `<name>` is kept at
 `icons/originals/<name>.png`, threshold-and-traced with potrace into
-`icons/originals/<name>.trace.svg`, then normalised into the glyph at
-`icons/<name>.svg`: centred in a square viewBox, `fill="currentColor"`, no
-embedded raster. To redo one icon that doesn't read well, edit its prompt in
+`icons/originals/<name>.trace.svg`, then normalised into a single-colour
+glyph at `icons/glyphs/<name>.svg` (centred in a square viewBox,
+`fill="currentColor"`, no embedded raster). The map uses `icons/<name>.svg`,
+which sets that glyph in ivory on a tile in the style of My Signet's app icon:
+a deep rounded square in the entry's section colour and a thin gold ring. A
+tile takes its colour from the entry's section in `ecosystem.txt`, so moving an
+entry to another section needs a `--redo` to recolour it. To redo one icon that doesn't read well, edit its prompt in
 `scripts/gen-icons.mjs` and re-run with `--only <name> --force`; a bad
 normalisation alone can be redone from the existing trace with `--redo`, no
 new spend. `--force` never overwrites a paid original: the old one is kept
