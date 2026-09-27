@@ -18,7 +18,8 @@
 // with --only to redo just the trace step for one icon.
 
 import { execFileSync } from 'node:child_process'
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -42,15 +43,16 @@ if (!KEY) {
   process.exit(1)
 }
 
-// The shared style suffix, settled from the pilot: a bold, forged-metal
-// pictogram family that reads clearly once tinted and shrunk to about 24px.
+// The shared style suffix. The model draws in three flat tones, which the
+// vectoriser separates and recolours (see LAYERS below).
 const STYLE =
-  'Simple bold flat pictogram, a single solid black silhouette shape on a plain ' +
-  'white background, no gradients, no shading, no texture, no outlines within ' +
-  'the shape, no text or letters. One clear subject, centred, filling most of ' +
-  'the frame with generous even margin. Clean geometric forms like a blacksmith\'s ' +
-  'forged emblem or a engraved seal mark: confident, chunky, high-contrast, and ' +
-  'legible at a tiny size.'
+  'Flat vector emblem drawn with exactly three flat colours on a plain pure white ' +
+  'background: pure black (#000000) for the main shape, pure red (#FF0000) for one or ' +
+  'two small accent details, and pure blue (#0000FF) for a secondary part. No other ' +
+  'colours, no gradients, no shading, no texture, no outlines, no text or letters. One ' +
+  'clear subject, centred, filling most of the frame with a generous even margin. ' +
+  'Clean, confident geometric forms like a crafted enamel badge: chunky, ' +
+  'high-contrast and legible at a tiny size.'
 
 // One bespoke pictogram per project, from its README and catalogue description.
 // Only entries with no logo of their own are listed: everything Lucide was
@@ -212,8 +214,7 @@ const PROMPTS = {
   'tessera-kit':
     'A pictogram of a three by three grid of small square mosaic tiles with narrow even gaps between them, the centre tile replaced by a round keyhole shape. ' + STYLE,
   'toll-booth':
-    'A pictogram of a simple boom-gate barrier arm raised beside a small toll ' +
-    'booth post, a coin resting at the base of the post. ' + STYLE,
+    'A pictogram of a toll booth: a small kiosk with a pitched roof and a window, beside a raised striped barrier arm, a bold lightning bolt on the front of the kiosk. ' + STYLE,
   'toll-booth-dvm':
     'A pictogram of a simple vending machine: a tall rectangular cabinet with a window of four small square slots, a coin slot on the right and a bold lightning bolt on its lower panel. ' + STYLE,
   'toll-booth-mcp':
@@ -250,6 +251,10 @@ const sectionOf = new Map()
     if (line.startsWith('## ')) colour = (line.split('|')[1] ?? 'gold').trim()
     else if (/^[a-z0-9][a-z0-9.-]*\s*=/.test(line)) sectionOf.set(line.split('=')[0].trim(), colour)
   }
+}
+const brightColour = (name) => {
+  const c = sectionOf.get(name) ?? 'blue'
+  return SECTION_COLOURS[c] ?? (c.startsWith('#') ? c : SECTION_COLOURS.blue)
 }
 const tileColour = (name) => {
   const c = sectionOf.get(name) ?? 'blue'
@@ -301,7 +306,7 @@ async function generate(name, prompt) {
   const json = await res.json().catch(() => ({}))
   const usd = costOf(json.usage)
   ledger.spentUsd += usd
-  ledger.calls.push({ at: started, name, ok: res.ok, status: res.status, usage: json.usage ?? null, usd: +usd.toFixed(4), error: json.error?.message ?? null })
+  ledger.calls.push({ at: started, name, prompt, ok: res.ok, status: res.status, usage: json.usage ?? null, usd: +usd.toFixed(4), error: json.error?.message ?? null })
   save()
   if (!res.ok || !json.data?.[0]?.b64_json) {
     console.log(`${name}: FAILED ${res.status} ${json.error?.message ?? ''}`)
@@ -361,31 +366,54 @@ function walkPath(d, tx, ty, sx, sy) {
   return subpaths
 }
 
-function vectorise(name) {
-  const original = join(originalsDir, `${name}.png`)
-  const bmp = join(originalsDir, `${name}.pbm`)
-  const rawSvg = join(originalsDir, `${name}.trace.svg`)
-  const out = join(iconsDir, `${name}.svg`)
-  // Downscale and threshold to a clean 1-bit bitmap for potrace.
-  execFileSync('magick', [original, '-resize', '512x512', '-colorspace', 'Gray', '-threshold', '50%', bmp])
-  execFileSync('potrace', [bmp, '--svg', '--turdsize', '20', '--opttolerance', '0.4', '-o', rawSvg])
-  vectoriseTrace(name, rawSvg, out)
-}
+// The model draws each emblem in three flat tones. Each tone is traced as its
+// own layer and recoloured on the tile: black becomes ivory, red becomes gold
+// and blue becomes the bright form of the section's colour. A single-tone
+// original simply has no gold or colour layer.
+const LAYERS = [
+  { tone: '#000000', label: 'ivory', fill: () => IVORY },
+  { tone: '#0000ff', label: 'colour', fill: (name) => brightColour(name) },
+  { tone: '#ff0000', label: 'gold', fill: () => RING },
+]
 
-// The trace-to-glyph step alone, so a bad normalisation can be redone from
-// the existing potrace output with no new API call.
-function vectoriseTrace(name, rawSvg, out) {
-  const traced = readFileSync(rawSvg, 'utf8')
+function readTrace(file) {
+  const traced = readFileSync(file, 'utf8')
   // potrace writes each separate shape as its own <path>; every one starts
   // with an absolute M, so their data joins into a single path.
   const paths = [...traced.matchAll(/<path[^>]*\sd="([^"]+)"/g)].map((m) => m[1])
-  if (!paths.length) throw new Error(`${name}: could not read potrace output`)
+  if (!paths.length) return []
   // potrace draws in a y-down coordinate space translated/scaled inside a <g>.
-  const transformMatch = traced.match(/<g transform="translate\(([-\d.]+),([-\d.]+)\) scale\(([-\d.]+),([-\d.]+)\)"/)
-  if (!transformMatch) throw new Error(`${name}: unexpected potrace transform`)
-  const [tx, ty, sx, sy] = transformMatch.slice(1).map(Number)
+  const t = traced.match(/<g transform="translate\(([-\d.]+),([-\d.]+)\) scale\(([-\d.]+),([-\d.]+)\)"/)
+  if (!t) throw new Error(`${file}: unexpected potrace transform`)
+  const [tx, ty, sx, sy] = t.slice(1).map(Number)
+  return walkPath(paths.join(' '), tx, ty, sx, sy)
+}
 
-  const subpaths = walkPath(paths.join(' '), tx, ty, sx, sy)
+function vectorise(name) {
+  const original = join(originalsDir, `${name}.png`)
+  const tmp = mkdtempSync(join(tmpdir(), 'gen-icons-'))
+  let layers
+  try {
+    const palette = join(tmp, 'palette.png')
+    const quantised = join(tmp, 'quantised.png')
+    execFileSync('magick', ['-size', '1x1', 'xc:#ffffff', ...LAYERS.map((l) => `xc:${l.tone}`), '+append', palette])
+    // Snap every pixel to white or one of the three tones, then trace each tone.
+    execFileSync('magick', [original, '-background', 'white', '-flatten', '-resize', '512x512', '-dither', 'None', '-remap', palette, quantised])
+    layers = LAYERS.map((layer) => {
+      const mask = join(tmp, `${layer.label}.pbm`)
+      const trace = join(originalsDir, `${name}.${layer.label}.trace.svg`)
+      execFileSync('magick', [quantised, '-fill', 'white', '+opaque', layer.tone, '-fill', 'black', '-opaque', layer.tone, mask])
+      execFileSync('potrace', [mask, '--svg', '--turdsize', '20', '--opttolerance', '0.4', '-o', trace])
+      const subpaths = readTrace(trace)
+      if (!subpaths.length) rmSync(trace)
+      return { ...layer, subpaths }
+    }).filter((l) => l.subpaths.length)
+  } finally {
+    rmSync(tmp, { recursive: true, force: true })
+  }
+  if (!layers.length) throw new Error(`${name}: nothing to trace`)
+  // The single-tone trace this replaces.
+  for (const old of [`${name}.trace.svg`, `${name}.pbm`]) rmSync(join(originalsDir, old), { force: true })
 
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
   const see = ([px, py]) => {
@@ -394,11 +422,13 @@ function vectoriseTrace(name, rawSvg, out) {
     if (py < minY) minY = py
     if (py > maxY) maxY = py
   }
-  for (const sp of subpaths) {
-    see(sp.start)
-    for (const seg of sp.segs) {
-      if (seg.type === 'L') see(seg.pt)
-      else if (seg.type === 'C') seg.pts.forEach(see)
+  for (const layer of layers) {
+    for (const sp of layer.subpaths) {
+      see(sp.start)
+      for (const seg of sp.segs) {
+        if (seg.type === 'L') see(seg.pt)
+        else if (seg.type === 'C') seg.pts.forEach(see)
+      }
     }
   }
   const boxW = maxX - minX
@@ -409,8 +439,7 @@ function vectoriseTrace(name, rawSvg, out) {
   // centred, giving every icon the same visual weight regardless of its shape.
   const norm = 88 / Math.max(boxW, boxH)
   const map = ([px, py]) => [((px - cx) * norm + 50).toFixed(2), ((py - cy) * norm + 50).toFixed(2)]
-
-  const d = subpaths
+  const pathData = (subpaths) => subpaths
     .map((sp) => {
       const parts = [`M${map(sp.start).join(',')}`]
       for (const seg of sp.segs) {
@@ -421,32 +450,33 @@ function vectoriseTrace(name, rawSvg, out) {
       return parts.join(' ')
     })
     .join(' ')
+  const ds = layers.map((l) => ({ fill: l.fill(name), d: pathData(l.subpaths) }))
 
   const glyph = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <path fill="currentColor" d="${d}"/>
+${ds.map(({ d }) => `  <path fill="currentColor" d="${d}"/>`).join('\n')}
 </svg>
 `
   mkdirSync(glyphsDir, { recursive: true })
   writeFileSync(join(glyphsDir, `${name}.svg`), glyph)
+  // A hairline stroke in each layer's own colour closes the seams potrace leaves
+  // between neighbouring tones.
   const tile = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
   <rect width="100" height="100" rx="22" fill="${tileColour(name)}"/>
   <circle cx="50" cy="50" r="38.4" fill="none" stroke="${RING}" stroke-width="1.4"/>
-  <path fill="${IVORY}" transform="translate(20 20) scale(0.6)" d="${d}"/>
+  <g transform="translate(20 20) scale(0.6)" stroke-width="0.8" stroke-linejoin="round">
+${ds.map(({ fill, d }) => `    <path fill="${fill}" stroke="${fill}" d="${d}"/>`).join('\n')}
+  </g>
 </svg>
 `
-  writeFileSync(out, tile)
-  console.log(`${name}: traced -> map/icons/${name}.svg`)
+  writeFileSync(join(iconsDir, `${name}.svg`), tile)
+  console.log(`${name}: traced ${layers.map((l) => l.label).join(' + ')} -> map/icons/${name}.svg`)
 }
 
 if (args.includes('--redo')) {
-  // Re-run the trace-to-glyph step for every existing potrace output, with no
-  // API call, for when the normalisation step alone needs fixing.
-  const { readdirSync } = await import('node:fs')
-  for (const f of readdirSync(originalsDir)) {
-    if (!f.endsWith('.trace.svg')) continue
-    const name = f.slice(0, -'.trace.svg'.length)
-    if (!picked(name)) continue
-    vectoriseTrace(name, join(originalsDir, f), join(iconsDir, `${name}.svg`))
+  // Rebuild every glyph and tile from its original, with no API call.
+  for (const name of Object.keys(PROMPTS)) {
+    if (!picked(name) || !existsSync(join(originalsDir, `${name}.png`))) continue
+    vectorise(name)
   }
 } else {
   async function worker() {

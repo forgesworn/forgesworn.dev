@@ -1,7 +1,7 @@
 {
   "model": "gpt-image-2.5-sunburst-2026-09-08",
   "capUsd": 15,
-  "spentUsd": 3.7298800000000005,
+  "spentUsd": 6.669065000000004,
   "calls": [
     {
       "at": "2026-09-27T13:14:43.470Z",
@@ -1471,6 +1471,1216 @@
         "total_tokens": 1877
       },
       "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:13:50.497Z",
+      "name": "nip-drafts",
+      "prompt": "A pictogram of a single sheet of paper with a folded top corner and three short ruled lines, a small pencil laid diagonally across it. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 152,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 152
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1908
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:13:50.387Z",
+      "name": "anvil",
+      "prompt": "A pictogram of a classic blacksmith's anvil, seen from the side, solid and chunky with a single horn. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 148,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 148
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1904
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:13:50.478Z",
+      "name": "bray",
+      "prompt": "A pictogram of a friendly donkey head in profile with both ears raised, simplified to bold rounded shapes. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 144,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 144
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1900
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:13:50.492Z",
+      "name": "covey-kit",
+      "prompt": "A pictogram of a small flock of three birds flying together in a tight V formation, wings simplified to bold triangular shapes. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 148,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 148
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1904
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:14:19.671Z",
+      "name": "toll-booth",
+      "prompt": "A pictogram of a toll booth: a small kiosk with a pitched roof and a window, beside a raised striped barrier arm, a bold lightning bolt on the front of the kiosk. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 160,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 160
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1916
+      },
+      "usd": 0.0535,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:14:21.105Z",
+      "name": "toll-booth-dvm",
+      "prompt": "A pictogram of a simple vending machine: a tall rectangular cabinet with a window of four small square slots, a coin slot on the right and a bold lightning bolt on its lower panel. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 161,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 161
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1917
+      },
+      "usd": 0.0535,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:14:21.997Z",
+      "name": "toll-booth-mcp",
+      "prompt": "A pictogram of a simple bar chart of three rising bars inside a rounded square frame, with a small lightning bolt in the top right corner. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 152,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 152
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1908
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:15:34.103Z",
+      "name": "aperture-announce",
+      "prompt": "A pictogram of a small aperture-blade iris, half closed, with a single curved broadcast wave arcing away from one edge. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 150,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 150
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1906
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:15:34.100Z",
+      "name": "402-mcp",
+      "prompt": "A pictogram of a simple rounded robot head seen from the front, two round eyes and a bold lightning bolt in the middle of its forehead, no body and no cables. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 158,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 158
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1914
+      },
+      "usd": 0.0535,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:15:34.065Z",
+      "name": "402-announce",
+      "prompt": "A pictogram of a megaphone pointing right with a bold lightning bolt on its side and three short sound lines coming from its mouth. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 151,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 151
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1907
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:15:34.096Z",
+      "name": "402-indexer",
+      "prompt": "A pictogram of a magnifying glass over a short stack of three ruled index cards, one card corner turned up. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 147,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 147
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1903
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:16:01.817Z",
+      "name": "bark",
+      "prompt": "A pictogram of a rounded jigsaw browser-extension puzzle piece with a small key shape cut out of its middle. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 146,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 146
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1902
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:16:02.650Z",
+      "name": "capacitor-mesh-ble",
+      "prompt": "A pictogram of two identical rounded rectangle phone shapes side by side with a visible gap between them, and three small concentric arcs like a Bluetooth signal bridging the gap between their edges. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 160,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 160
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1916
+      },
+      "usd": 0.0535,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:16:00.905Z",
+      "name": "aperture-phoenixd",
+      "prompt": "A pictogram of a camera aperture blade iris, fully closed to a small point, with a single small phoenix-feather flame rising from its centre. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 153,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 153
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1909
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:16:05.884Z",
+      "name": "context",
+      "prompt": "A pictogram of a small node-and-edge graph, three connected circles joined by lines, with the centre circle wearing a wax-seal ring like a signature. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 155,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 155
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1911
+      },
+      "usd": 0.0535,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:16:28.036Z",
+      "name": "dominion",
+      "prompt": "A pictogram of a stylised castle keep tower with a single crenellated battlement and a small padlock set into its gate. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 151,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 151
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1907
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:16:30.914Z",
+      "name": "flock-kit",
+      "prompt": "A pictogram of a round radar screen: a thick circle, a single solid sweep wedge from the centre, and two small dots inside the circle. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 153,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 153
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1909
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:16:29.702Z",
+      "name": "epoch-seal",
+      "prompt": "A pictogram of a round wax seal stamped with an hourglass shape at its centre. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 141,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 141
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1897
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:16:32.189Z",
+      "name": "forgesworn-demos",
+      "prompt": "A pictogram of a play triangle inside a hexagonal nut or gear outline, like a demo reel meeting a mechanical part. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 148,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 148
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1904
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:16:55.296Z",
+      "name": "geohash-kit",
+      "prompt": "A pictogram of a location pin shape filled with a small 3x3 grid of squares, like a map reference cut into the pin. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 152,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 152
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1908
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:16:57.799Z",
+      "name": "jurisdiction-kit",
+      "prompt": "A pictogram of a plain circle globe with two bold curved meridian lines crossing it and one horizontal equator line, a small flat pediment roof on three columns (a courthouse front) sitting on top of the circle like a hat. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 171,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 171
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1927
+      },
+      "usd": 0.0535,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:16:59.521Z",
+      "name": "kenspeckle",
+      "prompt": "A pictogram for verified relationships at three social distances: three concentric rings around a small solid dot at the centre, like ripples of recognition spreading outward, the outer ring drawn slightly open like a handshake clasp. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 166,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 166
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1922
+      },
+      "usd": 0.0535,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:17:09.102Z",
+      "name": "keystore-kit",
+      "prompt": "A pictogram of a single old-fashioned door key, its round bow shaped like a small pentagon shield, laid horizontally in front of and overlapping a plain thick-walled circle like a vault door. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 163,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 163
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1919
+      },
+      "usd": 0.0535,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:17:22.160Z",
+      "name": "moneyer",
+      "prompt": "A pictogram of one thick round coin seen face-on with a bold lightning bolt embossed in its centre, and a small blacksmith's hammer resting diagonally across its upper right edge. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 160,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 160
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1916
+      },
+      "usd": 0.0535,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:17:25.909Z",
+      "name": "mesh-kit",
+      "prompt": "A pictogram of a triangular mesh of dots joined by straight lines, like a small geodesic net, six nodes and connecting edges. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 151,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 151
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1907
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:17:28.501Z",
+      "name": "nostr-anon-vote",
+      "prompt": "A pictogram of a ballot box with a single slot, a small ring shape dropping into the slot in place of a paper ballot. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 150,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 150
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1906
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:17:38.046Z",
+      "name": "nostr-attestations",
+      "prompt": "A pictogram of a round official stamp or rosette seal with a bold checkmark at its centre. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 144,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 144
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1900
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:17:55.725Z",
+      "name": "nostr-deaddrop",
+      "prompt": "A pictogram of a plain envelope with no visible seams, a single small question mark replacing the usual sender mark on its flap. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 149,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 149
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1905
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:17:54.062Z",
+      "name": "nostr-contact-card",
+      "prompt": "A pictogram of a small rectangular contact card with a corner-mounted QR square and a single ruled name line beneath it. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 147,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 147
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1903
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:17:57.480Z",
+      "name": "nostr-succession",
+      "prompt": "A pictogram of a key handing off to a second identical key along a short curved arrow, like a baton pass. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 147,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 147
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1903
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:18:07.846Z",
+      "name": "nostr-veil",
+      "prompt": "A pictogram of a simple hooded cloak or veil shape draped over a small ring, hiding most of it from view. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 149,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 149
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1905
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:18:20.748Z",
+      "name": "nsec-tree",
+      "prompt": "A pictogram of a bare tree trunk branching into three smaller branches, each branch ending in a small key-tooth shape instead of a leaf. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 152,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 152
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1908
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:18:20.279Z",
+      "name": "notecase",
+      "prompt": "A pictogram of a slim wallet case, open a little, with a folded bearer note tucked halfway inside it. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 146,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 146
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1902
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:18:23.154Z",
+      "name": "nsec-tree-cli",
+      "prompt": "A pictogram of a bare tree trunk branching into three smaller branches ending in key-tooth shapes, growing out of a small terminal-prompt rectangle with a blinking cursor bar. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 158,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 158
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1914
+      },
+      "usd": 0.0535,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:18:34.072Z",
+      "name": "nwc-lnd-bridge",
+      "prompt": "A pictogram of a simple arched bridge with a small lightning bolt crossing beneath its span. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 142,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 142
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1898
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:18:46.648Z",
+      "name": "payment-methods",
+      "prompt": "A pictogram of a single coin with a lightning bolt embossed on its face, resting on a short ruled specification line. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 147,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 147
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1903
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:18:48.520Z",
+      "name": "private-equality",
+      "prompt": "A pictogram of two overlapping circles like a Venn diagram, an equals sign filling the small lens where they overlap. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 147,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 147
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1903
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:18:49.666Z",
+      "name": "range-proof",
+      "prompt": "A pictogram of a short horizontal bar or ruler with a single bold tick mark sitting between two bracket ends, proving a point falls in range. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 152,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 152
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1908
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:19:01.661Z",
+      "name": "relayswarm",
+      "prompt": "A pictogram of a small television or play-screen shape with three curved broadcast waves fanning out from one corner like a swarm signal. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 150,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 150
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1906
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:19:12.101Z",
+      "name": "rendezvous-kit",
+      "prompt": "A pictogram of three location pins arranged around a shared point, thin lines converging from each pin to one small circle in the middle. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 151,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 151
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1907
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:19:14.212Z",
+      "name": "rendezvous-mcp",
+      "prompt": "A pictogram of three location pins converging on a small robot-head shape at the centre where their lines meet. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 146,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 146
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1902
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:19:15.856Z",
+      "name": "ring-sig",
+      "prompt": "A pictogram of a ring of small overlapping circles joined edge to edge in a closed loop, like a chain of linked rings forming a wreath. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 152,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 152
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1908
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:19:29.154Z",
+      "name": "roost-kit",
+      "prompt": "A pictogram of a simple bird roosting on a horizontal perch bar, wings folded, drawn as bold rounded shapes. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 148,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 148
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1904
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:19:40.692Z",
+      "name": "shamir-core",
+      "prompt": "A pictogram of a single circle split into three equal pie-slice pieces, each piece drawn slightly pulled apart from the others. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 149,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 149
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1905
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:19:39.101Z",
+      "name": "sapwood",
+      "prompt": "A pictogram of a round tree-trunk slice seen end-on: a solid disc with three thin concentric growth-ring gaps, the outermost ring band wider than the others, and one small leaf sprouting from its top edge. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 170,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 170
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1926
+      },
+      "usd": 0.0535,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:19:43.702Z",
+      "name": "shamir-words",
+      "prompt": "A pictogram of three separated pie-slice pieces of a circle, each piece replaced by a short row of ruled lines like printed words on a card. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 154,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 154
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1910
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:19:55.537Z",
+      "name": "shelter-kit",
+      "prompt": "A pictogram of a simple gabled shelter roof shape over a stack of three horizontal storage bars. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 143,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 143
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1899
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:20:06.562Z",
+      "name": "signet-contacts",
+      "prompt": "A pictogram of a small address-book card with a round wax-seal signet stamped in its corner, the seal showing a simple ring motif. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 153,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 153
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1909
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:20:09.497Z",
+      "name": "signet-credentials",
+      "prompt": "A pictogram of a small certificate or ribboned card with a round seal medallion hanging from its lower edge on a short ribbon. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 151,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 151
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1907
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:20:05.710Z",
+      "name": "signet",
+      "prompt": "A pictogram of a round signet-ring seal viewed face on, a simple emblem in relief at its centre and a plain band below. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 151,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 151
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1907
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:20:23.192Z",
+      "name": "signet-login",
+      "prompt": "A pictogram of a rounded doorway arch with a signet-ring seal set where a keyhole would normally be. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 146,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 146
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1902
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:20:32.394Z",
+      "name": "signet-verify",
+      "prompt": "A pictogram of a web browser window drawn as a rounded rectangle with a thin top bar, holding a bold shield with a checkmark in its centre. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 154,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 154
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1910
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:20:36.909Z",
+      "name": "tessera-kit",
+      "prompt": "A pictogram of a three by three grid of small square mosaic tiles with narrow even gaps between them, the centre tile replaced by a round keyhole shape. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 155,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 155
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1911
+      },
+      "usd": 0.0535,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:20:36.276Z",
+      "name": "spoken-token",
+      "prompt": "A pictogram of a simple speech bubble with a short row of dashes inside it that rotate like a combination-lock dial, suggesting rotating spoken words. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 153,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 153
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1909
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T14:20:51.526Z",
+      "name": "trott-conformance",
+      "prompt": "A pictogram of a rectangular clipboard with a small clip at the top and three short horizontal ruled lines below it, a single bold oversized checkmark stamped diagonally across the whole clipboard. Flat vector emblem drawn with exactly three flat colours on a plain pure white background: pure black (#000000) for the main shape, pure red (#FF0000) for one or two small accent details, and pure blue (#0000FF) for a secondary part. No other colours, no gradients, no shading, no texture, no outlines, no text or letters. One clear subject, centred, filling most of the frame with a generous even margin. Clean, confident geometric forms like a crafted enamel badge: chunky, high-contrast and legible at a tiny size.",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 160,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 160
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1916
+      },
+      "usd": 0.0535,
       "error": null
     }
   ]
