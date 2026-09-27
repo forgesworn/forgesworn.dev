@@ -4,7 +4,7 @@
 // existing map/icons/<name>.svg or .png are drawn.
 //
 //   node scripts/gen-icons.mjs                 draw everything queued
-//   node scripts/gen-icons.mjs --only kenspeckle   names starting with this
+//   node scripts/gen-icons.mjs --only kenspeckle   names starting with this (comma-separate several)
 //   node scripts/gen-icons.mjs --force          regenerate, keeping the old original
 //   node scripts/gen-icons.mjs --redo           re-trace every existing original, no API call
 //
@@ -56,14 +56,12 @@ const STYLE =
 // covering, plus the new entries that had no icon at all.
 const PROMPTS = {
   '402-announce':
-    'A pictogram of a small satellite dish or radio tower broadcasting three ' +
-    'curved signal waves next to a bold numeral "402". ' + STYLE,
+    'A pictogram of a megaphone pointing right with a bold lightning bolt on its side and three short sound lines coming from its mouth. ' + STYLE,
   '402-indexer':
     'A pictogram of a magnifying glass over a short stack of three ruled index ' +
     'cards, one card corner turned up. ' + STYLE,
   '402-mcp':
-    'A pictogram of a small robot head with a rectangular antenna, one eye ' +
-    'replaced by a coin, plugged into a socket by a short cable. ' + STYLE,
+    'A pictogram of a simple rounded robot head seen from the front, two round eyes and a bold lightning bolt in the middle of its forehead, no body and no cables. ' + STYLE,
   anvil:
     'A pictogram of a classic blacksmith\'s anvil, seen from the side, solid ' +
     'and chunky with a single horn. ' + STYLE,
@@ -88,8 +86,7 @@ const PROMPTS = {
     'joined by lines, with the centre circle wearing a wax-seal ring like a ' +
     'signature. ' + STYLE,
   'covey-kit':
-    'A pictogram of a small flock of three birds flying together in a tight ' +
-    'V formation, wings simplified to bold triangular shapes. ' + STYLE,
+    'A pictogram of three plump round partridges huddled close together side by side on the ground, seen from the side, simple rounded bodies and small heads. ' + STYLE,
   dominion:
     'A pictogram of a stylised castle keep tower with a single crenellated ' +
     'battlement and a small padlock set into its gate. ' + STYLE,
@@ -97,8 +94,7 @@ const PROMPTS = {
     'A pictogram of a round wax seal stamped with an hourglass shape at its ' +
     'centre. ' + STYLE,
   'flock-kit':
-    'A pictogram of three birds in flight arranged in a loose triangular ' +
-    'formation, bold simplified wing shapes, one bird slightly ahead. ' + STYLE,
+    'A pictogram of a round radar screen: a thick circle, a single solid sweep wedge from the centre, and two small dots inside the circle. ' + STYLE,
   'forgesworn-demos':
     'A pictogram of a play triangle inside a hexagonal nut or gear outline, ' +
     'like a demo reel meeting a mechanical part. ' + STYLE,
@@ -120,9 +116,7 @@ const PROMPTS = {
     'like a small pentagon shield, laid horizontally in front of and ' +
     'overlapping a plain thick-walled circle like a vault door. ' + STYLE,
   moneyer:
-    'A pictogram of a round coin standing on its edge, a bold letter-punch ' +
-    'stamp shape pressing directly down onto its top face from above, two ' +
-    'short spark lines flicking out from the point of contact. ' + STYLE,
+    'A pictogram of one thick round coin seen face-on with a bold lightning bolt embossed in its centre, and a small blacksmith\'s hammer resting diagonally across its upper right edge. ' + STYLE,
   'mesh-kit':
     'A pictogram of a triangular mesh of dots joined by straight lines, like a ' +
     'small geodesic net, six nodes and connecting edges. ' + STYLE,
@@ -184,6 +178,8 @@ const PROMPTS = {
   'roost-kit':
     'A pictogram of a simple bird roosting on a horizontal perch bar, wings ' +
     'folded, drawn as bold rounded shapes. ' + STYLE,
+  sapwood:
+    'A pictogram of a round tree-trunk slice seen end-on: a solid disc with three thin concentric growth-ring gaps, the outermost ring band wider than the others, and one small leaf sprouting from its top edge. ' + STYLE,
   'shamir-core':
     'A pictogram of a single circle split into three equal pie-slice pieces, ' +
     'each piece drawn slightly pulled apart from the others. ' + STYLE,
@@ -206,26 +202,20 @@ const PROMPTS = {
     'A pictogram of a rounded doorway arch with a signet-ring seal set where ' +
     'a keyhole would normally be. ' + STYLE,
   'signet-verify':
-    'A pictogram of a round wax-seal signet with a bold checkmark stamped ' +
-    'through its centre. ' + STYLE,
+    'A pictogram of a web browser window drawn as a rounded rectangle with a thin top bar, holding a bold shield with a checkmark in its centre. ' + STYLE,
   'spoken-token':
     'A pictogram of a simple speech bubble with a short row of dashes inside ' +
     'it that rotate like a combination-lock dial, suggesting rotating spoken ' +
     'words. ' + STYLE,
   'tessera-kit':
-    'A pictogram of a single mosaic tessera tile: a square token split by a ' +
-    'diagonal fault line into two interlocking halves that fit together like a ' +
-    'broken tally, one half slightly offset from the other. ' + STYLE,
+    'A pictogram of a three by three grid of small square mosaic tiles with narrow even gaps between them, the centre tile replaced by a round keyhole shape. ' + STYLE,
   'toll-booth':
     'A pictogram of a simple boom-gate barrier arm raised beside a small toll ' +
     'booth post, a coin resting at the base of the post. ' + STYLE,
   'toll-booth-dvm':
-    'A pictogram of a boom-gate barrier arm beside a small robot-head post in ' +
-    'place of a booth, a coin at its base. ' + STYLE,
+    'A pictogram of a simple vending machine: a tall rectangular cabinet with a window of four small square slots, a coin slot on the right and a bold lightning bolt on its lower panel. ' + STYLE,
   'toll-booth-mcp':
-    'A pictogram of a boom-gate barrier arm beside a small robot-head post, a ' +
-    'magnifying glass laid over the coin at its base to suggest read-only ' +
-    'analytics. ' + STYLE,
+    'A pictogram of a simple bar chart of three rising bars inside a rounded square frame, with a small lightning bolt in the top right corner. ' + STYLE,
   'trott-conformance':
     'A pictogram of a rectangular clipboard with a small clip at the top and ' +
     'three short horizontal ruled lines below it, a single bold oversized ' +
@@ -234,7 +224,8 @@ const PROMPTS = {
 
 const args = process.argv.slice(2)
 const force = args.includes('--force')
-const only = args.includes('--only') ? args[args.indexOf('--only') + 1] : null
+const only = args.includes('--only') ? args[args.indexOf('--only') + 1].split(',') : null
+const picked = (name) => !only || only.some((prefix) => name.startsWith(prefix))
 
 const ledger = existsSync(ledgerPath)
   ? JSON.parse(readFileSync(ledgerPath, 'utf8'))
@@ -251,7 +242,7 @@ function costOf(usage) {
 
 let inFlight = 0
 let stopped = false
-const queue = Object.entries(PROMPTS).filter(([name]) => !only || name.startsWith(only))
+const queue = Object.entries(PROMPTS).filter(([name]) => picked(name))
 
 async function generate(name, prompt) {
   const original = join(originalsDir, `${name}.png`)
@@ -412,7 +403,7 @@ if (args.includes('--redo')) {
   for (const f of readdirSync(originalsDir)) {
     if (!f.endsWith('.trace.svg')) continue
     const name = f.slice(0, -'.trace.svg'.length)
-    if (only && !name.startsWith(only)) continue
+    if (!picked(name)) continue
     vectoriseTrace(name, join(originalsDir, f), join(iconsDir, `${name}.svg`))
   }
 } else {

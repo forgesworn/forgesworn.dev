@@ -1,7 +1,7 @@
 {
   "model": "gpt-image-2.5-sunburst-2026-09-08",
   "capUsd": 15,
-  "spentUsd": 3.1967700000000008,
+  "spentUsd": 3.7298800000000005,
   "calls": [
     {
       "at": "2026-09-27T13:14:43.470Z",
@@ -1259,6 +1259,216 @@
           "text_tokens": 0
         },
         "total_tokens": 1885
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:52:33.255Z",
+      "name": "402-mcp",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 127,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 127
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1883
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:52:33.256Z",
+      "name": "covey-kit",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 127,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 127
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1883
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:52:33.262Z",
+      "name": "flock-kit",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 122,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 122
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1878
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:52:33.235Z",
+      "name": "402-announce",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 120,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 120
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1876
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:53:00.186Z",
+      "name": "signet-verify",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 123,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 123
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1879
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:53:00.757Z",
+      "name": "tessera-kit",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 124,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 124
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1880
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:52:59.669Z",
+      "name": "sapwood",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 139,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 139
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1895
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:52:59.476Z",
+      "name": "moneyer",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 129,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 129
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1885
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:53:26.171Z",
+      "name": "toll-booth-dvm",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 130,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 130
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1886
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:53:26.388Z",
+      "name": "toll-booth-mcp",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 121,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 121
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1877
       },
       "usd": 0.0533,
       "error": null
