@@ -5,7 +5,7 @@
  * forgesworn-use-cases.json + site/use-cases-template.html -> site/use-cases.html.
  */
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, copyFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -546,10 +546,23 @@ export async function buildUseCasesPage(catalogueJsonPath, useCasesJsonPath) {
   console.log(`Built site/use-cases.html -- ${useCases} use cases, ${categories} categories`);
 }
 
+/**
+ * Publish the ecosystem map. It is built and committed under map/ by
+ * `npm run map`; the site serves copies from site/map/.
+ */
+export function copyEcosystemMap() {
+  const dir = join(ROOT, 'site', 'map');
+  mkdirSync(dir, { recursive: true });
+  for (const file of ['ecosystem-map.svg', 'ecosystem-map.png', 'ecosystem-map-a4.pdf']) {
+    copyFileSync(join(ROOT, 'map', file), join(dir, file));
+  }
+  console.log('Copied the ecosystem map to site/map/');
+}
+
 // Only run when executed directly (not when imported by tests)
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (isMain) {
-  Promise.all([build(process.argv[2]), buildUseCasesPage(process.argv[2])]).catch(err => {
+  Promise.all([build(process.argv[2]), buildUseCasesPage(process.argv[2])]).then(copyEcosystemMap).catch(err => {
     console.error(err);
     process.exit(1);
   });

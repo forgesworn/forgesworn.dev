@@ -695,6 +695,19 @@
       position: relative;
     }
 
+    .eco-map { margin: 3rem auto 0; max-width: 960px; }
+    .eco-map-frame {
+      display: block; border: 1px solid var(--border-subtle); border-radius: 12px; overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .eco-map-frame:hover { border-color: var(--border-medium); }
+    .eco-map img { display: block; width: 100%; height: auto; }
+    .eco-map figcaption {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem;
+      margin-top: 1rem;
+    }
+    .eco-map-links { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+
     .stack-map-svg {
       position: absolute;
       inset: 0;
@@ -1605,6 +1618,19 @@
         <!-- STACK_MAP_CARDS -->
         <!-- STACK_MAP_SVG -->
       </div>
+      <figure class="eco-map reveal">
+        <a href="/map/ecosystem-map.svg" class="eco-map-frame" aria-label="Open the full ecosystem map">
+          <img src="/map/ecosystem-map.svg" width="1400" height="1753" loading="lazy" decoding="async"
+            alt="The ForgeSworn ecosystem map: every project on one page, grouped by what it does, with its status ring">
+        </a>
+        <figcaption>
+          <span class="text-muted">The whole ecosystem on one page.</span>
+          <span class="eco-map-links">
+            <a href="/map/ecosystem-map.svg" class="btn-secondary">Full size (SVG)</a>
+            <a href="/map/ecosystem-map-a4.pdf" class="btn-secondary">Print A4 (PDF)</a>
+          </span>
+        </figcaption>
+      </figure>
     </div>
   </section>
 

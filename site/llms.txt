@@ -5,6 +5,7 @@
 ## Pages
 
 - [Landing page](https://forgesworn.dev/): products you can run today, the creed, and the full repo catalogue grouped into eleven focus areas
+- [Ecosystem map](https://forgesworn.dev/map/ecosystem-map.svg): every project on one page, grouped by what it does (SVG; printable A4 PDF at https://forgesworn.dev/map/ecosystem-map-a4.pdf)
 - [Use cases](https://forgesworn.dev/use-cases.html): 32 end-to-end workflows, each naming the exact libraries it composes
 - [GitHub organisation](https://github.com/forgesworn): all source code
 - [402.pub](https://402.pub): live directory of Lightning-paid APIs
