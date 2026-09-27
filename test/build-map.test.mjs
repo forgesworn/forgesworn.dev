@@ -85,3 +85,12 @@ test('parses standards badges and their caption, and escapes them', () => {
   assert.ok(html.includes('<p>Drafts we author</p>'))
   assert.throws(() => parseMap('## X\n+ = nothing'), /empty standard/)
 })
+
+test('attaches an honour to the entry above and marks its tile', () => {
+  const map = parseMap('## X\nnostr-veil = Nostr Veil\n! Grand Prize & more\nanvil')
+  assert.deepEqual(map.sections[0].entries[0], { name: 'nostr-veil', label: 'Nostr Veil', honour: 'Grand Prize & more' })
+  const html = renderHtml(map)
+  assert.ok(html.includes('class="tile has-honour"'))
+  assert.ok(html.includes('<small class="honour">Grand Prize &amp; more</small>'))
+  assert.throws(() => parseMap('## X\n! lonely'), /needs an entry above it/)
+})

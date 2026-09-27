@@ -66,6 +66,15 @@ export function parseMap(text) {
     }
     // "+ Name = detail" is a standard shown as a badge under the section's
     // tiles; "+ text" with no "=" is the caption over those badges.
+    // "! text" records an honour, such as a prize, for the entry above it.
+    if (line.startsWith('!')) {
+      const honour = line.slice(1).trim()
+      const last = current.entries.at(-1)
+      if (!last) throw new Error(`${where}: an honour needs an entry above it`)
+      if (!honour) throw new Error(`${where}: empty honour`)
+      last.honour = honour
+      return
+    }
     if (line.startsWith('+')) {
       const [name, detail] = line.slice(1).split('=').map((s) => s.trim())
       if (!name) throw new Error(`${where}: empty standard`)
@@ -126,8 +135,13 @@ function tile(entry, colour) {
     : icon.kind === 'glyph'
       ? `<span class="glyph">${icon.svg}</span>`
       : `<img alt="" src="${icon.src}">`
-  const cls = entry.status ? ` is-${entry.status}` : ''
-  return `<figure class="tile${cls}"><div class="icon" style="--c:${colour}">${inner}</div><figcaption>${esc(entry.label)}</figcaption></figure>`
+  const cls = (entry.status ? ` is-${entry.status}` : '') + (entry.honour ? ' has-honour' : '')
+  const medal = entry.honour
+    ? '<span class="medal" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11"/>' +
+      '<path d="M12 5.5l1.9 3.9 4.3.6-3.1 3 .7 4.3L12 15.3l-3.8 2 .7-4.3-3.1-3 4.3-.6z"/></svg></span>'
+    : ''
+  const honour = entry.honour ? `<small class="honour">${esc(entry.honour)}</small>` : ''
+  return `<figure class="tile${cls}">${medal}<div class="icon" style="--c:${colour}">${inner}</div><figcaption>${esc(entry.label)}${honour}</figcaption></figure>`
 }
 
 function font(file) {
@@ -221,6 +235,15 @@ h2 {
   letter-spacing: .06em; text-transform: uppercase;
 }
 .tiles { display: flex; flex-wrap: wrap; justify-content: space-evenly; gap: 14em 0; }
+.tile.has-honour { position: relative; }
+.medal { position: absolute; top: -5em; left: calc(50% + 16em); width: 24em; height: 24em; }
+.medal svg { width: 100%; height: 100%; display: block; }
+.medal circle { fill: #e8a838; stroke: var(--card); stroke-width: 1.5; }
+.medal path { fill: #0a0a0f; }
+.honour {
+  display: block; margin-top: .3em; font-size: .78em; font-weight: 600; line-height: 1.2;
+  color: color-mix(in srgb, #e8a838 calc(100% - var(--ink)), black);
+}
 .standards { margin-top: 16em; display: flex; flex-direction: column; align-items: center; gap: 8em; }
 .standards p { font-family: Inter, sans-serif; font-size: 11em; color: var(--muted); letter-spacing: .02em; }
 .standards ul { list-style: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 7em; }
@@ -267,6 +290,7 @@ figcaption {
 .a4 h2 { font-size: 11.5em; }
 .a4 .tiles { gap: 10em 0; }
 .a4 .standards { margin-top: 12em; gap: 6em; }
+.a4 .medal { top: -3.5em; left: calc(50% + 11em); width: 17em; height: 17em; }
 .a4 .standards li { font-size: 10.5em; }
 .a4 .tile { gap: 5em; }
 .a4 .icon { width: 42em; height: 42em; outline-width: 1.6em; }

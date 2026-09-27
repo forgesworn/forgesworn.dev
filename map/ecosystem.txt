@@ -13,6 +13,7 @@
 #   repo-name = Label | spec      a specification, not a runtime: dotted ring
 #   + Name = detail               a standard, shown as a badge under the tiles
 #   + caption                     the caption over a section's badges
+#   ! text                        an honour, such as a prize, for the entry above
 #
 # Blank lines and lines starting with # are ignored. An entry's icon is
 # map/icons/<repo-name>.png or .svg when one exists, a monogram otherwise.
@@ -97,6 +98,7 @@ signet-contacts = Signet Contacts | early
 
 ## Privacy & trust | purple
 nostr-veil = Nostr Veil
+! Grand Prize, NosFabrica WoTathon
 nostr-anon-vote = Anon Vote
 dominion = Dominion
 nostr-deaddrop = Dead Drop
@@ -130,13 +132,7 @@ relayswarm = RelaySwarm | early
 ## Protocols & standards | amber
 nip-drafts = NIP Drafts | spec
 payment-methods = HTTP Payment Methods | spec
-trott-conformance = TROTT Conformance | early
-+ Standards we author or co-author, all drafts
 + LUD-25 = LNURLcash bearer notes, co-authored
-+ NIP-VA = attestations, kind 31000
-+ NIP-PAID-SERVICES = paid APIs, kind 31402
-+ NIP-SUCCESSION = key succession, kinds 1360, 1361
-+ Gopherkind = signed gopherholes, kind 31436
 
 ## Developer tools | red
 anvil = Anvil
