@@ -1,0 +1,1267 @@
+{
+  "model": "gpt-image-2.5-sunburst-2026-09-08",
+  "capUsd": 15,
+  "spentUsd": 3.1967700000000008,
+  "calls": [
+    {
+      "at": "2026-09-27T13:14:43.470Z",
+      "name": "anvil",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 117,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 117
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1873
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:15:23.759Z",
+      "name": "aperture-phoenixd",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 122,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 122
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1878
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:15:23.520Z",
+      "name": "402-mcp",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 121,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 121
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1877
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:15:23.520Z",
+      "name": "402-indexer",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 116,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 116
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1872
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:15:23.496Z",
+      "name": "402-announce",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 116,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 116
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1872
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:15:50.118Z",
+      "name": "bark",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 115,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 115
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1871
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:15:51.768Z",
+      "name": "covey-kit",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 117,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 117
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1873
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:15:51.342Z",
+      "name": "bray",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 113,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 113
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1869
+      },
+      "usd": 0.0532,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:15:51.447Z",
+      "name": "context",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 124,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 124
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1880
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:16:16.048Z",
+      "name": "dominion",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 120,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 120
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1876
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:16:17.349Z",
+      "name": "epoch-seal",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 110,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 110
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1866
+      },
+      "usd": 0.0532,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:16:19.183Z",
+      "name": "flock-kit",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 117,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 117
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1873
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:16:20.511Z",
+      "name": "forgesworn-demos",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 117,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 117
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1873
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:16:42.388Z",
+      "name": "geohash-kit",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 121,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 121
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1877
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:16:42.216Z",
+      "name": "forgesworn-link",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 115,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 115
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1871
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:16:45.909Z",
+      "name": "kenspeckle",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 135,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 135
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1891
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:16:45.774Z",
+      "name": "jurisdiction-kit",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 118,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 118
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1874
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:17:06.352Z",
+      "name": "keystore-kit",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 121,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 121
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1877
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:17:08.951Z",
+      "name": "mesh-kit",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 120,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 120
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1876
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:21:30.649Z",
+      "name": "aperture-announce",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 119,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 119
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1875
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:21:32.218Z",
+      "name": "capacitor-mesh-ble",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 118,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 118
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1874
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:21:35.646Z",
+      "name": "nip-drafts",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 121,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 121
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1877
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:21:34.845Z",
+      "name": "moneyer",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 118,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 118
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1874
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:22:01.142Z",
+      "name": "nostr-attestations",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 113,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 113
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1869
+      },
+      "usd": 0.0532,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:22:00.673Z",
+      "name": "nostr-anon-vote",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 119,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 119
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1875
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:22:01.812Z",
+      "name": "nostr-contact-card",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 116,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 116
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1872
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:22:03.246Z",
+      "name": "nostr-deaddrop",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 118,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 118
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1874
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:22:26.142Z",
+      "name": "nostr-succession",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 116,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 116
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1872
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:22:31.528Z",
+      "name": "notecase",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 115,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 115
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1871
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:22:30.505Z",
+      "name": "nostr-veil",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 118,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 118
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1874
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:22:31.787Z",
+      "name": "nsec-tree",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 121,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 121
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1877
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:22:53.327Z",
+      "name": "nsec-tree-cli",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 127,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 127
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1883
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:22:57.520Z",
+      "name": "private-equality",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 116,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 116
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1872
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:22:57.306Z",
+      "name": "payment-methods",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 116,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 116
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1872
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:22:56.864Z",
+      "name": "nwc-lnd-bridge",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 111,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 111
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1867
+      },
+      "usd": 0.0532,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:23:20.604Z",
+      "name": "range-proof",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 121,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 121
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1877
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:23:22.383Z",
+      "name": "relayswarm",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 119,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 119
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1875
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:23:22.927Z",
+      "name": "rendezvous-kit",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 120,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 120
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1876
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:23:23.377Z",
+      "name": "rendezvous-mcp",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 115,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 115
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1871
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:23:48.169Z",
+      "name": "ring-sig",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 121,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 121
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1877
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:23:52.008Z",
+      "name": "shamir-core",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 118,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 118
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1874
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:23:51.292Z",
+      "name": "roost-kit",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 117,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 117
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1873
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:23:52.410Z",
+      "name": "shamir-words",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 123,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 123
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1879
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:24:13.448Z",
+      "name": "shelter-kit",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 112,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 112
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1868
+      },
+      "usd": 0.0532,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:24:17.676Z",
+      "name": "signet-contacts",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 122,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 122
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1878
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:24:17.390Z",
+      "name": "signet",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 120,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 120
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1876
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:24:19.954Z",
+      "name": "signet-credentials",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 120,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 120
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1876
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:24:39.943Z",
+      "name": "signet-login",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 115,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 115
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1871
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:24:42.834Z",
+      "name": "signet-verify",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 113,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 113
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1869
+      },
+      "usd": 0.0532,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:24:43.034Z",
+      "name": "spoken-token",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 122,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 122
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1878
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:24:46.215Z",
+      "name": "tessera-kit",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 133,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 133
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1889
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:25:06.563Z",
+      "name": "toll-booth",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 121,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 121
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1877
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:25:08.376Z",
+      "name": "toll-booth-dvm",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 120,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 120
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1876
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:25:11.065Z",
+      "name": "toll-booth-mcp",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 126,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 126
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1882
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:25:11.842Z",
+      "name": "trott-conformance",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 115,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 115
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1871
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:28:56.732Z",
+      "name": "capacitor-mesh-ble",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 129,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 129
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1885
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:29:23.509Z",
+      "name": "jurisdiction-kit",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 140,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 140
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1896
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:29:51.185Z",
+      "name": "keystore-kit",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 132,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 132
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1888
+      },
+      "usd": 0.0533,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:30:18.206Z",
+      "name": "moneyer",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 134,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 134
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1890
+      },
+      "usd": 0.0534,
+      "error": null
+    },
+    {
+      "at": "2026-09-27T13:30:43.317Z",
+      "name": "trott-conformance",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 129,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 129
+        },
+        "output_tokens": 1756,
+        "output_tokens_details": {
+          "image_tokens": 1756,
+          "text_tokens": 0
+        },
+        "total_tokens": 1885
+      },
+      "usd": 0.0533,
+      "error": null
+    }
+  ]
+}
