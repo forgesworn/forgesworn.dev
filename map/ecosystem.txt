@@ -33,6 +33,7 @@ qr: https://forgesworn.dev
 date: September 2026
 
 ## Apps | gold
+signet-app = My Signet
 kithmoot = KithMoot
 flock = Flock
 wildbloom = Wildbloom
@@ -75,7 +76,6 @@ bark = Bark
 cambium = Cambium
 signet-login = Signet Login
 keystore-kit = Keystore Kit
-signet-app = My Signet
 signet-lite = My Signet Lite
 
 ## Keys & recovery | teal
