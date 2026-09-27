@@ -72,6 +72,8 @@ bark = Bark
 cambium = Cambium
 signet-login = Signet Login
 keystore-kit = Keystore Kit
+signet-app = My Signet
+signet-lite = My Signet Lite
 
 ## Keys & recovery | teal
 nsec-tree = nsec-tree
@@ -90,6 +92,7 @@ canary-kit = Canary Kit
 spoken-token = Spoken Token
 nostr-attestations = Attestations
 nostr-contact-card = Contact Card
+signet-contacts = Signet Contacts
 
 ## Privacy & trust | purple
 nostr-veil = Nostr Veil
@@ -97,6 +100,8 @@ nostr-anon-vote = Anon Vote
 dominion = Dominion
 nostr-deaddrop = Dead Drop
 epoch-seal = Epoch Seal
+kenspeckle = Kenspeckle
+tessera-kit = Tessera Kit
 
 ## Cryptographic primitives | rose
 ring-sig = Ring Sig
