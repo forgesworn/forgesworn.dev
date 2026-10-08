@@ -15,7 +15,7 @@
 - [flock](https://flock.forgesworn.dev): coercion-resistant group locator; end-to-end encrypted location over Nostr, guidance by voice, sound and vibration (source: https://github.com/forgesworn/flock)
 - [KithMoot](https://kithmoot.forgesworn.dev): multi-device video rooms over Nostr; a room is a secret held by whoever has the link, and a person on two devices appears as one participant (source: https://github.com/forgesworn/kithmoot, Android: https://github.com/forgesworn/kithmoot-android)
 - [DonkeyRide](https://donkeyride.forgesworn.dev/about): ride-hailing and dispatch with nobody in the middle taking a cut; reference implementation of the TROTT protocol (source: https://github.com/TheCryptoDonkey/donkeyride)
-- [Wildbloom](https://wildbloom.forgesworn.dev): local-first encrypted publishing and storage over Nostr and Blossom, with a self-hosted node (source: https://github.com/forgesworn/wildbloom)
+- [Wildbloom](https://wildbloom.forgesworn.dev): browser encryption, replicated or erasure-coded storage pools, owner-controlled repair, trusted signed node recommendations, optional direct-to-operator checkout and fresh full-read storage audits, with a self-hosted node and Archipelago packages (source: https://github.com/forgesworn/wildbloom)
 - notecase and moneyer: an LNURLcash (LUD-25) bearer-note wallet and mint (npm: @forgesworn/notecase, @forgesworn/moneyer)
 - [Heartwood](https://heartwood.forgesworn.dev): hardware Nostr signer on an ESP32 with a keyless bridge; clients bark (browser, https://bark.forgesworn.dev) and cambium (Android, https://cambium.forgesworn.dev)
 - [Bray](https://bray.forgesworn.dev): trust-aware Nostr MCP server for AI agents (npm: nostr-bray)
@@ -37,7 +37,7 @@
 - [canary-kit](https://github.com/forgesworn/canary-kit): deepfake-proof spoken verification with silent duress detection (npm: canary-kit)
 - [dominion](https://github.com/forgesworn/dominion): epoch-based encrypted access control with tiered audiences (npm: dominion-protocol)
 - [kintrinsic](https://github.com/forgesworn/kintrinsic): self-hosted digital wardship; guardian app, Android ward app, Linux warden, Nostr wire contract (npm SDK: @forgesworn/charter)
-- [wildbloom](https://github.com/forgesworn/wildbloom), [wildbloom-node](https://github.com/forgesworn/wildbloom-node), [shelter-kit](https://github.com/forgesworn/shelter-kit), [forgesworn-link](https://github.com/forgesworn/forgesworn-link): encrypted, content-addressed Blossom storage: client, self-hosted node, Rust storage core, and a QUIC-or-relay lane between nodes
+- [wildbloom](https://github.com/forgesworn/wildbloom), [wildbloom-node](https://github.com/forgesworn/wildbloom-node), [shelter-kit](https://github.com/forgesworn/shelter-kit): encrypted, content-addressed Blossom storage over HTTPS or optional Tor: browser client, self-hosted node and Rust storage core. Pool recovery needs the signed receipt, recovery key and enough surviving parts. Full-read audits prove current retrievability, not continuous custody. ForgeSworn Link integration is planned, not a current Wildbloom transport.
 - [kithmoot](https://github.com/forgesworn/kithmoot): multi-device conference rooms over Nostr; second implementation in Kotlin at kithmoot-android
 - [relayswarm](https://github.com/forgesworn/relayswarm): peer-assisted HLS live streaming with WebRTC signalling over Nostr relays instead of a tracker; Swift port relayswarm-kit
 - [nostr-veil](https://github.com/forgesworn/nostr-veil): anonymous trust assertions via LSAG ring signatures over NIP-85 (npm: nostr-veil)
