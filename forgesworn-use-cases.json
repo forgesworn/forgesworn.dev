@@ -1193,39 +1193,34 @@
       "title": "Publish files that outlive the server they started on",
       "persona": "A writer whose archive has vanished twice when a hosting company folded",
       "problem": "A post or a file lives at one host's address. When that host goes away so does everything, and every link that pointed at it breaks.",
-      "outcome": "Content is addressed by its hash, encrypted before it leaves your machine, and mirrored to nodes you and your friends run. Any copy satisfies the link, and repair puts back exactly the bytes that were lost.",
+      "outcome": "Encrypted files can be recovered from a complete replica or a threshold of coded parts on chosen nodes. Keep the signed recovery record and separate recovery key; explicitly enabled owner repair can restore redundancy while enough parts survive.",
       "steps": [
-        "Wildbloom keeps the file locally first, encrypts it, and publishes the blob to standard Blossom servers over HTTPS or, optionally, Tor.",
-        "The Nostr event that references it carries the content hash, so a reader can fetch from any server that has it and verify it is the right bytes.",
-        "Your own Wildbloom Node holds it under owner, friend and guest retention tiers over one deduplicated store; a friend's node takes a verified BUD-04 mirror.",
-        "When a copy is missing or corrupt, exact-hash repair fetches it again from another node that has it.",
-        "Nodes without Tor reach each other over ForgeSworn Link: a direct QUIC path where the network allows it and an opaque relay where it does not.",
-        "BitTorrent stays available as an extra distribution lane for large files."
+        "Choose complete encrypted copies or a threshold of coded parts across nodes with independent failure risks. The browser encrypts before uploading over HTTPS or optional Tor.",
+        "Use your own nodes, or find signed recommendations from trusted public keys. Recommendations do not prove capacity or independence, and using a node remains your choice.",
+        "Participating operators offer optional Lightning or LNURLcash checkout. Review the storage and refund terms, pay the operator directly and save the private order reference before uploading.",
+        "Save the signed file event or private pool receipt, and back up the recovery key separately. Pools do not publish their receipt to relays or torrent swarms.",
+        "Recover in the browser from a verified copy or enough distinct parts. Explicitly enable owner repair to restore missing ciphertext at approved destinations without the decryption key.",
+        "Use a fresh full-read audit to check present retrievability. It does not prove continuous custody or future availability; independent physical node-loss acceptance remains open."
       ],
       "stack": [
         {
           "repo": "wildbloom",
-          "role": "Local-first client: encrypts, publishes to Blossom servers, keeps BitTorrent as an extra lane"
+          "role": "Browser encryption, replicas and coded pools, recovery, trusted discovery, direct operator checkout and storage audits"
         },
         {
           "repo": "wildbloom-node",
-          "role": "Self-hosted node with retention tiers, verified mirror and exact-hash repair"
+          "role": "Self-hosted Blossom storage with retention tiers, verified repair and optional operator checkout; also packaged for Archipelago"
         },
         {
           "repo": "shelter-kit",
           "role": "The transport-neutral storage core the node is built on: BUD authorisation, content-addressed store, mirror and repair"
-        },
-        {
-          "repo": "forgesworn-link",
-          "role": "Wide-area lane between nodes: direct QUIC or opaque relay, no Tor required"
         }
       ],
       "protocols": [
         "Blossom",
         "BUD-04",
         "Nostr",
-        "QUIC",
-        "BitTorrent",
+        "Lightning / LNURLcash (optional)",
         "Tor (optional)"
       ]
     },
