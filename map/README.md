@@ -50,6 +50,10 @@ specification with no runtime of its own. Everything else has a solid ring.
 
 ## Icons
 
+Bark uses the hand-authored Browser gate logo from `bark/src/icons/bark.svg`.
+Copy that canonical SVG to `map/icons/bark.svg` after a brand change, then run
+`npm run map`. It has no PNG override; `gen-icons.mjs` preserves it during regeneration.
+
 `icons/<repo-name>.png` or `icons/<repo-name>.svg`, in that order. An SVG drawn
 in `currentColor` is treated as a glyph and tinted with its section's colour;
 any other SVG or PNG is a logo and shown as drawn. Entries with no icon get a
