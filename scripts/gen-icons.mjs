@@ -268,7 +268,8 @@ const tileColour = (name) => {
 const args = process.argv.slice(2)
 const force = args.includes('--force')
 const only = args.includes('--only') ? args[args.indexOf('--only') + 1].split(',') : null
-const picked = (name) => !only || only.some((prefix) => name.startsWith(prefix))
+// Bark uses a hand-authored product SVG; preserve it even during --redo/--force.
+const picked = (name) => name !== 'bark' && (!only || only.some((prefix) => name.startsWith(prefix)))
 
 const ledger = existsSync(ledgerPath)
   ? JSON.parse(readFileSync(ledgerPath, 'utf8'))
