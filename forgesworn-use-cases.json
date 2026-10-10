@@ -1197,8 +1197,8 @@
       "steps": [
         "Choose complete encrypted copies or a threshold of coded parts across nodes with independent failure risks. The browser encrypts before uploading over HTTPS or optional Tor.",
         "Use your own nodes, or find signed recommendations from trusted public keys. Recommendations do not prove capacity or independence, and using a node remains your choice.",
-        "On Archipelago, Wildbloom defaults uploads to your node. Selling is opt-in: the operator reserves personal capacity and chooses the customer capacity, price, term, grace, delivery and refund terms.",
-        "Participating operators offer optional Lightning or LNURLcash checkout. Review the storage and refund terms, pay the operator directly and save the private order reference before uploading.",
+        "On Archipelago, Wildbloom defaults uploads to your node. Selling is opt-in: the operator reserves personal capacity and chooses the customer capacity, price, term, grace, delivery, refund terms and payment receiver.",
+        "Participating operators offer optional Lightning or LNURLcash checkout. Review the storage and refund terms, pay the operator directly and save the private order reference before uploading. ForgeSworn supplies the software; it does not operate the node, marketplace or storage service.",
         "Save the signed file event or private pool receipt, and back up the recovery key separately. Pools do not publish their receipt to relays or torrent swarms.",
         "Recover in the browser from a verified copy or enough distinct parts. Explicitly enable owner repair to restore missing ciphertext at approved destinations without the decryption key.",
         "Use a fresh full-read audit to check present retrievability. It does not prove continuous custody or future availability; independent physical node-loss acceptance remains open."
