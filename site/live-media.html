@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Live media with Sapflow and RelaySwarm | ForgeSworn</title>
-  <meta name="description" content="What Sapflow's Rust media libraries do, where RelaySwarm and TURN fit, and when to choose MediaMTX, libsrt or another implementation.">
+  <title>Sapflow performance, RelaySwarm and Spry TURN | ForgeSworn</title>
+  <meta name="description" content="Measured on M4 Max: Sapflow's optional HTTP loop used 79% less CPU and 90% less process memory than MediaMTX. Spry TURN delivered 17–22% more UDP packets/s than the tested coturn configuration. Methods and limits included.">
   <meta name="theme-color" content="#0a0a0f">
   <link rel="canonical" href="https://forgesworn.dev/live-media.html">
   <style>
@@ -19,7 +19,9 @@
     .path li{counter-increment:stage;background:#14141d;border:1px solid #2a2a3e;border-top:3px solid #e8a838;padding:22px}.path li::before{content:counter(stage);display:block;color:#e8a838;font-size:.85rem;margin-bottom:12px}.path p{font-size:.9rem;margin-bottom:0;color:#b5b2bd}
     .table-wrap{overflow:auto;border:1px solid #2a2a3e}table{border-collapse:collapse;width:100%;min-width:680px;text-align:left;font-size:.94rem}caption{text-align:left;padding:18px;color:#b5b2bd}th,td{padding:18px;vertical-align:top;border-top:1px solid #2a2a3e}thead{background:#14141d}th{font-weight:600}td:first-child{width:23%}.note{border-left:3px solid #f472b6;background:#14141d;padding:24px}.note p:last-child{margin:0}
     .extras{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}.extras article{border-top:1px solid #2a2a3e;padding-top:24px}code{font-size:.9em;overflow-wrap:anywhere}footer{border-top:1px solid #2a2a3e;padding:28px 0;color:#a4a0af}.skip{position:absolute;left:20px;top:-100px}.skip:focus{top:10px;background:#14141d;padding:10px}
+    .actions{display:flex;flex-wrap:wrap;gap:14px;margin:28px 0}.actions a{border:1px solid #e8a838;padding:10px 16px;text-decoration:none}.actions a:first-child{background:#e8a838;color:#0a0a0f}.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin:32px 0 20px}.metric{background:#14141d;border:1px solid #2a2a3e;padding:24px}.metric strong{display:block;font:500 clamp(2.4rem,5vw,3.5rem)/1.15 Fraunces,Georgia,serif;color:#e8a838;margin:12px 0}.metric h3{font:600 1rem/1.4 Inter,system-ui,sans-serif}.metric p{font-size:.88rem;color:#b5b2bd;margin:0 0 12px}.metric a{font-size:.88rem}.tag{font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:#b5b2bd}details{margin:24px 0;border:1px solid #2a2a3e;padding:20px}summary{cursor:pointer;color:#e8a838;font-weight:600}details p:first-of-type{margin-top:20px}details p:last-child{margin-bottom:0}.subheading{margin-top:30px}.benchmark-footnote{font-size:.9rem;color:#b5b2bd;margin-top:20px}.readiness{border-top:1px solid #2a2a3e;padding-top:24px}
     @media(max-width:760px){.path,.extras{grid-template-columns:1fr 1fr}main{padding-top:40px}.navlinks{gap:16px}}
+    @media(max-width:620px){.metrics{grid-template-columns:1fr}.metric strong{font-size:3rem}}
     @media(max-width:460px){.path,.extras{grid-template-columns:1fr}.wrap{width:calc(100% - 32px)}section{margin-top:44px}}
     @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
   </style>
@@ -32,9 +34,40 @@
   </nav></header>
   <main id="main" class="wrap">
     <p class="eyebrow">Live media</p>
-    <h1>Get a broadcast from the encoder to the audience.</h1>
-    <p class="lede">Sapflow takes H.264 and AAC over SRT or RTMP, packages Low-Latency HLS and records fragmented MP4.  Its protocol libraries can also be used in native apps.  RelaySwarm adds optional peer delivery between viewers.</p>
-    <p>These solve different parts of the job.  A broadcaster can use Sapflow with ordinary HLS playback.  A player can use RelaySwarm with a different origin.  You don't need every library to get a stream on air.</p>
+    <h1>Broadcast live media with less server overhead.</h1>
+    <p class="lede">A live audience needs media delivered on time.  CPU spent serving it and memory held for each connection both matter.  Sapflow's small Rust origin and Spry TURN's packet relay have measured gains on Apple M4 Max, with the configurations and raw results below.</p>
+    <div class="actions"><a href="#performance">See the measured gains</a><a href="https://github.com/forgesworn/sapflow">Build Sapflow</a><a href="#spry">Where Spry fits</a></div>
+    <div class="metrics" aria-label="Measured M4 Max performance highlights, 23 October 2026">
+      <article class="metric"><span class="tag">Sapflow vs MediaMTX 1.21.2</span><strong>79%</strong><h3>less server CPU</h3><p>35.0% of one core against 167.8%, with 750 simulated viewers.  Sapflow's optional own HTTP loop, 16 workers.</p><a href="#performance">Compare all four configurations</a></article>
+      <article class="metric"><span class="tag">Sapflow vs MediaMTX 1.21.2</span><strong>90%</strong><h3>less process memory</h3><p>26.4 MiB peak RSS against 276.7 MiB in the same trials.  Medians of three runs per configuration.</p><a href="#performance">Read the results and conditions</a></article>
+      <article class="metric"><span class="tag">Spry TURN vs coturn 4.18.0</span><strong>17–22%</strong><h3>more delivered UDP packets/s</h3><p>Across six loopback workloads.  The measured Spry snapshot predates v0.2.0; its source is currently private.</p><a href="#spry">See the relay comparison</a></article>
+    </div>
+    <p class="muted">Native ARM64 binaries on one M4 Max, 23 October 2026.  The server and TURN trials are separate workloads.  These are measured resource gains; deployment capacity and operating costs need their own measurements.</p>
+
+    <section id="performance" aria-labelledby="performance-heading">
+      <h2 id="performance-heading">A smaller origin for the same viewer workload</h2>
+      <p>Sapflow takes H.264 and AAC over SRT or RTMP, packages Low-Latency HLS and records fragmented MP4.  Keeping that job small gives an operator a concrete reason to evaluate it: the own HTTP loop used about one fifth of MediaMTX's CPU and one tenth of its process memory in this test.</p>
+      <div class="table-wrap" role="region" aria-label="M4 Max origin benchmark at 750 simulated viewers" tabindex="0">
+        <table>
+          <caption>750 simulated viewers, three runs each.  Median server CPU, peak process RSS and per-run playlist p99.  CPU is a percentage of one core.</caption>
+          <thead><tr><th scope="col">Configuration</th><th scope="col">CPU</th><th scope="col">Peak RSS</th><th scope="col">Playlist p99</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">MediaMTX 1.21.2</th><td>167.8%</td><td>276.7 MiB</td><td>33.2 ms</td></tr>
+            <tr><th scope="row">Sapflow, default Hyper</th><td>60.9%</td><td>250.2 MiB</td><td>29.3 ms</td></tr>
+            <tr><th scope="row">Sapflow, own loop, 16 workers</th><td>35.0%</td><td>26.4 MiB</td><td>28.0 ms</td></tr>
+            <tr><th scope="row">Sapflow, own loop, 1 worker</th><td>20.3%</td><td>25.0 MiB</td><td>33.7 ms</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="benchmark-footnote">All twelve trials completed with zero errors across 7,055,374 requests.  The headline uses the 16-worker own loop; Hyper remains the default and used 64% less CPU than MediaMTX here.  One own-loop worker reduced CPU further, with a higher playlist p99 and median part fan-out delay than sixteen.</p>
+      <p>The HTTP implementation is a useful tuning target in its own right.  Against Sapflow on Hyper, the 16-worker own loop cut measured CPU by 43% and peak RSS by 89%.  The ingest and packaging paths were shared between those configurations.</p>
+      <details>
+        <summary>Test conditions, source versions and raw results</summary>
+        <p>Generated 720p30 H.264/AAC over RTMP, native ARM64 release binaries, loopback HTTP/1.1, recording off and no TLS.  Server, encoder and load generator shared the M4 Max with existing host workloads.  Each trial had warm-up, a ten-second viewer ramp and a sixty-second full-load target.</p>
+        <p>The measured Sapflow development snapshot is <code>2d20835ef246740ab42ca810df7c51fd43bf9ff6</code>, ahead of the published 0.1.0 crates.  These figures don't requalify another source revision.  The load generator includes ramp traffic in its counters and percentiles.  It fetches overlapping parts and segments and doesn't fetch MediaMTX's separate audio rendition; its byte count isn't unique-media throughput.  Peak RSS excludes kernel memory.</p>
+        <p><a href="https://github.com/forgesworn/sapflow/blob/688457f66a54449364643eb68b0b4f17d9721ed6/docs/performance-results-2026-10-23.md">Full dated method and ranges</a> &middot; <a href="https://github.com/forgesworn/sapflow/blob/688457f66a54449364643eb68b0b4f17d9721ed6/docs/performance-evidence/2026-10-23/results.json">Every scalar run and binary hash</a></p>
+      </details>
+    </section>
 
     <section aria-labelledby="path-heading">
       <h2 id="path-heading">The broadcast path</h2>
@@ -66,13 +99,35 @@
       </div>
     </section>
 
-    <section aria-labelledby="peers-heading">
-      <h2 id="peers-heading">Peer delivery and TURN are optional</h2>
+    <section id="spry" aria-labelledby="peers-heading">
+      <h2 id="peers-heading">RelaySwarm shares media.  Spry connects peers.</h2>
       <p><a href="https://github.com/forgesworn/RelaySwarm">RelaySwarm</a> lets viewers exchange verified HLS media over WebRTC data channels, using application-selected Nostr relays for rendezvous.  <a href="https://github.com/forgesworn/relayswarm-kit">RelaySwarmKit</a> provides the Swift implementation.  The HTTP origin remains the fallback when peers can't provide media in time.</p>
       <div class="note">
-        <p>Some peers can't connect directly through their networks.  An operator-selected TURN server can carry those WebRTC packets.  TURN doesn't encode, package or record media, and it isn't part of a normal SRT/RTMP-to-HLS connection.</p>
-        <p>RelaySwarm accepts ICE server configuration.  A TURN deployment such as <a href="https://github.com/coturn/coturn">coturn</a> still needs reachable addresses, credentials and bandwidth.  Whether relaying saves origin cost has to be measured after relay traffic is counted.</p>
+        <p>Some peers can't connect directly through their networks.  <strong>Spry TURN</strong> is our small Rust STUN/TURN server for that relay role: UDP and TCP client connections, optional TLS, coturn-compatible shared-secret credentials and bounded resources.  It can run separately from the media server.</p>
+        <p>RelaySwarm accepts ICE server configuration, where an operator can supply Spry or <a href="https://github.com/coturn/coturn">coturn</a>.  The relay still needs reachable addresses, credentials and bandwidth.  Spry is optional for peer connectivity; ordinary Sapflow SRT/RTMP ingest and HLS playback don't require it.</p>
       </div>
+      <h3 class="subheading">More packets delivered for less process CPU</h3>
+      <p>In the separate M4 Max relay trials, Spry delivered 17–22% more UDP packets per second than the coturn configuration tested, using 19–23% less complete-workload server CPU time and 78–82% less process RSS.  All 36 runs completed, forwarding 14.4 million packets with no observed loss or corruption.</p>
+      <div class="table-wrap" role="region" aria-label="Spry TURN and coturn delivered-packet benchmark" tabindex="0">
+        <table>
+          <caption>Native ARM64, UDP loopback, 1,200-byte payloads.  Medians of three runs for each server and allocation count.</caption>
+          <thead><tr><th scope="col">Allocations</th><th scope="col">Spry packets/s</th><th scope="col">coturn 4.18.0 packets/s</th><th scope="col">Spry gain</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">1</th><td>263,649</td><td>216,849</td><td>21.6%</td></tr>
+            <tr><th scope="row">16</th><td>282,584</td><td>242,327</td><td>16.6%</td></tr>
+            <tr><th scope="row">128</th><td>292,124</td><td>245,148</td><td>19.2%</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="benchmark-footnote">The headline rounds the six workload gains, including 160-byte payloads.  These measurements predate the bounded relay-port feature in v0.2.0.  Spry's repository and release are currently private; it carries an MIT licence with &copy; 2026 TheCryptoDonkey.  The scalar benchmark evidence below is public.</p>
+      <details>
+        <summary>What changed, the socket trade-off and all relay samples</summary>
+        <p>Spry reserves packet headroom to avoid a second media-payload copy and uses bounded readiness slots.  The main measured gain came from connected client-facing UDP sockets for authenticated, concrete-IPv4 allocations.  Wildcard/IPv6 listeners use the portable path.</p>
+        <p>The optimised 128-allocation server held 257 UDP sockets against coturn's 129.  Process RSS excludes kernel socket buffers; total system memory for those sockets wasn't measured.  Descriptor and kernel-buffer budgets therefore matter alongside the process footprint.</p>
+        <p>Each run completed 200,000 round trips, counting 400,000 forwarded data packets, with a window of 32 round trips per load worker.  One worker served one allocation; four workers shared 16 or 128 allocations.  Both servers used REST shared-secret authentication, matching limits and one relay event loop.  The elevated 1 GiB/s per-allocation bandwidth ceiling avoided testing the default limiter.</p>
+        <p>CPU time includes server startup, allocation setup, warm-up and latency samples.  RSS was sampled every 50 ms.  This closed-loop UDP test establishes a configuration-specific throughput gain.  WAN capacity, Linux, TLS throughput, physical phones and RelaySwarm with Spry remain separate qualification work.</p>
+        <p><a href="/benchmarks/2026-10-23/spry-native-final.json">All 36 final samples</a> &middot; <a href="/benchmarks/2026-10-23/spry-native-connected.json">Three-way optimisation experiment</a> &middot; <a href="/benchmarks/2026-10-23/spry-build.json">Measured source and binary hashes</a> &middot; <a href="/benchmarks/2026-10-23/SHA256SUMS">Evidence checksums</a></p>
+      </details>
     </section>
 
     <section aria-labelledby="comparison-heading">
@@ -87,6 +142,7 @@
             <tr><td>RTMP implementation</td><td>sapflow-rtmp can be embedded in a Rust server or native publishing core.</td><td><a href="https://github.com/bluenviron/gortmplib">gortmplib</a> fits Go applications; <a href="https://github.com/arut/nginx-rtmp-module">nginx-rtmp-module</a> fits an existing nginx deployment.</td></tr>
             <tr><td>HLS packaging</td><td>sapflow-hls supplies the Rust packager used by Sapflow.</td><td><a href="https://github.com/bluenviron/gohlslib">gohlslib</a> provides the Go implementation used by MediaMTX.  Language, supported tracks and playlist features affect the choice.</td></tr>
             <tr><td>Peer-assisted HLS</td><td>RelaySwarm uses Nostr rendezvous, signed media authorisation and origin fallback.  Its protocol and field qualification are still developing.</td><td><a href="https://github.com/Novage/p2p-media-loader">P2P Media Loader</a> is an established player integration using WebTorrent-compatible tracker infrastructure.</td></tr>
+            <tr><td>STUN/TURN relay</td><td>Spry is a small Rust relay with measured UDP gains and bounded resources.  Its source is currently private; the measured snapshot predates v0.2.0.</td><td><a href="https://github.com/coturn/coturn">coturn</a> has a broader deployment and administration feature set, including database integrations and metrics.  Existing coturn configurations need an explicit compatibility review before migration.</td></tr>
             <tr><td>Native broadcaster</td><td>Sapflow shares compressed-media and protocol logic between Swift and Kotlin adapters.</td><td><a href="https://github.com/HaishinKit/HaishinKit.swift">HaishinKit</a> and <a href="https://github.com/ThibaultBee/StreamPack">StreamPack</a> cover native broadcasting in their respective ecosystems.  No matched physical-device performance advantage is claimed here.</td></tr>
           </tbody>
         </table>
@@ -104,14 +160,15 @@
 
     <section aria-labelledby="evidence-heading">
       <h2 id="evidence-heading">What the measurements establish</h2>
-      <p>Existing M4 Max trials compare Sapflow with MediaMTX and compare Sapflow's own HTTP loop with Hyper.  They show lower CPU and memory use for the documented loopback workloads.  The optional HTTP loop is a separate configuration from the default Hyper path.</p>
+      <p>The origin and relay comparisons establish resource savings in their documented workloads.  They provide a reason to trial Sapflow and Spry on an operator's traffic and measure the resulting headroom.</p>
       <p>Those results don't establish Linux capacity, internet latency, phone battery life or sustained hardware-codec performance.  Server, load generator and encoder sharing a Mac also compete for resources.  Read the conditions alongside the numbers before using them to size a deployment.</p>
       <p><a href="https://github.com/forgesworn/sapflow/blob/main/docs/native-performance-contract.md">The native performance contract</a> sets out copying, queueing and physical-device gates.  New measurements belong with their exact source and binary versions.</p>
+      <p class="readiness"><strong>Next measurements:</strong> separate Sapflow's steady-state collection from its ramp, compare 1/4/16 workers at 250 and 750 viewers, and rerun the current source revisions.  Then exercise TLS, recording and multiple publishers on a separate Linux host, and measure RelaySwarm with Spry across real networks, including origin fallback and relay bandwidth.</p>
     </section>
 
     <section aria-labelledby="licence-heading">
       <h2 id="licence-heading">Public source, with the actual notices</h2>
-      <p>The linked ForgeSworn repositories are public and MIT-licensed.  Sapflow's <a href="https://github.com/forgesworn/sapflow/blob/main/LICENSE">licence</a> names TheCryptoDonkey.  Other projects retain their own copyright notices, and dependencies retain theirs.  <a href="https://github.com/forgesworn/sapflow/blob/main/THIRD_PARTY_LICENSES.txt">Sapflow's third-party notices</a> list those separately.</p>
+      <p>The linked ForgeSworn source repositories are public and MIT-licensed.  Sapflow's <a href="https://github.com/forgesworn/sapflow/blob/main/LICENSE">licence</a> names TheCryptoDonkey.  Spry also has an MIT licence naming TheCryptoDonkey, but its source remains private.  Other projects retain their own copyright notices, and dependencies retain theirs.  <a href="https://github.com/forgesworn/sapflow/blob/main/THIRD_PARTY_LICENSES.txt">Sapflow's third-party notices</a> list those separately.</p>
       <p>Public source and a published package are separate things.  The SRT, RTMP, HLS and core crates and server have initial 0.1.0 releases.  Native consumer qualification and production readiness remain explicit in the project documentation.</p>
     </section>
   </main>

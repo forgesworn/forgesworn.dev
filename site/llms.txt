@@ -7,7 +7,7 @@
 - [Landing page](https://forgesworn.dev/): products you can run today, the creed, and the full repo catalogue grouped into eleven focus areas
 - [Ecosystem map](https://forgesworn.dev/map/ecosystem-map.svg): every project on one page, grouped by what it does (SVG; printable A4 PDF at https://forgesworn.dev/map/ecosystem-map-a4.pdf)
 - [Use cases](https://forgesworn.dev/use-cases.html): 32 end-to-end workflows, each naming the exact libraries it composes
-- [GitHub organisation](https://github.com/forgesworn): all source code
+- [GitHub organisation](https://github.com/forgesworn): public source code
 - [402.pub](https://402.pub): live directory of Lightning-paid APIs
 
 ## Products people can use today
@@ -39,7 +39,8 @@
 - [kintrinsic](https://github.com/forgesworn/kintrinsic): self-hosted digital wardship; guardian app, Android ward app, Linux warden, Nostr wire contract (npm SDK: @forgesworn/charter)
 - [wildbloom](https://github.com/forgesworn/wildbloom), [wildbloom-node](https://github.com/forgesworn/wildbloom-node), [shelter-kit](https://github.com/forgesworn/shelter-kit): encrypted, content-addressed Blossom storage over HTTPS or optional Tor: browser client, self-hosted node and Rust storage core. Pool recovery needs the signed receipt, recovery key and enough surviving parts. Full-read audits prove current retrievability, not continuous custody. ForgeSworn Link integration is planned, not a current Wildbloom transport.
 - [kithmoot](https://github.com/forgesworn/kithmoot): multi-device conference rooms over Nostr; second implementation in Kotlin at kithmoot-android
-- [Sapflow and the live-media stack](https://forgesworn.dev/live-media.html): runtime-free Rust SRT, RTMP and LL-HLS libraries, the small media origin, optional peer delivery and TURN, competitor trade-offs and measurement limits. Public MIT source: https://github.com/forgesworn/sapflow. Native SDK qualification remains separate from server benchmarks.
+- [Sapflow and the live-media stack](https://forgesworn.dev/live-media.html): runtime-free Rust SRT, RTMP and LL-HLS libraries and a small media origin. In the 23 October 2026 M4 Max loopback test with 750 simulated viewers, the optional own HTTP loop with 16 workers used 79% less CPU and 90% less process RSS than MediaMTX 1.21.2; default Hyper used 64% less CPU. The page links all configurations, source versions and raw results. Public MIT source: https://github.com/forgesworn/sapflow. Native SDK qualification remains separate from server benchmarks.
+- [Spry TURN](https://forgesworn.dev/live-media.html#spry): optional Rust STUN/TURN relay for peer connectivity, separate from Sapflow ingest and HLS. The repository and release are currently private; MIT, copyright 2026 TheCryptoDonkey. Its pre-v0.2.0 M4 Max snapshot delivered 17–22% more UDP packets/s than the tested coturn 4.18.0 configuration across six loopback workloads, with 19–23% less complete-workload server CPU time and 78–82% less process RSS. Public scalar evidence and method are linked on the page. The optimised path uses an extra UDP socket per allocation; kernel memory, WAN, Linux, TLS throughput and RelaySwarm integration remain separate measurements.
 - [relayswarm](https://github.com/forgesworn/relayswarm): peer-assisted HLS live streaming with WebRTC signalling over Nostr relays instead of a tracker; Swift port relayswarm-kit
 - [nostr-veil](https://github.com/forgesworn/nostr-veil): anonymous trust assertions via LSAG ring signatures over NIP-85 (npm: nostr-veil)
 - [nostr-anon-vote](https://github.com/forgesworn/nostr-anon-vote): anonymous voting on Nostr with LSAG ring signatures (npm: nostr-anon-vote)
