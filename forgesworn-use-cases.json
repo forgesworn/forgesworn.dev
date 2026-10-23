@@ -1156,17 +1156,19 @@
     {
       "id": "livestream-without-a-tracker",
       "category": "live",
-      "title": "Live-stream to a crowd with no tracker for anyone to seize",
-      "persona": "An independent broadcaster whose peer-assisted stream depends on a signalling tracker one company runs",
-      "problem": "Browser peer-assist needs rendezvous, because viewers cannot find each other from nothing. Today that comes from a dedicated tracker somebody operates, which makes it the one seizable part of the system.",
-      "outcome": "The stream's own Nostr relays carry the swarm's signalling. Viewers exchange encrypted offers over relays the stream chose, fetch segments from each other verified by hash, and fall back to plain HLS from the origin, so the floor is today's behaviour.",
+      "title": "Share HLS between viewers using Nostr rendezvous",
+      "persona": "An independent broadcaster who wants peer-assisted delivery using the relays their application already selects",
+      "problem": "Origin bandwidth grows with the audience.  Viewers can help deliver media, but they need a way to find each other.  Tracker-based systems provide that rendezvous; an application already using Nostr may prefer to reuse its selected relays.",
+      "outcome": "Application-selected Nostr relays carry encrypted signalling.  Peers exchange authorised, hash-verified media over WebRTC, with the HLS origin retained for startup and missed deadlines.  The protocol is experimental and broad physical-device and NAT qualification remains open.",
       "steps": [
-        "A NIP-53 live-stream event already lists relays; RelaySwarm uses that same relay set as the swarm's rendezvous instead of a tracker.",
+        "Publish to an HLS origin.  Sapflow can provide SRT/RTMP ingest, LL-HLS packaging and optional recording; RelaySwarm can also work with another compatible origin.",
+        "The host explicitly supplies the signed stream event, swarm identifier, relays and ICE configuration.  A NIP-53 event can inform that policy; it isn't read automatically as transport configuration.",
         "A viewer announces presence as an ephemeral kind 24170 event scoped to the swarm; peers answer with kind 24171 signals addressed to it.",
         "SDP is NIP-44-encrypted to the counterparty, because an offer names the sender's network addresses and must never sit readable on a public relay.",
-        "Peers open WebRTC data channels and exchange segments, each verified against its hash before it is played.",
+        "Peers open WebRTC data channels.  Peer-first delivery requires signed authorisation and expiring media commitments; bytes are checked against the authorised hashes before playback.",
+        "An operator-selected TURN server can relay WebRTC packets when direct connectivity fails.  That is an optional peer transport, separate from Sapflow ingest and HLS serving.",
         "Every viewer keeps the origin as fallback: if no peer can serve a segment in time, it is fetched over plain HLS.",
-        "Native macOS and iOS apps join the same swarm through relayswarm-kit, which ships the signalling and a libdatachannel transport as Swift packages."
+        "RelaySwarmKit provides Swift signalling and libdatachannel transport.  Measured macOS/browser interoperability doesn't establish physical iPhone or internet NAT acceptance."
       ],
       "stack": [
         {

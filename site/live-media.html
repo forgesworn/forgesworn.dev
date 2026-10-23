@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Live media with Sapflow and RelaySwarm | ForgeSworn</title>
+  <meta name="description" content="What Sapflow's Rust media libraries do, where RelaySwarm and TURN fit, and when to choose MediaMTX, libsrt or another implementation.">
+  <meta name="theme-color" content="#0a0a0f">
+  <link rel="canonical" href="https://forgesworn.dev/live-media.html">
+  <style>
+    @font-face{font-family:Inter;src:url('/fonts/inter-latin.woff2') format('woff2');font-display:swap;font-weight:400 600}
+    @font-face{font-family:Fraunces;src:url('/fonts/fraunces-latin.woff2') format('woff2');font-display:swap;font-weight:300 700}
+    *{box-sizing:border-box}body{margin:0;background:#0a0a0f;color:#e8e6e3;font:1rem/1.7 Inter,system-ui,sans-serif}
+    a{color:#e8a838;text-underline-offset:.2em}a:hover{color:#ffce7b}a:focus-visible{outline:3px solid #e8a838;outline-offset:5px}
+    .wrap{width:min(1120px,100% - 40px);margin:auto}header{border-bottom:1px solid #2a2a3e}nav{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;padding:24px 0}
+    .brand{font-weight:600;text-decoration:none;color:#e8e6e3}.brand span{color:#e8a838}.navlinks{display:flex;gap:24px;flex-wrap:wrap}
+    main{padding:65px 0 70px}h1,h2,h3{font-family:Fraunces,Georgia,serif;line-height:1.2;font-weight:500}h1{font-size:clamp(2.6rem,6vw,4.6rem);max-width:900px;margin:18px 0 26px}h2{font-size:2rem;margin:0 0 20px}h3{font-size:1.35rem;margin:0 0 10px}
+    p{max-width:820px;margin:0 0 20px}.eyebrow{color:#e8a838;font-size:.85rem;letter-spacing:.1em;text-transform:uppercase}.lede{font-size:1.2rem;color:#b5b2bd;max-width:850px}section{margin-top:64px}.muted{color:#a4a0af}.path{list-style:none;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));padding:0;gap:14px;counter-reset:stage}
+    .path li{counter-increment:stage;background:#14141d;border:1px solid #2a2a3e;border-top:3px solid #e8a838;padding:22px}.path li::before{content:counter(stage);display:block;color:#e8a838;font-size:.85rem;margin-bottom:12px}.path p{font-size:.9rem;margin-bottom:0;color:#b5b2bd}
+    .table-wrap{overflow:auto;border:1px solid #2a2a3e}table{border-collapse:collapse;width:100%;min-width:680px;text-align:left;font-size:.94rem}caption{text-align:left;padding:18px;color:#b5b2bd}th,td{padding:18px;vertical-align:top;border-top:1px solid #2a2a3e}thead{background:#14141d}th{font-weight:600}td:first-child{width:23%}.note{border-left:3px solid #f472b6;background:#14141d;padding:24px}.note p:last-child{margin:0}
+    .extras{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}.extras article{border-top:1px solid #2a2a3e;padding-top:24px}code{font-size:.9em;overflow-wrap:anywhere}footer{border-top:1px solid #2a2a3e;padding:28px 0;color:#a4a0af}.skip{position:absolute;left:20px;top:-100px}.skip:focus{top:10px;background:#14141d;padding:10px}
+    @media(max-width:760px){.path,.extras{grid-template-columns:1fr 1fr}main{padding-top:40px}.navlinks{gap:16px}}
+    @media(max-width:460px){.path,.extras{grid-template-columns:1fr}.wrap{width:calc(100% - 32px)}section{margin-top:44px}}
+    @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header><nav class="wrap" aria-label="Main navigation">
+    <a class="brand" href="/">Forge<span>Sworn</span></a>
+    <div class="navlinks"><a href="/#ecosystem">Libraries</a><a href="/use-cases.html">Use cases</a><a href="https://github.com/forgesworn/sapflow">Sapflow source</a></div>
+  </nav></header>
+  <main id="main" class="wrap">
+    <p class="eyebrow">Live media</p>
+    <h1>Get a broadcast from the encoder to the audience.</h1>
+    <p class="lede">Sapflow takes H.264 and AAC over SRT or RTMP, packages Low-Latency HLS and records fragmented MP4.  Its protocol libraries can also be used in native apps.  RelaySwarm adds optional peer delivery between viewers.</p>
+    <p>These solve different parts of the job.  A broadcaster can use Sapflow with ordinary HLS playback.  A player can use RelaySwarm with a different origin.  You don't need every library to get a stream on air.</p>
+
+    <section aria-labelledby="path-heading">
+      <h2 id="path-heading">The broadcast path</h2>
+      <ol class="path" aria-label="Broadcast stages in order">
+        <li><h3>Encode</h3><p>A native app or an existing encoder produces compressed H.264 video and AAC audio.</p></li>
+        <li><h3>Publish</h3><p>SRT carries media over UDP with recovery.  RTMP provides a publishing path for existing tools.</p></li>
+        <li><h3>Package</h3><p>Sapflow writes HLS parts, segments and playlists, with optional MP4 recording.</p></li>
+        <li><h3>Watch</h3><p>A player fetches HLS over HTTPS.  A reverse proxy supplies TLS and HTTP/2.</p></li>
+      </ol>
+      <p class="muted">The native adapters own the camera, microphone, hardware codecs and sockets.  The shared Rust libraries process compressed media.  Sapflow doesn't transcode a stream or create an adaptive bitrate ladder.</p>
+    </section>
+
+    <section aria-labelledby="libraries-heading">
+      <h2 id="libraries-heading">Why separate libraries?</h2>
+      <p>An application may need a publisher without a server, or a packager without a network runtime.  Separating protocol state from sockets lets the same code run under a server event loop or a native platform adapter.</p>
+      <div class="table-wrap" role="region" aria-label="Sapflow library responsibilities" tabindex="0">
+        <table>
+          <caption>The libraries share a repository.  Each has a specific responsibility.</caption>
+          <thead><tr><th scope="col">Component</th><th scope="col">What it supplies</th><th scope="col">When you need it</th></tr></thead>
+          <tbody>
+            <tr><td><a href="https://github.com/forgesworn/sapflow/tree/main/crates/sapflow-srt">sapflow-srt</a></td><td>Runtime-free SRT listener/receiver and caller/sender state, including optional AES-CTR encryption.</td><td>A Rust SRT implementation you can drive from your own sockets and clock.  Live mode is the supported scope; file transfer, bonding and full libsrt parity aren't promised.</td></tr>
+            <tr><td><a href="https://github.com/forgesworn/sapflow/tree/main/crates/sapflow-rtmp">sapflow-rtmp</a></td><td>RTMP publishing client and server-side protocol state.</td><td>Compatible publishing without embedding a C library or the whole media server.  It doesn't provide an RTMP playback service.</td></tr>
+            <tr><td><a href="https://github.com/forgesworn/sapflow/tree/main/crates/sapflow-hls">sapflow-hls</a></td><td>FLV/MPEG-TS ingest, fragmented MP4, LL-HLS parts and playlist rules.</td><td>Packaging H.264/AAC for HLS playback or reusing media handling in an application.</td></tr>
+            <tr><td><a href="https://github.com/forgesworn/sapflow/tree/main/crates/sapflow-core">sapflow-core</a></td><td>Shared media and stream types with no network or async runtime.</td><td>The common vocabulary used by the protocol and packaging libraries.</td></tr>
+            <tr><td><a href="https://github.com/forgesworn/sapflow/tree/main/crates/sapflow-client">sapflow-client</a> and <a href="https://github.com/forgesworn/sapflow/tree/main/crates/sapflow-ffi">sapflow-ffi</a></td><td>Compressed-sample validation, bounded queues, session policy and the Swift/Kotlin boundary.</td><td>Native app development.  These interfaces and native packages are still being qualified; they aren't a finished camera SDK.</td></tr>
+            <tr><td><a href="https://github.com/forgesworn/sapflow">Sapflow server</a></td><td>Socket adapters, HTTP serving, recording and application callbacks around those libraries.</td><td>A small origin for the specific SRT/RTMP-to-HLS job.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section aria-labelledby="peers-heading">
+      <h2 id="peers-heading">Peer delivery and TURN are optional</h2>
+      <p><a href="https://github.com/forgesworn/RelaySwarm">RelaySwarm</a> lets viewers exchange verified HLS media over WebRTC data channels, using application-selected Nostr relays for rendezvous.  <a href="https://github.com/forgesworn/relayswarm-kit">RelaySwarmKit</a> provides the Swift implementation.  The HTTP origin remains the fallback when peers can't provide media in time.</p>
+      <div class="note">
+        <p>Some peers can't connect directly through their networks.  An operator-selected TURN server can carry those WebRTC packets.  TURN doesn't encode, package or record media, and it isn't part of a normal SRT/RTMP-to-HLS connection.</p>
+        <p>RelaySwarm accepts ICE server configuration.  A TURN deployment such as <a href="https://github.com/coturn/coturn">coturn</a> still needs reachable addresses, credentials and bandwidth.  Whether relaying saves origin cost has to be measured after relay traffic is counted.</p>
+      </div>
+    </section>
+
+    <section aria-labelledby="comparison-heading">
+      <h2 id="comparison-heading">Choose for the job you have</h2>
+      <div class="table-wrap" role="region" aria-label="Media implementation alternatives" tabindex="0">
+        <table>
+          <caption>Feature trade-offs.  These aren't claims that one implementation wins every workload.</caption>
+          <thead><tr><th scope="col">Decision</th><th scope="col">ForgeSworn option</th><th scope="col">Alternative and reason to choose it</th></tr></thead>
+          <tbody>
+            <tr><td>Live media origin</td><td>Sapflow keeps the SRT/RTMP, H.264/AAC, HLS and recording scope small.</td><td><a href="https://mediamtx.org/docs/kickoff/introduction">MediaMTX</a> supports a much broader protocol and codec set, including RTSP, WebRTC and Media-over-QUIC, plus operational APIs.</td></tr>
+            <tr><td>SRT implementation</td><td>sapflow-srt is Rust with runtime-free protocol state and a narrow live-media profile.</td><td><a href="https://github.com/Haivision/srt">libsrt</a> is the established reference with a broader feature set.  Sapflow compares against its executables as black boxes.  This is not a claim of full compatibility.</td></tr>
+            <tr><td>RTMP implementation</td><td>sapflow-rtmp can be embedded in a Rust server or native publishing core.</td><td><a href="https://github.com/bluenviron/gortmplib">gortmplib</a> fits Go applications; <a href="https://github.com/arut/nginx-rtmp-module">nginx-rtmp-module</a> fits an existing nginx deployment.</td></tr>
+            <tr><td>HLS packaging</td><td>sapflow-hls supplies the Rust packager used by Sapflow.</td><td><a href="https://github.com/bluenviron/gohlslib">gohlslib</a> provides the Go implementation used by MediaMTX.  Language, supported tracks and playlist features affect the choice.</td></tr>
+            <tr><td>Peer-assisted HLS</td><td>RelaySwarm uses Nostr rendezvous, signed media authorisation and origin fallback.  Its protocol and field qualification are still developing.</td><td><a href="https://github.com/Novage/p2p-media-loader">P2P Media Loader</a> is an established player integration using WebTorrent-compatible tracker infrastructure.</td></tr>
+            <tr><td>Native broadcaster</td><td>Sapflow shares compressed-media and protocol logic between Swift and Kotlin adapters.</td><td><a href="https://github.com/HaishinKit/HaishinKit.swift">HaishinKit</a> and <a href="https://github.com/ThibaultBee/StreamPack">StreamPack</a> cover native broadcasting in their respective ecosystems.  No matched physical-device performance advantage is claimed here.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="margin-top:20px">The <a href="https://github.com/forgesworn/sapflow/blob/main/docs/comparison.md">detailed comparison</a> names supported features and current gaps.  The <a href="https://github.com/forgesworn/sapflow/blob/main/docs/benchmarks.md">benchmark record</a> keeps versions, conditions, results and limitations together.</p>
+    </section>
+
+    <section aria-labelledby="extras-heading">
+      <h2 id="extras-heading">Add storage and transfer when the application needs them</h2>
+      <div class="extras">
+        <article><h3>Move a recording</h3><p><a href="https://github.com/forgesworn/forgesworn-link">ForgeSworn Link</a> provides a separate transfer protocol.  It isn't an ingest protocol or a required Sapflow dependency.  Broadcast-time recording transfer needs its own integration and contention measurements.</p></article>
+        <article><h3>Store and recover files</h3><p><a href="https://github.com/forgesworn/shelter-kit">Shelter Kit</a> provides content-addressed storage and repair interfaces.  <a href="https://github.com/forgesworn/foregather-kit">Foregather</a> can supply pairing or invitation flows.  Neither belongs in a media callback or is required for basic HLS delivery.</p></article>
+      </div>
+    </section>
+
+    <section aria-labelledby="evidence-heading">
+      <h2 id="evidence-heading">What the measurements establish</h2>
+      <p>Existing M4 Max trials compare Sapflow with MediaMTX and compare Sapflow's own HTTP loop with Hyper.  They show lower CPU and memory use for the documented loopback workloads.  The optional HTTP loop is a separate configuration from the default Hyper path.</p>
+      <p>Those results don't establish Linux capacity, internet latency, phone battery life or sustained hardware-codec performance.  Server, load generator and encoder sharing a Mac also compete for resources.  Read the conditions alongside the numbers before using them to size a deployment.</p>
+      <p><a href="https://github.com/forgesworn/sapflow/blob/main/docs/native-performance-contract.md">The native performance contract</a> sets out copying, queueing and physical-device gates.  New measurements belong with their exact source and binary versions.</p>
+    </section>
+
+    <section aria-labelledby="licence-heading">
+      <h2 id="licence-heading">Public source, with the actual notices</h2>
+      <p>The linked ForgeSworn repositories are public and MIT-licensed.  Sapflow's <a href="https://github.com/forgesworn/sapflow/blob/main/LICENSE">licence</a> names TheCryptoDonkey.  Other projects retain their own copyright notices, and dependencies retain theirs.  <a href="https://github.com/forgesworn/sapflow/blob/main/THIRD_PARTY_LICENSES.txt">Sapflow's third-party notices</a> list those separately.</p>
+      <p>Public source and a published package are separate things.  The SRT, RTMP, HLS and core crates and server have initial 0.1.0 releases.  Native consumer qualification and production readiness remain explicit in the project documentation.</p>
+    </section>
+  </main>
+  <footer><div class="wrap"><a href="/">ForgeSworn</a> &middot; <a href="https://github.com/forgesworn/sapflow">Source and evidence</a> &middot; Reviewed 23 October 2026</div></footer>
+</body>
+</html>
