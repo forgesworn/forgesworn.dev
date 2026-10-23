@@ -21,7 +21,7 @@ const CATEGORY_CONFIG = {
   l402:       { colour: '#e94560', entryPoint: 'toll-booth',         headline: 'Get paid per call, in sats, by people or machines.',    plain: 'Sell an API per request, connect to a wallet, carry bearer notes.' },
   identity:   { colour: '#16c79a', entryPoint: 'nsec-tree',          headline: 'Your keys, your names, your rules.',                    plain: 'Hardware signers, unlinkable personas, spoken verification, wardship.' },
   storage:    { colour: '#2a9d8f', entryPoint: 'wildbloom',          headline: 'Files that outlive the server they started on.',        plain: 'Encrypted, content-addressed storage across machines you control.' },
-  live:       { colour: '#f472b6', entryPoint: 'kithmoot',           headline: 'Calls and streams with nobody in the middle.',          plain: 'Video rooms and live streams signalled over Nostr relays.' },
+  live:       { colour: '#f472b6', entryPoint: 'sapflow',            headline: 'Build the media path your audience needs.',             plain: 'Small media origins, peer-assisted HLS, video rooms and optional TURN.' },
   spatial:    { colour: '#b5e04a', entryPoint: 'rendezvous-kit',     headline: 'Find each other without being tracked.',                plain: 'Fair meeting points, geohashes, and an offline Bluetooth mesh.' },
   agents:     { colour: '#00b4d8', entryPoint: 'bray',               headline: 'An AI agent with a name, a wallet and a web of trust.', plain: 'A Nostr MCP server that gives agents a sovereign identity.' },
   trust:      { colour: '#9b59b6', entryPoint: 'nostr-attestations', headline: 'Prove what matters, hide the rest.',                    plain: 'Anonymous vouches, attestations and votes.' },
