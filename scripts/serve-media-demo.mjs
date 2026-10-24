@@ -284,7 +284,7 @@ export async function startMediaDemo({
   signal?.addEventListener('abort', () => { stop().catch(() => {}); }, { once: true });
   // A stopped relay cannot leave a misleading credential endpoint running.
   exited.then(() => stop()).catch(() => {});
-  return { url: `${origin}/live-media.html?relay=local`, port: server.address().port, turnPort: relay.port, stop, exited };
+  return { url: `${origin}/media-peer-fixture.html?relay=local`, port: server.address().port, turnPort: relay.port, stop, exited };
 }
 
 async function main() {

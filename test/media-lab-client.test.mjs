@@ -1,6 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { approvedMediaUrl, publicSource, completedRecord, recordedRuns, reading, sourceRetiredError, confirmedPublisherEnd, videoDimensions } from '../site/media-lab.mjs';
+import { approvedMediaUrl, publicSource, completedRecord, recordedRuns, reading, sourceRetiredError, confirmedPublisherEnd, videoDimensions, invitedPlaybackStart } from '../site/media-lab.mjs';
+
+test('a listening invitation advances only a matching, recent, bounded media position', () => {
+  const now = 1_800_000_000_000;
+  assert.equal(invitedPlaybackStart(`?q=full&t=30&at=${now - 5000}`, now, 268.6, 'full'), 35);
+  for (const query of ['', '?q=full&t=NaN&at=0', `?q=preview&t=30&at=${now}`, `?q=full&t=-1&at=${now}`,
+    `?q=full&t=267&at=${now}`, `?q=full&t=10&at=${now - 1_000_000}`, `?q=full&t=10&at=${now + 6000}`]) {
+    assert.equal(invitedPlaybackStart(query, now, 268.6, 'full'), 0);
+  }
+});
 
 test('public playback accepts only this site and the explicitly configured HTTPS media origin', () => {
   const page = 'https://demo.example/media-lab.html', media = 'https://media.example';

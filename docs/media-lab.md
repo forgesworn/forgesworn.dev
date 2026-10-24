@@ -258,12 +258,13 @@ evicted.  It never returns a filesystem path or buffers media for a hash lookup.
 
 ## Public playback and permission
 
-The public player uses a lightweight 1080p excerpt by default.  A separately
-hosted full 4K recording can be selected explicitly.  At about 24 Mb/s, the
-full recording is a useful sustained playback exercise; it is also a much
-larger download.  Full screen and Back to stats keep the same video element,
-source, time and sound settings.  Quality changes take effect only when the
-visitor presses Play.
+The public player leads with the complete 4K recording.  Play & join starts
+the mix with sound and joins the real visitor swarm.  Pausing stops sharing;
+native play rejoins.  The standard video controls handle seeking, sound and
+full screen.  Opening the stats preserves the same video element, source,
+time and sound settings.  An optional lighter 1080p excerpt can be selected;
+changing quality restarts the chosen source.  No media or peer networking
+starts before Play.  See [the showcase guide](media-showcase.md).
 
 The 1080p excerpt is captured from actual Sapflow publishing.  The full 4K
 playback artefact is static HLS made by FFmpeg packet copy: its original

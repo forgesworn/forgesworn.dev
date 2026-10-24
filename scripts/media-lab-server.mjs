@@ -590,10 +590,15 @@ export async function startMediaLab({ input, sapflow, mediamtx, spry, coturn, po
     shutdown ??= (async () => {
       closing = true; generation++; current?.abort.abort();
       const pending = startPromise;
-      await stopRun(current, 'stopped');
-      await pending?.catch(() => {});
-      if (server.listening) { const done = new Promise(resolve => server.close(resolve)); server.closeAllConnections(); await done; }
-      signal?.removeEventListener('abort', abort);
+      try {
+        await stopRun(current, 'stopped');
+        await pending?.catch(() => {});
+      } finally {
+        // A child-cleanup failure remains an error, but cannot leave a stopped
+        // runner's control listener open or keep the test/process alive.
+        if (server.listening) { const done = new Promise(resolve => server.close(resolve)); server.closeAllConnections(); await done; }
+        signal?.removeEventListener('abort', abort);
+      }
     })();
     return shutdown;
   };

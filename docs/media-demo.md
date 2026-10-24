@@ -1,15 +1,23 @@
 # Run the media demonstration locally
 
-The public page replays a licensed 1080p excerpt of Deja Vu Ambient Sunrise Mix,
-packaged by Sapflow.  The [comparison player](https://forgesworn.dev/media-lab.html)
-also offers the complete 4K recording, with sound, full screen and a return to
-the measured browser stats.  Its full recording uses static packet-copy HLS;
-the [local comparison runner](media-lab.md) exercises actual live origins.
-The public site does not run a
-public ingest service, TURN server or credential issuer. Its two logical
-viewers use the real RelaySwarm browser loader; the HLS origin remains the
-fallback. Local mode adds an actual Spry TURN process and forces relay ICE
-for the two viewers.
+The [homepage](https://forgesworn.dev/) and
+[listening room](https://forgesworn.dev/live-media.html) lead with the complete
+licensed 4K Deja Vu Ambient Sunrise Mix.  Play & join starts audible playback
+and real RelaySwarm participation between visitors.  Each visitor has one
+visible player.  The connection picture and byte counters use that browser's
+actual observations.  Pause closes sharing; native play rejoins.  See
+[the public showcase guide](media-showcase.md) for its integrity model, bounds,
+invitation links and real-browser checks.
+
+The full recording is static packet-copy HLS.  The optional 1080p excerpt was
+packaged by Sapflow; the [local comparison runner](media-lab.md) exercises
+actual native live origins.  Public playback does not start an ingest service,
+TURN server or credential issuer.
+
+The isolated local peer fixture described below is separate from that public
+experience.  Its two logical viewers exercise the real RelaySwarm loader and
+an actual Spry TURN process with forced relay ICE.  Its page is
+`media-peer-fixture.html`, excluded from search indexing.
 
 Use a current Node installation, a built Sapflow executable/source checkout
 and a Spry TURN 0.2.1 executable. These tools are supplied separately; the
@@ -47,7 +55,7 @@ groups and removes temporary working files on exit.
 The browser serves the resulting files as replay; that is separate from
 running a continuously publishing SRT/RTMP origin.
 
-The main page selects its media catalogue with `data-media-base`.  Its current
+The isolated fixture selects its media catalogue with `data-media-base`.  Its current
 catalogue is `/media/dejavu-preview/`; the original generated film remains at
 `/media/demo/` with its own provenance.  The local runtime endpoint keeps the
 fixed `/media/demo/runtime.json` path regardless of the selected recording.
@@ -55,7 +63,7 @@ See [media-lab.md](media-lab.md#public-playback-and-permission) for the explicit
 `--licensed` permission file and 1080p packaging command.  Demo media retains
 its existing rights and is excluded from the software's MIT licence.
 
-Open the printed `http://127.0.0.1:PORT/live-media.html?relay=local` URL. The
+Open the printed `http://127.0.0.1:PORT/media-peer-fixture.html?relay=local` URL. The
 HTTP server and Spry's UDP/TCP listeners bind only to `127.0.0.1`. Ports are
 chosen locally; `--port NUMBER` optionally sets the HTTP port. Stop with
 Ctrl-C. To exercise the TCP client-to-relay path, stop the helper and rerun
@@ -94,13 +102,13 @@ alone is not proof that peers supplied every media part. No physical phone,
 cross-network/NAT behaviour, public certificate trust, native SDK bindings
 or production capacity is qualified by this demonstration.
 
-The browser path uses two logical viewers in one page.  A bounded in-page
+The isolated fixture uses two logical viewers in one page.  A bounded in-page
 Nostr wire adapter carries RelaySwarm's actual signed presence and encrypted
 SDP.  Native WebRTC data channels carry media.  The browser generates a temporary
 demo publisher key, signs commitments to the recorded media hashes and discards
 that key when the session stops.  This exercises the real loader and integrity
-checks; it does not authenticate a production publisher.  Public playback uses
-host ICE candidates only, without a public STUN or TURN service.  If those peers
+checks; it does not authenticate a production publisher.  Its host-only mode uses
+host ICE candidates without a public STUN or TURN service.  If those peers
 cannot connect, the normal HLS origin still supplies the video.
 
 The holder is bounded to 64 segments, 4 MiB per segment and 32 MiB total.
@@ -153,8 +161,8 @@ npm run test:media:ui -- --spry /path/to/spry-turn --transport tcp --clip srt --
 The peer runner verifies decoded frames, real peer bytes, both selected relay
 candidates, then disconnects the holder and requires completed HTTP fallback
 with further decoded playback.  It finally requires zero open peer and
-signalling connections and zero held media.  The UI runner clicks the actual
-landing-page controls and independently reads native candidate statistics.
+signalling connections and zero held media.  The UI runner clicks the isolated
+fixture's controls and independently reads native candidate statistics.
 Neither runner changes the computer's network settings or grants camera or
 microphone permissions.
 

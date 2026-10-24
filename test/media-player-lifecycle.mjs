@@ -91,7 +91,7 @@ async function freshPage() {
     HTMLMediaElement.prototype.pause = function () {};
     HTMLMediaElement.prototype.load = function () {};
   });
-  await page.goto(`http://127.0.0.1:${server.address().port}/live-media.html`, { waitUntil: 'networkidle', timeout: 10000 });
+  await page.goto(`http://127.0.0.1:${server.address().port}/media-peer-fixture.html`, { waitUntil: 'networkidle', timeout: 10000 });
   return page;
 }
 async function playing(page, count) {

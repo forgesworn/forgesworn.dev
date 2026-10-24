@@ -13,7 +13,15 @@ import {
   buildUseCasesHeroStatsHtml,
   buildUseCaseFiltersHtml,
   buildUseCaseSectionsHtml,
+  buildMediaShowcaseHtml,
 } from '../scripts/build-site.mjs';
+
+test('the homepage reuses the public player without nesting main elements or accepting the local lab', () => {
+  const source = '<header>outside</header><!-- SHOWCASE_START --><main id="main" data-showcase="true"><section><video id="lab-video"></video></section></main><!-- SHOWCASE_END --><footer>outside</footer>';
+  assert.equal(buildMediaShowcaseHtml(source), '<div id="main" data-showcase="true"><section><video id="lab-video"></video></section></div>');
+  assert.throws(() => buildMediaShowcaseHtml(source.replace(' data-showcase="true"', '')));
+  assert.throws(() => buildMediaShowcaseHtml(source.replace('<!-- SHOWCASE_END -->', '')));
+});
 
 // Minimal fixture: 2 categories, a few repos, some with npm null
 const FIXTURE = {

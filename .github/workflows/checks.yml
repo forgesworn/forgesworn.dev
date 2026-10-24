@@ -25,3 +25,4 @@ jobs:
       - run: npm run sync
       - run: npm run build
       - run: npm test
+        timeout-minutes: 3
