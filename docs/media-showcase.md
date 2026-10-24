@@ -389,11 +389,13 @@ an exact `/media/` identity without moving or altering the recording.  The
 source recording and signing keys do not enter the repository.
 
 Rendezvous uses the explicitly listed public Nostr relays and encrypted peer
-signals.  The public STUN setting supplies direct candidate discovery;
-the page contains no TURN credentials or credential issuer.  Operators can
-exercise Spry and coturn through the separate native comparator.  Direct
-connection fallback here is not difficult-NAT, physical-phone or production
-capacity qualification.  RelaySwarm remains experimental.
+signals. STUN supplies direct candidate discovery. When playback starts, the
+browser also obtains an expiring Spry TLS credential from the independently
+operated Archy node. Direct connections remain eligible; a relay supplies a
+route when the browser cannot use direct UDP. The static site contains no
+relay password or operator root secret. The separate native comparator can
+exercise Spry and coturn. RelaySwarm remains experimental; public credential
+delivery alone does not qualify sustained 4K playback or physical phones.
 
 ## Bounds and privacy
 
@@ -405,13 +407,34 @@ most 16 MiB. The player targets a twenty-second forward buffer with a
 twenty-four-second time ceiling, four seconds behind and a 64 MiB byte target.
 An appended fragment can overshoot a buffer target; decoder memory is
 separate.  There is no background download of the full 817 MB recording.
-The public profile currently supplies STUN discovery, with no public TURN
-service. A browser which gathers no local ICE candidates cannot join a peer
-route; the player reports that condition while continuing HTTPS playback.
-Vanadium's default restriction on non-proxied UDP can produce this result.
-A TCP/TLS TURN route is needed to support that policy without changing the
-browser's privacy preference. Private test credentials are never included in
-this site's bundle. See the [GrapheneOS explanation](https://bsky.app/profile/grapheneos.org/post/3lqpnxljvd22d).
+The public profile supplies STUN and the operator's TCP/TLS TURN route without
+changing browser privacy preferences. Vanadium's default restriction on
+non-proxied UDP can require that relay; see the
+[GrapheneOS explanation](https://bsky.app/profile/grapheneos.org/post/3lqpnxljvd22d).
+If the issuer or a usable peer route is unavailable, HTTPS playback continues.
+The player never embeds private test credentials in its bundle.
+
+`media-turn-credentials.mjs` POSTs a bounded request to
+`https://demo.forgesworn.dev:7443/turn-credentials` only during participation.
+The response permits only `turns:demo.forgesworn.dev:5349?transport=tcp`, uses
+no-store responses and a unique expiring principal, and refreshes after two
+thirds of its remaining lifetime. Slow HTTP responses consume that lifetime.
+New peer connections use the latest credential. Relayed connections retire
+shortly before their old credential expires so the SDK can reconnect while
+the playing HLS instance and verified cache survive. Pause cancels renewal.
+Diagnostics expose availability and expiry duration, never the credential.
+
+The operator runs a small Rust issuer behind an isolated TLS listener. It
+consumes a bounded private pool minted by Spry's existing CLI and cannot read
+the TURN root secret. Per-address and global issuance limits, four active
+issuer connections, 32 TURN allocations and an 8 MiB/s aggregate bandwidth
+limit per allocation bound this demo. The private dashboard remains separate.
+Operator installation and rollback are maintained in
+[Archy's issuer guide](https://github.com/forgesworn/archipelago-apps/tree/main/operator/turn-issuer).
+Published-origin browser CORS and bidirectional 1 MiB hash-verified TLS relay
+checks passed on 25 October 2026. Sustained cold-cache 4K contribution,
+credential rotation during playback and physical iPhone acceptance remain
+separate checks.
 The pinned 689 KiB piece catalogue is bounded to 1 MiB, and the browser uses
 the existing 402 KiB Rust/WASM module.  Both load only after Play.  The bundle
 receipt records the exact source, WASM digest and dependency notices; the

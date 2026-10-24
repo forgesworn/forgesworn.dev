@@ -1,7 +1,7 @@
 import { readInitialLiveStart } from './media-live-start.mjs';
-import { createSourceResponseStats, publicSourceResource, transferBytes } from './media-transfer-stats.mjs?v=20261024-peer-supply';
-import { createNativePlaybackFallback } from './media-playback-fallback.mjs?v=20261024-peer-supply';
-import { createPlaybackPrime } from './media-playback-prime.mjs?v=20261024-peer-supply';
+import { createSourceResponseStats, publicSourceResource, transferBytes } from './media-transfer-stats.mjs?v=20261025-public-turn';
+import { createNativePlaybackFallback } from './media-playback-fallback.mjs?v=20261025-public-turn';
+import { createPlaybackPrime } from './media-playback-prime.mjs?v=20261025-public-turn';
 
 const DASH = '—';
 export const observed = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
@@ -363,7 +363,7 @@ async function initialise() {
     publicRoom?.stop(); publicRoom = null;
     const pending = (async () => {
       const [{ createListenerSession }, { PUBLIC_SWARM_SOURCE_SHA256, PUBLIC_SWARM_RELAYS }] = await Promise.all([
-        import('./media-listener-session.mjs?v=20261024-peer-supply'), import('./media-public-swarm.mjs?v=20261024-peer-supply'),
+        import('./media-listener-session.mjs?v=20261025-public-turn'), import('./media-public-swarm.mjs?v=20261025-public-turn'),
       ]);
       if (request !== publicRoomRequest || pageAbort.signal.aborted) return null;
       const clock = createListenerSession({ room: `forgesworn-dejavu-listening-v1-${quality}`, source: PUBLIC_SWARM_SOURCE_SHA256,
@@ -1078,7 +1078,7 @@ async function initialise() {
       if (!local && initial.epochId && initial.startPosition >= 0) s.listenerAlignedEpoch = initial.epochId;
       if (!local) {
         try {
-          const { createPublicSwarm } = await import('./media-public-swarm.mjs?v=20261024-peer-supply');
+          const { createPublicSwarm } = await import('./media-public-swarm.mjs?v=20261025-public-turn');
           if (session !== s || s.abort.signal.aborted || s.hls !== player) return;
           s.publicPeer = createPublicSwarm({ Hls, hls: s.hls, video, playlistUrl: url.href, quality: s.quality,
             signal: s.abort.signal, onStats: metrics => { if (session === s && !s.nativeHls && !s.finishing) publicDelivery(s, metrics); } });
@@ -1292,7 +1292,7 @@ async function initialise() {
       if (!document.hidden && session && !video.paused && session.followLive !== false) followListener(session);
     }, { signal: pageAbort.signal });
     try {
-      const { createSwarmVisual } = await import('./media-swarm-visual.mjs?v=20261024-peer-supply');
+      const { createSwarmVisual } = await import('./media-swarm-visual.mjs?v=20261025-public-turn');
       if (!pageAbort.signal.aborted && $('public-swarm-map')) {
         swarmVisual = createSwarmVisual($('public-swarm-map'));
         publicDelivery(session);
