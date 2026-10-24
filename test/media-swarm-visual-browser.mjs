@@ -54,7 +54,7 @@ try {
   });
   assert.deepEqual(receipt.checks.media, { up: '918', down: '6206410', label: 'Connected to you' });
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.waitForFunction(() => document.querySelector('svg').getAttribute('viewBox') === '0 0 520 390');
+  await page.waitForFunction(() => Number(document.querySelector('svg').getAttribute('viewBox').split(' ')[2]) === document.getElementById('map').clientWidth);
   receipt.checks.resize = await page.evaluate(() => ({ flights: document.querySelectorAll('[data-flight-source]').length,
     label: document.querySelector('[data-peer-id] .swarm-sub').textContent }));
   assert.equal(receipt.checks.resize.flights, 0); assert.equal(receipt.checks.resize.label, receipt.checks.media.label);
@@ -134,7 +134,7 @@ try {
   });
   assert.equal(receipt.checks.roomBaseline.members, 3);
   assert.deepEqual(receipt.checks.roomBaseline.kinds, ['native-peer', 'native-peer', 'origin', 'reported-origin', 'reported-origin', 'reported-peer'].sort());
-  assert.deepEqual(receipt.checks.roomBaseline.names, ['You · Listener 1', 'Listener 2', 'Listener 3']);
+  assert.deepEqual(receipt.checks.roomBaseline.names, ['You', 'Listener 2', 'Listener 3']);
   assert.equal(receipt.checks.roomBaseline.strength, 'Waiting for video traffic');
   receipt.checks.measuredRates = await page.evaluate(() => {
     Object.assign(observations, { originBytes: 40_000, peerBytes: 60_000, uploadedBytes: 6000 });
@@ -152,7 +152,7 @@ try {
     }));
     return { uploads, strength: document.querySelector('[data-swarm-strength-value]').textContent,
       scope: document.getElementById('map').dataset.strengthScope,
-      reported: [...document.querySelectorAll('[data-edge-kind^="reported"]')].every(node => node.dataset.attribution === 'listener-reported' && [...node.querySelectorAll('path')].every(path => path.getAttribute('stroke-dasharray') === '4 6')),
+      reported: [...document.querySelectorAll('[data-edge-kind^="reported"]')].every(node => node.dataset.attribution === 'listener-reported' && [...node.querySelectorAll('path')].every(path => path.getAttribute('stroke-dasharray') === '3 7')),
       received: Number(document.querySelector('[data-edge-kind="reported-peer"] path[data-direction="forward"]').dataset.cumulativeBytes) };
   });
   assert(receipt.checks.measuredRates.uploads[0].rate > receipt.checks.measuredRates.uploads[1].rate);
@@ -174,7 +174,7 @@ try {
       labels: nodes.map(node => node.querySelector('.swarm-label').textContent), members: nodes.length };
   });
   assert.equal(receipt.checks.replayNames.sameNodes, true);
-  assert.deepEqual(receipt.checks.replayNames.labels, ['You · Listener 1', 'Listener 2', 'Listener 3']);
+  assert.deepEqual(receipt.checks.replayNames.labels, ['You', 'Listener 2', 'Listener 3']);
   assert.equal(receipt.checks.replayNames.members, 3);
   receipt.checks.staleReports = await page.evaluate(() => {
     graphNow += 13_000; render();
@@ -194,15 +194,15 @@ try {
       selfLabel: document.querySelector('[data-swarm-node="self"] .swarm-label').textContent,
       observerCounted: document.querySelector('[data-swarm-node="self"]').hasAttribute('data-room-member-id') };
   });
-  assert.deepEqual(receipt.checks.passiveObserver, { members: 2, selfLabel: 'You · not listening', observerCounted: false });
+  assert.deepEqual(receipt.checks.passiveObserver, { members: 2, selfLabel: 'You', observerCounted: false });
   receipt.checks.emptyInvitation = await page.evaluate(() => {
     observations.room.members = []; observations.room.listeners = 0; render();
     return { inviting: document.getElementById('map').dataset.inviting,
       members: document.querySelectorAll('[data-room-member-id]').length,
       flights: document.querySelectorAll('[data-flight-source]').length,
-      message: document.querySelector('svg').textContent.includes('Be the first to start the room.') };
+      names: [...document.querySelectorAll('svg .swarm-label')].map(node => node.textContent) };
   });
-  assert.deepEqual(receipt.checks.emptyInvitation, { inviting: 'true', members: 0, flights: 0, message: true });
+  assert.deepEqual(receipt.checks.emptyInvitation, { inviting: 'true', members: 0, flights: 0, names: ['Broadcast', 'You'] });
   receipt.checks.pausedInvitation = await page.evaluate(() => {
     observations.active = true; observations.playing = false; render();
     return { inviting: document.getElementById('map').dataset.inviting,

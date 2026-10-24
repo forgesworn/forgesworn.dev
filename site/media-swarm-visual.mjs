@@ -163,96 +163,193 @@ export function peerDeliveryShare(originRate, peerRate) {
   return total > 0 ? number(peerRate) / total : null;
 }
 
-function drawSwarmVisual(container, context) {
-  const reduced = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)');
-  const narrow = container.clientWidth < 600;
-  const svg = make('svg', { viewBox: narrow ? '0 0 520 390' : '0 0 960 355', role: 'img',
-    'aria-label': 'The media host and your browser. No listener reports yet.', class: 'swarm-canvas', preserveAspectRatio: 'xMidYMid meet' });
-  const title = make('title', {}, 'Your view of the listening room');
-  const description = make('desc', {}, 'Solid links show video measured in this browser. Dashed links are fresh reports from other listeners. Width shows the observed rate; moving points show new byte batches, not packet counts.');
-  const style = make('style', {}, `
-    .swarm-node text{font-family:Inter,system-ui,sans-serif;fill:#e8e6de;letter-spacing:-.2px}
-    .swarm-node .swarm-sub{fill:#9ba79a;font-size:${narrow ? 14 : 11}px;letter-spacing:0}
-    .swarm-node .swarm-label{font-size:${narrow ? 18 : 15}px;font-weight:600}
-    .swarm-link{fill:none;stroke-linecap:round}
-    .swarm-rate{font-family:Inter,system-ui,sans-serif;font-size:${narrow ? 12 : 10}px;fill:#b6c5ae;paint-order:stroke;stroke:#151c12;stroke-width:4;stroke-linejoin:round}
-    .swarm-node-enter{animation:swarm-enter .4s ease-out}
-    .swarm-inviting .swarm-halo{animation:swarm-invite 3.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
-    @keyframes swarm-enter{from{opacity:0}to{opacity:1}}
-    @keyframes swarm-invite{0%,100%{opacity:.35;transform:scale(.94)}50%{opacity:1;transform:scale(1.07)}}
-    @media(prefers-reduced-motion:reduce){.swarm-node-enter,.swarm-inviting .swarm-halo{animation:none}}
-  `);
-  const links = make('g'), nodes = make('g'), particles = make('g', { 'aria-hidden': 'true' });
-  const origin = narrow ? { x: 78, y: 70 } : { x: 110, y: 165 }, self = narrow ? { x: 348, y: 70 } : { x: 445, y: 165 };
-  const points = narrow ? [{ x: 348, y: 280 }, { x: 78, y: 280 }] :
-    [{ x: 760, y: 165 }, { x: 785, y: 48 }, { x: 785, y: 278 }, { x: 650, y: 48 }, { x: 650, y: 278 }];
-  function layout(count) {
-    if (count <= points.length) return { points, height: narrow ? 390 : 385 };
-    const rows = Math.ceil(count / 2), firstY = narrow ? 220 : 45, gap = narrow ? 115 : 120;
-    const columns = narrow ? [130, 390] : [660, 840];
-    return { points: Array.from({ length: count }, (_, index) => ({ x: columns[index % 2], y: firstY + Math.floor(index / 2) * gap })),
-      height: Math.max(narrow ? 390 : 385, firstY + (rows - 1) * gap + 110) };
+// The picture uses real CSS-pixel space. Extra listeners add rows rather than
+// squeezing names and icons into a fixed, increasingly crowded canvas.
+export function swarmLayout(availableWidth, peerCount) {
+  const width = Math.max(240, Math.round(number(availableWidth))), count = Math.min(MAX_VISUAL_PEERS, Math.max(0, Math.floor(number(peerCount))));
+  const compact = width < 600;
+  const origin = { x: width / 2, y: compact ? 88 : 90, radius: 26 };
+  let self, positions = [], height;
+  if (compact) {
+    if (!count) { self = { x: width / 2, y: 250, radius: 27 }; height = 340; }
+    else if (count === 1) {
+      self = { x: width / 3, y: 260, radius: 27 };
+      positions = [{ x: width * 2 / 3, y: 260, radius: 18 }]; height = 350;
+    } else {
+      self = { x: width / 2, y: 235, radius: 27 };
+      const columns = width >= 330 ? 3 : 2;
+      for (let index = 0; index < count; index++) {
+        const row = Math.floor(index / columns), rowCount = Math.min(columns, count - row * columns), column = index % columns;
+        positions.push({ x: width * (column + 1) / (rowCount + 1), y: 390 + row * 120, radius: 18 });
+      }
+      height = positions.at(-1).y + 92;
+    }
+  } else {
+    if (!count) {
+      origin.x = width * .3; origin.y = 165;
+      self = { x: width * .7, y: 165, radius: 27 }; height = 330;
+    } else {
+      const columns = width >= 1000 ? 5 : width >= 780 ? 4 : 3;
+      const firstCount = Math.min(count + 1, columns), firstXs = Array.from({ length: firstCount }, (_, index) => width * (index + 1) / (firstCount + 1));
+      const selfIndex = Math.floor((firstCount - 1) / 2);
+      self = { x: firstXs[selfIndex], y: 290, radius: 27 };
+      positions = firstXs.filter((_value, index) => index !== selfIndex).map(x => ({ x, y: 290, radius: 18 }));
+      for (let index = positions.length; index < count; index++) {
+        const remaining = index - (firstCount - 1), row = Math.floor(remaining / columns), rowCount = Math.min(columns, count - (firstCount - 1) - row * columns);
+        positions.push({ x: width * (remaining % columns + 1) / (rowCount + 1), y: 440 + row * 130, radius: 18 });
+      }
+      height = Math.max(self.y, positions.at(-1).y) + 100;
+    }
   }
-  function curve(from, to, offset = 0) {
-    const dx = to.x - from.x, dy = to.y - from.y, distance = Math.max(1, Math.hypot(dx, dy));
-    const nx = -dy / distance, ny = dx / distance;
-    const start = { x: from.x + dx / distance * (from === self ? 43 : 29), y: from.y + dy / distance * (from === self ? 43 : 29) };
-    const end = { x: to.x - dx / distance * (to === self ? 43 : 29), y: to.y - dy / distance * (to === self ? 43 : 29) };
-    const first = { x: start.x + (end.x - start.x) / 3 + nx * offset, y: start.y + (end.y - start.y) / 3 + ny * offset };
-    const second = { x: start.x + (end.x - start.x) * 2 / 3 + nx * offset, y: start.y + (end.y - start.y) * 2 / 3 + ny * offset };
-    return { start, end, first, second, d: `M${start.x} ${start.y} C${first.x} ${first.y},${second.x} ${second.y},${end.x} ${end.y}` };
+  return { width, height, origin, self, positions };
+}
+
+function createStatistics(container) {
+  let root = container.dataset.statistics ? document.getElementById(container.dataset.statistics) : null;
+  const owned = !root;
+  if (!root) {
+    root = document.createElement('div'); root.className = 'swarm-statistics'; root.dataset.swarmStatistics = '';
+    container.insertAdjacentElement('afterend', root);
   }
-  function onCurve(value, t) {
-    return { x: (1 - t) ** 3 * value.start.x + 3 * (1 - t) ** 2 * t * value.first.x + 3 * (1 - t) * t ** 2 * value.second.x + t ** 3 * value.end.x,
-      y: (1 - t) ** 3 * value.start.y + 3 * (1 - t) ** 2 * t * value.first.y + 3 * (1 - t) * t ** 2 * value.second.y + t ** 3 * value.end.y };
+  let strengthSlot = root.querySelector('[data-swarm-strength-slot]');
+  if (!strengthSlot) { strengthSlot = document.createElement('div'); strengthSlot.dataset.swarmStrengthSlot = ''; root.prepend(strengthSlot); }
+  let linkSlot = root.querySelector('[data-swarm-link-statistics]');
+  if (!linkSlot) {
+    const details = document.createElement('details'), summary = document.createElement('summary');
+    details.className = 'swarm-link-details'; summary.textContent = 'Connection details'; linkSlot = document.createElement('div');
+    linkSlot.dataset.swarmLinkStatistics = ''; details.append(summary, linkSlot); root.append(details);
   }
-  function node(point, label, central = false, host = false) {
-    const group = make('g', { class: 'swarm-node', transform: `translate(${point.x} ${point.y})` });
-    const circle = make('circle', { r: central ? 35 : 24, fill: central ? '#c7f36b0d' : '#151a1b',
-      stroke: central ? '#c7f36b' : '#697468', 'stroke-width': central ? 1.5 : 1 });
-    group.append(circle);
-    if (central) group.append(make('circle', { class: 'swarm-halo', r: 45, fill: 'none', stroke: '#c7f36b', 'stroke-opacity': .12 }));
-    group.append(make('path', { d: host ? 'M-8-7h16v5h-16z M-8 2h16v5h-16z' : 'M-11-8h22v15h-22z M-6 12h12 M0 7v5',
-      fill: 'none', stroke: central ? '#c7f36b' : '#c5ccc4', 'stroke-width': 1.2 }));
-    group.append(make('rect', { x: -106, y: central ? 55 : 36, width: 212, height: 48, rx: 8, fill: '#151c12', 'fill-opacity': .94 }));
-    const name = make('text', { class: 'swarm-label', y: central ? 73 : 53, 'text-anchor': 'middle' }, label);
-    const detail = make('text', { class: 'swarm-sub', y: central ? 92 : 72, 'text-anchor': 'middle' }, '');
-    group.append(name, detail); nodes.append(group);
-    return { group, name, detail, circle, point };
-  }
-  const hostNode = node(origin, 'Media host', false, true), selfNode = node(self, 'You', true);
-  hostNode.group.dataset.swarmNode = 'origin'; selfNode.group.dataset.swarmNode = 'self';
-  const emptyLabel = make('text', { x: narrow ? 260 : 760, y: narrow ? 270 : 157, fill: '#969f92', 'font-size': narrow ? 17 : 14,
-    'font-family': 'Inter,system-ui,sans-serif', 'text-anchor': 'middle' }, 'The next listener could be here.');
-  const emptySub = make('text', { x: narrow ? 260 : 760, y: narrow ? 296 : 180, fill: '#6d7d6b', 'font-size': narrow ? 14 : 11,
-    'font-family': 'Inter,system-ui,sans-serif', 'text-anchor': 'middle' }, 'Room presence and real video transfers.');
-  nodes.append(emptyLabel, emptySub);
-  svg.append(title, description, style, links, particles, nodes);
   const strength = document.createElement('div'); strength.className = 'swarm-strength';
   strength.innerHTML = '<div class="swarm-strength-heading"><span>Your peer delivery</span><output data-swarm-strength-value>Waiting for video traffic</output></div><div class="swarm-strength-meter" data-swarm-strength-meter role="meter" aria-label="Share of video received here from verified peers over the last ten seconds" aria-valuemin="0" aria-valuemax="100"><span></span></div><p data-swarm-strength-note>Only this browser’s received video, over the last 10 seconds.</p>';
-  const strengthValue = strength.querySelector('[data-swarm-strength-value]'), strengthMeter = strength.querySelector('[data-swarm-strength-meter]'),
-    strengthFill = strengthMeter.firstElementChild, strengthNote = strength.querySelector('[data-swarm-strength-note]');
-  container.classList.add('swarm-map-with-strength'); container.replaceChildren(svg, strength);
+  strengthSlot.replaceChildren(strength);
+  const value = strength.querySelector('[data-swarm-strength-value]'), meter = strength.querySelector('[data-swarm-strength-meter]'), note = strength.querySelector('[data-swarm-strength-note]');
+  const rows = new Map();
+  return {
+    strength(share, originRate, peerRate) {
+      const percentage = share === null ? null : Math.round(share * 100);
+      value.textContent = percentage === null ? 'Waiting for video traffic' : `${percentage}%`;
+      meter.firstElementChild.style.width = `${percentage ?? 0}%`;
+      if (percentage === null) meter.removeAttribute('aria-valuenow'); else meter.setAttribute('aria-valuenow', percentage);
+      meter.setAttribute('aria-valuetext', percentage === null ? 'No recent received video measured' : `${percentage}% of received video from verified peers, over the last ten seconds`);
+      note.textContent = share === null ? 'Only this browser’s received video, over the last 10 seconds.' :
+        `${bytes(peerRate * 10)} verified from peers / ${bytes((peerRate + originRate) * 10)} received here · last 10 seconds`;
+    },
+    links(model, readings, playing) {
+      const live = new Set(model.edges.map(edge => edge.id)), names = new Map([['origin', 'Broadcast'], [model.self.id, model.self.label], ...model.members.map(member => [member.id, member.label])]);
+      for (const [id, row] of rows) if (!live.has(id)) { row.element.remove(); rows.delete(id); }
+      for (const edge of model.edges) {
+        let row = rows.get(edge.id);
+        if (!row) {
+          const element = document.createElement('div'); element.className = 'swarm-link-row'; element.dataset.linkId = edge.id;
+          const route = document.createElement('div'), name = document.createElement('strong'), scope = document.createElement('span');
+          route.className = 'swarm-link-route'; route.append(name, scope);
+          const forward = document.createElement('div'), reverse = document.createElement('div');
+          element.append(route, forward, reverse); linkSlot.append(element); row = { element, name, scope, forward, reverse }; rows.set(edge.id, row);
+        }
+        row.name.textContent = `${names.get(edge.from)} ${edge.reverse ? '↔' : '→'} ${names.get(edge.to)}`;
+        row.scope.textContent = edge.kind.startsWith('reported') ? 'Listener report' : 'Measured here';
+        for (const direction of ['forward', 'reverse']) {
+          const reading = readings.find(item => item.edge === edge && item.direction === direction), cell = row[direction];
+          cell.hidden = !reading;
+          if (!reading) continue;
+          const rate = playing || edge.kind.startsWith('reported') ? reading.rate : 0;
+          cell.textContent = `${bytes(rate)}/s ${direction === 'forward' ? '→' : '←'}`;
+          cell.dataset.bytesPerSecond = String(rate);
+        }
+      }
+    },
+    destroy() { if (owned) root.remove(); else { strengthSlot.replaceChildren(); linkSlot.replaceChildren(); } },
+  };
+}
+
+function drawSwarmVisual(container, context) {
+  const reduced = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)');
+  const svg = make('svg', { role: 'img', class: 'swarm-canvas', preserveAspectRatio: 'xMidYMid meet' });
+  const title = make('title', {}, 'Your view of the listening room');
+  const description = make('desc', {}, 'Short names identify the real room members. Solid links are measured here; dashed links are listener reports. Moving dots represent measured video batches. The broad glow around Broadcast follows the music and does not represent network traffic. Rates and delivery statistics are below the picture.');
+  const style = make('style', {}, `
+    .swarm-node text{font-family:Inter,system-ui,sans-serif;fill:#dfe6d6}
+    .swarm-label{font-size:12px;font-weight:500;letter-spacing:-.12px}
+    .swarm-node[data-swarm-node="origin"] .swarm-label{font-size:12px;fill:#d6c5a1;letter-spacing:.03em}
+    .swarm-node[data-swarm-node="self"] .swarm-label{font-size:12px;fill:#d2ed91;font-weight:600}
+    .swarm-link{fill:none;stroke-linecap:round}
+  `);
+  const links = make('g'), nodes = make('g'), particles = make('g', { 'aria-hidden': 'true' });
+  function node(label, kind) {
+    const radius = kind === 'self' ? 27 : kind === 'origin' ? 26 : 18;
+    const group = make('g', { class: 'swarm-node', 'data-swarm-node': kind });
+    const circle = make('circle', { r: radius, fill: kind === 'self' ? '#d2ed910a' : '#131911', stroke: kind === 'origin' ? '#bfa77c' : kind === 'self' ? '#d2ed91' : '#67765e', 'stroke-width': 1 });
+    group.append(circle);
+    if (kind === 'origin') group.append(make('path', { d: 'M-7 0a7 7 0 0 1 14 0 M-12 0a12 12 0 0 1 24 0 M0 4v6 M-3 10h6', fill: 'none', stroke: '#d6c5a1', 'stroke-width': 1.2, 'stroke-linecap': 'round' }));
+    if (kind === 'listener') group.append(make('path', { d: 'M-6-5h12v8h-12z M-3 6h6', fill: 'none', stroke: '#b0bea5', 'stroke-width': 1 }));
+    const labelY = kind === 'origin' ? -51 : kind === 'self' ? 4 : 44;
+    const backing = make('rect', { y: labelY - 15, height: 23, rx: 7, fill: '#131a10' });
+    const name = make('text', { class: 'swarm-label', y: labelY, 'text-anchor': 'middle' }, label);
+    const detail = make('title', { class: 'swarm-sub' }, '');
+    if (kind !== 'self') group.append(backing);
+    group.append(name, detail); nodes.append(group);
+    return { group, circle, name, backing, detail, radius };
+  }
+  function nameNode(record, label) {
+    record.name.textContent = label;
+    const width = Math.max(40, label.length * 6.8 + 14);
+    record.backing.setAttribute('x', -width / 2); record.backing.setAttribute('width', width);
+  }
+  const hostNode = node('Broadcast', 'origin'), selfNode = node('You', 'self');
+  nameNode(hostNode, 'Broadcast');
+  const audio = make('g', { 'data-audio-pulse': '', 'data-energy': 0, 'data-beat': 0, 'data-active': 'false', 'aria-hidden': 'true' });
+  const glow = make('circle', { 'data-audio-ring': 'glow', r: 54, fill: '#d6bd82', opacity: 0 });
+  const ring = make('circle', { 'data-audio-ring': 'beat', r: 39, fill: 'none', stroke: '#d6bd82', 'stroke-width': 1, opacity: 0 });
+  const echo = make('circle', { 'data-audio-ring': 'echo', r: 55, fill: 'none', stroke: '#d6bd82', 'stroke-width': .6, opacity: 0 });
+  audio.append(glow, ring, echo); hostNode.group.prepend(audio);
+  svg.append(title, description, style, links, particles, nodes);
+  container.replaceChildren(svg); container.classList.remove('swarm-map-with-strength');
   const members = new Map(), edges = new Map(), activeFlights = new Set();
-  let destroyed = false, animationFrame;
+  let destroyed = false, animationFrame, playing = false, layoutSignature = '';
+  const clamp = value => Math.max(0, Math.min(1, number(value)));
+  function setAudioPulse({ energy = 0, beat = 0 } = {}) {
+    const allowed = !destroyed && playing && !document.hidden && !reduced?.matches;
+    energy = allowed ? clamp(energy) : 0; beat = allowed ? clamp(beat) : 0;
+    audio.dataset.energy = String(energy); audio.dataset.beat = String(beat); audio.dataset.active = String(energy > 0 || beat > 0);
+    glow.setAttribute('r', 53 + energy * 14); glow.setAttribute('opacity', energy * .065);
+    ring.setAttribute('r', 35 + beat * 22); ring.setAttribute('opacity', beat * .24 + energy * .025);
+    echo.setAttribute('r', 48 + beat * 18); echo.setAttribute('opacity', beat * .11);
+  }
   function clearFlights(id) {
     for (const flight of activeFlights) if (id === undefined || flight.edgeId === id) { flight.dot.remove(); activeFlights.delete(flight); }
   }
+  function stopMotion() {
+    clearFlights(); setAudioPulse({});
+    if (animationFrame !== undefined) { cancelAnimationFrame(animationFrame); animationFrame = undefined; }
+  }
+  function curve(from, to, bend) {
+    const dx = to.x - from.x, dy = to.y - from.y, distance = Math.max(1, Math.hypot(dx, dy)), nx = -dy / distance, ny = dx / distance;
+    const start = { x: from.x + dx / distance * (from.radius + 5), y: from.y + dy / distance * (from.radius + 5) };
+    const end = { x: to.x - dx / distance * (to.radius + 5), y: to.y - dy / distance * (to.radius + 5) };
+    const first = { x: start.x + (end.x - start.x) / 3 + nx * bend, y: start.y + (end.y - start.y) / 3 + ny * bend };
+    const second = { x: start.x + (end.x - start.x) * 2 / 3 + nx * bend, y: start.y + (end.y - start.y) * 2 / 3 + ny * bend };
+    return { start, end, first, second, d: `M${start.x} ${start.y} C${first.x} ${first.y},${second.x} ${second.y},${end.x} ${end.y}` };
+  }
+  function onCurve(shape, t) {
+    return { x: (1 - t) ** 3 * shape.start.x + 3 * (1 - t) ** 2 * t * shape.first.x + 3 * (1 - t) * t ** 2 * shape.second.x + t ** 3 * shape.end.x,
+      y: (1 - t) ** 3 * shape.start.y + 3 * (1 - t) ** 2 * t * shape.first.y + 3 * (1 - t) * t ** 2 * shape.second.y + t ** 3 * shape.end.y };
+  }
   function sizeFlights() {
     const largest = Math.max(1, ...[...activeFlights].map(flight => flight.count));
-    for (const flight of activeFlights) flight.dot.setAttribute('r', Math.max(1.1, 7 * Math.sqrt(flight.count / largest)));
+    for (const flight of activeFlights) flight.dot.setAttribute('r', Math.max(1.1, 6 * Math.sqrt(flight.count / largest)));
   }
   function fly(shape, colour, count, source, edgeId) {
-    if (destroyed || reduced?.matches || !number(count) || activeFlights.size >= 20 || document.hidden) return;
-    const dot = make('circle', { r: 1.1, fill: colour, 'fill-opacity': .95 });
+    if (destroyed || !playing || reduced?.matches || !number(count) || activeFlights.size >= 20 || document.hidden) return;
+    const dot = make('circle', { r: 1.1, fill: colour, 'fill-opacity': .9 });
     Object.assign(dot.dataset, { flightSource: source, bytes: String(count), edgeId });
     particles.append(dot); activeFlights.add({ dot, shape, edgeId, count, start: performance.now() }); sizeFlights();
     if (animationFrame === undefined) animationFrame = requestAnimationFrame(animate);
   }
   function animate(now) {
     animationFrame = undefined;
+    if (!playing || document.hidden || reduced?.matches) { stopMotion(); return; }
     for (const flight of activeFlights) {
-      const t = Math.min(1, Math.max(0, (now - flight.start) / 1100)), point = onCurve(flight.shape, t);
+      const t = Math.min(1, Math.max(0, (now - flight.start) / 1500)), point = onCurve(flight.shape, t);
       flight.dot.setAttribute('cx', point.x); flight.dot.setAttribute('cy', point.y);
       if (t >= 1) { flight.dot.remove(); activeFlights.delete(flight); }
     }
@@ -260,30 +357,33 @@ function drawSwarmVisual(container, context) {
   }
   function update(metrics = {}, silent = false) {
     if (destroyed) return;
-    const now = Date.now(), model = observedRoomTopology(metrics, now, context.claims), currentLayout = layout(model.members.length);
-    const selfId = model.self.id, locations = new Map([['origin', origin], [selfId, self]]);
-    svg.setAttribute('viewBox', `0 0 ${narrow ? 520 : 960} ${currentLayout.height}`);
-    selfNode.name.textContent = model.self.label;
+    playing = Boolean(metrics.playing);
+    const now = Date.now(), model = observedRoomTopology(metrics, now, context.claims), layout = swarmLayout(container.clientWidth, model.members.length);
+    const signature = `${layout.width}/${layout.height}/${model.members.map(member => member.id).join('/')}`;
+    if (layoutSignature !== signature) { clearFlights(); layoutSignature = signature; }
+    svg.setAttribute('viewBox', `0 0 ${layout.width} ${layout.height}`);
+    container.style.setProperty('--swarm-height', `${layout.height}px`);
+    const selfId = model.self.id, locations = new Map([['origin', layout.origin], [selfId, layout.self]]);
+    hostNode.group.setAttribute('transform', `translate(${layout.origin.x} ${layout.origin.y})`);
+    selfNode.group.setAttribute('transform', `translate(${layout.self.x} ${layout.self.y})`);
+    selfNode.name.textContent = 'You'; selfNode.detail.textContent = model.self.label;
     if (model.self.roomMember) selfNode.group.dataset.roomMemberId = selfId; else delete selfNode.group.dataset.roomMemberId;
     selfNode.group.dataset.viewerId = model.self.peerId ?? '';
-    const liveMembers = new Set(model.members.map(member => member.id));
+    const localPeers = observedTopology(metrics), liveMembers = new Set(model.members.map(member => member.id));
     for (const [id, record] of members) if (!liveMembers.has(id)) { record.group.remove(); members.delete(id); }
     model.members.forEach((member, index) => {
-      const point = currentLayout.points[index]; locations.set(member.id, point);
+      const point = layout.positions[index]; locations.set(member.id, point);
       let record = members.get(member.id);
-      if (!record) { record = node(point, member.label); record.group.classList.add('swarm-node-enter'); members.set(member.id, record); }
-      record.point = point; record.group.setAttribute('transform', `translate(${point.x} ${point.y})`);
-      record.name.textContent = member.label;
-      record.circle.setAttribute('stroke', member.connected ? '#c7f36b' : member.report ? '#a1bfff' : '#65715f');
-      record.circle.setAttribute('stroke-dasharray', member.connected ? '' : '3 5');
-      record.circle.setAttribute('fill', member.connected ? '#c7f36b0b' : 'none');
-      record.detail.textContent = member.connected ? 'Connected to you' : member.report ? 'Reporting video' : 'In the room · no report';
-      record.group.dataset.swarmNode = 'listener';
+      if (!record) { record = node(member.label, 'listener'); members.set(member.id, record); }
+      nameNode(record, member.label); record.group.setAttribute('transform', `translate(${point.x} ${point.y})`);
+      record.circle.setAttribute('stroke', member.connected ? '#b9d98a' : member.report ? '#869cba' : '#59664f');
+      record.circle.setAttribute('stroke-dasharray', member.connected ? '' : '2 4');
+      record.circle.setAttribute('fill', member.connected ? '#b9d98a08' : '#131a10');
+      record.detail.textContent = member.connected ? 'Connected to you' : member.report ? 'Listener report available' : 'In the room; no transfer report';
       if (member.roomMember) record.group.dataset.roomMemberId = member.id; else delete record.group.dataset.roomMemberId;
       if (member.connectionId) record.group.dataset.peerId = member.connectionId; else delete record.group.dataset.peerId;
-      record.group.dataset.viewerId = member.peerId ?? '';
-      record.group.dataset.connected = String(member.connected);
-      const local = observedTopology(metrics).find(peer => peer.id === member.connectionId);
+      record.group.dataset.viewerId = member.peerId ?? ''; record.group.dataset.connected = String(member.connected);
+      const local = localPeers.find(peer => peer.id === member.connectionId);
       record.group.dataset.mediaBytesSent = String(local?.mediaBytesSent ?? 0);
       record.group.dataset.verifiedMediaBytesReceived = String(local?.verifiedMediaBytesReceived ?? 0);
     });
@@ -293,106 +393,91 @@ function drawSwarmVisual(container, context) {
       for (const direction of ['forward', 'reverse']) {
         const observation = edge[direction]; if (!observation) continue;
         liveTraffic.add(observation.sourceId);
-        const value = context.traffic.observe(observation.sourceId, observation.value, observation.sampledAt, now);
-        readings.push({ edge, direction, ...value });
+        readings.push({ edge, direction, ...context.traffic.observe(observation.sourceId, observation.value, observation.sampledAt, now) });
       }
     }
     context.traffic.retain(liveTraffic);
-    const maximumRate = Math.max(1, ...readings.map(value => metrics.playing || value.edge.kind.startsWith('reported') ? value.rate : 0));
+    const maximumRate = Math.max(1, ...readings.map(item => playing || item.edge.kind.startsWith('reported') ? item.rate : 0));
     const liveEdges = new Set(model.edges.map(edge => edge.id));
     for (const [id, record] of edges) if (!liveEdges.has(id)) { clearFlights(id); record.group.remove(); edges.delete(id); }
     for (const edge of model.edges) {
       const from = locations.get(edge.from), to = locations.get(edge.to); if (!from || !to) continue;
+      const reported = edge.kind.startsWith('reported');
       let record = edges.get(edge.id);
-      if (!record) { const group = make('g'); links.append(group); record = { group, paths: {} }; edges.set(edge.id, record); }
+      if (!record) {
+        const group = make('g'), route = make('path', { class: 'swarm-link' }); group.append(route); links.append(group);
+        record = { group, route, paths: {} }; edges.set(edge.id, record);
+      }
       Object.assign(record.group.dataset, { edgeId: edge.id, edgeKind: edge.kind, fromMemberId: edge.from, toMemberId: edge.to,
-        fromPeerId: edge.fromPeerId ?? '', toPeerId: edge.toPeerId ?? '' });
+        fromPeerId: edge.fromPeerId ?? '', toPeerId: edge.toPeerId ?? '', attribution: reported ? 'listener-reported' : 'measured-here' });
       if (edge.connectionId) record.group.dataset.connectionId = edge.connectionId;
-      record.group.dataset.attribution = edge.kind.startsWith('reported') ? 'listener-reported' : 'measured-here';
+      let bend = 0;
+      if (edge.kind === 'reported-origin') bend = (to.x < layout.origin.x ? 1 : -1) * Math.min(105, layout.width * .27);
+      else if (edge.kind === 'reported-peer' && Math.abs(from.y - to.y) < 1) bend = Math.min(85, Math.abs(from.x - to.x) * .23);
+      else if (edge.kind === 'native-peer' && Math.abs(from.y - to.y) < 1) bend = -Math.min(55, Math.abs(from.x - to.x) * .18);
+      const routeShape = curve(from, to, bend);
+      record.route.setAttribute('d', routeShape.d); record.route.setAttribute('stroke', edge.kind.includes('origin') ? '#b39e76' : '#899b79');
+      record.route.setAttribute('stroke-width', .75); record.route.setAttribute('stroke-opacity', reported ? .12 : .22);
+      record.route.setAttribute('stroke-dasharray', reported ? '3 7' : '');
       for (const direction of ['forward', 'reverse']) {
-        const reading = readings.find(value => value.edge === edge && value.direction === direction);
-        if (!reading) continue;
+        const reading = readings.find(item => item.edge === edge && item.direction === direction); if (!reading) continue;
         const reverse = direction === 'reverse', source = edge.kind === 'native-peer' ? reverse ? 'peer-download' : 'peer-upload' :
           edge.kind === 'origin' ? 'origin' : edge.kind === 'reported-origin' ? 'reported-origin' : 'reported-peer';
-        const colour = edge.kind.includes('origin') ? '#d6c5a1' : reverse ? '#a1bfff' : '#c7f36b';
-        const reported = edge.kind.startsWith('reported'), shape = curve(reverse ? to : from, reverse ? from : to,
-          edge.kind === 'reported-origin' ? -46 : edge.reverse ? 13 : 0);
-        let part = record.paths[direction];
-        if (!part) {
-          const path = make('path', { class: 'swarm-link' }), label = make('text', { class: 'swarm-rate', 'text-anchor': 'middle' });
-          record.group.append(path, label); part = { path, label }; record.paths[direction] = part;
-        }
-        const rate = metrics.playing || reported ? reading.rate : 0, width = 1 + 5 * rate / maximumRate;
-        part.path.setAttribute('d', shape.d); part.path.setAttribute('stroke', colour); part.path.setAttribute('stroke-width', width);
-        part.path.setAttribute('stroke-opacity', rate > 0 ? reported ? .55 : .9 : .25);
-        part.path.setAttribute('stroke-dasharray', reported ? '4 6' : edge.relay ? '2 4' : '');
-        Object.assign(part.path.dataset, { direction: edge.kind === 'native-peer' ? reverse ? 'download' : 'upload' : direction,
+        const colour = edge.kind.includes('origin') ? '#cfb78b' : reverse ? '#93aed0' : '#b9d98a';
+        const shape = reverse ? curve(to, from, -bend - 3) : curve(from, to, bend + (edge.reverse ? 3 : 0));
+        let path = record.paths[direction];
+        if (!path) { path = make('path', { class: 'swarm-link' }); record.group.append(path); record.paths[direction] = path; }
+        const rate = playing || reported ? reading.rate : 0, width = .7 + 3.3 * rate / maximumRate;
+        path.setAttribute('d', shape.d); path.setAttribute('stroke', colour); path.setAttribute('stroke-width', width);
+        path.setAttribute('stroke-opacity', rate > 0 ? reported ? .28 : .62 : 0);
+        path.setAttribute('stroke-dasharray', reported ? '3 7' : edge.relay ? '2 4' : '');
+        Object.assign(path.dataset, { direction: edge.kind === 'native-peer' ? reverse ? 'download' : 'upload' : direction,
           bytesPerSecond: String(rate), cumulativeBytes: String(edge[direction].value ?? '') });
         record.group.dataset[reverse ? 'receivedBps' : 'sentBps'] = String(rate);
-        const middle = onCurve(shape, reverse ? .58 : .42);
-        part.label.setAttribute('x', middle.x); part.label.setAttribute('y', middle.y + (reverse ? 13 : -7));
-        part.label.textContent = `${bytes(rate)}/s${reported ? ' · reported' : ''}`;
-        if ((metrics.playing || reported) && !silent) fly(shape, colour, reading.delta, source, edge.id);
+        if (playing && !silent) fly(shape, colour, reading.delta, source, edge.id);
       }
     }
-    if (!metrics.playing) for (const [id] of edges) if (!model.edges.find(edge => edge.id === id)?.kind.startsWith('reported')) clearFlights(id);
-    emptyLabel.style.display = emptySub.style.display = model.members.length ? 'none' : '';
-    selfNode.detail.textContent = !metrics.active ? 'Ready to listen' : !metrics.playing ? 'Paused' : metrics.enabled && metrics.serving ? 'Listening & sharing' : 'Listening';
+    if (!playing || document.hidden || reduced?.matches) stopMotion();
     const knownRoom = metrics.room?.observed === true, roomCount = counter(metrics.room?.listeners);
-    const inviting = knownRoom && roomCount === 0 && !metrics.playing;
-    selfNode.group.classList.toggle('swarm-inviting', inviting);
-    emptyLabel.textContent = inviting ? 'Be the first to start the room.' : knownRoom && roomCount > 0 && !metrics.active ?
-      `${roomCount} ${roomCount === 1 ? 'listener' : 'listeners'} · Join the room` : 'The next listener could be here.';
-    emptySub.textContent = inviting ? 'Press Play. Your browser starts the shared stream.' : 'Room presence and real video transfers.';
-    hostNode.detail.textContent = `${bytes(metrics.originBytes ?? (metrics.active ? null : 0))} to you`;
+    container.dataset.inviting = String(knownRoom && roomCount === 0 && !playing);
     const originValue = counter(metrics.originBytes), peerValue = counter(metrics.peerBytes);
     let originRate = 0, peerRate = 0;
-    if (metrics.playing && originValue !== null && peerValue !== null) {
+    if (playing && originValue !== null && peerValue !== null) {
       originRate = context.strength.observe('origin', originValue, now, now).rate;
       peerRate = context.strength.observe('peer', peerValue, now, now).rate;
     } else context.strength.clear();
-    const share = metrics.playing && originValue !== null && peerValue !== null ? peerDeliveryShare(originRate, peerRate) : null;
-    const percentage = share === null ? null : Math.round(share * 100);
-    strengthValue.textContent = percentage === null ? 'Waiting for video traffic' : `${percentage}%`;
-    strengthFill.style.width = `${percentage ?? 0}%`;
-    if (percentage === null) strengthMeter.removeAttribute('aria-valuenow'); else strengthMeter.setAttribute('aria-valuenow', percentage);
-    strengthMeter.setAttribute('aria-valuetext', percentage === null ? 'No recent received video measured' : `${percentage}% of received video from verified peers, over the last ten seconds`);
-    strengthNote.textContent = share === null ? 'Only this browser’s received video, over the last 10 seconds.' :
-      `${bytes(peerRate * 10)} verified from peers / ${bytes((peerRate + originRate) * 10)} received here · last 10 seconds`;
-    container.dataset.peerSharePercent = percentage === null ? '' : String(percentage);
+    const share = playing && originValue !== null && peerValue !== null ? peerDeliveryShare(originRate, peerRate) : null;
+    context.statistics.strength(share, originRate, peerRate); context.statistics.links(model, readings, playing);
+    container.dataset.peerSharePercent = share === null ? '' : String(Math.round(share * 100));
     container.dataset.strengthScope = 'local-verified-video-share-10s';
-    container.dataset.connectedPeers = String(model.connectedPeers);
-    container.dataset.observedPeers = String(model.members.length);
-    container.dataset.roomMembers = String(model.roomMemberCount);
-    container.dataset.inviting = String(inviting);
-    container.dataset.unmappedConnections = String(model.unmappedConnections);
-    container.dataset.originBytes = String(number(metrics.originBytes));
-    container.dataset.peerBytes = String(number(metrics.peerBytes));
+    container.dataset.connectedPeers = String(model.connectedPeers); container.dataset.observedPeers = String(model.members.length);
+    container.dataset.roomMembers = String(model.roomMemberCount); container.dataset.unmappedConnections = String(model.unmappedConnections);
+    container.dataset.originBytes = String(number(metrics.originBytes)); container.dataset.peerBytes = String(number(metrics.peerBytes));
     container.dataset.uploadedBytes = String(number(metrics.uploadedBytes));
-    svg.setAttribute('aria-label', `The media host, your browser and ${model.members.length} other observed listener${model.members.length === 1 ? '' : 's'}. Solid links are local measurements; dashed links are listener reports. ${number(metrics.peerBytes)} verified peer bytes received; ${number(metrics.uploadedBytes)} video bytes uploaded.`);
+    svg.setAttribute('aria-label', `Broadcast, your browser and ${model.members.length} other observed listener${model.members.length === 1 ? '' : 's'}. Solid links are measured here; dashed links are listener reports. Rates and delivery statistics follow below.`);
   }
-  const destroy = () => {
-    destroyed = true;
-    if (animationFrame !== undefined) cancelAnimationFrame(animationFrame);
-    activeFlights.clear(); members.clear(); edges.clear(); container.replaceChildren();
-  };
-  return { update, destroy };
+  return { update, setAudioPulse, stopMotion,
+    destroy() { stopMotion(); destroyed = true; members.clear(); edges.clear(); container.replaceChildren(); } };
 }
 
 export function createSwarmVisual(container) {
-  const context = { claims: new Map(), traffic: createTrafficWindow(), strength: createTrafficWindow() };
-  let visual = drawSwarmVisual(container, context), last = {}, narrow = container.clientWidth < 600;
+  const statistics = createStatistics(container), context = { claims: new Map(), traffic: createTrafficWindow(), strength: createTrafficWindow(), statistics };
+  const visual = drawSwarmVisual(container, context);
+  let last = {}, lastWidth = container.clientWidth, suppressNext = false;
   visual.update(last, true);
-  const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(() => {
-    const next = container.clientWidth < 600;
-    if (next === narrow || container.clientWidth === 0) return;
-    narrow = next;
-    visual.destroy(); visual = drawSwarmVisual(container, context);
-    visual.update(last, true);
+  const resize = typeof ResizeObserver === 'function' ? new ResizeObserver(() => {
+    if (container.clientWidth === lastWidth || container.clientWidth === 0) return;
+    lastWidth = container.clientWidth; visual.update(last, true);
   }) : null;
-  observer?.observe(container);
+  resize?.observe(container);
+  const visibility = () => { if (document.hidden) { visual.stopMotion(); suppressNext = true; } };
+  const reduced = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)');
+  const motion = () => { if (reduced?.matches) visual.stopMotion(); };
+  document.addEventListener('visibilitychange', visibility); reduced?.addEventListener?.('change', motion);
   return {
-    update(metrics) { last = metrics ?? {}; visual.update(last); },
-    destroy() { observer?.disconnect(); visual.destroy(); context.claims.clear(); context.traffic.clear(); context.strength.clear(); },
+    update(metrics) { last = metrics ?? {}; visual.update(last, suppressNext); suppressNext = false; },
+    setAudioPulse(value) { visual.setAudioPulse(value); },
+    destroy() { resize?.disconnect(); document.removeEventListener('visibilitychange', visibility); reduced?.removeEventListener?.('change', motion);
+      visual.destroy(); statistics.destroy(); context.claims.clear(); context.traffic.clear(); context.strength.clear(); },
   };
 }

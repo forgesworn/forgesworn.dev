@@ -1050,10 +1050,15 @@ async function initialise() {
       if (!document.hidden && session && !video.paused && session.followLive !== false) followListener(session);
     }, { signal: pageAbort.signal });
     try {
-      const { createSwarmVisual } = await import('./media-swarm-visual.mjs?v=20261024-swarm-room');
+      const { createSwarmVisual } = await import('./media-swarm-visual.mjs?v=20261024-swarm-calm');
       if (!pageAbort.signal.aborted && $('public-swarm-map')) {
         swarmVisual = createSwarmVisual($('public-swarm-map'));
         publicDelivery(session);
+        try {
+          const { createMusicPulse } = await import('./media-music-pulse.mjs?v=20261024-swarm-calm');
+          if (!pageAbort.signal.aborted) createMusicPulse({ video, container: $('public-swarm-map'), signal: pageAbort.signal,
+            getQuality: () => session?.quality ?? $('lab-quality').value, onPulse: value => swarmVisual?.setAudioPulse?.(value) });
+        } catch { /* Playback and measured transfers remain available without the decorative pulse. */ }
       }
     } catch { /* Playback and counters remain available without the diagram. */ }
   }
