@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "package": "hls.js",
+  "version": "1.7.3",
+  "variant": "full ESM minified distribution",
+  "licence": "Apache-2.0",
+  "source": "https://www.npmjs.com/package/hls.js/v/1.7.3",
+  "release": "https://github.com/video-dev/hls.js/releases/tag/v1.7.3",
+  "sourceCommit": "e5ff3583965e3af16c4a4b4d2b5f7bd1ffb5b7de",
+  "registry": "https://registry.npmjs.org/hls.js/1.7.3",
+  "tarball": "https://registry.npmjs.org/hls.js/-/hls.js-1.7.3.tgz",
+  "packageIntegrity": "sha512-MsPlx6yVW4Qv4C7mEVou4/gk/5cN2dVxOTnrNjPSmyH2f0Ln+/UkG10Ax1PE6OvrmTVPKgQYozTtBaPOuCzq7A==",
+  "packageSha1": "79a3338dd2e78fe63fc2ba6cfebdf5e34495537a",
+  "packageSha256": "a7290f1645f7c605baec75638acda6c6f7b08dde8a615c841a19d0e38df88729",
+  "packageBytes": 8006283,
+  "distributionFile": "dist/hls.min.mjs",
+  "file": "hls.min.mjs",
+  "sha256": "5527dccd891e4b24c269049c5097de9277b8771d93c3e6d31dea3d9e5652df6d",
+  "bytes": 593080,
+  "modified": false,
+  "verification": "Downloaded published npm package; verified SHA-512 integrity and SHA-1 against official registry metadata before extracting the unchanged asset. Published LICENSE matches retained hls.js-LICENSE byte-for-byte."
+}

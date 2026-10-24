@@ -16,12 +16,12 @@ const fixture = () => ({
     publisherCompletedWindow: true, publisherProgressEnded: true,
     hostLoadAtStart: { oneMinute: 24, fiveMinutes: 20, fifteenMinutes: 19, privateToken: 'secret' } },
     host: { loadAverage: { oneMinute: 30, fiveMinutes: 22, fifteenMinutes: 20 } },
-    processes: { origin: { cpuSeconds: 2, rssBytes: 50000, peakSampledRssBytes: 60000 } }, http: {} },
+    processes: { origin: { cpuSeconds: 2, rssBytes: 50000, peakSampledRssBytes: 60000 } }, http: { requests: 3, originRequests: 5, redirectsFollowed: 2 } },
   session: { id: 'one', engine: 'sapflow', transport: 'rtmp', offsetSeconds: 0, cpuSamples: [10, 20], rssSamples: [50000], processSamples: {} },
   config: { source: { label: 'Licensed recording', sha256: 'a'.repeat(64), bytes: 123, privatePath: '/private/source.mp4' },
     host: { cpu: 'Apple Silicon', platform: 'darwin', architecture: 'arm64', logicalCpus: 8, privateKey: 'secret' },
     engines: [{ id: 'sapflow', label: 'Sapflow', version: '0.1.0', binarySha256: 'b'.repeat(64) }], profile: { publisherCompletionToleranceSeconds: 0.25 } },
-  browser: { seenFrame: true, decodedFrames: 600, fpsSamples: [25, 25], firstFrameMs: 1000, width: 3840, height: 2160 },
+  browser: { seenFrame: true, decodedFrames: 600, fpsSamples: [25, 25], firstFrameMs: 1000, width: 3842, height: 2160, mediaWidth: 3840, mediaHeight: 2160 },
 });
 
 test('a completed measurement needs actual publisher completion and rendered frames', () => {
@@ -44,6 +44,8 @@ test('exports preserve host pressure while excluding paths and arbitrary private
   assert.equal(row.hostLoadAtEnd.oneMinute, 30);
   assert.equal(row.measurementScope, 'shared-host-observation');
   assert.equal(row.publisherMediaSeconds, 30.01);
+  assert.equal(row.browser.width, 3842); assert.equal(row.browser.mediaWidth, 3840);
+  assert.equal(row.http.requests, 3); assert.equal(row.http.originRequests, 5); assert.equal(row.http.redirectsFollowed, 2);
   assert.equal(row.profile.publisherCompletionToleranceSeconds, 0.25);
   assert.doesNotMatch(JSON.stringify(row), /secret|privatePath|privateKey|privateToken|\/private\//);
   const receipt = { schema: 1, runs: [row, { ...row, publisherCompletedWindow: false }, { ...row, browser: { decodedFrames: 0 } }, { ...row, browser: { decodedFrames: '600' } }] };

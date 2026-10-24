@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "scope": "actual-media-landing-page-with-forced-local-turn",
+  "passed": true,
+  "clip": "rtmp",
+  "mode": "relay",
+  "clientTransport": "udp",
+  "autoplayPolicyOverride": false,
+  "audioOutputSuppressed": false,
+  "pageErrors": 0,
+  "externalRequests": 0,
+  "mediaManifestSha256": "006bb90524b9bcd2d5017765565db4f3d7eb994ec4d8a6c49da0cc5517f4f211",
+  "spryBinarySha256": "0bbcfa0c3efd6cce6a749c706e144de1740e37eb44c146f37a8887319c7085fb",
+  "versionedPlayerScript": true,
+  "playback": {
+    "verifiedPeerFragments": 6,
+    "peerBytesDisplay": "2.2 MB",
+    "deliveryPath": "Spry TURN",
+    "decodedFrames": 16,
+    "currentTime": 0.47935,
+    "muted": false,
+    "volume": 1,
+    "paused": false,
+    "audioDecodedBytes": 12394,
+    "hiddenPlayersObserved": 1,
+    "hiddenPlayersMuted": true,
+    "selectedPairs": [
+      {
+        "localType": "relay",
+        "remoteType": "relay",
+        "relayProtocol": "udp"
+      },
+      {
+        "localType": "relay",
+        "remoteType": "relay",
+        "relayProtocol": "udp"
+      }
+    ],
+    "activeConnections": 2
+  },
+  "fullscreenReturn": {
+    "time": 0.733056,
+    "peers": 2,
+    "paused": false,
+    "muted": false,
+    "volume": 1,
+    "focus": "demo-fullscreen",
+    "mediaSourcePreserved": true
+  },
+  "replay": {
+    "verifiedPeerFragments": 6,
+    "peerBytesDisplay": "2.2 MB",
+    "deliveryPath": "Spry TURN",
+    "decodedFrames": 15,
+    "currentTime": 0.442544,
+    "muted": true,
+    "volume": 0.37,
+    "paused": false,
+    "audioDecodedBytes": 11346,
+    "hiddenPlayersObserved": 2,
+    "hiddenPlayersMuted": true,
+    "selectedPairs": [
+      {
+        "localType": "relay",
+        "remoteType": "relay",
+        "relayProtocol": "udp"
+      },
+      {
+        "localType": "relay",
+        "remoteType": "relay",
+        "relayProtocol": "udp"
+      }
+    ],
+    "activeConnections": 2
+  },
+  "stopped": {
+    "peers": 0,
+    "path": "Stopped",
+    "activeConnections": 0,
+    "videoPaused": true,
+    "videoSourceRemoved": true
+  },
+  "localProcessesStopped": true
+}

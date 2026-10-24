@@ -1,3 +1,5 @@
+import { readInitialLiveStart } from './media-live-start.mjs';
+
 const DASH = '—';
 export const observed = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
 export function reading(value, suffix = '', digits = 1) {
@@ -117,6 +119,7 @@ export function completedRecord(snapshot, session, config, browser) {
     browser: {
       firstFrameMs: observed(browser.firstFrameMs), decodedFpsMean: mean(browser.fpsSamples),
       decodedFrames: observed(browser.decodedFrames), width: observed(browser.width), height: observed(browser.height),
+      mediaWidth: observed(browser.mediaWidth), mediaHeight: observed(browser.mediaHeight),
       videoTimeSeconds: observed(browser.videoTimeSeconds), playbackEndObserved: browser.playbackEndObserved === true,
       stallCount: observed(browser.stallCount), stallSeconds: observed(browser.stallSeconds),
       responseBytes: observed(browser.responseBytes), requests: observed(browser.requests),
@@ -124,6 +127,7 @@ export function completedRecord(snapshot, session, config, browser) {
     },
     http: {
       requests: observed(snapshot.http?.requests), completed: observed(snapshot.http?.completed),
+      originRequests: observed(snapshot.http?.originRequests), redirectsFollowed: observed(snapshot.http?.redirectsFollowed),
       errors: observed(snapshot.http?.errors), bytes: observed(snapshot.http?.bytes),
     },
   };
@@ -144,10 +148,10 @@ export function recordedRuns(receipt) {
     processes: Object.fromEntries(['origin', 'publisher', 'srtSender', 'turn'].map((name) => [name, run.processes?.[name] ? Object.fromEntries(['cpuPercentLast', 'cpuMeanPercent', 'cpuSeconds', 'rssBytes', 'peakSampledRssBytes', 'uptimeSeconds'].map((key) => [key, observed(run.processes[name][key])])) : null])),
     peer: recordedPeer(run.peer),
     browser: {
-      ...Object.fromEntries(['firstFrameMs', 'decodedFpsMean', 'decodedFrames', 'width', 'height', 'videoTimeSeconds', 'stallCount', 'stallSeconds', 'responseBytes', 'requests', 'playerErrors', 'httpErrors'].map((key) => [key, observed(run.browser?.[key])])),
+      ...Object.fromEntries(['firstFrameMs', 'decodedFpsMean', 'decodedFrames', 'width', 'height', 'mediaWidth', 'mediaHeight', 'videoTimeSeconds', 'stallCount', 'stallSeconds', 'responseBytes', 'requests', 'playerErrors', 'httpErrors'].map((key) => [key, observed(run.browser?.[key])])),
       playbackEndObserved: run.browser?.playbackEndObserved === true,
     },
-    http: Object.fromEntries(['requests', 'completed', 'errors', 'bytes'].map((key) => [key, observed(run.http?.[key])])),
+    http: Object.fromEntries(['requests', 'originRequests', 'redirectsFollowed', 'completed', 'errors', 'bytes'].map((key) => [key, observed(run.http?.[key])])),
   }));
 }
 
@@ -288,6 +292,7 @@ async function initialise() {
     const percentile = (group) => group && group.samples > 0 ? ['p50', 'p95', 'p99'].map((key) => reading(group[key], '', 1)).join(' / ') + ' ms' : DASH;
     text('http-bytes', megabytes(http?.bytes));
     text('http-requests', http ? [http.requests, http.completed, http.active].map((n) => reading(n, '', 0)).join(' / ') : DASH);
+    text('http-hops', http ? [http.originRequests, http.redirectsFollowed].map((n) => reading(n, '', 0)).join(' / ') : DASH);
     text('http-errors', reading(http?.errors, '', 0));
     text('http-rate', observed(http?.bytesPerSecond) === null ? DASH : reading(http.bytesPerSecond / 1e6, ' MB/s', 2));
     text('http-first-byte', percentile(http?.firstByteMs));
@@ -353,7 +358,9 @@ async function initialise() {
     let buffer = video.readyState > 0 ? 0 : null;
     for (let i = 0; i < video.buffered.length; i++) if (video.currentTime >= video.buffered.start(i) && video.currentTime <= video.buffered.end(i)) buffer = video.buffered.end(i) - video.currentTime;
     text('browser-fps', reading(b.fps, ' fps'));
-    text('browser-dimensions', b.width && b.height ? `${b.width.toLocaleString('en-GB')} × ${b.height.toLocaleString('en-GB')} decoded` : 'Browser video dimensions');
+    text('browser-dimensions', b.mediaWidth && b.mediaHeight
+      ? `${b.mediaWidth.toLocaleString('en-GB')} × ${b.mediaHeight.toLocaleString('en-GB')} video${b.width !== b.mediaWidth || b.height !== b.mediaHeight ? ` · ${b.width?.toLocaleString('en-GB')} × ${b.height?.toLocaleString('en-GB')} display` : ''}`
+      : b.width && b.height ? `${b.width.toLocaleString('en-GB')} × ${b.height.toLocaleString('en-GB')} display` : 'Browser video dimensions');
     text('first-frame', reading(b.firstFrameMs, ' ms', 0));
     text('browser-time', video.readyState > 0 ? clock(video.currentTime) : DASH);
     text('browser-buffer', reading(buffer, ' s', 2));
@@ -368,7 +375,7 @@ async function initialise() {
     const b = s.browser = {
       seenFrame: false, firstFrameMs: null, decodedFrames: null, frameBaseline: observed(video.webkitDecodedFrameCount) ?? 0,
       lastDecoded: 0, lastDecodeAt: null, fps: null, fpsSamples: [],
-      width: null, height: null, stallCount: 0, waitingAt: null, finishedStallSeconds: 0, stallSeconds: 0,
+      width: null, height: null, mediaWidth: null, mediaHeight: null, stallCount: 0, waitingAt: null, finishedStallSeconds: 0, stallSeconds: 0,
       responseBytes: null, requests: null, playerErrors: 0, httpErrors: null,
     };
     const endStall = () => {
@@ -397,8 +404,9 @@ async function initialise() {
       status(local ? 'Playback could not continue. Stop the run, check the local runner and try again.' : 'The selected source could not be decoded. Try the preview or check the media-host response.', true);
     }, { signal: s.abort.signal });
     if (typeof video.requestVideoFrameCallback === 'function') {
-      const frame = () => {
+      const frame = (_now, metadata) => {
         if (session !== s || s.finishing) return;
+        b.mediaWidth = observed(metadata?.width); b.mediaHeight = observed(metadata?.height);
         if (!b.seenFrame) {
           b.seenFrame = true; b.firstFrameMs = performance.now() - s.clickAt;
           b.lastDecodeAt = performance.now(); b.lastDecoded = observed(video.webkitDecodedFrameCount) ?? 0;
@@ -460,18 +468,22 @@ async function initialise() {
       video.src = url.href; s.mediaReady = true; controls(); await play(s);
       return;
     }
-    Hls ??= (await import('./vendor/hls.light.min.mjs')).default;
+    Hls ??= (await import(local ? './vendor/hls.min.mjs' : './vendor/hls.light.min.mjs')).default;
     if (session !== s || s.abort.signal.aborted) return;
     trackBrowser(s, url);
+    const initial = local ? await readInitialLiveStart(url.href, { signal: s.abort.signal }) : { startPosition: -1 };
+    if (session !== s || s.abort.signal.aborted) return;
     if (s.turnEngine !== 'off') {
       if (!runtime || !local) throw new Error('A local per-viewer relay runtime is required');
       const { startLabPeer } = await import('./media-lab-peer.mjs');
       if (session !== s || s.abort.signal.aborted) return;
       s.mediaReady = true; controls();
-      s.peer = await startLabPeer({ Hls, video, playlistUrl: url.href, runtime, signal: s.abort.signal, onStats: (metrics) => peerStats(s, metrics) });
+      s.peer = await startLabPeer({ Hls, video, playlistUrl: url.href, runtime, startPosition: initial.startPosition,
+        signal: s.abort.signal, onStats: (metrics) => peerStats(s, metrics) });
       await play(s);
     } else if (Hls.isSupported()) {
-      s.hls = new Hls({ lowLatencyMode: false, maxBufferLength: 4, backBufferLength: 0, enableWorker: true });
+      s.hls = new Hls({ lowLatencyMode: false, maxBufferLength: 4, maxMaxBufferLength: 6,
+        maxBufferSize: 8 * 1024 * 1024, backBufferLength: 0, enableWorker: true, startPosition: initial.startPosition });
       s.hls.on(Hls.Events.ERROR, (_, data) => {
         if (session !== s || s.finishing) return;
         s.browser.playerErrors++;
@@ -661,6 +673,7 @@ async function initialise() {
     } catch { /* A missing optional receipt does not turn the public page into a failed live dashboard. */ }
   }
   if (local) {
+    $('title').innerHTML = 'Same broadcast.<br><em>Compare the servers.</em>';
     text('mode-label', 'Local runner · same-machine measurement');
     try {
       config = await api('/lab/config');
@@ -696,6 +709,13 @@ async function initialise() {
     }
   } else {
     // Public hosting has recordings, not access to a live server process.
+    $('settings-title').textContent = 'Watch the mix';
+    document.querySelector('.settings-fields').hidden = true;
+    $('engine-version').hidden = true;
+    document.querySelector('.settings > .settings-note:last-child').textContent = 'Choose a quick preview or the full 4K mix. Full screen and Back to stats keep the same player running.';
+    $('mode-label').textContent = 'Your browser · real playback observations';
+    $('comparison-title').closest('section').hidden = !runs.length;
+    root.append($('public-guide'));
     $('origin-cpu').closest('.metric').hidden = true;
     $('origin-rss').closest('.metric').hidden = true;
     $('http-bytes').closest('.panel').hidden = true;

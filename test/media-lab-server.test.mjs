@@ -12,7 +12,7 @@ async function until(check, ms = 3500) { const end = Date.now() + ms; while (Dat
 function alive(pid) { try { process.kill(pid, 0); return true; } catch (error) { if (error.code === 'ESRCH') return false; throw error; } }
 const data = Buffer.alloc(32768, 90);
 
-async function fixture(t, { stalled = false, stubborn = false, publisherStalls = false, publisherEarlyExit = false, srtSenderDrainFailure = false } = {}) {
+async function fixture(t, { stalled = false, stubborn = false, publisherStalls = false, publisherEarlyExit = false, srtSenderDrainFailure = false, srtPublisherRecordDelayMs = 0 } = {}) {
   const root = await mkdtemp(path.join(os.tmpdir(), 'forgesworn-lab-test-')), bin = path.join(root, 'bin'), site = path.join(root, 'site');
   await mkdir(bin); await mkdir(site);
   const pidFile = path.join(root, 'pids.jsonl'), requestFile = path.join(root, 'requests.jsonl');
@@ -27,16 +27,22 @@ if(kind==='ffprobe'){console.log(JSON.stringify({format:{duration:20,bit_rate:'2
 let config,port,rtmp,srt;
 if(kind==='sapflow'){port=+process.env.SAPFLOW_HTTP_ADDR.split(':')[1];rtmp=+process.env.SAPFLOW_RTMP_ADDR.split(':')[1];srt=+process.env.SAPFLOW_SRT_ADDR.split(':')[1];config={impl:process.env.SAPFLOW_HTTP_IMPL,threads:process.env.SAPFLOW_HTTP_THREADS,segments:process.env.SAPFLOW_SEGMENT_COUNT,pass:process.env.SAPFLOW_PUBLISH_PASS,callback:process.env.SAPFLOW_CALLBACK_URL};}
 if(kind==='mediamtx'){config=JSON.parse(fs.readFileSync(args[0]));port=+config.hlsAddress.split(':')[1];rtmp=+config.rtmpAddress.split(':')[1];srt=+config.srtAddress.split(':')[1];}
-fs.appendFileSync(${JSON.stringify(pidFile)},JSON.stringify({kind,pid:process.pid,group:process.pid,args,config,cwd:process.cwd()})+'\\n');
+const recordStart=()=>fs.appendFileSync(${JSON.stringify(pidFile)},JSON.stringify({kind,pid:process.pid,group:process.pid,args,config,cwd:process.cwd()})+'\\n');
+if(kind==='ffmpeg'&&args.at(-1)==='-'&&${srtPublisherRecordDelayMs}>0)setTimeout(recordStart,${srtPublisherRecordDelayMs});else recordStart();
 console.error('MUST_NOT_ESCAPE',${JSON.stringify(root)},process.env.SAPFLOW_PUBLISH_PASS||'');
 if(kind==='ffmpeg'){if(args.at(-1)!=='-'&&!/^live[/]event-[a-z0-9-]+$/.test(new URL(args.at(-1)).pathname.slice(1))){console.error('invalid public Sapflow stream path');process.exit(64);}const seconds=+args[args.indexOf('-t')+1];let tick;if(args.at(-1)==='-')tick=setInterval(()=>process.stdout.write(Buffer.alloc(1316)),20);if(${publisherStalls}){setInterval(()=>{},1000);return;}const sentSeconds=${publisherEarlyExit}?0.1:seconds;setTimeout(()=>{clearInterval(tick);process.stderr.write('out_time_us='+Math.round(sentSeconds*1e6)+'\\nprogress=end\\n',()=>process.exit(0));},sentSeconds*1000);return;}
 if(kind==='srt-live-transmit'){if(!/^live[/]event-[a-z0-9-]+$/.test(new URL(args.at(-1)).searchParams.get('streamid').split(':')[1]))process.exit(64);process.stdin.resume();process.stdin.on('end',()=>setTimeout(()=>process.exit(${srtSenderDrainFailure}?65:0),150));return;}
 if(${stubborn}){process.on('SIGTERM',()=>{});const c=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'ignore'});fs.appendFileSync(${JSON.stringify(pidFile)},JSON.stringify({kind:'descendant',pid:c.pid,group:process.pid})+'\\n');}
 if(${stalled}){setInterval(()=>{},1000);return;}
 net.createServer(socket=>socket.end()).listen(rtmp,'127.0.0.1');dgram.createSocket('udp4').bind(srt,'127.0.0.1');
-http.createServer((req,res)=>{fs.appendFileSync(${JSON.stringify(requestFile)},JSON.stringify({url:req.url,range:req.headers.range})+'\\n');
+http.createServer((req,res)=>{fs.appendFileSync(${JSON.stringify(requestFile)},JSON.stringify({url:req.url,range:req.headers.range,cookie:req.headers.cookie})+'\\n');
+ if(req.url.includes('cookie-check.m3u8')&&!req.url.includes('cookieCheck=1')&&!req.headers.cookie?.includes('cookieCheck=1')){res.writeHead(302,{Location:req.url+'?cookieCheck=1','Set-Cookie':['cookieCheck=1; HttpOnly; Secure; SameSite=None','MUST_NOT_ESCAPE=native-private; HttpOnly','outside-domain=must-not-send; Domain=elsewhere.invalid; Path=/','outside-path=must-not-send; Path=/outside','expired=must-not-send; Max-Age=0; Path=/']});res.end();return;}
+ if(req.url.includes('cookie-limit.m3u8')){res.writeHead(200,{'Set-Cookie':Array.from({length:17},(_,i)=>'cookie-'+i+'=small; Path=/')});res.end('#EXTM3U\\n');return;}
+ if(req.url.includes('cookie-bytes.m3u8')){res.writeHead(200,{'Set-Cookie':Array.from({length:3},(_,i)=>'large-'+i+'='+('x'.repeat(3000))+'; Path=/')});res.end('#EXTM3U\\n');return;}
+ if(req.url.includes('redirect-loop.m3u8')){res.writeHead(302,{Location:req.url});res.end();return;}
+ if(req.url.includes('redirect-other-path.m3u8')){res.writeHead(302,{Location:'/outside/index.m3u8'});res.end();return;}
  if(req.url.includes('redirect.mp4')){res.writeHead(302,{Location:'https://elsewhere.invalid/private'});res.end();return;}
- if(req.url.includes('.m3u8')){const text=req.url.includes('index.m3u8')?'#EXTM3U\\n#EXT-X-STREAM-INF:BANDWIDTH=25000000\\naudio/main.m3u8\\n':'#EXTM3U\\n#EXT-X-MAP:URI="init.mp4"\\n#EXTINF:1,\\nsegment.mp4\\n';res.writeHead(200,{'Content-Type':'application/vnd.apple.mpegurl','Content-Length':Buffer.byteLength(text)});res.end(req.method==='HEAD'?undefined:text);return;}
+ if(req.url.includes('.m3u8')){const text=req.url.includes('index.m3u8')?'#EXTM3U\\n#EXT-X-STREAM-INF:BANDWIDTH=25000000\\naudio/main.m3u8\\n':'#EXTM3U\\n#EXT-X-MAP:URI="init.mp4"\\n#EXTINF:1,\\nsegment.mp4\\n';res.writeHead(200,{'Content-Type':'application/vnd.apple.mpegurl','Content-Length':Buffer.byteLength(text),'Set-Cookie':'native-session=fixture-session; HttpOnly; Secure; Path=/'});res.end(req.method==='HEAD'?undefined:text);return;}
  if(req.url.includes('slow.mp4')){res.writeHead(200,{'Content-Type':'video/mp4'});const timer=setInterval(()=>res.write(Buffer.alloc(65536)),10);res.on('close',()=>clearInterval(timer));return;}
  const bytes=Buffer.alloc(32768,90);if(req.headers.range){const m=/bytes=(\\d+)-(\\d+)/.exec(req.headers.range);const a=+m[1],b=+m[2];res.writeHead(206,{'Content-Length':b-a+1,'Content-Range':'bytes '+a+'-'+b+'/'+bytes.length});res.end(req.method==='HEAD'?undefined:bytes.subarray(a,b+1));return;}
  res.writeHead(200,{'Content-Type':'video/mp4','Content-Length':bytes.length});res.end(req.method==='HEAD'?undefined:bytes);
@@ -85,18 +91,26 @@ test('sanitised config, strict local origin and immutable executable/source choi
 });
 
 test('real child ownership, exact presets, one active origin, SRT pipe and stale stop protection', { timeout: 15000 }, async t => {
-  const f = await labFixture(t);
+  // The sender may report its start before the separate publisher is scheduled.
+  const f = await labFixture(t, { srtPublisherRecordDelayMs: 150 });
   const first = await run(f.base); assert.equal(first.status, 200); assert.equal(first.data.profile.sapflowHttpImpl, 'hyper');
   await until(async () => (await f.records()).some(row => row.kind === 'ffmpeg'));
   let records = await f.records(), origin = records.find(row => row.kind === 'sapflow');
+  const firstOwned = records.filter(row => row.cwd === origin.cwd);
   assert.match(new URL(records.find(row => row.kind === 'ffmpeg').args.at(-1)).pathname, /^\/live\/event-lab-[a-f0-9]{24}$/);
   assert.equal(origin.config.impl, 'hyper'); assert.equal(origin.config.segments, '24'); assert.equal(origin.config.callback, undefined);
   assert.ok(!first.text.includes(origin.config.pass));
   const next = await run(f.base, 'sapflow-own', 'srt'); assert.equal(next.status, 200); assert.equal(next.data.profile.httpWorkers, 1);
-  assert.ok(!alive(origin.pid));
-  await until(async () => (await f.records()).some(row => row.kind === 'srt-live-transmit'));
-  records = await f.records(); assert.ok(records.some(row => row.kind === 'srt-live-transmit'));
-  const publisher = records.filter(row => row.kind === 'ffmpeg').at(-1); assert.ok(publisher.args.includes('copy')); assert.ok(publisher.args.includes('mpegts'));
+  for (const row of firstOwned) assert.ok(!alive(row.pid), `${row.kind} from the previous run remains alive`);
+  let publisher;
+  await until(async () => {
+    records = await f.records();
+    const ownOrigin = records.find(row => row.kind === 'sapflow' && row.config.impl === 'own');
+    if (!ownOrigin) return false;
+    publisher = records.find(row => row.kind === 'ffmpeg' && row.cwd === ownOrigin.cwd);
+    return Boolean(publisher && records.some(row => row.kind === 'srt-live-transmit' && row.cwd === ownOrigin.cwd));
+  });
+  assert.ok(publisher.args.includes('copy')); assert.ok(publisher.args.includes('mpegts'));
   assert.equal((await request(f.base, '/lab/stop', { method: 'POST', value: { runId: first.data.runId } })).data.ignored, true);
   assert.equal((await request(f.base, '/lab/stats')).data.run.id, next.data.runId);
   const third = await run(f.base, 'mediamtx'); assert.equal(third.status, 200);
@@ -128,6 +142,44 @@ test('streamed HLS preserves renditions/query/ranges; hashes only completed acti
   assert.equal((await request(f.base, url.replace('segment.mp4', 'redirect.mp4'))).status, 502);
   await request(f.base, '/lab/stop', { method: 'POST', value: {} });
   assert.equal((await request(f.base, url)).status, 404); assert.equal((await request(f.base, `/lab/hash?path=${encodeURIComponent(url)}`)).status, 404);
+});
+
+test('native cookie-check redirects stay within the active origin subtree and a two-hop bound', { timeout: 10000 }, async t => {
+  const f = await labFixture(t), started = await run(f.base), prefix = started.data.playlistUrl.replace('index.m3u8', '');
+  const result = await request(f.base, `${prefix}cookie-check.m3u8`, { headers: { Cookie: 'MUST_NOT_FORWARD=browser-private' } });
+  assert.equal(result.status, 200); assert.ok(result.text.startsWith('#EXTM3U')); assert.equal(result.headers['set-cookie'], undefined);
+  let stats = (await request(f.base, '/lab/stats')).data.http;
+  assert.equal(stats.requests, 1); assert.equal(stats.originRequests, 2); assert.equal(stats.redirectsFollowed, 1); assert.equal(stats.completed, 1); assert.equal(stats.firstByteMs.samples, 1);
+  assert.equal((await request(f.base, `${prefix}cookie-check.m3u8`)).status, 200);
+  stats = (await request(f.base, '/lab/stats')).data.http;
+  assert.equal(stats.requests, 2); assert.equal(stats.originRequests, 3); assert.equal(stats.redirectsFollowed, 1);
+  assert.equal((await request(f.base, `${prefix}redirect-loop.m3u8`)).status, 502);
+  stats = (await request(f.base, '/lab/stats')).data.http;
+  assert.equal(stats.originRequests, 6); assert.equal(stats.redirectsFollowed, 3); assert.equal(stats.errors, 1);
+  assert.equal((await request(f.base, `${prefix}redirect-other-path.m3u8`)).status, 502);
+  assert.equal((await request(f.base, `${prefix}redirect.mp4`)).status, 502);
+  stats = (await request(f.base, '/lab/stats')).data.http;
+  assert.equal(stats.originRequests, 8); assert.equal(stats.redirectsFollowed, 3); assert.equal(stats.errors, 3);
+  const originRequests = (await readFile(f.requestFile, 'utf8')).trim().split('\n').map(JSON.parse);
+  assert.ok(originRequests.every(row => !row.cookie?.includes('MUST_NOT_FORWARD')));
+  assert.ok(originRequests.every(row => !row.cookie?.includes('must-not-send')));
+  assert.ok(originRequests.some(row => row.cookie?.includes('native-session=fixture-session')));
+  assert.ok(!JSON.stringify((await request(f.base, '/lab/stats')).data).includes('native-private'));
+  assert.ok(!JSON.stringify((await request(f.base, '/lab/stats')).data).includes('fixture-session'));
+  assert.ok(!JSON.stringify((await request(f.base, '/lab/config')).data).includes('MUST_NOT_ESCAPE'));
+  const next = await run(f.base), nextPrefix = next.data.playlistUrl.replace('index.m3u8', '');
+  assert.equal((await request(f.base, `${nextPrefix}cookie-check.m3u8`)).status, 200);
+  stats = (await request(f.base, '/lab/stats')).data.http;
+  assert.equal(stats.originRequests, 2); assert.equal(stats.redirectsFollowed, 1);
+});
+
+test('native session cookies have finite count and byte bounds', { timeout: 10000 }, async t => {
+  const f = await labFixture(t), first = await run(f.base), firstPrefix = first.data.playlistUrl.replace('index.m3u8', '');
+  assert.equal((await request(f.base, `${firstPrefix}cookie-limit.m3u8`)).status, 502);
+  const second = await run(f.base), secondPrefix = second.data.playlistUrl.replace('index.m3u8', '');
+  assert.equal((await request(f.base, `${secondPrefix}cookie-bytes.m3u8`)).status, 502);
+  const stats = (await request(f.base, '/lab/stats')).data.http;
+  assert.equal(stats.requests, 1); assert.equal(stats.originRequests, 1); assert.equal(stats.errors, 1); assert.equal(stats.active, 0);
 });
 
 test('client cancellation aborts origin stream without caching incomplete bytes', { timeout: 10000 }, async t => {
@@ -191,10 +243,15 @@ test('aborted run POST cancels startup without leaving an unknown owned run', { 
   const outgoing = http.request({ hostname: base.hostname, port: base.port, path: '/lab/run', method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) } });
   outgoing.on('error', () => {}); outgoing.end(body);
   await until(async () => (await f.records()).some(row => row.kind === 'sapflow'));
+  const interruptedId = (await request(base.origin, '/lab/stats')).data.run.id;
   outgoing.destroy();
-  await until(async () => (await f.records()).every(row => !alive(row.pid)));
-  const result = (await request(base.origin, '/lab/stats')).data;
+  let result;
+  await until(async () => {
+    result = (await request(base.origin, '/lab/stats')).data;
+    return result.state === 'idle' && result.run === null && result.lastRun?.run.id === interruptedId;
+  });
   assert.equal(result.state, 'idle'); assert.equal(result.run, null); assert.equal(result.lastRun.state, 'stopped');
+  for (const row of await f.records()) assert.ok(!alive(row.pid), `${row.kind} from the aborted run remains alive`);
 });
 
 test('hash catalogue is bounded and does not refetch missing metadata', { timeout: 10000 }, async t => {

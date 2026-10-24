@@ -3,14 +3,23 @@
 import { createHlsSwarm, commitmentContent, KIND_SEGMENT_COMMITMENT, segmentMediaContext,
   finalizeEvent, generateSecretKey } from './vendor/media-peer-demo.js';
 import { createInPageRelay, demoIceConfiguration } from './media-peer-demo.mjs';
+import { readInitialLiveStart } from './media-live-start.mjs';
 
 export const LAB_PEER_LIMITS = Object.freeze({ maxDurationMs: 330_000,
   maxHeldBytes: 64 * 1024 * 1024, maxHeldSegments: 12, maxSegmentBytes: 16 * 1024 * 1024,
   maxUploadBytesPerSecond: 8 * 1024 * 1024, maxUploadBytesPerSession: 1024 * 1024 * 1024 });
+export const LAB_MSE_TARGETS = Object.freeze({ viewerSeconds: 4, viewerMaxSeconds: 6, viewerBytes: 8 * 1024 * 1024,
+  holderSeconds: 8, holderMaxSeconds: 10, holderBytes: 16 * 1024 * 1024 });
 const number = value => Number.isFinite(value) && value >= 0 ? value : 0;
 const hex = bytes => [...bytes].map(value => value.toString(16).padStart(2, '0')).join('');
 const digest = async value => hex(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))));
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+function bufferedSeconds(video) {
+  for (let index = 0; index < video.buffered.length; index++) {
+    if (video.currentTime >= video.buffered.start(index) && video.currentTime <= video.buffered.end(index)) return video.buffered.end(index) - video.currentTime;
+  }
+  return 0;
+}
 
 export function labPlaylist(playlistUrl, origin) {
   const page = new URL(origin), playlist = new URL(playlistUrl, page);
@@ -100,12 +109,15 @@ async function selectedPairs(connections) {
   return pairs;
 }
 
-export async function startLabPeer({ Hls, video, playlistUrl, runtime, onStats = () => {}, signal }) {
+export async function startLabPeer({ Hls, video, playlistUrl, runtime, startPosition, onStats = () => {}, signal }) {
   if (!Hls?.isSupported?.() || typeof globalThis.RTCPeerConnection !== 'function' || !globalThis.crypto?.subtle || !video) {
     throw new Error('Use a browser with HLS Media Source and WebRTC support.');
   }
   if (signal?.aborted) throw new DOMException('Lab cancelled', 'AbortError');
   const plan = labPlaylist(playlistUrl, location.href), ice = labIceConfiguration(runtime, location.hostname);
+  if (startPosition === undefined) startPosition = (await readInitialLiveStart(plan.playlist, { signal })).startPosition;
+  if (!Number.isFinite(startPosition) || startPosition < -1 || startPosition > LAB_PEER_LIMITS.maxDurationMs / 1000) throw new Error('The initial media position is invalid.');
+  if (signal?.aborted) throw new DOMException('Lab cancelled', 'AbortError');
   const swarmId = `forgesworn-lab-${hex(crypto.getRandomValues(new Uint8Array(12)))}`, publisherKey = generateSecretKey();
   const streamEvent = finalizeEvent({ kind: 30311, created_at: Math.floor(Date.now() / 1000),
     tags: [['d', swarmId], ['relayswarm', 'redistribute', '1']], content: 'Licensed media, local rolling-cache comparison.' }, publisherKey);
@@ -133,11 +145,12 @@ export async function startLabPeer({ Hls, video, playlistUrl, runtime, onStats =
       playback: { currentTime: number(video.currentTime), readyState: number(video.readyState), paused: video.paused,
         decodedFrames: number(video.getVideoPlaybackQuality?.().totalVideoFrames ?? video.webkitDecodedFrameCount) },
       resources: { activePeerConnections: [...connections].filter(connection => connection.connectionState !== 'closed').length,
-        signallingConnections: relay.metrics().connections, heldBytes, heldHighWaterBytes },
+        signallingConnections: relay.metrics().connections, heldBytes, heldHighWaterBytes,
+        viewerBufferedSeconds: bufferedSeconds(video), holderBufferedSeconds: bufferedSeconds(holderVideo) },
       diagnostics: { holderErrors: holder?.errors ?? null, viewerErrors: viewer?.errors ?? null,
         peerMisses: number(viewer?.segments.peerMiss), commitmentRejected: number(viewer?.segments.commitmentRejected),
         commitmentUnavailable: number(viewer?.segments.commitmentUnavailable), eligibility: viewer?.peerEligibilityDiagnostics?.counters ?? null },
-      limits: LAB_PEER_LIMITS };
+      limits: LAB_PEER_LIMITS, mseTargets: LAB_MSE_TARGETS };
   };
   const emit = () => { const value = snapshot(); try { onStats(value); } catch {} return value; };
   const disconnectPeer = () => {
@@ -174,10 +187,13 @@ export async function startLabPeer({ Hls, video, playlistUrl, runtime, onStats =
       mode: 'peer-first', serve: false, streamEvent,
       getCommitment: createLabCommitmentProvider({ playlistUrl: plan.playlist, origin: location.href, swarmId, streamEvent, publisherKey, signal: cancellation.signal }),
       RTCPeerConnectionImpl: observedPeer(ice[1], connections) }));
-    const options = { enableWorker: false, lowLatencyMode: false, backBufferLength: 0,
-      maxBufferSize: LAB_PEER_LIMITS.maxHeldBytes / 2, liveSyncDuration: 6, liveMaxLatencyDuration: 15 };
-    players.push(new Hls({ ...options, maxBufferLength: 6, maxMaxBufferLength: 8 }));
-    players.push(new Hls({ ...options, autoStartLoad: false, maxBufferLength: 3, maxMaxBufferLength: 4 }));
+    const options = { enableWorker: false, lowLatencyMode: false, backBufferLength: 0, startPosition, liveSyncDuration: 6, liveMaxLatencyDuration: 15 };
+    // hls.js may overshoot a time/byte target by a complete fragment. These
+    // settings govern MSE buffering; peer caches and decoder memory are separate.
+    players.push(new Hls({ ...options, maxBufferLength: LAB_MSE_TARGETS.holderSeconds,
+      maxMaxBufferLength: LAB_MSE_TARGETS.holderMaxSeconds, maxBufferSize: LAB_MSE_TARGETS.holderBytes }));
+    players.push(new Hls({ ...options, autoStartLoad: false, maxBufferLength: LAB_MSE_TARGETS.viewerSeconds,
+      maxMaxBufferLength: LAB_MSE_TARGETS.viewerMaxSeconds, maxBufferSize: LAB_MSE_TARGETS.viewerBytes }));
     players[1].on(Hls.Events.FRAG_LOADED, (_event, detail) => {
       if (detail.frag?.sn === 'initSegment') return;
       const loaded = swarms[1].metrics().segments.peerFirstLoaded;
@@ -219,7 +235,7 @@ export async function startLabPeer({ Hls, video, playlistUrl, runtime, onStats =
     if (fatal) throw new Error('The lab media could not be decoded.');
     if (stopped) return controller;
     startedViewer = true;
-    players[1].startLoad(Math.max(0, holderVideo.currentTime - 1));
+    players[1].startLoad(Math.max(0, startPosition, holderVideo.currentTime - 1));
     // The caller is a Play gesture. Retain its audible/mute/volume preference.
     void video.play().catch(() => {}); emit();
     const readyDeadline = performance.now() + 12_000;

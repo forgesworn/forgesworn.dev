@@ -17,6 +17,7 @@ const exec = promisify(execFile);
 const HOST = '127.0.0.1';
 const SITE = fileURLToPath(new URL('../site/', import.meta.url));
 const MAX_BODY = 4096, MAX_RESPONSE = 64 * 1024 * 1024, MAX_HASHES = 512, MAX_TIMINGS = 2048;
+const MAX_NATIVE_COOKIES = 16, MAX_COOKIE_BYTES = 8192;
 const MIME = { '.html': 'text/html; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png',
   '.webp': 'image/webp', '.woff2': 'font/woff2', '.m3u8': 'application/vnd.apple.mpegurl', '.mp4': 'video/mp4',
@@ -28,7 +29,7 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const hostLoad = () => { const [oneMinute, fiveMinutes, fifteenMinutes] = loadavg(); return { oneMinute, fiveMinutes, fifteenMinutes }; };
 const profileFor = engine => ({ ...PROFILE, sapflowHttpImpl: engine === 'mediamtx' ? null : engine === 'sapflow-own' ? 'own' : 'hyper', httpImpl: engine === 'mediamtx' ? 'mediamtx-native' : engine === 'sapflow-own' ? 'own' : 'hyper', httpWorkers: engine === 'sapflow-own' ? 1 : null });
 const failure = (code, status = 400) => Object.assign(new Error(code), { code, status });
-const freshHttp = () => ({ requests: 0, completed: 0, errors: 0, cancelled: 0, active: 0, bytes: 0,
+const freshHttp = () => ({ requests: 0, originRequests: 0, redirectsFollowed: 0, completed: 0, errors: 0, cancelled: 0, active: 0, bytes: 0,
   bytesPerSecond: 0, sampleSeconds: 0, first: [], response: [], firstCount: 0, responseCount: 0 });
 
 function reply(response, status, body, head = false, type = 'application/json') {
@@ -76,6 +77,41 @@ async function sha256(file) {
 }
 function safeEnv() {
   return Object.fromEntries(Object.entries(process.env).filter(([key]) => ['PATH', 'LANG', 'LC_ALL', 'TZ', 'TMPDIR', 'DYLD_LIBRARY_PATH', 'LD_LIBRARY_PATH', 'SYSTEMROOT'].includes(key)));
+}
+function nativeCookieHeader(run, pathname) {
+  const cookies = run.nativeCookies;
+  if (!cookies) return '';
+  const now = Date.now(), matched = [];
+  for (const [key, cookie] of cookies) {
+    if (cookie.expires <= now) { cookies.delete(key); continue; }
+    if (pathname === cookie.path || pathname.startsWith(cookie.path) && (cookie.path.endsWith('/') || pathname[cookie.path.length] === '/')) matched.push(cookie);
+  }
+  return matched.sort((a, b) => b.path.length - a.path.length).map(cookie => `${cookie.name}=${cookie.value}`).join('; ');
+}
+function rememberNativeCookies(run, headers, pathname) {
+  const cookies = run.nativeCookies ??= new Map();
+  nativeCookieHeader(run, pathname);
+  for (const raw of headers['set-cookie'] || []) {
+    if (raw.length > 4096) return false;
+    const [pair, ...attributes] = raw.split(';').map(part => part.trim()), equals = pair.indexOf('=');
+    const name = pair.slice(0, equals), value = pair.slice(equals + 1);
+    if (equals < 1 || !/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(name) || !/^[\x21\x23-\x2B\x2D-\x3A\x3C-\x5B\x5D-\x7E]*$/.test(value)) continue;
+    const attrs = new Map(attributes.map(attribute => { const at = attribute.indexOf('='); return at < 0 ? [attribute.toLowerCase(), ''] : [attribute.slice(0, at).trim().toLowerCase(), attribute.slice(at + 1).trim()]; }));
+    if (attrs.has('domain') && attrs.get('domain').replace(/^\./, '').toLowerCase() !== HOST) continue;
+    const scope = attrs.get('path')?.startsWith('/') ? attrs.get('path') : pathname.slice(0, pathname.lastIndexOf('/') + 1);
+    if (scope.length > 1024 || /[\x00-\x20\x7f;]/.test(scope)) continue;
+    let expires = Infinity;
+    if (/^-?\d+$/.test(attrs.get('max-age') || '')) expires = Date.now() + Math.max(0, Number(attrs.get('max-age'))) * 1000;
+    else if (attrs.has('expires') && Number.isFinite(Date.parse(attrs.get('expires')))) expires = Date.parse(attrs.get('expires'));
+    const key = `${name}\0${scope}`, previous = cookies.get(key);
+    if (expires <= Date.now()) { cookies.delete(key); continue; }
+    cookies.set(key, { name, value, path: scope, expires });
+    if (cookies.size > MAX_NATIVE_COOKIES || [...cookies.values()].reduce((bytes, cookie) => bytes + cookie.name.length + cookie.value.length + cookie.path.length + 3, 0) > MAX_COOKIE_BYTES) {
+      previous ? cookies.set(key, previous) : cookies.delete(key);
+      return false;
+    }
+  }
+  return true;
 }
 async function identity(binary) {
   let version = 'unknown';
@@ -188,7 +224,7 @@ function runSnapshot(run, state) {
     publisherMediaSeconds: run.records.publisher?.mediaSeconds ?? null, publisherProgressEnded: run.records.publisher?.progressEnded ?? false, publisherCompletedWindow: run.publisherCompletedWindow,
     readyAfterSeconds: run.readyAfterSeconds ?? null, endedReason: run.endedReason ?? null, hostLoadAtStart: run.hostLoadAtStart, profile: profileFor(run.engine) },
     processes: { origin: processSnapshot(run.records.origin), publisher: processSnapshot(run.records.publisher), srtSender: processSnapshot(run.records.srtSender), turn: processSnapshot(run.records.turn) },
-    http: { requests: http.requests, completed: http.completed, errors: http.errors, cancelled: http.cancelled, active: http.active,
+    http: { requests: http.requests, originRequests: http.originRequests, redirectsFollowed: http.redirectsFollowed, completed: http.completed, errors: http.errors, cancelled: http.cancelled, active: http.active,
       bytes: http.bytes, bytesPerSecond: http.bytesPerSecond, sampleSeconds: http.sampleSeconds,
       firstByteMs: timing(http.first, http.firstCount), responseMs: timing(http.response, http.responseCount) }, error: run.error || null };
 }
@@ -217,7 +253,7 @@ export async function startMediaLab({ input, sapflow, mediamtx, spry, coturn, po
     provenance: { source: 'Operator-supplied licensed recording', execution: 'Live packet-copy ingest and origin delivery on this host', comparison: 'Sequential runs; prior M4 results are not current-host measurements' } };
   let current = null, state = 'idle', lastRun = null, lastError = null, origin, closing = false, controlBusy = false, generation = 0, shutdown;
   const idle = () => ({ schema: 1, state, host: { loadAverage: hostLoad() }, run: null, processes: { origin: null, publisher: null, srtSender: null, turn: null },
-    http: { requests: 0, completed: 0, errors: 0, cancelled: 0, active: 0, bytes: 0, bytesPerSecond: 0, sampleSeconds: 0, firstByteMs: timing([], 0), responseMs: timing([], 0) }, error: lastError });
+    http: { requests: 0, originRequests: 0, redirectsFollowed: 0, completed: 0, errors: 0, cancelled: 0, active: 0, bytes: 0, bytesPerSecond: 0, sampleSeconds: 0, firstByteMs: timing([], 0), responseMs: timing([], 0) }, error: lastError });
   const getStats = () => ({ ...(current ? runSnapshot(current, state) : idle()), lastRun });
   async function sample(run) {
     if (run.sampling) return;
@@ -238,7 +274,8 @@ export async function startMediaLab({ input, sapflow, mediamtx, spry, coturn, po
       for (const abort of run.requests) abort();
       await sample(run);
       if (typeof onDiagnostic === 'function') {
-        const redact = text => (run.redactions || []).reduce((value, needle) => needle ? value.replaceAll(needle, '[redacted]') : value, String(text || '')).slice(-8192);
+        const cookieRedactions = [...(run.nativeCookies?.values() || [])].flatMap(cookie => [`${cookie.name}=${cookie.value}`, ...(cookie.value.length >= 8 ? [cookie.value] : [])]);
+        const redact = text => [...(run.redactions || []), ...cookieRedactions].reduce((value, needle) => needle ? value.replaceAll(needle, '[redacted]') : value, String(text || '')).slice(-8192);
         try { void Promise.resolve(onDiagnostic({ code: run.error || reason, engine: run.engine, transport: run.transport,
           readiness: run.readiness,
           logs: Object.fromEntries(Object.entries(run.records).filter(([, record]) => record && record.kind !== 'turn').map(([key, record]) => [key, redact(record.log)])) })).catch(() => {}); } catch {}
@@ -380,29 +417,58 @@ export async function startMediaLab({ input, sapflow, mediamtx, spry, coturn, po
       if (!/^bytes=(?:\d+-\d*|-\d+)$/.test(request.headers.range)) { clearTimeout(deadline); finish('error'); return reply(response, 416, { error: 'invalid_range' }, head); }
       headers.Range = request.headers.range;
     }
-    upstream = http.request({ host: HOST, port: run.ports.http, method: request.method, path: run.upstreamPrefix + relative + search, headers }, source => {
-      incoming = source;
-      addTiming(metrics, 'first', performance.now() - started);
-      if (source.statusCode >= 300 && source.statusCode < 400) return broken();
-      const length = Number(source.headers['content-length']);
-      if (Number.isFinite(length) && length > MAX_RESPONSE) return broken();
-      good = source.statusCode >= 200 && source.statusCode < 300;
-      hash = media && source.statusCode === 200 ? createHash('sha256') : undefined;
-      response.statusCode = source.statusCode;
-      response.setHeader('Content-Type', MIME[path.extname(relative).toLowerCase()]);
-      for (const name of ['content-length', 'content-range', 'accept-ranges']) if (source.headers[name]) response.setHeader(name, source.headers[name]);
-      source.once('aborted', broken); source.once('error', broken); source.once('end', () => { ended = true; });
-      const counter = new Transform({ transform(chunk, _encoding, callback) {
-        size += chunk.length;
-        if (size > MAX_RESPONSE) return callback(failure('response_limit', 502));
-        metrics.bytes += chunk.length;
-        hash?.update(chunk);
-        callback(null, chunk);
-      } });
-      counter.once('error', broken);
-      source.pipe(counter).pipe(response);
-    });
-    upstream.setTimeout(15000, broken); upstream.once('error', broken); upstream.end();
+    const upstreamOrigin = `http://${HOST}:${run.ports.http}`;
+    const send = (upstreamPath, hops = 0) => {
+      if (settled || run.abort.signal.aborted) return;
+      metrics.originRequests++;
+      const cookies = nativeCookieHeader(run, new URL(upstreamPath, upstreamOrigin).pathname);
+      const attempt = http.request({ host: HOST, port: run.ports.http, method: request.method, path: upstreamPath,
+        headers: { ...headers, ...(cookies ? { Cookie: cookies } : {}) } }, source => {
+        if (settled || run.abort.signal.aborted) { source.destroy(); return; }
+        incoming = source;
+        const length = Number(source.headers['content-length']);
+        if (Number.isFinite(length) && length > MAX_RESPONSE) return broken();
+        if (source.statusCode >= 300 && source.statusCode < 400) {
+          let target;
+          try {
+            if (hops >= 2 || ![301, 302, 303, 307, 308].includes(source.statusCode) || typeof source.headers.location !== 'string') throw Error();
+            target = new URL(source.headers.location, upstreamOrigin + upstreamPath);
+            if (target.origin !== upstreamOrigin || target.username || target.password || target.hash || target.href.length > 4096) throw Error();
+            const checked = pathnameOf(target.pathname);
+            if (!checked.startsWith(run.upstreamPrefix)) throw Error();
+            const tail = checked.slice(run.upstreamPrefix.length);
+            if (!tail.split('/').every(part => /^[a-zA-Z0-9_-][a-zA-Z0-9_.-]*$/.test(part)) || !['.m3u8', '.mp4', '.m4s', '.ts', '.aac'].includes(path.extname(tail).toLowerCase())) throw Error();
+          } catch { return broken(); }
+          if (!rememberNativeCookies(run, source.headers, new URL(upstreamPath, upstreamOrigin).pathname)) return broken();
+          metrics.redirectsFollowed++;
+          source.destroy();
+          send(target.pathname + target.search, hops + 1);
+          return;
+        }
+        if (!rememberNativeCookies(run, source.headers, new URL(upstreamPath, upstreamOrigin).pathname)) return broken();
+        addTiming(metrics, 'first', performance.now() - started);
+        good = source.statusCode >= 200 && source.statusCode < 300;
+        hash = media && source.statusCode === 200 ? createHash('sha256') : undefined;
+        response.statusCode = source.statusCode;
+        response.setHeader('Content-Type', MIME[path.extname(relative).toLowerCase()]);
+        for (const name of ['content-length', 'content-range', 'accept-ranges']) if (source.headers[name]) response.setHeader(name, source.headers[name]);
+        source.once('aborted', broken); source.once('error', broken); source.once('end', () => { ended = true; });
+        const counter = new Transform({ transform(chunk, _encoding, callback) {
+          size += chunk.length;
+          if (size > MAX_RESPONSE) return callback(failure('response_limit', 502));
+          metrics.bytes += chunk.length;
+          hash?.update(chunk);
+          callback(null, chunk);
+        } });
+        counter.once('error', broken);
+        source.pipe(counter).pipe(response);
+      });
+      upstream = attempt;
+      attempt.setTimeout(15000, () => { if (upstream === attempt) broken(); });
+      attempt.once('error', () => { if (upstream === attempt) broken(); });
+      attempt.end();
+    };
+    send(run.upstreamPrefix + relative + search);
   }
   async function staticFile(request, response, pathname) {
     let file;

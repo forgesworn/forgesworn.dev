@@ -23,7 +23,7 @@ const site = resolve(fileURLToPath(new URL('../site/', import.meta.url))), prefi
 const metadata = new Map();
 const types = { '.mjs': 'text/javascript', '.js': 'text/javascript', '.m3u8': 'application/vnd.apple.mpegurl', '.mp4': 'video/mp4' };
 const scaffold = `<!doctype html><video id="video" controls playsinline></video><button id="start">Play with sound</button>
-<script type="module">import Hls from '/vendor/hls.light.min.mjs';import {startLabPeer} from '/media-lab-peer.mjs';
+<script type="module">import Hls from '/vendor/hls.min.mjs';import {startLabPeer} from '/media-lab-peer.mjs';
 document.getElementById('start').onclick=async()=>{try{window.fixture=await startLabPeer({Hls,video:document.getElementById('video'),playlistUrl:location.origin+'${prefix}index.m3u8',runtime:window.runtime,onStats:value=>{window.latest=value;}});}catch(error){window.failureType=error.name;}};</script>`;
 const server = createServer(async (request, response) => {
   try {
@@ -52,7 +52,7 @@ const cancelled = () => { process.exitCode = 130; cancellation.abort(); void bro
 process.once('SIGINT', cancelled); process.once('SIGTERM', cancelled);
 try {
   receipt.binarySha256 = createHash('sha256').update(await readFile(resolve(options[options.engine]))).digest('hex');
-  receipt.sources = await Promise.all(['site/media-lab-peer.mjs', 'scripts/media-lab-turn.mjs', 'site/vendor/media-peer-demo.js'].map(async path => ({
+  receipt.sources = await Promise.all(['site/media-lab-peer.mjs', 'site/media-live-start.mjs', 'scripts/media-lab-turn.mjs', 'site/vendor/media-peer-demo.js', 'site/vendor/hls.min.mjs'].map(async path => ({
     path, sha256: createHash('sha256').update(await readFile(new URL('../' + path, import.meta.url))).digest('hex'),
   })));
   operator = await startLabTurnOperator({ ...options, signal: cancellation.signal });

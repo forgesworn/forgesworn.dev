@@ -65,6 +65,14 @@ The own-loop preset is a separate treatment, not a hidden default.  It is
 also distinct from the sixteen-worker M4 snapshot used by earlier marketing
 figures.  Current-host observations do not inherit those results.
 
+Every local treatment uses the same full hls.js 1.7.3 player build.  MediaMTX
+can advertise separate audio and video playlists, which require the full
+build's alternate-audio controllers.  The light build omits them; loading
+only the video rendition cannot establish a fair audio/video comparison.
+The exact published full ESM asset, archive integrity and source revision are
+recorded in `site/vendor/hls.full.build.json`.  The public muxed-media demo
+retains its separately recorded light build.
+
 All origins receive both source tracks using packet-copy publishing.  The
 shared delivery profile is Low-Latency HLS, 24 retained playlist entries,
 approximately one-second segments and 200 ms parts, with recording off and
@@ -111,6 +119,11 @@ needs actual playback evidence.
   audio, video, initialisation and playlists.  It excludes headers and the
   config, stats, credential and hash-metadata APIs.  Cancellation can leave a
   small amount of proxy-read data that the browser did not consume.
+- **HTTP request work:** `requests` counts incoming browser HLS requests.
+  `originRequests` counts actual upstream requests, including bounded redirect
+  hops; `redirectsFollowed` counts those extra hops.  Readiness probes are
+  excluded from these delivery counters.  A final response's first-byte timing
+  includes any preceding redirect work.
 - **First-byte time:** proxy request start to the upstream response headers.
   **Response time:** request start to completion of the proxied response.
   These are not glass-to-glass delay or browser decoding time.  Percentiles
@@ -119,6 +132,10 @@ needs actual playback evidence.
 - **Browser results:** first decoded frame, decoded-frame progress, waiting
   time and peer metrics are measured by the player.  The backend does not
   manufacture viewer counts, decoding rates, avoided bytes or frame rates.
+  Frame-callback media dimensions are recorded separately from the video's
+  natural display dimensions.  The supplied recording has 3840 by 2160 media
+  pixels and a 17415:17408 pixel ratio, so its preserved display width rounds
+  to 3842.  That display adjustment does not change its encoded video.
 
 When both origins keep up, they should deliver approximately the same encoded
 programme bitrate.  A larger received-byte count alone does not mean a better
@@ -129,6 +146,14 @@ MediaMTX can advertise separate audio and video renditions.  Keep both enabled
 and fetched by the browser.  The older simulated viewer benchmark omitted its
 separate audio rendition, so its historical results are not a substitute for
 this browser comparison.
+
+The local comparator uses the full pinned hls.js build for every origin, so
+both receive the same player and MediaMTX's separate audio track is actually
+played.  The public muxed preview keeps the smaller light build.  Viewer
+buffering targets four seconds with a six-second configured ceiling; the
+peer holder targets eight with a ten-second ceiling.  MSE can overshoot by a
+fragment, and decoded-frame memory is separate from both these settings and
+the explicitly bounded peer cache.
 
 ## Timing and completed observations
 
@@ -202,8 +227,17 @@ A selected relay returns its private `runtime` in the run response.
 The playlist URL is `/media/lab/hls/<run-id>/index.m3u8`; clients must use the
 returned value.  The `/lab/hls/<run-id>/…` alias is also accepted.  Only the
 active origin's HLS subtree can be proxied.  Relative audio/video rendition
-paths, query strings and single byte ranges are preserved.  Redirects,
-traversal, arbitrary upstreams and responses over 64 MiB are rejected.
+paths, query strings and single byte ranges are preserved.  At most two native
+redirect hops may remain on the exact configured loopback origin and active
+HLS subtree.  This supports MediaMTX's `?cookieCheck=1` canonical request;
+external origins, other paths, credentials in redirect URLs, loops beyond the
+hop bound, traversal and responses over 64 MiB are rejected.  Browser cookies
+are not forwarded.  A bounded private native cookie jar retains MediaMTX's
+cookie-check marker and HLS session for that run, restricted to the configured
+loopback origin and active stream, with cookie path and expiry matching.  It
+holds at most 16 cookies and 8 KiB, and is discarded with the run.  Native
+`Set-Cookie` headers and cookie values are absent from config, stats and
+observations; they are never set in the browser.
 Responses stream with backpressure and cancellation; media is not accumulated
 in an application cache.
 
