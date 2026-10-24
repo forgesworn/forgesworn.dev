@@ -83,7 +83,11 @@ async function freshPage() {
     window.__playerFixture = { sessions: [], deferStops: false, deferStartup: false, failNextStart: false };
     // Native media is deliberately stubbed; these tests exercise ownership,
     // cancellation and visible counters, not a synthetic playback success.
-    HTMLMediaElement.prototype.play = function () { return Promise.resolve(); };
+    HTMLMediaElement.prototype.play = function () {
+      return window.__playerFixture.blockPlayback
+        ? Promise.reject(new DOMException('Fixture requires a play gesture', 'NotAllowedError'))
+        : Promise.resolve();
+    };
     HTMLMediaElement.prototype.pause = function () {};
     HTMLMediaElement.prototype.load = function () {};
   });
@@ -177,6 +181,24 @@ try {
     await page.locator('#demo-stop').click();
     await page.waitForFunction(() => document.getElementById('demo-transport').textContent === 'Stopped');
     assert.equal(await page.locator('#demo-peers').innerText(), '0');
+  });
+
+  await run('browser policy keeps audible controls and prepared media without silently muting', async page => {
+    await page.evaluate(() => { window.__playerFixture.blockPlayback = true; });
+    await page.locator('#demo-start').click(); await playing(page, 1);
+    assert.equal(await page.locator('#media-video').getAttribute('src'), '/fixture-video-1.mp4');
+    assert.equal(await page.evaluate(() => document.getElementById('media-video').muted), false);
+    assert.equal(await page.evaluate(() => window.__playerFixture.sessions[0].closed), false);
+    assert.match(await page.locator('#demo-status').innerText(), /Press play on the video.*sound/);
+    await page.evaluate(() => window.__playerFixture.sessions[0].emit());
+    assert.match(await page.locator('#demo-status').innerText(), /Press play on the video.*sound/);
+    await page.evaluate(() => {
+      window.__playerFixture.blockPlayback = false;
+      document.getElementById('media-video').dispatchEvent(new Event('playing'));
+    });
+    assert.equal(await page.locator('#demo-status').innerText(), 'Playing the demo.');
+    await page.locator('#demo-stop').click();
+    await page.waitForFunction(() => window.__playerFixture.sessions[0].closed);
   });
   console.log(JSON.stringify({ suite: 'media-player-lifecycle', checks: completed, count: completed.length,
     scope: 'Production page/controller with explicitly mocked peer/media adapters; not decoded-media or WebRTC acceptance.' }, null, 2));

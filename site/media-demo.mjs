@@ -1,3 +1,5 @@
+import { attachFullscreen } from './media-fullscreen.mjs';
+
 const element = id => document.getElementById(id);
 const video = element('media-video');
 const start = element('demo-start');
@@ -11,8 +13,30 @@ function bytes(value) {
   return value < 1024 * 1024 ? `${(value / 1024).toFixed(0)} KB` : `${(value / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function setStatus(text) { status.textContent = text; }
+function setStatus(text) {
+  status.textContent = active?.playbackBlocked && video.paused
+    ? 'Your browser needs another play gesture.  Press play on the video to start playback with sound.'
+    : text;
+}
 function setCounter(key, text) { if (counters[key]) counters[key].textContent = text; }
+
+async function requestPlayback(session) {
+  if (session.abort.signal.aborted || session !== active) return false;
+  try {
+    await video.play();
+    if (session.abort.signal.aborted || session !== active) return false;
+    session.playbackBlocked = false;
+    return true;
+  } catch (error) {
+    if (session.abort.signal.aborted || session !== active) return false;
+    if (error.name !== 'NotAllowedError') throw error;
+    // Keep the prepared video and its controls available. Browser policy must
+    // not turn a request for audible playback into silently muted playback.
+    session.playbackBlocked = true;
+    setStatus('');
+    return false;
+  }
+}
 
 async function stopPlayback({ reset = true, preparing = false } = {}) {
   const generation = ++operation;
@@ -61,15 +85,13 @@ function stats(value) {
   else if (value.phase === 'error') setStatus('Playback stopped.  Replay the demo to reconnect.');
 }
 
-async function nativePlayback(url, signal) {
+async function nativePlayback(url, session) {
   video.src = url;
   setCounter('transport', 'Native HLS');
   setCounter('fragments', '0');
   setCounter('bytes', '0 KB');
   setCounter('peers', '0');
-  if (signal.aborted) return;
-  await video.play();
-  setStatus('Playing Sapflow-packaged HLS with your browser’s native player.');
+  if (await requestPlayback(session)) setStatus('Playing Sapflow-packaged HLS with your browser’s native player.');
 }
 
 async function originPlayback(Hls, url, session) {
@@ -88,7 +110,7 @@ async function originPlayback(Hls, url, session) {
   hls.on(Hls.Events.ERROR, (_event, error) => { if (error.fatal) setStatus('Playback stopped.  Replay the demo to reconnect.'); });
   hls.attachMedia(video);
   hls.loadSource(url);
-  await video.play();
+  await requestPlayback(session);
 }
 
 async function play() {
@@ -102,7 +124,8 @@ async function play() {
   start.disabled = true;
   selector.disabled = true;
   if (stop) stop.disabled = false;
-  video.muted = true;
+  // This is an explicit Play gesture. The visible element starts audible and
+  // retains any mute or volume choice the person makes across later Replay.
   for (const key of ['fragments', 'peers']) setCounter(key, '0');
   setCounter('bytes', '0 KB');
   setCounter('transport', 'Preparing');
@@ -128,6 +151,7 @@ async function play() {
         if (generation !== operation) return;
         session.controller = await startPeerDemo({ Hls, video, playlistUrl, manifest: segments, runtime, signal: abort.signal,
           onStats: value => { if (!abort.signal.aborted && generation === operation) stats(value); } });
+        if (!abort.signal.aborted && generation === operation && video.paused) await requestPlayback(session);
       } catch (error) {
         if (abort.signal.aborted || generation !== operation) return;
         if (runtime) throw new Error('The local TURN peer test could not connect.  Check that Spry is running and try again.');
@@ -136,7 +160,7 @@ async function play() {
       }
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
       if (runtime) throw new Error('This browser uses native HLS.  Use a browser with Media Source Extensions for the local peer test.');
-      await nativePlayback(playlistUrl, abort.signal);
+      await nativePlayback(playlistUrl, session);
     } else if (Hls.isSupported()) {
       if (runtime) throw new Error('WebRTC is unavailable in this browser.');
       await originPlayback(Hls, playlistUrl, session);
@@ -151,6 +175,12 @@ async function play() {
 }
 
 if (video && start && selector && status) {
+  attachFullscreen({ container: element('media-video-wrap'), video, button: element('demo-fullscreen'), onError: setStatus });
+  video.addEventListener('playing', () => {
+    if (!active?.playbackBlocked) return;
+    active.playbackBlocked = false;
+    setStatus('Playing the demo.');
+  });
   start.addEventListener('click', () => { void play(); });
   stop?.addEventListener('click', () => { void stopPlayback(); });
   selector.addEventListener('change', () => { void stopPlayback(); });
