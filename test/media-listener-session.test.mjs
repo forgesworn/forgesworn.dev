@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createListenerSession, LISTENER_SESSION_KIND, LISTENER_SESSION_DEFAULTS } from '../site/media-listener-session.mjs';
+import { createListenerSession, LISTENER_SESSION_KIND, LISTENER_SESSION_DEFAULTS,
+  LISTENER_TELEMETRY_KIND, LISTENER_TELEMETRY_LIMITS } from '../site/media-listener-session.mjs';
 import { finalizeEvent, generateSecretKey } from '../site/vendor/media-peer-demo.js';
 
 const source = 'a'.repeat(64), room = 'dejavu-full-v1';
@@ -8,7 +9,7 @@ const defaults = { room, source, duration: 268.5, relays: ['wss://one.test', 'ws
 
 function fixture() {
   let at = 1800000000000, next = 0;
-  const timers = new Map(), sockets = [], published = [], stored = new Map(), policies = new Map(), acks = new Map();
+  const timers = new Map(), sockets = [], published = [], stored = new Map(), policies = new Map(), acks = new Map(), eose = new Map();
   const later = (fn, ms = 0) => { const id = ++next; timers.set(id, { at: at + ms, fn }); return id; };
   const cancel = id => timers.delete(id);
   function advance(ms) {
@@ -37,7 +38,8 @@ function fixture() {
   }
   function inject(url, event) {
     const rows = relayRows(url), address = `${event.pubkey}:${event.kind}:${tag(event, 'd')}`, old = rows.get(address);
-    if (!old || old.created_at < event.created_at || old.created_at === event.created_at && old.id > event.id) rows.set(address, event);
+    if ((event.kind < 20000 || event.kind >= 30000)
+      && (!old || old.created_at < event.created_at || old.created_at === event.created_at && old.id > event.id)) rows.set(address, event);
     for (const socket of sockets) if (socket.url === url) deliver(socket, event);
   }
   function runtime(label = '') {
@@ -57,6 +59,7 @@ function fixture() {
         if (frame[0] === 'REQ') {
           this.sub = frame[1]; this.filter = frame[2];
           for (const event of relayRows(this.url).values()) if (event.created_at >= this.filter.since) deliver(this, event);
+          if (eose.get(this.url) !== false) this.respond(['EOSE', this.sub]);
         } else if (frame[0] === 'EVENT') {
           published.push({ url: this.url, label, event: frame[1] }); inject(this.url, frame[1]);
           const ack = acks.has(this.url) ? acks.get(this.url) : true;
@@ -88,8 +91,16 @@ function fixture() {
       tags: tags ?? [['d', `forgesworn-listener:${room}`], ['source', source], ['expiration', String(created_at + 24)]],
       content: JSON.stringify(body), ...patch }, secret);
   };
+  const report = (peerId = '1'.repeat(64)) => ({ peerId, sampledAt: at, positionMs: 1000, following: true,
+    originBytes: 1000000, peerBytes: 500000, uploadedBytes: 123456, connections: [] });
+  const telemetry = ({ secret = generateSecretKey(), epoch, value = report(), body = {}, ...patch }) => {
+    const created_at = Math.floor(value.sampledAt / 1000);
+    return finalizeEvent({ kind: LISTENER_TELEMETRY_KIND, created_at,
+      tags: [['d', `forgesworn-listener:${room}`], ['source', source], ['expiration', String(created_at + 12)]],
+      content: JSON.stringify({ v: 1, room, source, durationMs: 268500, epoch, ...value, ...body }), ...patch }, secret);
+  };
   async function join(session) { const pending = session.join(); advance(1250); return pending; }
-  return { now: () => at, advance, runtime, create, join, signed, inject, sockets, published, policies, acks,
+  return { now: () => at, advance, runtime, create, join, signed, report, telemetry, inject, sockets, published, policies, acks, eose,
     activeTimers: () => timers.size, rows: relayRows };
 }
 
@@ -261,4 +272,212 @@ test('listener leases/state and event input remain bounded, and playback loops w
     assert.throws(() => f.create(patch), TypeError);
   }
   assert.equal(LISTENER_SESSION_DEFAULTS.ttlMs, 24000);
+});
+
+test('three actual signed listeners retain their identities, epoch and room total across repeated source wraps', async () => {
+  const f = fixture(), sessions = [f.create({ duration: 2 }, 'a'), f.create({ duration: 2 }, 'b'), f.create({ duration: 2 }, 'c')];
+  const pending = sessions.map(session => session.join()); f.advance(1250); await Promise.all(pending); f.advance(1000);
+  const identities = sessions.map(session => session.snapshot().id), epoch = sessions[0].snapshot().epochId;
+  for (let wrap = 0; wrap < 20; wrap++) {
+    f.advance(2000);
+    for (const [index, session] of sessions.entries()) {
+      const state = session.snapshot();
+      assert.equal(state.listeners, 3, 'room presence includes this listener, independently of RTC links');
+      assert.equal(state.id, identities[index], 'a recording wrap does not create a new listener');
+      assert.equal(state.epochId, epoch, 'the common clock continues across the recording boundary');
+      assert.equal(state.ready, true); assert.ok(state.position >= 0 && state.position < 2);
+    }
+  }
+  assert.ok(f.published.every(row => JSON.parse(row.event.content).status === 'active'), 'no wrap publishes a departure');
+  for (const session of sessions) session.stop(); assert.equal(f.activeTimers(), 0);
+});
+
+test('healthy acknowledged relay sessions recover after more than a lifetime of isolated disconnections', async () => {
+  const f = fixture(), session = f.create({ relays: ['wss://one.test'] }); await f.join(session);
+  const identity = session.snapshot().id, epoch = session.snapshot().epochId;
+  try {
+    for (let outage = 0; outage < 8; outage++) {
+      f.sockets.at(-1).close(); f.advance(17000);
+      assert.equal(session.snapshot().connectedRelays, 1, `healthy reconnection ${outage + 1} is not blocked by an exhausted lifetime budget`);
+      assert.equal(session.snapshot().id, identity); assert.equal(session.snapshot().epochId, epoch);
+    }
+  } finally { session.stop(); }
+  assert.equal(f.activeTimers(), 0);
+});
+
+test('unacknowledged relay reconnections retain their bounded consecutive-failure budget', async () => {
+  const f = fixture(), session = f.create({ relays: ['wss://one.test'] }); await f.join(session);
+  f.acks.set('wss://one.test/', false);
+  try {
+    for (let outage = 0; outage < 8; outage++) { f.sockets.at(-1).close(); f.advance(17000); }
+    const attempts = f.sockets.length;
+    assert.equal(session.snapshot().connectedRelays, 0); assert.ok(attempts <= 7);
+    f.advance(60000); assert.equal(f.sockets.length, attempts, 'opening alone never renews an exhausted failure budget');
+  } finally { session.stop(); }
+  assert.equal(f.activeTimers(), 0);
+});
+
+test('optional signed telemetry uses existing sockets and exposes copied fresh reports for active room members', async () => {
+  const f = fixture(); let reportA = true;
+  const a = f.create({ getTelemetry: () => reportA ? { ...f.report('1'.repeat(64)), connections: [
+    { peerId: '2'.repeat(64), sentBytes: 123456, receivedBytes: 400000 }] } : null });
+  const b = f.create({ getTelemetry: () => f.report('2'.repeat(64)) });
+  await f.join(a); await f.join(b); f.advance(6000);
+  assert.equal(f.sockets.length, 4, 'telemetry adds no socket beside each viewer existing relay connections');
+  const state = b.snapshot(); assert.equal(state.listeners, 2); assert.equal(state.members.length, 2);
+  assert.ok(state.members.every(member => member.telemetry !== null));
+  const remote = state.members.find(member => !member.isSelf);
+  assert.equal(remote.id, a.snapshot().id); assert.equal(remote.telemetry.peerId, '1'.repeat(64));
+  assert.equal(remote.telemetry.connections[0].receivedBytes, 400000);
+  assert.ok(remote.telemetryExpiresAt <= f.now() + 12000);
+  remote.telemetry.connections[0].receivedBytes = 0; state.members.pop();
+  assert.equal(b.snapshot().members.find(member => !member.isSelf).telemetry.connections[0].receivedBytes, 400000);
+  const presence = f.published.find(row => row.event.kind === LISTENER_SESSION_KIND).event;
+  assert.deepEqual(Object.keys(JSON.parse(presence.content)).sort(), ['durationMs', 'epoch', 'room', 'source', 'status', 'v'], 'existing presence wire is unchanged');
+  const telemetry = f.published.find(row => row.event.kind === LISTENER_TELEMETRY_KIND).event;
+  assert.ok(Buffer.byteLength(telemetry.content) <= 4096); assert.ok(f.sockets.every(socket => socket.filter.kinds.includes(20378)));
+  assert.ok([...f.rows('wss://one.test/').values()].every(event => event.kind !== 20378), 'ephemeral telemetry is not replayed as stored presence');
+  reportA = false; f.advance(13000);
+  assert.equal(b.snapshot().listeners, 2); assert.equal(b.snapshot().members.find(member => !member.isSelf).telemetry, null, 'report expiry does not remove live membership');
+  a.stop(); f.advance(0); assert.equal(b.snapshot().members.length, 1); b.stop(); assert.equal(f.activeTimers(), 0);
+});
+
+test('telemetry defaults off and observer failure or malformed local samples never disrupt presence', async () => {
+  for (const callback of [undefined, () => { throw new Error('observer'); }, () => ({ ...fixture().report(), ip: '192.0.2.1' })]) {
+    const f = fixture(), session = f.create({ getTelemetry: callback }); await f.join(session); f.advance(12000);
+    assert.equal(session.snapshot().ready, true); assert.equal(session.snapshot().listeners, 1);
+    assert.ok(f.published.every(row => row.event.kind === LISTENER_SESSION_KIND)); session.stop(); assert.equal(f.activeTimers(), 0);
+  }
+});
+
+test('remote telemetry requires active signed membership, current epoch, strict fields and bounded values', async () => {
+  const f = fixture(), session = f.create(); await f.join(session);
+  const state = session.snapshot(), epoch = { id: state.epochId, startedAt: state.startedAt }, secret = generateSecretKey();
+  f.inject('wss://one.test/', f.telemetry({ secret, epoch })); f.advance(0);
+  assert.equal(session.snapshot().members.length, 1, 'telemetry cannot create room membership');
+  const member = f.signed({ secret, epoch }); f.inject('wss://one.test/', member); f.advance(0);
+  const memberReport = () => session.snapshot().members.find(value => value.id === member.pubkey)?.telemetry;
+  for (const value of [
+    { ...f.report(), peerId: 'https://example.test' }, { ...f.report(), positionMs: 268501 },
+    { ...f.report(), following: 'yes' }, { ...f.report(), uploadedBytes: -1 },
+    { ...f.report(), peerBytes: 2 ** 49 }, { ...f.report(), originBytes: '100' },
+    { ...f.report(), sampledAt: f.now() - 13000 }, { ...f.report(), sampledAt: f.now() + 6000 },
+    { ...f.report(), connections: Array.from({ length: 4 }, (_, index) => ({ peerId: String(index + 2).repeat(64), sentBytes: 1, receivedBytes: 1 })) },
+    { ...f.report(), connections: [{ peerId: '2'.repeat(64), sentBytes: 1, receivedBytes: 1, address: '192.0.2.1' }] },
+    { ...f.report(), connections: [{ peerId: '1'.repeat(64), sentBytes: 1, receivedBytes: 1 }] },
+    { ...f.report(), connections: [{ peerId: '2'.repeat(64), sentBytes: 1, receivedBytes: 1 }, { peerId: '2'.repeat(64), sentBytes: 1, receivedBytes: 1 }] },
+  ]) {
+    f.inject('wss://one.test/', f.telemetry({ secret, epoch, value })); f.advance(0); assert.equal(memberReport(), null);
+  }
+  for (const body of [{ source: 'c'.repeat(64) }, { room: 'other' }, { durationMs: 1 },
+    { epoch: { ...epoch, id: 'e'.repeat(64) } }, { url: 'https://example.test' }, { padding: 'x'.repeat(5000) }]) {
+    f.inject('wss://one.test/', f.telemetry({ secret, epoch, body })); f.advance(0); assert.equal(memberReport(), null);
+  }
+  const valid = f.telemetry({ secret, epoch });
+  f.inject('wss://one.test/', { ...valid, sig: '0'.repeat(128) }); f.advance(0); assert.equal(memberReport(), null);
+  f.inject('wss://one.test/', valid); f.inject('wss://two.test/', valid); f.advance(0);
+  assert.equal(memberReport().originBytes, 1000000); assert.equal(session.snapshot().listeners, 2);
+  const firstSample = memberReport().sampledAt; f.advance(1000);
+  const latest = f.telemetry({ secret, epoch, value: { ...f.report(), peerBytes: 700000 } });
+  f.inject('wss://one.test/', latest); f.advance(0); f.inject('wss://two.test/', valid); f.advance(0);
+  assert.ok(memberReport().sampledAt > firstSample); assert.equal(memberReport().peerBytes, 700000, 'late telemetry replay cannot roll counters back');
+  f.inject('wss://one.test/', f.signed({ secret, epoch, status: 'left', created_at: Math.floor(f.now() / 1000) + 1 })); f.advance(0);
+  assert.equal(session.snapshot().listeners, 1); assert.equal(memberReport(), undefined);
+  session.stop(); assert.equal(f.activeTimers(), 0); assert.equal(LISTENER_TELEMETRY_LIMITS.ttlMs, 12000);
+});
+
+test('explicit observation reads live membership and reports without creating a listener or publishing anything', async () => {
+  const f = fixture(), changes = []; let telemetryCalls = 0;
+  const observer = f.create({ getTelemetry: () => { telemetryCalls++; return f.report(); }, onChange: state => changes.push(state) }, 'observer');
+  const started = observer.observe(); assert.equal(started.observed, false); assert.equal(started.id, null);
+  f.advance(0); assert.equal(observer.snapshot().observed, true); assert.equal(observer.snapshot().listeners, 0);
+  assert.equal(observer.snapshot().ready, false); assert.equal(observer.snapshot().joined, false);
+  const a = f.create({ getTelemetry: () => f.report() }, 'a'); await f.join(a); f.advance(0);
+  const state = observer.snapshot();
+  assert.equal(state.listeners, 1); assert.equal(state.members.length, 1); assert.equal(state.members[0].isSelf, false);
+  assert.equal(state.epochId, a.snapshot().epochId); assert.equal(state.members[0].telemetry.peerId, '1'.repeat(64));
+  assert.equal(telemetryCalls, 0); assert.ok(f.published.every(row => row.label !== 'observer'));
+  assert.ok(changes.some(value => value.observed && value.listeners === 1));
+  a.stop(); f.advance(0); assert.equal(observer.snapshot().listeners, 0);
+  observer.stop(); assert.equal(f.activeTimers(), 0);
+});
+
+test('observe, join, instant leave and rejoin reuse at most three sockets and do not count an inactive observer', async () => {
+  const f = fixture(), a = f.create({}, 'a'); await f.join(a);
+  const observer = f.create({ relays: ['wss://one.test', 'wss://two.test', 'wss://three.test'] }, 'observer');
+  observer.observe(); f.advance(0);
+  assert.equal(observer.snapshot().listeners, 1);
+  for (let cycle = 0; cycle < 3; cycle++) {
+    await f.join(observer); f.advance(0);
+    assert.equal(a.snapshot().listeners, 2); assert.equal(observer.snapshot().listeners, 2);
+    observer.leave(); f.advance(0);
+    const state = observer.snapshot();
+    assert.equal(state.status, 'observing'); assert.equal(state.id, null); assert.equal(state.ready, false);
+    assert.equal(state.joined, false); assert.equal(state.observed, true); assert.equal(state.listeners, 1);
+    assert.equal(a.snapshot().listeners, 1, 'the signed leave updates the other listener immediately');
+    assert.equal(f.sockets.filter(socket => socket.label === 'observer').length, 3, 'no playback cycle opens a replacement metadata socket');
+  }
+  observer.stop(); a.stop(); assert.equal(f.activeTimers(), 0);
+});
+
+test('observed requires a current socket matching EOSE and resets on connection loss until a fresh EOSE', () => {
+  const f = fixture(); f.eose.set('wss://one.test/', false); f.eose.set('wss://two.test/', false);
+  const observer = f.create(); observer.observe(); f.advance(0);
+  assert.equal(observer.snapshot().observed, false);
+  f.sockets[0].respond(['EOSE', 'unrelated']); f.advance(0); assert.equal(observer.snapshot().observed, false);
+  f.sockets[0].respond(['EOSE', f.sockets[0].sub]); f.advance(0); assert.equal(observer.snapshot().observed, true);
+  f.sockets[0].close(); assert.equal(observer.snapshot().observed, false);
+  f.advance(1000); assert.equal(observer.snapshot().observed, false, 'an open websocket without subscription completion is not observation proof');
+  const reconnected = f.sockets.at(-1); reconnected.respond(['EOSE', reconnected.sub]); f.advance(0);
+  assert.equal(observer.snapshot().observed, true);
+  observer.stop(); assert.equal(observer.snapshot().observed, false); assert.equal(f.activeTimers(), 0);
+});
+
+test('an idle observer emits presence expiry even when no viewer heartbeat or media timer is running', () => {
+  const f = fixture(), changes = [], observer = f.create({ onChange: state => changes.push(state) });
+  observer.observe(); f.advance(0);
+  f.inject('wss://one.test/', f.signed()); f.advance(0); assert.equal(observer.snapshot().listeners, 1);
+  const afterPresence = changes.length; f.advance(25000);
+  assert.equal(observer.snapshot().listeners, 0);
+  assert.ok(changes.slice(afterPresence).some(state => state.observed && state.listeners === 0), 'maintenance notifies the idle UI when abrupt departure leases expire');
+  assert.equal(f.published.length, 0); observer.stop(); assert.equal(f.activeTimers(), 0);
+});
+
+test('observer reconnections renew their failure budget only after matching EOSE or an explicit retry', () => {
+  const f = fixture(), observer = f.create({ relays: ['wss://one.test'] }); observer.observe(); f.advance(0);
+  for (let outage = 0; outage < 8; outage++) {
+    f.sockets.at(-1).close(); f.advance(1000); assert.equal(observer.snapshot().observed, true);
+  }
+  f.eose.set('wss://one.test/', false);
+  for (let outage = 0; outage < 8; outage++) { f.sockets.at(-1).close(); f.advance(17000); }
+  const attempts = f.sockets.length; f.advance(60000);
+  assert.equal(f.sockets.length, attempts); assert.equal(observer.snapshot().observed, false);
+  f.eose.set('wss://one.test/', true); observer.observe(); f.advance(0);
+  assert.equal(f.sockets.length, attempts + 1); assert.equal(observer.snapshot().observed, true, 'explicit observation can retry after the network recovers');
+  observer.stop(); assert.equal(f.activeTimers(), 0);
+});
+
+test('explicit Play re-arms exhausted observer connections without adding a second relay entry', async () => {
+  const f = fixture(), observer = f.create({ relays: ['wss://one.test'] }); observer.observe(); f.advance(0);
+  f.eose.set('wss://one.test/', false);
+  for (let outage = 0; outage < 8; outage++) { f.sockets.at(-1).close(); f.advance(17000); }
+  const attempts = f.sockets.length; assert.equal(observer.snapshot().connectedRelays, 0);
+  f.eose.set('wss://one.test/', true);
+  assert.equal((await f.join(observer)).ready, true); assert.equal(f.sockets.length, attempts + 1);
+  assert.equal(f.sockets.filter(socket => socket.readyState === 1).length, 1);
+  observer.stop(); assert.equal(f.activeTimers(), 0);
+});
+
+test('leaving an opted-in observer during a pending publish rejects join but keeps metadata subscriptions alive', async () => {
+  const f = fixture(), observer = f.create(); observer.observe(); f.advance(0);
+  f.acks.set('wss://one.test/', null); f.acks.set('wss://two.test/', null);
+  const rejected = assert.rejects(observer.join(), { name: 'AbortError' }); f.advance(1250);
+  const active = f.published.find(row => JSON.parse(row.event.content).status === 'active').event;
+  observer.leave(); await rejected; f.advance(0);
+  f.sockets[0].respond(['OK', active.id, true]); f.advance(0);
+  assert.equal(observer.snapshot().status, 'observing'); assert.equal(observer.snapshot().id, null);
+  assert.equal(observer.snapshot().ready, false); assert.equal(observer.snapshot().observed, true);
+  assert.equal(observer.snapshot().listeners, 0); assert.equal(f.sockets.length, 2);
+  f.acks.set('wss://one.test/', true); assert.equal((await f.join(observer)).ready, true);
+  assert.equal(f.sockets.length, 2); observer.stop(); assert.equal(f.activeTimers(), 0);
 });

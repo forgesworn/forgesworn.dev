@@ -36,6 +36,12 @@ export function invitedPlaybackStart(search, now, duration, quality) {
   const joined = position + Math.max(0, now - created) / 1000;
   return joined < duration - 2 ? joined : 0;
 }
+// The shared recording repeats: compare the nearest positions across its end
+// instead of treating the next loop as an entire recording of drift.
+export function sharedPositionDifference(current, target, duration) {
+  if (![current, target, duration].every(Number.isFinite) || duration <= 0) return null;
+  return ((target - current + duration / 2) % duration + duration) % duration - duration / 2;
+}
 const mean = (samples) => samples.length ? samples.reduce((a, b) => a + b, 0) / samples.length : null;
 const max = (samples) => samples.length ? Math.max(...samples) : null;
 const human = (value, fallback = DASH) => typeof value === 'string' && value.length <= 120 && !/[\r\n\\/<>]/.test(value) ? value : fallback;
@@ -209,20 +215,28 @@ async function initialise() {
   let fullscreenReady = false;
   let detachFullscreen;
   let swarmVisual;
+  let publicRoom = null, publicRoomQuality = null, publicRoomLoading = null, publicRoomRequest = 0;
   let invitationUsed = false;
   const publicPlay = $('public-play');
   if (!local) video.controls = false;
-  const optionalText = (id, value) => { if ($(id)) $(id).textContent = value; };
+  const optionalText = (id, value) => { const node = $(id); if (node && node.textContent !== value) node.textContent = value; };
 
   function listenerStatus(s) {
     if (local) return;
-    const state = s?.listener?.snapshot() ?? s?.listenerState;
+    const state = s?.listener?.snapshot() ?? publicRoom?.snapshot() ?? s?.listenerState;
     const joined = Boolean(state?.ready && state.joined && s?.listenerWanted);
+    const known = Boolean(state?.observed && state.connectedRelays > 0);
+    root.dataset.roomActivity = !known ? 'unknown' : state.listeners ? 'active' : 'empty';
+    root.dataset.watcherCount = known ? String(state.listeners) : '';
     root.dataset.sharedSession = !s ? 'idle' : s.listenerFailed ? 'unavailable' : !s.listenerWanted ? 'paused' : joined ? 'live' : 'joining';
     root.dataset.sharedEpoch = state?.epochId ?? '';
     root.dataset.sharedStartedAt = String(state?.startedAt ?? '');
     root.dataset.sharedPosition = String(state?.position ?? '');
     root.dataset.sharedListeners = String(state?.listeners ?? 0);
+    const count = known ? `${state.listeners}${state.truncated ? '+' : ''}` : '—';
+    optionalText('public-peers', count);
+    optionalText('public-watchers', count);
+    optionalText('public-watchers-label', !known ? 'Checking the room…' : state.listeners ? 'listening now' : 'listening · Be the first');
     optionalText('public-session-status', !s ? 'Press Play to start or join the shared stream.' :
       s.listenerFailed ? 'Shared stream unavailable · playing on your own' :
       !s.listenerWanted ? 'You left the stream · Play to rejoin live' :
@@ -231,6 +245,59 @@ async function initialise() {
       s.followLive === false ? 'Away from the live stream' :
       state.role === 'starter' ? 'You started the stream · live' : 'Shared stream · live');
     if ($('public-live-edge')) $('public-live-edge').hidden = !joined || s.followLive !== false;
+    if (publicPlay && !busy && !s?.browser?.seenFrame) {
+      const label = publicPlay.querySelector('[data-play-label]');
+      if (label) label.textContent = known && !state.listeners ? 'Start the room' : 'Play & join';
+    }
+  }
+
+  async function ensureListenerRoom(quality) {
+    if (publicRoomQuality === quality && publicRoom) return publicRoom;
+    if (publicRoomQuality === quality && publicRoomLoading) return publicRoomLoading;
+    publicRoomQuality = quality;
+    const request = ++publicRoomRequest;
+    publicRoom?.stop(); publicRoom = null;
+    const pending = (async () => {
+      const [{ createListenerSession }, { PUBLIC_SWARM_SOURCE_SHA256, PUBLIC_SWARM_RELAYS }] = await Promise.all([
+        import('./media-listener-session.mjs?v=20261024-swarm-room'), import('./media-public-swarm.mjs?v=20261024-swarm-room'),
+      ]);
+      if (request !== publicRoomRequest || pageAbort.signal.aborted) return null;
+      const clock = createListenerSession({ room: `forgesworn-dejavu-listening-v1-${quality}`, source: PUBLIC_SWARM_SOURCE_SHA256,
+        duration: choices[quality].durationSeconds, relays: [...PUBLIC_SWARM_RELAYS], signal: pageAbort.signal,
+        getTelemetry() {
+          const s = session;
+          const metrics = s?.quality === quality && s.listenerWanted ? s.publicPeer?.metrics() : null;
+          if (!metrics?.viewerId) return null;
+          return { peerId: metrics.viewerId, sampledAt: Date.now(),
+            positionMs: Math.min(Math.round(video.currentTime * 1000), Math.round(s.durationSeconds * 1000) - 1),
+            following: s.followLive !== false, originBytes: metrics.originBytes, peerBytes: metrics.peerBytes,
+            uploadedBytes: metrics.uploadedBytes,
+            connections: metrics.topology.connections.slice(0, 3).map(peer => ({
+              peerId: peer.peerId, sentBytes: peer.mediaBytesSent, receivedBytes: peer.verifiedMediaBytesReceived,
+            })) };
+        },
+        onChange(state) {
+          if (request !== publicRoomRequest || pageAbort.signal.aborted) return;
+          const s = session?.quality === quality ? session : null;
+          if (s && !s.finishing) {
+            const previous = s.listenerState?.epochId;
+            s.listenerState = state;
+            if (previous && state.ready && state.epochId !== previous) {
+              s.followLive = true;
+              if (s.mediaReady) s.listenerAlignedEpoch = state.epochId;
+              followListener(s, true);
+            }
+          }
+          publicDelivery(s);
+        } });
+      publicRoom = clock;
+      clock.observe();
+      publicDelivery(session);
+      return clock;
+    })();
+    publicRoomLoading = pending;
+    try { return await pending; }
+    finally { if (publicRoomLoading === pending) publicRoomLoading = null; }
   }
 
   function followListener(s, force = false) {
@@ -241,12 +308,16 @@ async function initialise() {
     const target = s.listener.position();
     const duration = s.durationSeconds;
     if (!Number.isFinite(target) || !(duration > 0)) return;
-    let difference = target - video.currentTime;
-    if (difference > duration / 2) difference -= duration;
-    if (difference < -duration / 2) difference += duration;
-    s.nextLiveCheck = now + 6000;
-    if (force || Math.abs(difference) > 6) {
-      s.roomAdjustingUntil = now + 2000;
+    const difference = sharedPositionDifference(video.currentTime, target, duration);
+    if (difference === null) return;
+    root.dataset.sharedDrift = String(difference);
+    optionalText('browser-sync', `${difference > 0 ? '+' : ''}${difference.toFixed(2)} s to the room clock`);
+    s.nextLiveCheck = now + 800;
+    if (force || Math.abs(difference) > 0.25) {
+      // Seek rather than changing the tempo of the music. The normal browser
+      // observation timer performs this check; no extra animation loop is used.
+      s.roomSeekAt = now;
+      s.nextLiveCheck = now + 1200;
       video.currentTime = Math.max(0, Math.min(target, video.duration - 0.05));
     }
     listenerStatus(s);
@@ -273,27 +344,13 @@ async function initialise() {
     listenerStatus(s);
     const pending = (async () => {
       try {
-        if (!s.listener) {
-          const [{ createListenerSession }, { PUBLIC_SWARM_SOURCE_SHA256, PUBLIC_SWARM_RELAYS }] = await Promise.all([
-            import('./media-listener-session.mjs'), import('./media-public-swarm.mjs?v=20261024-shared-room'),
-          ]);
-          if (session !== s || !s.listenerWanted || request !== s.listenerRequest || s.abort.signal.aborted) return;
-          s.listener = createListenerSession({ room: `forgesworn-dejavu-listening-v1-${s.quality}`, source: PUBLIC_SWARM_SOURCE_SHA256,
-            duration: s.durationSeconds, relays: [...PUBLIC_SWARM_RELAYS], signal: s.abort.signal,
-            onChange(state) {
-              if (session !== s || s.finishing) return;
-              const previous = s.listenerState?.epochId;
-              s.listenerState = state;
-              if (previous && state.ready && state.epochId !== previous) {
-                s.followLive = true;
-                if (s.mediaReady) s.listenerAlignedEpoch = state.epochId;
-                followListener(s, true);
-              }
-              listenerStatus(s);
-            } });
-        }
+        s.listener = await ensureListenerRoom(s.quality);
+        if (!s.listener || session !== s || !s.listenerWanted || request !== s.listenerRequest || s.abort.signal.aborted) return;
         await s.listener.join();
-        if (session !== s || !s.listenerWanted || request !== s.listenerRequest || s.abort.signal.aborted) { s.listener.leave(); return; }
+        if (session !== s || !s.listenerWanted || request !== s.listenerRequest || s.abort.signal.aborted) {
+          if (session !== s || !s.listenerWanted) s.listener.leave();
+          return;
+        }
         s.listenerFailed = false; s.followLive = true;
         if (align) { s.listenerAlignedEpoch = s.listener.snapshot().epochId; followListener(s, true); }
       } catch {
@@ -322,7 +379,7 @@ async function initialise() {
       optionalText(id, transferBytes(bytes));
       if ($(id)) { $(id).dataset.bytes = bytes === null ? '' : String(bytes); $(id).title = bytes === null ? 'Byte count unavailable' : `${bytes.toLocaleString('en-GB')} bytes this playback`; }
     }
-    optionalText('public-peers', String(peers));
+    optionalText('public-local-peers', `${peers} connected to you`);
     const playing = s && !video.paused && !video.ended;
     const enabled = metrics?.enabled === true;
     optionalText('public-delivery', !s ? 'Ready when you are' : video.ended ? 'Mix finished' : !playing && s.browser?.seenFrame ? 'Paused' :
@@ -346,7 +403,8 @@ async function initialise() {
     root.dataset.originTransferredBytes = String(metrics?.originTransferredBytes ?? 0);
     root.dataset.loadedMediaBytes = String(metrics?.loadedMediaBytes ?? 0);
     root.dataset.cacheHighWaterBytes = String(metrics?.resources?.heldHighWaterBytes ?? 0);
-    swarmVisual?.update({ ...metrics, active: Boolean(s), playing: Boolean(playing), originBytes });
+    swarmVisual?.update({ ...metrics, active: Boolean(s), playing: Boolean(playing), originBytes,
+      room: s?.listener?.snapshot() ?? publicRoom?.snapshot() ?? null });
     listenerStatus(s);
   }
 
@@ -420,6 +478,7 @@ async function initialise() {
       const label = publicPlay.querySelector('[data-play-label]');
       if (label) label.textContent = busy && !ready ? 'Loading the mix…' : finished ? 'Play again' : 'Play & join';
       video.controls = ready;
+      listenerStatus(session);
     }
     $('lab-clear').disabled = !runs.length;
     $('lab-export').disabled = !runs.length;
@@ -604,10 +663,13 @@ async function initialise() {
     }
     video.addEventListener('pause', () => {
       endStall();
-      if (!local && !s.finishing && !video.ended) { leaveListener(s); shareWhilePlaying(s, false); }
+      // A natural boundary pauses the media element before ended. Keep room
+      // membership and peer delivery through the shared recording's next loop.
+      if (!local && video.ended && s.listenerWanted && s.listener?.snapshot().ready) return;
+      if (!local && !s.finishing) { leaveListener(s); shareWhilePlaying(s, false); }
       if (!s.finishing && !s.sourceEof && b.seenFrame) {
         if (local) { s.interrupted = true; status('Playback paused. This interrupted run will not enter the comparison table.'); }
-        else { shareWhilePlaying(s, false); status('Paused. Press play on the video to keep listening and rejoin.'); publicDelivery(s); }
+        else { status('Paused. Press play on the video to keep listening and rejoin.'); publicDelivery(s); }
       }
     }, { signal: s.abort.signal });
     let lastInteraction = -Infinity;
@@ -618,7 +680,7 @@ async function initialise() {
       // HLS latency corrections can seek too; exclude deliberate viewer seeks.
       if (b.seenFrame && !s.finishing && performance.now() - lastInteraction < 1500) {
         s.interrupted = true;
-        if (!local && performance.now() > (s.roomAdjustingUntil ?? 0)) { s.followLive = false; listenerStatus(s); }
+        if (!local && lastInteraction > (s.roomSeekAt ?? -Infinity)) { s.followLive = false; listenerStatus(s); }
       }
     }, { signal: s.abort.signal });
     video.addEventListener('error', () => {
@@ -739,7 +801,7 @@ async function initialise() {
         maxBufferSize: (local ? 8 : 32) * 1024 * 1024, backBufferLength: 0, enableWorker: true, startPosition: initial.startPosition });
       if (!local) {
         try {
-          const { createPublicSwarm } = await import('./media-public-swarm.mjs?v=20261024-shared-room');
+          const { createPublicSwarm } = await import('./media-public-swarm.mjs?v=20261024-swarm-room');
           if (session !== s || s.abort.signal.aborted) return;
           s.publicPeer = createPublicSwarm({ Hls, hls: s.hls, video, playlistUrl: url.href, quality: s.quality,
             signal: s.abort.signal, onStats: metrics => { if (session === s) publicDelivery(s, metrics); } });
@@ -777,7 +839,7 @@ async function initialise() {
     if (s.frameCallback !== undefined) video.cancelVideoFrameCallback?.(s.frameCallback);
     if (s.observer) { s.resourceEntries(s.observer.takeRecords()); s.observer.disconnect(); }
     s.abort.abort();
-    try { s.listener?.stop(); } catch {}
+    try { if (s.listener === publicRoom) s.listener.leave(); else s.listener?.stop(); } catch {}
     try { Promise.resolve(s.peer?.stop()).catch(() => {}); } catch {}
     try { s.publicPeer?.stop(); } catch {}
     try { s.hls?.destroy(); } catch {}
@@ -920,7 +982,8 @@ async function initialise() {
       void play();
     });
     $('lab-quality').addEventListener('change', () => {
-      if (!session || session.quality === $('lab-quality').value) return;
+      if (!session) { void ensureListenerRoom($('lab-quality').value).catch(() => listenerStatus(null)); return; }
+      if (session.quality === $('lab-quality').value) return;
       // A quality choice replaces playback only after that deliberate gesture.
       dispose(session); session = null; controls(); publicDelivery(null); void start();
     });
@@ -943,8 +1006,11 @@ async function initialise() {
       session.followLive = true;
       void joinListener(session).then(() => { if (session) { followListener(session, true); void play(session); } });
     });
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && session && !video.paused && session.followLive !== false) followListener(session, true);
+    }, { signal: pageAbort.signal });
     try {
-      const { createSwarmVisual } = await import('./media-swarm-visual.mjs');
+      const { createSwarmVisual } = await import('./media-swarm-visual.mjs?v=20261024-swarm-room');
       if (!pageAbort.signal.aborted && $('public-swarm-map')) {
         swarmVisual = createSwarmVisual($('public-swarm-map'));
         publicDelivery(session);
@@ -1055,6 +1121,7 @@ async function initialise() {
       const requested = new URLSearchParams(location.search).get('q');
       $('lab-quality').value = ['full', 'preview'].includes(requested) && choices[requested] ? requested : choices.full ? 'full' : 'preview';
       qualityDetails();
+      void ensureListenerRoom($('lab-quality').value).catch(() => listenerStatus(session));
     }
     controls();
     publicDelivery(null);

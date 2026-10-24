@@ -3,7 +3,7 @@
 // A receiver's ephemeral key wraps that digest for the existing live-commitment
 // verifier; this is local attestation, not a live broadcaster signing service.
 import { createHlsSwarm, commitmentContent, commitmentPieceSize, segmentMediaContext, KIND_SEGMENT_COMMITMENT, finalizeEvent,
-  generateSecretKey } from './vendor/media-peer-demo.js';
+  generateSecretKey } from './vendor/media-peer-demo.js?v=9c167439';
 import { observeOriginLoader } from './media-transfer-stats.mjs';
 
 export const PUBLIC_SWARM_LIMITS = Object.freeze({
@@ -121,13 +121,16 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
 
   const metrics = () => {
     const live = swarm?.metrics();
-    const acceptedConnections = (swarm?.peerConnections?.() ?? []).filter(connection => connection.connectionState === 'connected');
+    const acceptedDetails = (swarm?.peerConnectionDetails?.() ?? []).filter(({ connection }) => connection.connectionState === 'connected');
+    const acceptedConnections = acceptedDetails.map(({ connection }) => connection);
+    const identities = new Map(acceptedDetails.map(({ connection, pubkey }) => [connection, pubkey]));
     const connectedPeers = acceptedConnections.length;
     const peerBytes = totals.peerBytes + n(live?.bytes.peerFirst);
     highWaterBytes = Math.max(highWaterBytes, n(live?.bytes.held));
     return { enabled, phase: stopped ? 'stopped' : !enabled ? 'origin' : enabling && !swarm ? 'connecting' :
       connectedPeers > 0 && ['peer', 'mixed'].includes(lastDelivery) ? 'peer' : connectedPeers > 0 ? 'connected' : 'waiting',
       lastDelivery, reason: lastReason, connectedPeers, serving: live?.serving === true,
+      viewerId: live?.pubkey ?? null,
       peerBytes, originBytes: Math.max(0, loadedMediaBytes - peerBytes), loadedMediaBytes,
       originTransferredBytes: receivedOriginBytes,
       uploadedBytes: sentMediaBytes,
@@ -149,7 +152,7 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
         zeroBudgetPeerRaces: n(live?.segments.zeroBudgetPeerRaces), zeroBudgetPeerRaceWins: n(live?.segments.zeroBudgetPeerRaceWins) },
       topology: { connections: acceptedConnections.filter(connection => peerObservations.has(connection)).map(connection => {
         const observation = peerObservations.get(connection);
-        return { id: observation.id, state: connection.connectionState, iceState: connection.iceConnectionState,
+        return { id: observation.id, peerId: identities.get(connection), state: connection.connectionState, iceState: connection.iceConnectionState,
           bytesSent: observation.sentBytes, bytesReceived: observation.receivedBytes, kind: observation.kind, trafficBasis: observation.trafficBasis,
           mediaBytesSent: observation.mediaBytesSent, verifiedMediaBytesReceived: observation.verifiedMediaBytesReceived,
           observedAtMs: observation.observedAtMs };
@@ -338,18 +341,17 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
     finally { if (enabling === pending) enabling = null; }
   }
 
-  const ended = () => disable('ended');
+  // The player owns pause/end policy. A shared recording can wrap without
+  // closing healthy connections, discarding its cache or changing identity.
   const stop = () => {
     if (stopped) return;
     stopped = true; lifetime.abort(); disable('stopped');
     if (hls.config.fLoader === OriginLoader) hls.config.fLoader = originalFragmentLoader;
     signal?.removeEventListener('abort', stop);
-    video.removeEventListener('ended', ended);
     globalThis.removeEventListener?.('pagehide', stop);
     hls.off(Hls.Events.FRAG_LOADED, onFragment);
   };
   signal?.addEventListener('abort', stop, { once: true });
-  video.addEventListener('ended', ended);
   globalThis.addEventListener?.('pagehide', stop);
   if (signal?.aborted) stop();
   emit();

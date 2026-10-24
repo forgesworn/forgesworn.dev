@@ -25,7 +25,7 @@ const mime = { '.html': 'text/html', '.css': 'text/css', '.mjs': 'text/javascrip
   '.json': 'application/json', '.wasm': 'application/wasm', '.woff2': 'font/woff2', '.svg': 'image/svg+xml',
   '.jpg': 'image/jpeg', '.webp': 'image/webp', '.txt': 'text/plain' };
 const clients = new Set(), addressable = new Map();
-const wire = { published: 0, delivered: 0, rejected: 0, roomActive: 0, roomLeft: 0, connections: 0, closed: 0 };
+const wire = { published: 0, delivered: 0, rejected: 0, roomActive: 0, roomLeft: 0, reports: 0, connections: 0, closed: 0 };
 const receipt = { schema: 1, at: new Date().toISOString(), passed: false, page: url.href, quality: options.quality,
   scenario: 'Actual page: delayed join, pause/rejoin, initiator departure, empty-room expiry and fresh visitor',
   candidateStaticRouting: Boolean(options.site), media: 'Unmodified remote film and real browser decoding',
@@ -56,7 +56,7 @@ function localRelay(route) {
       deliver(client, ['EOSE', id]); return;
     }
     const event = id;
-    try { assert(operation === 'EVENT' && [24170, 24171, ROOM_KIND].includes(event?.kind) && verifyEvent(event)); }
+    try { assert(operation === 'EVENT' && [24170, 24171, ROOM_KIND, 20378].includes(event?.kind) && verifyEvent(event)); }
     catch { wire.rejected++; return; }
     wire.published++;
     if (event.kind === ROOM_KIND) {
@@ -67,7 +67,8 @@ function localRelay(route) {
       if (addressable.size > 32) addressable.delete(addressable.keys().next().value);
       try { if (JSON.parse(event.content).status === 'left') wire.roomLeft++; else wire.roomActive++; } catch {}
     }
-    // Kind24170/24171 are ephemeral and are never replayed on a later REQ.
+    if (event.kind === 20378) wire.reports++;
+    // Signalling and telemetry are ephemeral and never replayed on a later REQ.
     deliver(client, ['OK', event.id, true, '']);
     for (const target of clients) for (const [subscription, requested] of target.subscriptions) {
       if (matches(event, requested)) deliver(target, ['EVENT', subscription, event]);
@@ -84,6 +85,8 @@ async function snapshot(page) {
       currentTime: video.currentTime, duration: video.duration, paused: video.paused, ended: video.ended,
       decodedFrames: video.getVideoPlaybackQuality?.().totalVideoFrames ?? 0,
       videos: document.querySelectorAll('video').length, width: video.videoWidth,
+      mediaSource: video.currentSrc,
+      nativeConnections: window.__listenerSmokePcs.filter(connection => connection.connectionState !== 'closed').length,
       sockets: window.__listenerSmokeSockets.map(socket => ({ open: socket.readyState < 2 })),
     };
   });
@@ -103,8 +106,10 @@ async function visitor() {
   await context.routeWebSocket(RELAYS, localRelay);
   await context.addInitScript(() => {
     window.__listenerSmokeSockets = [];
-    const NativeSocket = WebSocket;
+    window.__listenerSmokePcs = [];
+    const NativeSocket = WebSocket, NativePC = RTCPeerConnection;
     window.WebSocket = class extends NativeSocket { constructor(...args) { super(...args); window.__listenerSmokeSockets.push(this); } };
+    window.RTCPeerConnection = class extends NativePC { constructor(...args) { super(...args); window.__listenerSmokePcs.push(this); } };
   });
   const page = await context.newPage();
   page.on('pageerror', error => receipt.errors.push(String(error)));
@@ -112,7 +117,9 @@ async function visitor() {
   await page.waitForFunction(() => { const button = document.getElementById('public-play'); return button && !button.disabled; });
   await page.selectOption('#lab-quality', options.quality);
   const before = await snapshot(page);
-  assert.equal(before.videos, 1); assert.equal(before.sockets.length, 0, 'no room or peer networking before Play');
+  assert.equal(before.videos, 1); assert.equal(before.nativeConnections, 0, 'a room observer opens no WebRTC connection');
+  assert.equal(before.mediaSource, '', 'a room observer does not load the film');
+  assert.ok(before.sockets.filter(socket => socket.open).length <= 3, 'only bounded read-only room sockets may open before Play');
   return { context, page };
 }
 async function start(page) {

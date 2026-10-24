@@ -16,12 +16,15 @@ and opens its diagnostic sections automatically.
 
 Each visitor has one visible video and one hls.js player.  There is no hidden
 holder, second player, prefetching copy of the film or fabricated viewer.
-Before Play, no media is requested and no signalling socket or peer opens.
-Play enables public Nostr rendezvous and native WebRTC data channels;
+Before Play, a read-only subscription to the room's existing Nostr relays
+keeps the listener ticker current. It requests no media, creates no peer or
+signing identity, and does not count the page visitor as a listener.
+Play enables public peer rendezvous and native WebRTC data channels;
 RelaySwarm can serve already held fragments to other visitors.  Pause
 and page departure close sharing connections and release the
 media cache.  Native play rejoins; its upload allowance and original lifetime
-are retained across pause/resume.
+are retained across pause/resume. The read-only ticker remains connected
+after Pause. Closing the page closes its room subscriptions too.
 
 The first viewer normally receives media from the HTTPS host.  Origin
 delivery remains available when there is no useful peer, a relay is
@@ -43,16 +46,22 @@ that clock; the person who started it can leave without ending it for the
 others.  The recording loops while the room remains occupied.  Pause leaves
 the room and stops peer sharing; Play discovers the current room again and
 returns to its live position.  Native seeking can move away from live, with
-**Back to live** to return.  Following playback tolerates buffering and only
-corrects drift over six seconds.  Full screen and playback details retain
-the same video and session.
+**Back to live** to return. Following playback checks the circular clock
+offset through the existing browser observation timer, correcting offsets
+above 250 ms with a seek rather than changing the music's tempo. Seek
+corrections are spaced at least 1.2 seconds apart. Buffering and differences
+in device clocks or audio output can still create temporary offsets; this is
+not a multi-speaker audio synchronisation protocol. Full screen and playback
+details retain the same video and session. A natural recording boundary
+retains room membership, native peer connections, identity and cached media.
 
 There is no always-running encoder or new coordination service.  Existing
 Nostr relays carry a small signed clock/presence event every six seconds,
 bound to the exact room, immutable source digest and recording duration.
 The 4K mix and the shorter 1080p excerpt have separate rooms.  Networking
-begins after Play, and initial discovery is bounded; a relay must accept the
-listener's publication before the page calls it shared.  If coordination is
+for media peers begins after Play, and initial discovery is bounded; a relay
+must accept the listener's publication before the page calls it shared. The
+read-only ticker subscribes on page entry. If coordination is
 unavailable, playback falls back to the media host and says it is playing
 on its own.
 
@@ -70,18 +79,44 @@ records.  Media delivery retains its own existing sockets and resource
 limits.  Concurrent starters converge on the oldest valid observed epoch.
 Relay partitions, device clock differences and anonymous participants mean
 this is a shared browser clock with observed presence, not authoritative
-global audience counting or frame-accurate synchronisation.  The graph
-continues to show this browser's actual media connections.
+global audience counting or frame-accurate synchronisation.
+
+Play and Pause publish membership changes directly; other connected pages
+update on those events rather than waiting for a heartbeat. The ticker
+includes this browser only while joined. Browsing and paused observers do not
+count. An initial matching relay end-of-stored-events reply is required before
+showing an observed count. With no established room observation, it displays
+a dash and a connection status. Abrupt browser loss is detected by lease
+expiry rather than instantaneously; anonymous relays cannot provide an exact
+global count during partitions. A confirmed empty observed room gets a quiet
+animated invitation to start it, respecting reduced motion.
+
+Optional signed ephemeral kind `20378` reports travel on the same room
+sockets, at most every six seconds, and expire locally after 12 seconds.
+They contain only the room/source/epoch, temporary signalling keys, media
+position, follow-live state and bounded media byte counters for at most three
+links. They contain no IP address, SDP, URL, account identity or device label.
+Reports are accepted only for a currently present participant and the current
+epoch. A signature authenticates a report's author; its remote measurements
+and its claimed association to a media signalling key remain self-reported.
+These values never affect verification, scheduling or local byte totals.
 
 ## What the picture shows
 
-The graph shows the media host, this browser and its actual native peer
-connections accepted by RelaySwarm, obtained from `peerConnections()`.
-Pending dials and losing negotiations do not become listener nodes.
-Labels are numbered 1 through the current visible count: ten becoming five
-shows Listener 1 to Listener 5.  Stable internal connection IDs retain the
-correct traffic history while those display labels change.  It contains no
-global viewer total, guessed peer-to-peer links or network-address display.
+The graph shows the media host, this browser and fresh room participants.
+Labels use the same sorted temporary room identities in every browser;
+internal native connection IDs retain their own traffic history. Hollow
+participants have no locally measured connection. Pending dials and losing
+negotiations do not become extra people. The exact native connection and
+remote signalling key come from `peerConnectionDetails()`; independent array
+orders are never used to guess an identity. Ambiguous identity claims do not
+produce a guessed association. No network address is displayed.
+
+Solid links show this browser's own media observations. Dashed links between
+other listeners, and from the source host to them, require fresh signed
+listener reports and are labelled as reports. A connection without traffic
+can remain visible with zero delivery. Missing or expired reports do not
+produce remote transfer animation.
 
 Moving points represent media contributions.  Origin movement follows its
 share of media accepted for playback.  Peer upload movement counts binary media
@@ -93,10 +128,19 @@ segment from aggregate counters or transport completion.
 
 Connection messages, unverified chunks and failed downloads do not animate a
 peer download arrow.  A connection can be present with zero media delivered.
-The graph labels say **to them** and **to you**, from this browser's point of
-view.  RTC connection bytes remain separate diagnostic observations and do
-not feed video labels or movement.  With reduced motion enabled the graph
-remains still.  Resizing changes layout without replaying old traffic.
+Directional rates use changes in measured media byte counters and sample
+times. Link widths and moving batch areas show relative measured traffic;
+the dots are media batches, not individual network packets. Unchanged
+counters do not create traffic. RTC connection bytes remain separate
+diagnostic observations and do not feed video labels or movement. With
+reduced motion enabled the graph remains still. Resizing changes layout
+without replaying old traffic.
+
+**Your peer delivery** measures the fraction of this browser's recently
+loaded video supplied by verified peers over a rolling ten-second window.
+With no recent accepted video it says it is waiting for traffic. It is a
+contribution measure, not a claim about Wi-Fi signal, spare capacity or the
+health of every connection in the room.
 
 The counters distinguish:
 
@@ -114,8 +158,9 @@ The counters distinguish:
   native data channel.  These are not a claim that the recipient decoded
   them.  The library's larger response-reservation counter is retained
   separately as `acceptedUploadBytes` in diagnostic observations.
-- **Connected viewers:** the library's currently connected peers, distinct
-  from connections that are still negotiating.
+- **Listeners here:** fresh observed active room membership, including this
+  listener. The smaller **connected to you** reading separately shows this
+  browser's accepted active peers. Three listeners can mean two local peers.
 
 Units switch between B, KB, MB and GB so a small transfer is not rounded to
 `0.0 MB`.  The exact byte count is retained on each counter.  The viewer
@@ -132,6 +177,18 @@ also use bandwidth.  Published origin CPU/RSS results are dated native
 measurements, separate from this public replay.
 
 ## 4K delivery observations
+
+The [shared listener and topology receipt](evidence/shared-listener-topology-20261024.json)
+records three actual browser contexts decoding the public preview over native
+WebRTC and a local signed Nostr relay. All three retained their exact peer
+connections and shared epoch across a recording loop. The largest circular
+media-clock spread was 0.208 seconds, with a 0.161-second 95th percentile.
+Membership changes reached the other local pages 17–29 ms after an accepted
+join and 100 ms after Pause. Remote graph edges were checked against each
+other browser's actual connection identities. A separate isolated room
+confirmed read-only observation and join/leave against the real public relays.
+These are same-Mac preview and protocol checks, not a new 4K throughput
+benchmark, physical-device clock qualification or public-NAT capacity claim.
 
 The [24 October accounting and delivery receipt](evidence/media-transfer-stats-20261024.json)
 records the zero-video/moving-arrow regression, the corrected two-browser
@@ -253,6 +310,8 @@ node test/media-showcase-visitors.mjs --site site --quality full \
   --observe-seconds 45 --min-peer-bytes 10000000 --min-peer-share 0.1 \
   --output .local/4k-peer-contribution.json
 node test/media-swarm-visual-browser.mjs .local/graph-observation-regression.json
+node test/media-shared-topology-browser.mjs --site site \
+  --output .local/shared-topology.json
 ```
 
 The first browser command serves candidate site assets at the approved
