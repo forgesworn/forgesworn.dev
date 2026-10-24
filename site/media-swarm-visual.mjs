@@ -1,8 +1,9 @@
 // A local view of real connections. No invented peers, global viewer count,
 // packet animation timer or remote-to-remote links.
+import { transferBytes as bytes } from './media-transfer-stats.mjs';
 const NS = 'http://www.w3.org/2000/svg';
+export const MAX_VISUAL_PEERS = 10;
 const number = value => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0;
-const bytes = value => value >= 1e6 ? `${(value / 1e6).toFixed(1)} MB` : `${(value / 1000).toFixed(0)} KB`;
 const make = (name, attributes = {}, text) => {
   const node = document.createElementNS(NS, name);
   for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, value);
@@ -15,9 +16,9 @@ export function observedTopology(metrics) {
   if (!Array.isArray(records)) return [];
   const seen = new Set();
   return records.filter(item => item && typeof item.id === 'string' && /^[a-z0-9-]{1,32}$/i.test(item.id) &&
-    ['connected', 'connecting', 'new'].includes(item.state) && !seen.has(item.id) && seen.add(item.id)).slice(0, 5)
+    item.state === 'connected' && !seen.has(item.id) && seen.add(item.id)).slice(0, MAX_VISUAL_PEERS)
     .map(item => ({ id: item.id, state: item.state, kind: item.kind === 'relay' ? 'relay' : 'direct',
-      bytesSent: number(item.bytesSent), bytesReceived: number(item.bytesReceived) }));
+      mediaBytesSent: number(item.mediaBytesSent), verifiedMediaBytesReceived: number(item.verifiedMediaBytesReceived) }));
 }
 
 function drawSwarmVisual(container) {
@@ -26,14 +27,13 @@ function drawSwarmVisual(container) {
   const svg = make('svg', { viewBox: narrow ? '0 0 520 390' : '0 0 960 355', role: 'img', 'aria-label': 'The media host and your browser. No peer connections yet.',
     class: 'swarm-canvas', preserveAspectRatio: 'xMidYMid meet' });
   const title = make('title', {}, 'Your part of the swarm');
-  const description = make('desc', {}, 'Only peer connections observed by this browser are shown. Moving points represent measured traffic.');
+  const description = make('desc', {}, 'Only peer connections observed by this browser are shown. Moving points represent media sent or verified media received, not connection messages.');
   const style = make('style', {}, `
     .swarm-node text{font-family:Inter,system-ui,sans-serif;fill:#e8e6de;letter-spacing:-.2px}
     .swarm-node .swarm-sub{fill:#96999e;font-size:${narrow ? 15 : 12}px;letter-spacing:0}
     .swarm-node .swarm-label{font-size:${narrow ? 19 : 16}px;font-weight:600}
     .swarm-link{fill:none;stroke:#64706b;stroke-width:1.25;opacity:.6}
     .swarm-peer-link{stroke:#c7f36b;opacity:.45}
-    .swarm-connecting{stroke-dasharray:3 7;opacity:.3}
     .swarm-node-enter{animation:swarm-enter .55s ease-out}
     @keyframes swarm-enter{from{opacity:0}to{opacity:1}}
     @media(prefers-reduced-motion:reduce){.swarm-node-enter{animation:none}}
@@ -61,7 +61,7 @@ function drawSwarmVisual(container) {
     const detail = make('text', { class: 'swarm-sub', y: central ? 96 : 73, 'text-anchor': 'middle' }, subtitle);
     group.append(name, detail);
     nodes.append(group);
-    return { group, detail };
+    return { group, name, detail };
   }
   const hostNode = node(origin, 'Media host', 'Original 4K mix');
   const selfNode = node(self, 'You', 'Ready to listen', true);
@@ -72,17 +72,36 @@ function drawSwarmVisual(container) {
   nodes.append(emptyLabel, emptySub);
   svg.append(title, description, style, links, particles, nodes);
   container.replaceChildren(svg);
-  const connected = new Map(), positions = narrow ? [{ x: 348, y: 282 }, { x: 78, y: 282 }, { x: 470, y: 200 }, { x: 210, y: 220 }, { x: 210, y: 325 }] :
+  const connected = new Map(), positions = narrow ? [{ x: 348, y: 282 }, { x: 78, y: 282 }] :
     [{ x: 740, y: 164 }, { x: 818, y: 60 }, { x: 818, y: 262 }, { x: 652, y: 45 }, { x: 652, y: 275 }];
   let previousOrigin = 0, destroyed = false, animationFrame;
   const activeFlights = new Set();
 
-  function fly(from, to, colour, count) {
+  function layout(count) {
+    if (count <= positions.length) return { positions, height: narrow ? 390 : 355 };
+    // Keep the ordinary small swarm unchanged. Extra observed connections get
+    // enough rows for their labels instead of overlapping or being clipped.
+    const rows = Math.ceil(count / 2), firstY = narrow ? 220 : 45, gap = narrow ? 110 : 115;
+    const columns = narrow ? [130, 390] : [650, 830];
+    return { positions: Array.from({ length: count }, (_, index) => ({
+      x: columns[index % 2],
+      y: firstY + Math.floor(index / 2) * gap,
+    })), height: Math.max(narrow ? 390 : 355, firstY + (rows - 1) * gap + 100) };
+  }
+  function clearPeerFlights(id) {
+    for (const flight of activeFlights) if (flight.peerId === id) {
+      flight.dot.remove(); activeFlights.delete(flight);
+    }
+  }
+
+  function fly(from, to, colour, count, source, peerId) {
     if (destroyed || reduced?.matches || !number(count) || activeFlights.size >= 16 || globalThis.document?.hidden) return;
     // One point represents a measured batch, never an invented packet count.
     const dot = make('circle', { r: 3.2, fill: colour, 'fill-opacity': .95 });
+    dot.dataset.flightSource = source;
+    dot.dataset.bytes = String(count);
     particles.append(dot);
-    const flight = { dot, from, to, start: performance.now() };
+    const flight = { dot, from, to, peerId, start: performance.now() };
     activeFlights.add(flight);
     if (animationFrame === undefined) animationFrame = requestAnimationFrame(animate);
   }
@@ -101,42 +120,56 @@ function drawSwarmVisual(container) {
   function update(metrics = {}, silent = false) {
     if (destroyed) return;
     const peers = observedTopology(metrics);
+    const currentLayout = layout(peers.length);
+    svg.setAttribute('viewBox', `0 0 ${narrow ? 520 : 960} ${currentLayout.height}`);
     const liveIds = new Set(peers.map(peer => peer.id));
-    for (const [id, record] of connected) if (!liveIds.has(id)) { record.group.remove(); record.link.remove(); connected.delete(id); }
-    for (const peer of peers) {
+    for (const [id, record] of connected) if (!liveIds.has(id)) {
+      clearPeerFlights(id); record.group.remove(); record.link.remove(); connected.delete(id);
+    }
+    for (const [index, peer] of peers.entries()) {
+      const point = currentLayout.positions[index];
       let record = connected.get(peer.id);
       if (!record) {
-        const used = new Set([...connected.values()].map(item => item.slot));
-        const slot = positions.findIndex((_item, i) => !used.has(i));
-        const point = positions[slot];
         const link = make('path', { d: path(self, point), class: 'swarm-link swarm-peer-link' });
         links.append(link);
-        const part = node(point, `Listener ${peer.id.replace(/^peer-/, '')}`, 'Connecting');
+        const part = node(point, `Listener ${index + 1}`, 'Connected');
         part.group.classList.add('swarm-node-enter');
         part.group.dataset.peerId = peer.id;
-        record = { ...part, link, point, slot, sent: 0, received: 0 };
+        record = { ...part, link, point, sent: 0, received: 0 };
         connected.set(peer.id, record);
+      } else if (record.point.x !== point.x || record.point.y !== point.y) {
+        clearPeerFlights(peer.id);
+        record.point = point;
+        record.group.setAttribute('transform', `translate(${point.x} ${point.y})`);
+        record.link.setAttribute('d', path(self, point));
       }
-      record.link.classList.toggle('swarm-connecting', peer.state !== 'connected');
+      // Visible names describe the current picture, never a lifetime connection
+      // counter. The actual connection id still owns its node and byte deltas.
+      record.name.textContent = `Listener ${index + 1}`;
       record.link.setAttribute('stroke-dasharray', peer.kind === 'relay' ? '2 5' : '');
-      record.detail.textContent = peer.state !== 'connected' ? 'Connecting' : `${bytes(peer.bytesSent)} sent · ${bytes(peer.bytesReceived)} received`;
+      record.detail.textContent = `${bytes(peer.mediaBytesSent)} to them · ${bytes(peer.verifiedMediaBytesReceived)} to you`;
+      record.group.dataset.mediaBytesSent = String(peer.mediaBytesSent);
+      record.group.dataset.verifiedMediaBytesReceived = String(peer.verifiedMediaBytesReceived);
       if (metrics.playing && !silent) {
-        fly(self, record.point, '#c7f36b', peer.bytesSent - record.sent);
-        fly(record.point, self, '#a1bfff', peer.bytesReceived - record.received);
+        fly(self, record.point, '#c7f36b', peer.mediaBytesSent - record.sent, 'peer-upload', peer.id);
+        fly(record.point, self, '#a1bfff', peer.verifiedMediaBytesReceived - record.received, 'peer-download', peer.id);
       }
-      record.sent = peer.bytesSent; record.received = peer.bytesReceived;
+      record.sent = peer.mediaBytesSent; record.received = peer.verifiedMediaBytesReceived;
     }
     const originBytes = number(metrics.originBytes);
-    if (metrics.playing && !silent) fly(origin, self, '#d6c5a1', originBytes - previousOrigin);
+    if (metrics.playing && !silent) fly(origin, self, '#d6c5a1', originBytes - previousOrigin, 'origin');
     previousOrigin = originBytes;
     emptyLabel.hidden = emptySub.hidden = peers.length > 0;
     emptyLabel.style.display = emptySub.style.display = peers.length ? 'none' : '';
     selfNode.detail.textContent = !metrics.active ? 'Ready to listen' : !metrics.playing ? 'Paused' : metrics.enabled && metrics.serving ? 'Listening & sharing' : 'Listening';
-    hostNode.detail.textContent = originBytes ? `${bytes(originBytes)} received` : 'Original 4K mix';
+    hostNode.detail.textContent = `${bytes(metrics.originBytes ?? (metrics.active ? null : 0))} to you`;
     originTag.textContent = !metrics.active ? 'Starts the stream' : peers.length ? 'Origin fallback' : 'HLS delivery';
     svg.setAttribute('aria-label', `The media host, your browser and ${peers.length} observed peer connection${peers.length === 1 ? '' : 's'}. ${number(metrics.peerBytes)} verified peer bytes received; ${number(metrics.uploadedBytes)} video bytes uploaded.`);
     container.dataset.connectedPeers = String(peers.filter(peer => peer.state === 'connected').length);
     container.dataset.observedPeers = String(peers.length);
+    container.dataset.originBytes = String(originBytes);
+    container.dataset.peerBytes = String(number(metrics.peerBytes));
+    container.dataset.uploadedBytes = String(number(metrics.uploadedBytes));
   }
   const destroy = () => {
     destroyed = true;

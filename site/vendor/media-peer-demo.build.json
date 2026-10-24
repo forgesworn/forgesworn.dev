@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "project": "https://github.com/forgesworn/relayswarm",
-  "sourceCommit": "55424c9cda739091acc5d641d3ef701678d97ffd",
-  "version": "0.2.1",
-  "sourceArchiveSha256": "eebe51c29dcd20433fd9c0f15df36c42aada663cf7d8b22d8b72d8cecf5be8b8",
-  "packageLockSha256": "6c29ebc1331ad4fea1bfe6345a4165189ed8678ceda3d4a1f12697043a3620ea",
+  "sourceCommit": "0c6dd8a6045e6460c69eac231dffe9b97f1dd076",
+  "version": "0.4.0",
+  "sourceArchiveSha256": "c5454e3859a65924fc13e6e80bbfd7bb7aa27af3b03411f449474e259c015db0",
+  "packageLockSha256": "2c31bf72cb30b63e2295a519b17783b9a8976605830fe899417ebbeec74ebf63",
   "bundle": "media-peer-demo.js",
-  "bundleSha256": "d9358b8964ec72e803e88a9f43065668f0e55b841850a54c6b67eb87f99bc87e",
-  "bundleBytes": 148620,
+  "bundleSha256": "d8ec287d69dd7dfc709d9cb3b1cba08824f9e0412fa4550a51f63d1e56bf89eb",
+  "bundleBytes": 198309,
   "sourceMap": false,
   "originalSourceModified": false,
   "dependencies": [
@@ -36,5 +36,179 @@
       "version": "2.24.1",
       "licence": "Unlicense"
     }
-  ]
+  ],
+  "coreWasm": {
+    "file": "relayswarm-core.wasm",
+    "bytes": 411298,
+    "sha256": "eda9d5f970920d353a1ae76b4fa92f0a0eb0976683a3d5b58a596006b780e8c5",
+    "source": "src/browser/relayswarm-core.wasm",
+    "rustBuildPerformed": false,
+    "dependencies": [
+      {
+        "name": "base16ct",
+        "version": "0.2.0",
+        "licence": "Apache-2.0 OR MIT"
+      },
+      {
+        "name": "block-buffer",
+        "version": "0.10.4",
+        "licence": "MIT OR Apache-2.0"
+      },
+      {
+        "name": "cfg-if",
+        "version": "1.0.5",
+        "licence": "MIT OR Apache-2.0"
+      },
+      {
+        "name": "const-oid",
+        "version": "0.9.6",
+        "licence": "Apache-2.0 OR MIT"
+      },
+      {
+        "name": "crypto-bigint",
+        "version": "0.5.5",
+        "licence": "Apache-2.0 OR MIT"
+      },
+      {
+        "name": "crypto-common",
+        "version": "0.1.6",
+        "licence": "MIT OR Apache-2.0"
+      },
+      {
+        "name": "der",
+        "version": "0.7.10",
+        "licence": "Apache-2.0 OR MIT"
+      },
+      {
+        "name": "digest",
+        "version": "0.10.7",
+        "licence": "MIT OR Apache-2.0"
+      },
+      {
+        "name": "ecdsa",
+        "version": "0.16.9",
+        "licence": "Apache-2.0 OR MIT"
+      },
+      {
+        "name": "elliptic-curve",
+        "version": "0.13.8",
+        "licence": "Apache-2.0 OR MIT"
+      },
+      {
+        "name": "equivalent",
+        "version": "1.0.3",
+        "licence": "Apache-2.0 OR MIT"
+      },
+      {
+        "name": "ff",
+        "version": "0.13.1",
+        "licence": "MIT/Apache-2.0"
+      },
+      {
+        "name": "foldhash",
+        "version": "0.2.0",
+        "licence": "Zlib"
+      },
+      {
+        "name": "generic-array",
+        "version": "0.14.9",
+        "licence": "MIT"
+      },
+      {
+        "name": "group",
+        "version": "0.13.0",
+        "licence": "MIT/Apache-2.0"
+      },
+      {
+        "name": "hashbrown",
+        "version": "0.17.1",
+        "licence": "MIT OR Apache-2.0"
+      },
+      {
+        "name": "hex",
+        "version": "0.4.3",
+        "licence": "MIT OR Apache-2.0"
+      },
+      {
+        "name": "indexmap",
+        "version": "2.14.2",
+        "licence": "Apache-2.0 OR MIT"
+      },
+      {
+        "name": "itoa",
+        "version": "1.0.18",
+        "licence": "MIT OR Apache-2.0"
+      },
+      {
+        "name": "k256",
+        "version": "0.13.4",
+        "licence": "Apache-2.0 OR MIT"
+      },
+      {
+        "name": "memchr",
+        "version": "2.8.3",
+        "licence": "Unlicense OR MIT"
+      },
+      {
+        "name": "rand_core",
+        "version": "0.6.4",
+        "licence": "MIT OR Apache-2.0"
+      },
+      {
+        "name": "ryu",
+        "version": "1.0.23",
+        "licence": "Apache-2.0 OR BSL-1.0"
+      },
+      {
+        "name": "sec1",
+        "version": "0.7.3",
+        "licence": "Apache-2.0 OR MIT"
+      },
+      {
+        "name": "serde_core",
+        "version": "1.0.229",
+        "licence": "MIT OR Apache-2.0"
+      },
+      {
+        "name": "serde_json",
+        "version": "1.0.154",
+        "licence": "MIT OR Apache-2.0"
+      },
+      {
+        "name": "sha2",
+        "version": "0.10.9",
+        "licence": "MIT OR Apache-2.0"
+      },
+      {
+        "name": "signature",
+        "version": "2.2.0",
+        "licence": "Apache-2.0 OR MIT"
+      },
+      {
+        "name": "subtle",
+        "version": "2.6.1",
+        "licence": "BSD-3-Clause"
+      },
+      {
+        "name": "typenum",
+        "version": "1.20.1",
+        "licence": "MIT OR Apache-2.0"
+      },
+      {
+        "name": "version_check",
+        "version": "0.9.5",
+        "licence": "MIT/Apache-2.0"
+      },
+      {
+        "name": "zeroize",
+        "version": "1.9.1",
+        "licence": "Apache-2.0 OR MIT"
+      },
+      {
+        "name": "zmij",
+        "version": "1.0.23",
+        "licence": "MIT"
+      }
+    ]
+  }
 }

@@ -21,7 +21,7 @@
   <a class="skip" href="#main">Skip to the mix</a>
   <header class="site-header"><nav class="nav page-wrap" aria-label="Main navigation"><a class="brand" href="/">Forge<span>Sworn</span></a><div class="nav-links"><a href="#stack">The stack</a><a class="nav-report" href="/live-media-benchmarks.html">Benchmarks</a><a class="nav-cta" href="#build">Make it yours ↗</a></div></nav></header>
   <!-- SHOWCASE_START -->
-  <main id="main" class="media-showcase" data-mode="public" data-results-url="/media/dejavu-preview/playback.json" data-preview-url="/media/dejavu-preview/rtmp/index.m3u8" data-full-url="https://v4v.com/forgesworn-media-demo/dejavu-4k-v1/index.m3u8" data-media-origin="https://v4v.com" data-preview-bytes="11902497" data-preview-bitrate-bps="3178237" data-preview-duration-seconds="29.96" data-full-bytes="817057825" data-full-bitrate-bps="24335335" data-full-duration-seconds="268.6">
+  <main id="main" class="media-showcase" data-mode="public" data-results-url="/media/dejavu-preview/playback.json" data-preview-url="/media/dejavu-preview/rtmp/index.m3u8" data-full-url="/media/dejavu-4k/index.m3u8" data-full-media-base="https://v4v.com/forgesworn-media-demo/dejavu-4k-v1/" data-media-origin="https://v4v.com" data-preview-bytes="11902497" data-preview-bitrate-bps="3178237" data-preview-duration-seconds="29.96" data-full-bytes="817057825" data-full-bitrate-bps="24335335" data-full-duration-seconds="268.6">
     <section id="showcase-experience" aria-label="Deja Vu 4K listening room and real delivery observations">
       <div class="hero">
         <div><p class="eyebrow">The listening room / Deja Vu</p><h1 id="title">Turn it <em>up.</em></h1></div>
@@ -52,13 +52,15 @@
       <section class="swarm-stage public-only" aria-labelledby="swarm-title">
         <div class="swarm-heading"><div><p class="eyebrow">This is happening in your browser</p><h2 id="swarm-title">Watch the stream <em>move.</em></h2></div><p id="public-delivery" class="delivery-path" role="status">Ready to play.  The origin gets you started.</p></div>
         <div id="public-swarm-map" class="swarm-map" role="img" aria-label="Observed connections between this browser, the media origin and other viewers"></div>
-        <div class="swarm-caption"><p>Your actual connections. Moving points show measured connection traffic.</p><p id="public-share-status" class="share-status" role="status">Play to join.  Peer counters rise only when verified video actually moves.</p></div>
+        <div class="swarm-caption"><p>Video transfers, from your point of view. Connection messages do not move the dots.</p><p id="public-share-status" class="share-status" role="status">Play to join.  Media-host delivery and verified peer delivery are counted separately.</p></div>
         <div class="listening-invite"><button id="public-invite" class="button quiet" type="button" disabled>Invite someone into this moment ↗</button><span id="public-invite-status" role="status"></span></div>
         <dl class="delivery-counters" aria-label="Actual RelaySwarm delivery in this browser">
-          <div><dt>Video from viewers</dt><dd id="public-peer-bytes">0 B</dd></div>
-          <div><dt>Video shared by you</dt><dd id="public-upload-bytes">0 B</dd></div>
+          <div><dt>From media host</dt><dd id="public-origin-bytes">0 B</dd></div>
+          <div><dt>Verified from viewers</dt><dd id="public-peer-bytes">0 B</dd></div>
+          <div><dt>Media sent by you</dt><dd id="public-upload-bytes">0 B</dd></div>
           <div><dt>Connected viewers</dt><dd id="public-peers">0</dd></div>
         </dl>
+        <p id="public-transfer-summary" class="transfer-summary">Totals for this playback. Peer downloads count only complete, verified video segments.</p>
         <details class="peer-details"><summary>What joining means</summary><p>RelaySwarm uses public Nostr relays to find viewers, then WebRTC to exchange verified media.  Connected peers can see one another's network addresses.  Sharing uses up to 4 MiB/s of upload, 1 GiB per playback session and a 64 MiB media cache. Pause or close the page to stop sharing.  Your player keeps the origin available whenever peers can't help.</p></details>
       </section>
       <p id="profile-note" class="context local-only">The origin and publisher have separate process readings.  Compare the same source, profile, transport and source window.</p>

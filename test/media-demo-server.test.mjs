@@ -17,7 +17,11 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function fixture(t, { stall = false, stubborn = false } = {}) {
   const root = await mkdtemp(path.join(os.tmpdir(), 'forgesworn-media-server-test-'));
+  const owners = new Set();
   t.after(async () => {
+    // Let each owner reap its child before the fallback kill and scratch
+    // removal. Killing it first races the owner's normal process teardown.
+    const stopped = await Promise.allSettled([...owners].map(demo => demo.stop()));
     // A failed assertion must not leak its disposable subprocesses.
     try {
       const entries = (await readFile(path.join(root, 'pids.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);
@@ -27,6 +31,8 @@ async function fixture(t, { stall = false, stubborn = false } = {}) {
       }
     } catch (error) { if (error.code !== 'ENOENT') throw error; }
     await rm(root, { recursive: true, force: true });
+    const failure = stopped.find(result => result.status === 'rejected');
+    if (failure) throw failure.reason;
   });
   const site = path.join(root, 'site');
   await mkdir(site);
@@ -57,7 +63,10 @@ else {
   net.createServer(socket => socket.end()).listen(port, '127.0.0.1');
 }
 `, { mode: 0o700 });
-  return { root, site, binary, pidFile };
+  return { root, site, binary, pidFile, async startDemo(options = {}) {
+    const demo = await startMediaDemo({ spry: binary, siteRoot: site, ...options });
+    owners.add(demo); return demo;
+  } };
 }
 
 function request(port, pathname, { method = 'GET', headers = {} } = {}) {
@@ -104,8 +113,7 @@ test('TURN REST HMAC and two short-lived opaque viewer principals', () => {
 
 test('real local child, per-viewer runtime credentials, origin guard and bounded shutdown', { timeout: 10000 }, async (t) => {
   const f = await fixture(t);
-  const demo = await startMediaDemo({ spry: f.binary, siteRoot: f.site, transport: 'tcp' });
-  t.after(() => demo.stop());
+  const demo = await f.startDemo({ transport: 'tcp' });
   assert.match(demo.url, /^http:\/\/127\.0\.0\.1:\d+\/media-peer-fixture\.html\?relay=local$/);
   const runtime = await request(demo.port, '/media/demo/runtime.json');
   assert.equal(runtime.status, 200);
@@ -171,8 +179,7 @@ test('static GET/HEAD, media MIME and ranges; traversal, symlinks and directory 
   }
   await writeFile(path.join(f.site, 'large.mp4'), '');
   await truncate(path.join(f.site, 'large.mp4'), 64 * 1024 * 1024 + 1);
-  const demo = await startMediaDemo({ spry: f.binary, siteRoot: f.site });
-  t.after(() => demo.stop());
+  const demo = await f.startDemo();
   for (const [extension, type] of Object.entries({ m3u8: 'application/vnd.apple.mpegurl', mp4: 'video/mp4', m4s: 'video/iso.segment', webp: 'image/webp', mjs: 'text/javascript; charset=utf-8', wasm: 'application/wasm' })) {
     const result = await request(demo.port, `/sample.${extension}`);
     assert.equal(result.status, 200);

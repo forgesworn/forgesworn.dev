@@ -16,6 +16,10 @@ The page loads these local files only after someone starts the video.
   dependencies, bundled from a pinned public source revision.
   `media-peer-demo.build.json` records the source, lockfile, bundle hash and
   included versions.  `media-peer-demo.NOTICE.txt` contains their notices.
+- `relayswarm-core.wasm`: the exact committed Rust/WASM core from that source
+  revision.  The same build receipt records its hash, size and Rust dependency
+  licences; `relayswarm-core.NOTICE.txt` retains their notices.  No Rust
+  compilation is performed by the website bundler.
 
 Both hls.js builds retain the published Apache-2.0 notices in `hls.js-LICENSE`,
 with the licence text in `APACHE-2.0.txt`.  The retained notice matches the
@@ -32,3 +36,6 @@ The RelaySwarm checkout must contain the recorded revision and its matching,
 installed lockfile dependencies.  The builder archives the pinned source into
 temporary staging, checks dependency versions and removes its staging after
 building.  It doesn't modify that checkout or add a browser credential.
+Collecting WASM notices uses `cargo metadata --offline --locked` with the
+pinned source and already installed registry sources.  It does not create a
+Rust target directory or download dependencies.

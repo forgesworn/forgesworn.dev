@@ -1,4 +1,5 @@
 import { readInitialLiveStart } from './media-live-start.mjs';
+import { transferBytes } from './media-transfer-stats.mjs';
 
 const DASH = '—';
 export const observed = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
@@ -218,23 +219,36 @@ async function initialise() {
     const peerBytes = observed(metrics?.peerBytes) ?? 0;
     const uploaded = observed(metrics?.uploadedBytes) ?? 0;
     const peers = observed(metrics?.connectedPeers) ?? 0;
-    optionalText('public-peer-bytes', megabytes(peerBytes));
-    optionalText('public-upload-bytes', megabytes(uploaded));
+    const originBytes = observed(metrics?.originBytes) ?? observed(s?.browser?.responseBytes) ?? (s ? null : 0);
+    for (const [id, bytes] of [['public-origin-bytes', originBytes], ['public-peer-bytes', peerBytes], ['public-upload-bytes', uploaded]]) {
+      optionalText(id, transferBytes(bytes));
+      if ($(id)) { $(id).dataset.bytes = bytes === null ? '' : String(bytes); $(id).title = bytes === null ? 'Byte count unavailable' : `${bytes.toLocaleString('en-GB')} bytes this playback`; }
+    }
     optionalText('public-peers', String(peers));
     const playing = s && !video.paused && !video.ended;
     const enabled = metrics?.enabled === true;
     optionalText('public-delivery', !s ? 'Ready when you are' : video.ended ? 'Mix finished' : !playing && s.browser?.seenFrame ? 'Paused' :
-      metrics?.lastDelivery === 'peer' ? 'Video from another viewer' : peers > 0 ? 'Connected to other viewers' : 'Video from the media host');
+      metrics?.lastDelivery === 'mixed' ? 'Latest segment: viewers + media host' :
+      metrics?.lastDelivery === 'peer' ? 'Latest segment: from a viewer' : metrics?.lastDelivery === 'origin' ? 'Latest segment: from the media host' :
+      peers > 0 ? 'Connected to other viewers' : 'Waiting for the first segment');
     optionalText('public-share-status', !s ? 'Press Play & join. Your browser can pass verified video segments to other viewers.' :
       video.ended ? 'Thanks for listening. Peer connections are closed.' : !playing && s.browser?.seenFrame ? 'Sharing is paused with the music. Press play to rejoin.' :
-      enabled && peers > 0 ? `${peers} viewer${peers === 1 ? '' : 's'} connected to you. The counters show verified video received and video sent.` :
+      enabled && peers > 0 ? `${peers} viewer${peers === 1 ? '' : 's'} connected to you. A connection counts towards delivery only when video moves.` :
       enabled ? 'Looking for other viewers. The media host keeps the music playing while peers connect.' :
       s.publicSharingFailed ? 'Playing from the media host. Peer sharing could not connect in this browser.' :
       s.nativeHls ? 'Your browser is using native HLS. Peer sharing needs a browser with Media Source Extensions and WebRTC.' :
       'Playing from the media host. Peer sharing is starting.');
+    const loadedBytes = originBytes === null ? null : peerBytes + originBytes;
+    optionalText('public-transfer-summary', loadedBytes > 0 ?
+      `${(100 * peerBytes / loadedBytes).toLocaleString('en-GB', { maximumFractionDigits: 1 })}% of your loaded video came from viewers. Totals include buffered video; sent bytes may still be in transfer.` :
+      'Totals for this playback. Peer downloads count only complete, verified video segments.');
     root.dataset.delivery = !s ? 'ready' : metrics?.phase ?? 'origin';
-    swarmVisual?.update({ ...metrics, active: Boolean(s), playing: Boolean(playing),
-      originBytes: Math.max(observed(metrics?.originBytes) ?? 0, observed(s?.browser?.responseBytes) ?? 0) });
+    root.dataset.peerEngine = metrics?.core?.state ?? '';
+    root.dataset.multiHolderDelivered = String(metrics?.core?.multiHolder?.delivered ?? 0);
+    root.dataset.originTransferredBytes = String(metrics?.originTransferredBytes ?? 0);
+    root.dataset.loadedMediaBytes = String(metrics?.loadedMediaBytes ?? 0);
+    root.dataset.cacheHighWaterBytes = String(metrics?.resources?.heldHighWaterBytes ?? 0);
+    swarmVisual?.update({ ...metrics, active: Boolean(s), playing: Boolean(playing), originBytes });
   }
 
   function shareWhilePlaying(s, enabled) {
@@ -526,10 +540,15 @@ async function initialise() {
     if (typeof PerformanceObserver === 'function' && PerformanceObserver.supportedEntryTypes?.includes('resource')) {
       b.requests = 0;
       const prefix = playlist.pathname.slice(0, playlist.pathname.lastIndexOf('/') + 1);
+      let mediaBase;
+      if (!local && s.quality === 'full') {
+        try { mediaBase = approvedMediaUrl(root.dataset.fullMediaBase, location.href, root.dataset.mediaOrigin); } catch {}
+      }
       const entries = (list) => {
         for (const entry of list) {
           let url; try { url = new URL(entry.name); } catch { continue; }
-          if (url.origin !== playlist.origin || !url.pathname.startsWith(prefix)) continue;
+          if (!(url.origin === playlist.origin && url.pathname.startsWith(prefix)) &&
+              !(mediaBase && url.origin === mediaBase.origin && url.pathname.startsWith(mediaBase.pathname))) continue;
           b.requests++;
           // Cross-origin entries without Timing-Allow-Origin can hide sizes/status.
           if (observed(entry.encodedBodySize) !== null && (url.origin === location.origin || entry.encodedBodySize > 0)) b.responseBytes = (b.responseBytes ?? 0) + entry.encodedBodySize;
@@ -601,7 +620,7 @@ async function initialise() {
         signal: s.abort.signal, onStats: (metrics) => peerStats(s, metrics), confirmSourceEnd: error => confirmNormalSourceEnd(s, error) });
       await play(s);
     } else if (Hls.isSupported()) {
-      s.hls = new Hls({ lowLatencyMode: false, maxBufferLength: local ? 4 : 10, maxMaxBufferLength: local ? 6 : 14,
+      s.hls = new Hls({ lowLatencyMode: false, progressive: false, maxBufferLength: local ? 4 : 10, maxMaxBufferLength: local ? 6 : 14,
         maxBufferSize: (local ? 8 : 32) * 1024 * 1024, backBufferLength: 0, enableWorker: true, startPosition: initial.startPosition });
       if (!local) {
         try {

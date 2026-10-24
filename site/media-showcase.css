@@ -84,7 +84,9 @@ body.media-page{margin:0;background:#10110f;color:#f1f0e8;font:400 1rem/1.6 Inte
 .media-showcase .delivery-path{font-size:1rem;color:#e6eddb;line-height:1.6}
 .media-showcase .delivery-path::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:#7c8870;margin:0 9px 2px 0}
 .media-showcase .delivery-caption{font-size:.72rem;color:var(--show-muted);max-width:59ch;margin-top:10px;line-height:1.8}
-.media-showcase .delivery-counters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:0;align-items:center}
+.media-showcase .delivery-counters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:0;align-items:center}
+.media-showcase .transfer-summary{margin-top:18px;color:#a8b99a;font-size:.65rem;line-height:1.8;max-width:100ch}
+@media(max-width:760px){.media-showcase .delivery-counters{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .media-showcase .delivery-counters dt{color:#a3ad96;font:.56rem/1.6 var(--show-mono);text-transform:uppercase;letter-spacing:.035em}
 .media-showcase .delivery-counters dd{margin:7px 0 0;font:600 1.9rem/1.2 var(--show-sans);letter-spacing:-.05em;font-variant-numeric:tabular-nums;color:var(--show-accent)}
 .media-showcase .sharing{margin-top:30px;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:40px;align-items:center;padding:28px 30px;background:#1d2517;border:1px solid #d2ed9129;border-radius:10px}

@@ -15,11 +15,11 @@ const publicRelays = args.includes('--public-relays');
 const qualityIndex = args.indexOf('--quality');
 const quality = qualityIndex >= 0 ? args[qualityIndex + 1] : 'preview';
 if (!['full', 'preview'].includes(quality)) throw new Error('Use --quality full|preview.');
-const playlist = quality === 'full' ? 'https://v4v.com/forgesworn-media-demo/dejavu-4k-v1/index.m3u8' : '/media/dejavu-preview/rtmp/index.m3u8';
+const playlist = quality === 'full' ? '/media/dejavu-4k/index.m3u8' : '/media/dejavu-preview/rtmp/index.m3u8';
 const outputIndex = args.indexOf('--output');
 const output = outputIndex >= 0 ? resolve(args[outputIndex + 1]) : null;
 const site = fileURLToPath(new URL('../site', import.meta.url));
-const mime = { '.html': 'text/html', '.mjs': 'text/javascript', '.js': 'text/javascript', '.json': 'application/json', '.m3u8': 'application/vnd.apple.mpegurl', '.mp4': 'video/mp4' };
+const mime = { '.html': 'text/html', '.mjs': 'text/javascript', '.js': 'text/javascript', '.json': 'application/json', '.m3u8': 'application/vnd.apple.mpegurl', '.mp4': 'video/mp4', '.wasm': 'application/wasm' };
 const receipt = { schema: 1, recordedAt: new Date().toISOString(), scenario: 'two-independent-browser-contexts-one-visible-player-each',
   quality, siteAssets: quality === 'full' ? 'candidate local files routed at production site origin for the media host CORS policy' : 'candidate loopback HTTP files',
   signalling: publicRelays ? 'actual public Nostr WSS relays' : 'bounded in-process Nostr wire fixture via Playwright WebSocket routing',
@@ -49,6 +49,13 @@ const server = createServer(async (request, response) => {
     const file = resolve(site, '.' + decodeURIComponent(url.pathname));
     if (!file.startsWith(site + sep) || !(await stat(file)).isFile()) throw new Error('Not found');
     const bytes = await readFile(file);
+    if (request.headers.range) {
+      const match = /^bytes=(\d+)-(\d+)$/.exec(request.headers.range), start = Number(match?.[1]), end = Number(match?.[2]);
+      if (!match || start > end || end >= bytes.length) { response.writeHead(416, { 'content-range': `bytes */${bytes.length}` }).end(); return; }
+      response.writeHead(206, { 'content-type': mime[extname(file)] ?? 'application/octet-stream',
+        'content-length': end - start + 1, 'content-range': `bytes ${start}-${end}/${bytes.length}`, 'accept-ranges': 'bytes' }).end(bytes.subarray(start, end + 1));
+      return;
+    }
     response.writeHead(200, { 'content-type': mime[extname(file)] ?? 'application/octet-stream', 'content-length': bytes.length, 'cache-control': 'no-store' }).end(bytes);
   } catch { response.writeHead(404).end(); }
 });

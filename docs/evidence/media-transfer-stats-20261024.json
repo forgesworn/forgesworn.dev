@@ -1,0 +1,942 @@
+{
+  "schema": 2,
+  "measuredAt": "2026-10-24T10:54:26.084Z",
+  "scope": "Measured pre-integration original-4K candidate, media counters and current listener topology",
+  "boundaries": [
+    "This receipt measures exact pre-integration candidate1cc8ff6. The current bundle also integrates newer main-branch selection/discovery and ships matching JS/WASM; this older contribution measurement is not assigned to the newer runtime.",
+    "Two independent Chrome contexts share one heavily loaded Mac, with actual public Nostr WSS, native WebRTC and the original remote 4K media. This does not qualify cross-NAT, physical phones or production capacity.",
+    "No hidden holders, seeded test objects, simulated media or autoplay override in the original-4K homepage gate. Candidate static assets are routed at the approved public website origin.",
+    "The candidate had six observed stalls per player. Useful peer delivery is proven; smooth playback, a controlled speed win and net bandwidth savings are not asserted.",
+    "CDP HTTP media data includes aborted partial response bodies. The adapter diagnostic originTransferredBytes counts completed response bodies only.",
+    "The older wait experiment and preview receipt remain below as historical observations, with their earlier source pins."
+  ],
+  "source": {
+    "relaySwarmCommit": "1cc8ff6ffbae785dd51a172989444c2ff603835e",
+    "bundleSha256": "8da99fedbf27dc06a9db024f55196ddeeffab070244b4c0474d173b6de0124f7",
+    "bundleBytes": 193488,
+    "wasmSha256": "d2f60abd886b153ed0b16e719a947b8c74fa3d600fed46eff6315c5829caa8c4",
+    "wasmBytes": 409206,
+    "catalogueSha256": "fe69bf7b88279f796956a021db96b3fc99f12705c1d5f18a2f6fbe9f488b3073",
+    "sources": [
+      {
+        "file": "site/index.html",
+        "sha256": "5bb6513e8f1708af4cc6cbabf724e7a40b18e0ea6afb3156f3c74dc4467b6734"
+      },
+      {
+        "file": "site/media-lab.mjs",
+        "sha256": "dfdb0c78bc94f03395646d9883cb564a5ad6d6c05a6866a094af986834f43b97"
+      },
+      {
+        "file": "site/media-public-swarm.mjs",
+        "sha256": "488e9c343c749f32521ea115f9a018329b68c85aff3dcf89368b900d4f911d81"
+      },
+      {
+        "file": "site/media-swarm-visual.mjs",
+        "sha256": "eec96196af2d4a5a514a9ee214c1add4326ffbb1bfd19274c3ace7ce7281f49e"
+      },
+      {
+        "file": "site/media-transfer-stats.mjs",
+        "sha256": "c1ed8a72b6927c4e33364bccdc73b6179c32bd72a0785a515b804aa9c4f65061"
+      },
+      {
+        "file": "site/media-showcase.css",
+        "sha256": "a7c96d1983548a4b02dcdba701d8b01c5d7081565be597eea91d5ddfc862f29d"
+      },
+      {
+        "file": "site/vendor/media-peer-demo.js",
+        "sha256": "8da99fedbf27dc06a9db024f55196ddeeffab070244b4c0474d173b6de0124f7"
+      },
+      {
+        "file": "site/vendor/media-peer-demo.build.json",
+        "sha256": "a287d4a7783554ab0f3e647a7e8edc5f3cbd94a5bb888a95d576a17338d0e3d8"
+      },
+      {
+        "file": "site/vendor/relayswarm-core.wasm",
+        "sha256": "d2f60abd886b153ed0b16e719a947b8c74fa3d600fed46eff6315c5829caa8c4"
+      },
+      {
+        "file": "site/media/dejavu-swarm/catalogue-v2.json",
+        "sha256": "fe69bf7b88279f796956a021db96b3fc99f12705c1d5f18a2f6fbe9f488b3073"
+      },
+      {
+        "file": "site/media/dejavu-4k/index.m3u8",
+        "sha256": "d680b83954d81749737ce0ae9174b579c48ae6265a188768cfda9bb1511f400b"
+      }
+    ]
+  },
+  "fix": {
+    "graph": "Only successfully submitted binary video uploads and verified peer bytes in accepted complete segments animate peer arrows. RTC control and failed or losing copies do not.",
+    "listeners": "Only current accepted connected native peer connections are shown. Display names are dense Listener 1 through N, independent of connection history; negotiating/glare losers are excluded.",
+    "origin": "Accepted-media origin share is separate from completed HTTP bodies and CDP actual HTTP body observations.",
+    "units": "Adaptive decimal B/KB/MB/GB, with exact byte values retained.",
+    "pieceDelivery": "Schema-3 immutable commitments, bounded peer batches, verified Rust/WASM multi-holder assembly, measured HTTP recovery reserve and a known-cached-peer race when HTTP must start immediately.",
+    "zeroBudgetRace": "HTTP starts synchronously; already-advertised exact cached peers may race it. One complete verified winner is accepted, the loser is cancelled, no extra origin request is issued, and progressive payload locks the source to HTTP.",
+    "timing": {
+      "originFallbackMs": 1200,
+      "maxPeerWaitMs": 2500,
+      "minimumOriginReserveMs": 2000
+    },
+    "limits": {
+      "uploadBytesPerSecond": 4194304,
+      "cacheBytes": 67108864
+    }
+  },
+  "original4kHomepage": {
+    "passed": true,
+    "observationSeconds": 45.668,
+    "requiredPeerContribution": {
+      "bytes": 10000000,
+      "share": 0.1
+    },
+    "receivingVisitor": 2,
+    "oneVisiblePlayerEach": true,
+    "hiddenHolders": 0,
+    "players": [
+      {
+        "viewer": 1,
+        "playheadSeconds": 21.060157,
+        "bufferSeconds": 3.4998429999999985,
+        "decodedFrames": 535,
+        "geometry": [
+          3842,
+          2160
+        ],
+        "observedStalls": 6,
+        "observedStalledSeconds": 14.48,
+        "verifiedPeerBytes": 0,
+        "submittedBinaryMediaBytes": 11798811,
+        "acceptedOriginMediaBytes": 75399291,
+        "acceptedMediaBytes": 75399291,
+        "peerShare": 0,
+        "actualHttpMedia": {
+          "requests": 15,
+          "completed": 14,
+          "failed": 0,
+          "bodyBytes": 76367513,
+          "encodedTransferBytes": 75438278
+        },
+        "completedOriginResponseBodyBytes": 75400665,
+        "cacheHighWaterBytes": 63047012,
+        "coreState": "ready",
+        "multiHolderDelivered": 0,
+        "zeroBudgetPeerRaces": 0,
+        "zeroBudgetPeerRaceWins": 0,
+        "errors": {
+          "total": 0,
+          "byStage": {}
+        },
+        "connections": [
+          {
+            "id": "peer-1",
+            "uploadedBytes": 11798811,
+            "verifiedPeerBytes": 0,
+            "label": "11.8 MB to them · 0 B to you",
+            "name": "Listener 1"
+          }
+        ]
+      },
+      {
+        "viewer": 2,
+        "playheadSeconds": 24.550234,
+        "bufferSeconds": 2.009765999999999,
+        "decodedFrames": 623,
+        "geometry": [
+          3842,
+          2160
+        ],
+        "observedStalls": 6,
+        "observedStalledSeconds": 8.89,
+        "verifiedPeerBytes": 11798811,
+        "submittedBinaryMediaBytes": 0,
+        "acceptedOriginMediaBytes": 69958093,
+        "acceptedMediaBytes": 81756904,
+        "peerShare": 0.1443157754603819,
+        "actualHttpMedia": {
+          "requests": 15,
+          "completed": 13,
+          "failed": 1,
+          "bodyBytes": 71493897,
+          "encodedTransferBytes": 69994646
+        },
+        "completedOriginResponseBodyBytes": 69959467,
+        "cacheHighWaterBytes": 63486127,
+        "coreState": "ready",
+        "multiHolderDelivered": 2,
+        "zeroBudgetPeerRaces": 1,
+        "zeroBudgetPeerRaceWins": 1,
+        "errors": {
+          "total": 0,
+          "byStage": {}
+        },
+        "connections": [
+          {
+            "id": "peer-1",
+            "uploadedBytes": 0,
+            "verifiedPeerBytes": 11798811,
+            "label": "0 B to them · 11.8 MB to you",
+            "name": "Listener 1"
+          }
+        ]
+      }
+    ],
+    "pause": {
+      "nativePaused": true,
+      "graphNodesRemoved": true,
+      "peerConnectionsClosed": true,
+      "socketsClosed": true,
+      "remoteNodeRemoved": true
+    },
+    "resumed": [
+      {
+        "labels": [
+          "Listener 1"
+        ],
+        "drawnPeerNodes": 1,
+        "connectedPeers": 1
+      },
+      {
+        "labels": [
+          "Listener 1"
+        ],
+        "drawnPeerNodes": 1,
+        "connectedPeers": 1
+      }
+    ],
+    "pageErrors": 0,
+    "cleanup": {
+      "browserClosed": true,
+      "staticServerCreated": false,
+      "fixtureServiceCreated": false
+    }
+  },
+  "nativeProtocolRace": {
+    "passed": true,
+    "fixture": "Two independent Chrome contexts, local Nostr signalling, native SCTP and WASM; synthetic protocol data, not video/NAT qualification",
+    "payloadBytes": 6291456,
+    "sha256": "1c9f8eecb9f26e9668cb8416ab78d5a4d207a62e4988fe8c8259ab3380332a24",
+    "results": [
+      {
+        "case": "receiver-1",
+        "verifiedPeerBytes": 6291456,
+        "originBodies": [
+          {
+            "name": "receiver-1",
+            "bytes": 1114112,
+            "aborted": true,
+            "callbacks": {
+              "success": 0,
+              "abort": 0
+            }
+          }
+        ],
+        "callbacks": {
+          "success": 1,
+          "error": 0,
+          "abort": 0
+        },
+        "races": 1,
+        "wins": 1,
+        "connected": 1,
+        "linksClosed": 0,
+        "errors": {
+          "total": 0,
+          "byStage": {}
+        },
+        "deliveryTiming": {
+          "durationMs": {
+            "p50": 465,
+            "p90": 465
+          },
+          "slowestRequestMs": {
+            "p50": 38,
+            "p90": 38
+          },
+          "requests": {
+            "p50": 17,
+            "p90": 17
+          }
+        }
+      },
+      {
+        "case": "receiver-2",
+        "verifiedPeerBytes": 0,
+        "originBodies": [
+          {
+            "name": "receiver-2",
+            "bytes": 6291456,
+            "aborted": false,
+            "callbacks": {
+              "success": 1,
+              "abort": 0
+            }
+          }
+        ],
+        "callbacks": {
+          "success": 1,
+          "error": 0,
+          "abort": 0
+        },
+        "races": 1,
+        "wins": 0,
+        "connected": 1,
+        "linksClosed": 0,
+        "errors": {
+          "total": 0,
+          "byStage": {}
+        },
+        "deliveryTiming": {
+          "durationMs": {
+            "p50": 465,
+            "p90": 465
+          },
+          "slowestRequestMs": {
+            "p50": 38,
+            "p90": 38
+          },
+          "requests": {
+            "p50": 17,
+            "p90": 17
+          }
+        }
+      },
+      {
+        "case": "receiver-3",
+        "verifiedPeerBytes": 6291456,
+        "originBodies": [
+          {
+            "name": "receiver-3",
+            "bytes": 851968,
+            "aborted": true,
+            "callbacks": {
+              "success": 0,
+              "abort": 0
+            }
+          }
+        ],
+        "callbacks": {
+          "success": 1,
+          "error": 0,
+          "abort": 0
+        },
+        "races": 1,
+        "wins": 1,
+        "connected": 1,
+        "linksClosed": 0,
+        "errors": {
+          "total": 0,
+          "byStage": {}
+        },
+        "deliveryTiming": {
+          "durationMs": {
+            "p50": 465,
+            "p90": 465
+          },
+          "slowestRequestMs": {
+            "p50": 38,
+            "p90": 38
+          },
+          "requests": {
+            "p50": 17,
+            "p90": 17
+          }
+        }
+      }
+    ],
+    "pageErrors": 0
+  },
+  "graphRenumberingRegression": {
+    "measuredAt": "2026-10-24T09:01:43.120Z",
+    "scope": "Graph rendering regression with explicit observation inputs; no media or peers simulated as real",
+    "passed": true,
+    "checks": {
+      "controlOnly": {
+        "peerNodes": 1,
+        "flights": 0,
+        "label": "0 B to them · 0 B to you",
+        "listener": "Listener 1"
+      },
+      "hostOnly": {
+        "hostFlights": 1,
+        "peerFlights": 0
+      },
+      "media": {
+        "up": "918",
+        "down": "6206410",
+        "label": "918 B to them · 6.2 MB to you"
+      },
+      "resize": {
+        "flights": 0,
+        "label": "918 B to them · 6.2 MB to you"
+      },
+      "paused": {
+        "peerNodes": 0,
+        "flights": 0
+      },
+      "tenListeners": {
+        "count": 10,
+        "labels": [
+          "Listener 1",
+          "Listener 2",
+          "Listener 3",
+          "Listener 4",
+          "Listener 5",
+          "Listener 6",
+          "Listener 7",
+          "Listener 8",
+          "Listener 9",
+          "Listener 10"
+        ],
+        "observedPeers": "10",
+        "connectedPeers": "10"
+      },
+      "fiveRemaining": {
+        "count": 5,
+        "ids": [
+          "peer-106",
+          "peer-107",
+          "peer-108",
+          "peer-109",
+          "peer-110"
+        ],
+        "labels": [
+          "Listener 1",
+          "Listener 2",
+          "Listener 3",
+          "Listener 4",
+          "Listener 5"
+        ],
+        "sameNodes": true,
+        "mediaBytesSent": [
+          "6144",
+          "7168",
+          "8192",
+          "9216",
+          "10240"
+        ]
+      },
+      "retainedTraffic": {
+        "flightsBefore": 0,
+        "uploadDelta": "42",
+        "listener": "Listener 1"
+      },
+      "negotiatingOnly": {
+        "peerNodes": 0,
+        "flights": 0,
+        "connectedPeers": "0",
+        "observedPeers": "0"
+      }
+    },
+    "pageErrors": [],
+    "browserClosed": true
+  },
+  "original4kPlayer": {
+    "passed": true,
+    "checks": {
+      "initial": {
+        "defaultQuality": "full-4k",
+        "visiblePlayActions": 1,
+        "noMediaBeforePlay": true,
+        "noPeerNetworkBeforePlayAndJoin": true,
+        "videoElements": 1,
+        "videoGeometry": {
+          "x": 41,
+          "y": 368.375,
+          "width": 1358,
+          "height": 760
+        }
+      },
+      "playback": {
+        "width": 3842,
+        "height": 2160,
+        "time": 0.360605,
+        "geometry": {
+          "x": 41,
+          "y": 368.375,
+          "width": 1358,
+          "height": 760,
+          "top": 368.375,
+          "right": 1399,
+          "bottom": 1128.375,
+          "left": 41
+        },
+        "decodedFrameWidth": 3840,
+        "decodedFrameHeight": 2160,
+        "frames": 13,
+        "audioDecodedBytes": 28780,
+        "muted": false,
+        "volume": 1,
+        "paused": false,
+        "controls": true,
+        "sourceConfigured": true,
+        "source": "actual-media-source-attached",
+        "audioRms": 0.15490231906160146,
+        "audioState": "running",
+        "quality": "full",
+        "videoElementCount": 1,
+        "delivery": "Latest segment: from the media host",
+        "peerBytes": "0 B",
+        "uploadedBytes": "0 B",
+        "peers": "0",
+        "sharingStatus": "Looking for other viewers. The media host keeps the music playing while peers connect.",
+        "fps": "—",
+        "firstFrame": "2,510 ms",
+        "dimensions": "3,840 × 2,160 video · 3,842 × 2,160 display",
+        "statsBytes": "6.5 MB",
+        "statsRequests": "3",
+        "map": {
+          "exists": true,
+          "observedPeers": "0",
+          "connectedPeers": "0",
+          "drawnPeerNodes": 0,
+          "description": "The media host, your browser and 0 observed peer connections. 0 verified peer bytes received; 0 video bytes uploaded."
+        },
+        "resources": {
+          "websocketCreated": 3,
+          "websocketOpen": 2,
+          "peerCreated": 0,
+          "peerOpen": 0
+        }
+      },
+      "invitation": {
+        "actualButtonClicked": true,
+        "nativeClipboardWriteOrVisibleFallback": true,
+        "qualityAndCurrentMomentIncluded": true,
+        "clipboardExistingContentsRead": false,
+        "status": "Link copied. They’ll join near the moment you shared."
+      },
+      "nativeControls": {
+        "pauseResumeViaKeyboard": true,
+        "pauseClosedSharingSocketsAndPeers": true,
+        "resumeRejoined": true,
+        "seekViaKeyboard": true,
+        "browserControlsPresent": true
+      },
+      "fullscreen": {
+        "actualNativeEnterAndExitControlsClicked": true,
+        "returnedInline": true,
+        "sameElement": true,
+        "sourcePreserved": true,
+        "timeAdvanced": true,
+        "volumePreserved": true
+      },
+      "stats": {
+        "openedWithoutRestart": true,
+        "sourcePreserved": true,
+        "volumePreserved": true,
+        "timeAdvanced": true,
+        "measuredFrameRateVisible": true
+      },
+      "sharing": {
+        "explainedPlayAndJoinOpenedSignalling": true,
+        "hiddenViewers": 0,
+        "pauseClosedSocketsAndPeers": true,
+        "resumeRejoined": true,
+        "signallingSocketsCreated": 6,
+        "signallingSocketsOpen": 2,
+        "observedDelivery": "Latest segment: from the media host",
+        "observedPeerBytes": "0 B",
+        "observedUploadedBytes": "0 B",
+        "observedPeers": "0",
+        "status": "Looking for other viewers. The media host keeps the music playing while peers connect.",
+        "observedMap": {
+          "exists": true,
+          "observedPeers": "0",
+          "connectedPeers": "0",
+          "drawnPeerNodes": 0,
+          "description": "The media host, your browser and 0 observed peer connections. 0 verified peer bytes received; 0 video bytes uploaded."
+        }
+      },
+      "mobile": {
+        "viewportWidth": 390,
+        "horizontalOverflow": false,
+        "sameVideo": true,
+        "swarmViewBox": "0 0 520 390"
+      }
+    },
+    "browserClosed": true
+  },
+  "historical": {
+    "initialAccountingFix": {
+      "graph": "Media sent and verified peer deliveries only; RTC control and partial receive counters are excluded.",
+      "origin": "Completed real HTTP fragment bodies before worker transfer; includes init data.",
+      "units": "Adaptive decimal B/KB/MB/GB, exact byte values retained.",
+      "peerAttribution": "Supported onPeerDelivery callback carries the actual native connection after aggregate counters and integrity acceptance.",
+      "relaySwarmSourceCommit": "75202874edc4dae69d4ccfc307cff3ac3841f8e1",
+      "bundleSha256": "271d14e4dbe43bbcd8b7488d022f175b6efdd06118cd57695a00ad5c96048c2f",
+      "unchangedTiming": {
+        "originFallbackMs": 1200,
+        "maxPeerWaitMs": 2500,
+        "originReserveMs": 2000
+      }
+    },
+    "graphRegression": {
+      "passed": true,
+      "checks": {
+        "controlOnly": {
+          "peerNodes": 1,
+          "flights": 0,
+          "label": "0 B to them · 0 B to you"
+        },
+        "hostOnly": {
+          "hostFlights": 1,
+          "peerFlights": 0
+        },
+        "media": {
+          "up": "918",
+          "down": "6206410",
+          "label": "918 B to them · 6.2 MB to you"
+        },
+        "resize": {
+          "flights": 0,
+          "label": "918 B to them · 6.2 MB to you"
+        },
+        "paused": {
+          "peerNodes": 0,
+          "flights": 0
+        }
+      }
+    },
+    "realPreviewVisitors": {
+      "passed": true,
+      "quality": "preview",
+      "oneVisibleVideoEach": true,
+      "pageErrors": 0,
+      "players": [
+        {
+          "verifiedPeerBytes": 0,
+          "sentMediaBytes": 378054,
+          "originMediaBytes": 11410231,
+          "connections": [
+            {
+              "id": "peer-1",
+              "uploadedBytes": 378054,
+              "verifiedPeerBytes": 0,
+              "label": "378.1 KB to them · 0 B to you"
+            }
+          ],
+          "connectedPeers": 1,
+          "viewerContribution": "0% of your loaded video came from viewers. Totals include buffered video; sent bytes may still be in transfer."
+        },
+        {
+          "verifiedPeerBytes": 378054,
+          "sentMediaBytes": 0,
+          "originMediaBytes": 9881152,
+          "connections": [
+            {
+              "id": "peer-1",
+              "uploadedBytes": 0,
+              "verifiedPeerBytes": 378054,
+              "label": "0 B to them · 378.1 KB to you"
+            }
+          ],
+          "connectedPeers": 1,
+          "viewerContribution": "3.7% of your loaded video came from viewers. Totals include buffered video; sent bytes may still be in transfer."
+        }
+      ],
+      "paused": {
+        "nativePaused": true,
+        "graphNodesRemoved": true,
+        "peerConnectionsClosed": true,
+        "socketsClosed": true
+      }
+    },
+    "full4kWaitExperiment": {
+      "adopted": false,
+      "conclusion": "Both 40-second windows delivered zero verified peer media. Increasing wait deadlines alone did not produce useful peer delivery. The treatment sender submitted 5.57 MB but requests were abandoned and the receiver played less video. Lower receiver HTTP bytes therefore do not establish origin savings.",
+      "bounds": [
+        "Both windows used one shared Mac under very high and differing system load. They are diagnostics, not a controlled performance winner.",
+        "Baseline did not capture browser stall counters; its values are unavailable rather than zero.",
+        "Absolute HTTP data includes manifests, init data, full fragments and partial response bodies observed by Chromium. It excludes peer protocol and transport overhead."
+      ],
+      "change": {
+        "originFallbackMs": {
+          "baseline": 1200,
+          "treatment": 2500
+        },
+        "maxPeerWaitMs": {
+          "baseline": 2500,
+          "treatment": 5000
+        },
+        "unchanged": {
+          "originReserveMs": 2000,
+          "uploadBytesPerSecond": 4194304,
+          "maxHeldBytes": 67108864,
+          "arrivalOffsetSeconds": 3,
+          "video": "original4K",
+          "hlsProfile": "same pinned media-lab.mjs"
+        }
+      },
+      "baseline": {
+        "observationSeconds": 40.162,
+        "hostLoadAtStart": [
+          43.23046875,
+          25.2919921875,
+          19.14892578125
+        ],
+        "hostLoadAtEnd": [
+          108.8662109375,
+          48.666015625,
+          28.443359375
+        ],
+        "totalHttpBodyDataBytes": 245884216,
+        "totalVerifiedPeerBytes": 0,
+        "players": [
+          {
+            "viewer": "A",
+            "endPlayhead": 36.169425,
+            "playheadAdvance": 32.85396299999999,
+            "bufferSeconds": 2.030575000000006,
+            "observedStalls": null,
+            "observedStalledSeconds": null,
+            "originMediaBytes": 116689366,
+            "verifiedPeerBytes": 0,
+            "submittedBinaryMediaBytes": 0,
+            "eligibility": {
+              "no-budget": 15,
+              "aborted-before-eligibility": 0,
+              "no-have-no-wait": 4,
+              "no-have-wait": 0,
+              "wait-no-longer-eligible": 0,
+              "wait-aborted": 0,
+              "wait-expired": 0,
+              "have-at-entry": 1,
+              "have-after-wait": 0,
+              "projected-late": 0
+            },
+            "requests": {
+              "payload": 0,
+              "none": 0,
+              "timeout": 1,
+              "abort": 0,
+              "abandoned": 0,
+              "closed": 0,
+              "busy": 0,
+              "send-error": 0
+            },
+            "requestRecords": [
+              {
+                "atMs": 29399,
+                "id": 1,
+                "holder": 1,
+                "cc": 0,
+                "level": 0,
+                "remainingMs": 35.022000000000844,
+                "outcome": "timeout",
+                "elapsedMs": 36.299999713897705,
+                "timeoutMs": 35.022000000000844,
+                "expectedBytes": 6357613,
+                "receivedBytes": 229376,
+                "firstByteMs": 4.199999809265137,
+                "metadataReceived": true,
+                "draining": true,
+                "closeReason": null
+              }
+            ]
+          },
+          {
+            "viewer": "B",
+            "endPlayhead": 37.598339,
+            "playheadAdvance": 37.598339,
+            "bufferSeconds": 4.401660999999997,
+            "observedStalls": null,
+            "observedStalledSeconds": null,
+            "originMediaBytes": 128161555,
+            "verifiedPeerBytes": 0,
+            "submittedBinaryMediaBytes": 409600,
+            "eligibility": {
+              "no-budget": 2,
+              "aborted-before-eligibility": 0,
+              "no-have-no-wait": 15,
+              "no-have-wait": 5,
+              "wait-no-longer-eligible": 0,
+              "wait-aborted": 0,
+              "wait-expired": 5,
+              "have-at-entry": 0,
+              "have-after-wait": 0,
+              "projected-late": 0
+            },
+            "requests": {
+              "payload": 0,
+              "none": 0,
+              "timeout": 0,
+              "abort": 0,
+              "abandoned": 0,
+              "closed": 0,
+              "busy": 0,
+              "send-error": 0
+            },
+            "requestRecords": []
+          }
+        ]
+      },
+      "treatment": {
+        "observationSeconds": 40.559,
+        "hostLoadAtStart": [
+          77.0849609375,
+          46.7998046875,
+          31.2392578125
+        ],
+        "hostLoadAtEnd": [
+          123.416015625,
+          82.09912109375,
+          48.08984375
+        ],
+        "totalHttpBodyDataBytes": 241970872,
+        "totalVerifiedPeerBytes": 0,
+        "players": [
+          {
+            "viewer": "A",
+            "endPlayhead": 43.085589,
+            "playheadAdvance": 39.703466999999996,
+            "bufferSeconds": 1.834411000000003,
+            "observedStalls": "1",
+            "observedStalledSeconds": "0.22 s",
+            "originMediaBytes": 137220411,
+            "verifiedPeerBytes": 0,
+            "submittedBinaryMediaBytes": 5570560,
+            "eligibility": {
+              "no-budget": 3,
+              "aborted-before-eligibility": 0,
+              "no-have-no-wait": 17,
+              "no-have-wait": 3,
+              "wait-no-longer-eligible": 0,
+              "wait-aborted": 0,
+              "wait-expired": 3,
+              "have-at-entry": 0,
+              "have-after-wait": 0,
+              "projected-late": 0
+            },
+            "requests": {
+              "payload": 0,
+              "none": 0,
+              "timeout": 0,
+              "abort": 0,
+              "abandoned": 0,
+              "closed": 0,
+              "busy": 0,
+              "send-error": 0
+            },
+            "requestRecords": []
+          },
+          {
+            "viewer": "B",
+            "endPlayhead": 31.608208,
+            "playheadAdvance": 31.608208,
+            "bufferSeconds": 0.5917920000000017,
+            "observedStalls": "3",
+            "observedStalledSeconds": "4.16 s",
+            "originMediaBytes": 98799575,
+            "verifiedPeerBytes": 0,
+            "submittedBinaryMediaBytes": 0,
+            "eligibility": {
+              "no-budget": 8,
+              "aborted-before-eligibility": 0,
+              "no-have-no-wait": 5,
+              "no-have-wait": 0,
+              "wait-no-longer-eligible": 0,
+              "wait-aborted": 0,
+              "wait-expired": 0,
+              "have-at-entry": 4,
+              "have-after-wait": 0,
+              "projected-late": 0
+            },
+            "requests": {
+              "payload": 0,
+              "none": 0,
+              "timeout": 0,
+              "abort": 0,
+              "abandoned": 2,
+              "closed": 0,
+              "busy": 0,
+              "send-error": 0
+            },
+            "requestRecords": [
+              {
+                "atMs": 10030,
+                "id": 1,
+                "holder": 1,
+                "cc": 0,
+                "level": 0,
+                "remainingMs": 2492.8999996185303,
+                "outcome": "abandoned",
+                "elapsedMs": 676.9000000953674,
+                "timeoutMs": 2492.8999996185303,
+                "expectedBytes": 5735496,
+                "receivedBytes": 1736704,
+                "firstByteMs": 7.199999809265137,
+                "metadataReceived": true,
+                "draining": true,
+                "closeReason": null
+              },
+              {
+                "atMs": 17136,
+                "id": 2,
+                "holder": 1,
+                "cc": 0,
+                "level": 0,
+                "remainingMs": 2495.800000190735,
+                "outcome": "abandoned",
+                "elapsedMs": 662.1000003814697,
+                "timeoutMs": 2495.800000190735,
+                "expectedBytes": 6058936,
+                "receivedBytes": 1654784,
+                "firstByteMs": 9.5,
+                "metadataReceived": true,
+                "draining": true,
+                "closeReason": null
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "validation": {
+    "siteUnitTests": 120,
+    "siteUnitFailures": 0,
+    "relaySwarmLoaderTests": 292,
+    "relaySwarmCachedRaceFocusedTests": 18,
+    "rustTests": 54,
+    "independentFinalReadReview": "No functional blocker found; corrected completed-body diagnostic wording.",
+    "commands": {
+      "site": "node --test --test-concurrency=1 test/*.test.mjs",
+      "relaySwarmLoader": "npm run test:swarm",
+      "cachedRace": "node --test --test-name-pattern='zero-budget cached race' test/browser-hardening-core.mjs",
+      "rust": "CARGO_BUILD_JOBS=2 cargo test --locked -p relayswarm-proto"
+    },
+    "localLoadSensitiveRecheck": {
+      "initialParallelRun": {
+        "passed": 118,
+        "failed": 2,
+        "case": "Existing lab full-window completion parent and longer AAC child: publisherEnded was false."
+      },
+      "focusedFileRecheck": "Passed unchanged. A three-second fixture deadline includes setup before a two-second synthetic publisher. Timeout is inferred from timing and code; no final termination reason was recorded.",
+      "productionLabServerChanged": false,
+      "finalSerialRun": {
+        "passed": 120,
+        "failed": 0,
+        "cancelled": 0,
+        "skipped": 0
+      }
+    }
+  },
+  "cleanup": {
+    "browserRunsClosed": true,
+    "noLongRunningServerCreated": true
+  },
+  "subsequentIntegration": {
+    "sourceCommit": "0c6dd8a6045e6460c69eac231dffe9b97f1dd076",
+    "bundleSha256": "d8ec287d69dd7dfc709d9cb3b1cba08824f9e0412fa4550a51f63d1e56bf89eb",
+    "bundleBytes": 198309,
+    "wasmSha256": "eda9d5f970920d353a1ae76b4fa92f0a0eb0976683a3d5b58a596006b780e8c5",
+    "wasmBytes": 411298,
+    "validation": {
+      "focusedCachedRaceAndOriginChecks": 22,
+      "syntaxModules": 191,
+      "authoredDocs": 28,
+      "links": 434,
+      "independentReadReview": "No API or catalogue migration and no functional blocker found."
+    },
+    "delivery": "Commit, push and merge followed by live browser verification, as requested. Earlier measured contribution belongs to its exact original pin."
+  }
+}

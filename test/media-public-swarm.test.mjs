@@ -5,10 +5,10 @@ import { createHash } from 'node:crypto';
 import { validatePublicSwarmCatalogue, catalogueSegment, PUBLIC_SWARM_CATALOGUE_SHA256,
   PUBLIC_SWARM_LIMITS, PUBLIC_SWARM_RELAYS, PUBLIC_SWARM_ICE } from '../site/media-public-swarm.mjs';
 
-const bytes = await readFile(new URL('../site/media/dejavu-swarm/catalogue-v1.json', import.meta.url));
+const bytes = await readFile(new URL('../site/media/dejavu-swarm/catalogue-v2.json', import.meta.url));
 const catalogue = JSON.parse(bytes);
 const preview = { quality: 'preview', playlistUrl: '/media/dejavu-preview/rtmp/index.m3u8', origin: 'https://forgesworn.dev/' };
-const full = { quality: 'full', playlistUrl: 'https://v4v.com/forgesworn-media-demo/dejavu-4k-v1/index.m3u8', origin: 'https://forgesworn.dev/' };
+const full = { quality: 'full', playlistUrl: '/media/dejavu-4k/index.m3u8', origin: 'https://forgesworn.dev/' };
 
 test('public VOD digest catalogue is pinned to reviewed source and matches every shipped preview segment', async () => {
   assert.equal(createHash('sha256').update(bytes).digest('hex'), PUBLIC_SWARM_CATALOGUE_SHA256);
@@ -17,6 +17,9 @@ test('public VOD digest catalogue is pinned to reviewed source and matches every
     const content = await readFile(new URL(`../site${new URL(entry.url).pathname}`, import.meta.url));
     assert.equal(content.length, entry.size);
     assert.equal(createHash('sha256').update(content).digest('hex'), entry.sha256);
+    for (const [index, hash] of entry.pieces.entries()) {
+      assert.equal(createHash('sha256').update(content.subarray(index * entry.pieceSize, Math.min(content.length, (index + 1) * entry.pieceSize))).digest('hex'), hash);
+    }
   }
   const original = JSON.parse(await readFile(new URL('../site/media/dejavu-preview/playback.json', import.meta.url)));
   assert.equal(catalogue.sourceSha256, original.source.sha256);
@@ -34,6 +37,11 @@ test('catalogue refuses altered media identity, traversal, duplicate sequence, o
     value => { value.qualities.preview.segments[0].cc = 1; },
     value => { value.qualities.preview.segments[0].size = PUBLIC_SWARM_LIMITS.maxSegmentBytes + 1; },
     value => { value.qualities.preview.segments[0].sha256 = 'not-a-hash'; },
+    value => { value.qualities.preview.mediaBase = 'https://evil.test/'; },
+    value => { value.qualities.preview.mediaPlaylist = '/media/other.m3u8'; },
+    value => { value.qualities.preview.segments[0].pieceSize = 1; },
+    value => { value.qualities.preview.segments[0].pieces.pop(); },
+    value => { value.qualities.preview.segments[0].pieces[0] = 'not-a-hash'; },
   ]) {
     const altered = structuredClone(catalogue); change(altered);
     assert.throws(() => validatePublicSwarmCatalogue(altered, preview));
@@ -46,7 +54,7 @@ test('catalogue refuses altered media identity, traversal, duplicate sequence, o
 test('only the exact unencrypted muxed fragment receives a local commitment', () => {
   const plan = validatePublicSwarmCatalogue(catalogue, full);
   const context = { url: 'https://v4v.com/forgesworn-media-demo/dejavu-4k-v1/segment-0000.m4s',
-    frag: { sn: 0, cc: 0, level: 0, type: 'main' } };
+    frag: { sn: 0, cc: 0, level: 0, type: 'main', baseurl: 'https://forgesworn.dev/media/dejavu-4k/index.m3u8' } };
   assert.equal(catalogueSegment(plan, context)?.sha256, catalogue.qualities.full.segments[0].sha256);
   for (const patch of [
     value => { value.url += '?different=1'; },
@@ -54,6 +62,7 @@ test('only the exact unencrypted muxed fragment receives a local commitment', ()
     value => { value.frag.sn = 1; },
     value => { value.frag.cc = 1; },
     value => { value.frag.type = 'audio'; },
+    value => { value.frag.baseurl = 'https://evil.test/media/dejavu-4k/index.m3u8'; },
     value => { value.frag.level = -1; },
     value => { value.frag.decryptdata = { method: 'AES-128' }; },
     value => { value.part = { index: 0 }; },
