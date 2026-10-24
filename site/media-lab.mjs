@@ -1,5 +1,6 @@
 import { readInitialLiveStart } from './media-live-start.mjs';
 import { transferBytes } from './media-transfer-stats.mjs';
+import { createNativePlaybackFallback } from './media-playback-fallback.mjs';
 
 const DASH = '—';
 export const observed = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
@@ -389,7 +390,7 @@ async function initialise() {
   }
 
   function followListener(s, force = false) {
-    if (local || session !== s || s.finishing || !s.listenerWanted || !s.listener?.snapshot().ready ||
+    if (local || session !== s || s.finishing || s.switchingPlayback || !s.listenerWanted || !s.listener?.snapshot().ready ||
         !s.mediaReady || video.readyState < 1 || !Number.isFinite(video.duration)) return;
     if (!force && s.followLive === false) return;
     const target = s.listener.position();
@@ -448,12 +449,12 @@ async function initialise() {
     listenerStatus(s);
   }
 
-  function publicDelivery(s, metrics = s?.publicPeer?.metrics()) {
+  function publicDelivery(s, metrics = s?.publicPeer?.metrics() ?? s?.fallbackPeerMetrics) {
     if (local) return;
     const peerBytes = observed(metrics?.peerBytes) ?? 0;
     const uploaded = observed(metrics?.uploadedBytes) ?? 0;
     const peers = observed(metrics?.connectedPeers) ?? 0;
-    const originBytes = observed(metrics?.originBytes) ?? observed(s?.browser?.responseBytes) ?? (s ? null : 0);
+    const originBytes = s?.nativeHls ? null : observed(metrics?.originBytes) ?? observed(s?.browser?.responseBytes) ?? (s ? null : 0);
     for (const [id, bytes] of [['public-origin-bytes', originBytes], ['public-peer-bytes', peerBytes], ['public-upload-bytes', uploaded]]) {
       optionalText(id, transferBytes(bytes));
       if ($(id)) { $(id).dataset.bytes = bytes === null ? '' : String(bytes); $(id).title = bytes === null ? 'Byte count unavailable' : `${bytes.toLocaleString('en-GB')} bytes this playback`; }
@@ -463,6 +464,7 @@ async function initialise() {
     const playing = s && !video.paused && !video.ended;
     const enabled = metrics?.enabled === true;
     optionalText('public-delivery', !s ? 'Ready when you are' : video.ended ? 'Mix finished' : !playing && s.browser?.seenFrame ? 'Paused' :
+      s.nativeHls ? 'Playing from the media host' :
       metrics?.lastDelivery === 'mixed' ? 'Latest segment: viewers + media host' :
       metrics?.lastDelivery === 'peer' ? 'Latest segment: from a viewer' : metrics?.lastDelivery === 'origin' ? 'Latest segment: from the media host' :
       peers > 0 ? 'Connected to other viewers' : 'Waiting for the first segment');
@@ -471,17 +473,19 @@ async function initialise() {
       enabled && peers > 0 ? `${peers} viewer${peers === 1 ? '' : 's'} connected to you. A connection counts towards delivery only when video moves.` :
       enabled ? 'Looking for other viewers. The media host keeps the music playing while peers connect.' :
       s.publicSharingFailed ? 'Playing from the media host. Peer sharing could not connect in this browser.' :
+      s.nativeFallback ? 'Your browser switched to native playback to recover the stream. The media host supplies this playback; peer sharing is unavailable in this mode.' :
       s.nativeHls ? 'Your browser is using native HLS. Peer sharing needs a browser with Media Source Extensions and WebRTC.' :
       'Playing from the media host. Peer sharing is starting.');
     const loadedBytes = originBytes === null ? null : peerBytes + originBytes;
-    optionalText('public-transfer-summary', loadedBytes > 0 ?
+    optionalText('public-transfer-summary', s?.nativeHls ?
+      'Native playback does not expose complete transfer totals. Earlier verified peer downloads and uploads are retained.' : loadedBytes > 0 ?
       `${(100 * peerBytes / loadedBytes).toLocaleString('en-GB', { maximumFractionDigits: 1 })}% of your loaded video came from viewers. Totals include buffered video; sent bytes may still be in transfer.` :
       'Totals for this playback. Peer downloads count only complete, verified video segments.');
     root.dataset.delivery = !s ? 'ready' : metrics?.phase ?? 'origin';
     root.dataset.peerEngine = metrics?.core?.state ?? '';
     root.dataset.multiHolderDelivered = String(metrics?.core?.multiHolder?.delivered ?? 0);
-    root.dataset.originTransferredBytes = String(metrics?.originTransferredBytes ?? 0);
-    root.dataset.loadedMediaBytes = String(metrics?.loadedMediaBytes ?? 0);
+    root.dataset.originTransferredBytes = s?.nativeHls ? '' : String(metrics?.originTransferredBytes ?? 0);
+    root.dataset.loadedMediaBytes = s?.nativeHls ? '' : String(metrics?.loadedMediaBytes ?? 0);
     root.dataset.cacheHighWaterBytes = String(metrics?.resources?.heldHighWaterBytes ?? 0);
     swarmVisual?.update({ ...metrics, active: Boolean(s), playing: Boolean(playing), originBytes,
       room: s?.listener?.snapshot() ?? publicRoom?.snapshot() ?? null });
@@ -490,10 +494,11 @@ async function initialise() {
 
   function shareWhilePlaying(s, enabled) {
     if (local || session !== s || s.finishing || !s.publicPeer) return;
-    void s.publicPeer.setEnabled(enabled).then(() => {
-      if (session === s) { s.publicSharingFailed = false; publicDelivery(s); }
+    const peer = s.publicPeer;
+    void peer.setEnabled(enabled).then(() => {
+      if (session === s && s.publicPeer === peer) { s.publicSharingFailed = false; publicDelivery(s); }
     }).catch(() => {
-      if (session === s && !s.abort.signal.aborted) { s.publicSharingFailed = true; publicDelivery(s); }
+      if (session === s && s.publicPeer === peer && !s.abort.signal.aborted) { s.publicSharingFailed = true; publicDelivery(s); }
     });
   }
   const choices = {};
@@ -719,8 +724,11 @@ async function initialise() {
   }
 
   function trackBrowser(s, playlist) {
+    delete root.dataset.playbackFallback;
     s.playbackSync = createSharedPlaybackSync(video, { signal: s.abort.signal, onSeek: at => { s.roomSeekAt = at; } });
     s.bufferedRecovery = createBufferedPlaybackRecovery(video, { onSeek: at => { s.roomSeekAt = at; } });
+    s.nativeFallbackPolicy = createNativePlaybackFallback(video);
+    s.playlistUrl = playlist.href;
     const b = s.browser = {
       seenFrame: false, firstFrameMs: null, decodedFrames: null, presentedFrames: null, frameBaseline: observed(video.webkitDecodedFrameCount) ?? 0,
       lastDecoded: 0, lastDecodeAt: null, fps: null, fpsSamples: [],
@@ -738,6 +746,7 @@ async function initialise() {
     video.addEventListener('playing', endStall, { signal: s.abort.signal });
     if (!local) {
       video.addEventListener('playing', () => {
+        s.switchingPlayback = false;
         controls();
         status(`${s.quality === 'full' ? '4K' : '1080p'} mix playing. Pause to leave, or use the native controls for volume and full screen.`);
         void joinListener(s).then(() => { if (session === s && !video.paused && !s.finishing) shareWhilePlaying(s, true); });
@@ -751,6 +760,12 @@ async function initialise() {
     }
     video.addEventListener('pause', () => {
       endStall();
+      s.nativeFallbackPolicy.reset();
+      if (s.switchingPlayback) {
+        if ((s.userInteractionAt ?? -Infinity) <= s.nativeTransitionStartedAt) return;
+        s.switchingPlayback = false;
+        s.nativeAutoplayCancelled = true;
+      }
       // A natural boundary pauses the media element before ended. Keep room
       // membership and peer delivery through the shared recording's next loop.
       if (!local && video.ended && s.listenerWanted && s.listener?.snapshot().ready) return;
@@ -761,20 +776,28 @@ async function initialise() {
       }
     }, { signal: s.abort.signal });
     let lastInteraction = -Infinity;
-    video.addEventListener('pointerdown', () => { lastInteraction = performance.now(); }, { signal: s.abort.signal });
-    video.addEventListener('pointerup', () => { lastInteraction = performance.now(); }, { signal: s.abort.signal });
-    video.addEventListener('keydown', () => { lastInteraction = performance.now(); }, { signal: s.abort.signal });
+    const interacted = () => { s.userInteractionAt = lastInteraction = performance.now(); };
+    video.addEventListener('pointerdown', interacted, { signal: s.abort.signal });
+    video.addEventListener('pointerup', interacted, { signal: s.abort.signal });
+    video.addEventListener('keydown', interacted, { signal: s.abort.signal });
+    document.addEventListener('visibilitychange', () => s.nativeFallbackPolicy.reset(), { signal: s.abort.signal });
     video.addEventListener('seeking', () => {
       // HLS latency corrections can seek too; exclude deliberate viewer seeks.
       if (b.seenFrame && !s.finishing && performance.now() - lastInteraction < 1500) {
+        s.nativeFallbackPolicy.reset();
         s.interrupted = true;
         if (!local && lastInteraction > (s.roomSeekAt ?? -Infinity)) { s.followLive = false; listenerStatus(s); }
       }
     }, { signal: s.abort.signal });
     video.addEventListener('error', () => {
       if (session !== s || s.finishing) return;
+      if (s.switchingPlayback && !video.error) return;
+      s.switchingPlayback = false;
       b.playerErrors++;
       if (s.sourceEof && video.error?.code === 2) return;
+      if (!local && s.hls && b.seenFrame && video.canPlayType('application/vnd.apple.mpegurl')) {
+        switchPublicToNative(s, 'decode-error'); return;
+      }
       s.playbackFailed = true;
       if (!local) { leaveListener(s); shareWhilePlaying(s, false); }
       status(local ? 'Playback could not continue. Stop the run, check the local runner and try again.' : 'The selected source could not be decoded. Try the preview or check the media-host response.', true);
@@ -823,7 +846,10 @@ async function initialise() {
     }
     const tick = () => { if (session === s && !s.finishing) {
       followListener(s);
-      if (!local && b.seenFrame && !s.sourceEof && s.bufferedRecovery.check(b.presentedFrames)) s.bufferedRecoveries = (s.bufferedRecoveries ?? 0) + 1;
+      const nativeCapable = !local && Boolean(video.canPlayType('application/vnd.apple.mpegurl'));
+      const nativeEligible = nativeCapable && Boolean(s.hls) && !s.nativeHls && !s.sourceEof && b.seenFrame && !document.hidden;
+      if (s.nativeFallbackPolicy.check(nativeEligible)) switchPublicToNative(s);
+      if (!local && !nativeCapable && s.hls && b.seenFrame && !s.sourceEof && s.bufferedRecovery.check(b.presentedFrames)) s.bufferedRecoveries = (s.bufferedRecoveries ?? 0) + 1;
       browserReadings(s); s.browserTimer = setTimeout(tick, 400);
     } };
     tick();
@@ -860,12 +886,50 @@ async function initialise() {
 
   async function play(s = session) {
     if (!s || session !== s || !s.mediaReady || s.sourceEof) return;
+    const playbackVersion = s.playbackVersion ?? 0;
     if (local) { video.muted = false; if (video.volume === 0) video.volume = 1; }
     try { await video.play(); if (session === s && local) status('Playing with sound. Server and browser observations update separately.'); }
-    catch { if (session === s) {
+    catch { if (session === s && !s.finishing && !s.abort.signal.aborted && playbackVersion === (s.playbackVersion ?? 0)) {
+      s.switchingPlayback = false;
       if (!local) { leaveListener(s); shareWhilePlaying(s, false); }
       status('The mix is ready. Press play to start listening.'); controls();
     } }
+  }
+
+  function switchPublicToNative(s, reason = 'stalls') {
+    if (local || session !== s || s.finishing || s.nativeHls || !s.hls || s.abort.signal.aborted) return;
+    const position = video.currentTime;
+    const previous = s.publicPeer?.metrics();
+    s.playbackVersion = (s.playbackVersion ?? 0) + 1;
+    s.switchingPlayback = true;
+    s.nativeTransitionStartedAt = performance.now();
+    s.nativeFallback = true;
+    s.nativeHls = true;
+    root.dataset.playbackFallback = reason;
+    // Keep the room, visible video and verified historical byte counts. Native
+    // HLS cannot use the fragment loader, so release all peer resources first.
+    s.fallbackPeerMetrics = previous ? { ...previous, enabled: false, serving: false, phase: 'origin',
+      connectedPeers: 0, viewerId: null, library: null, core: null, lastDelivery: null,
+      originBytes: null, originTransferredBytes: null, loadedMediaBytes: null, peerShare: null,
+      topology: { connections: [] }, resources: { activePeerConnections: 0, signallingConnections: 0,
+        heldBytes: 0, heldHighWaterBytes: previous.resources?.heldHighWaterBytes ?? 0 } } : null;
+    const peer = s.publicPeer; s.publicPeer = null;
+    try { peer?.stop(); } catch {}
+    const hls = s.hls; s.hls = null;
+    try { hls.destroy(); } catch {}
+    s.publicSharingFailed = false;
+    s.playbackEngine = 'Native HLS';
+    video.addEventListener('loadedmetadata', () => {
+      if (session !== s || s.finishing || s.abort.signal.aborted) return;
+      if (Number.isFinite(position) && position > 0 && Number.isFinite(video.duration)) {
+        s.roomSeekAt = performance.now();
+        video.currentTime = Math.min(position, Math.max(0, video.duration - 0.1));
+      }
+      if (!s.nativeAutoplayCancelled) void play(s);
+    }, { once: true, signal: s.abort.signal });
+    video.src = s.playlistUrl;
+    status('Switching to your browser’s native player to recover playback.');
+    browserReadings(s);
   }
 
   async function attach(s, url, runtime) {
@@ -892,11 +956,11 @@ async function initialise() {
         signal: s.abort.signal, onStats: (metrics) => peerStats(s, metrics), confirmSourceEnd: error => confirmNormalSourceEnd(s, error) });
       await play(s);
     } else if (Hls.isSupported()) {
-      s.hls = new Hls({ lowLatencyMode: false, progressive: false, maxBufferLength: local ? 4 : 20, maxMaxBufferLength: local ? 6 : 24,
+      const player = s.hls = new Hls({ lowLatencyMode: false, progressive: false, maxBufferLength: local ? 4 : 20, maxMaxBufferLength: local ? 6 : 24,
         maxBufferSize: (local ? 8 : 64) * 1024 * 1024, backBufferLength: local ? 0 : 4, enableWorker: true, startPosition: initial.startPosition });
       s.playbackEngine = 'hls.js';
       s.hls.on(Hls.Events.MEDIA_ATTACHED, (_, { mediaSource }) => {
-        if (session !== s) return;
+        if (session !== s || s.hls !== player) return;
         s.playbackEngine = typeof ManagedMediaSource === 'function' && mediaSource instanceof ManagedMediaSource ?
           'hls.js · ManagedMediaSource' : 'hls.js · MediaSource';
       });
@@ -906,19 +970,22 @@ async function initialise() {
       if (!local) {
         try {
           const { createPublicSwarm } = await import('./media-public-swarm.mjs?v=20261024-active-sharing');
-          if (session !== s || s.abort.signal.aborted) return;
+          if (session !== s || s.abort.signal.aborted || s.hls !== player) return;
           s.publicPeer = createPublicSwarm({ Hls, hls: s.hls, video, playlistUrl: url.href, quality: s.quality,
-            signal: s.abort.signal, onStats: metrics => { if (session === s) publicDelivery(s, metrics); } });
+            signal: s.abort.signal, onStats: metrics => { if (session === s && !s.nativeHls && !s.finishing) publicDelivery(s, metrics); } });
           shareWhilePlaying(s, true);
         } catch { s.publicSharingFailed = true; publicDelivery(s); }
       }
       s.hls.on(Hls.Events.ERROR, (_, data) => {
-        if (session !== s || s.finishing) return;
+        if (session !== s || s.finishing || s.hls !== player) return;
         s.browser.playerErrors++;
+        if (data.fatal && !local && s.browser.seenFrame && video.canPlayType('application/vnd.apple.mpegurl')) {
+          switchPublicToNative(s, 'player-error'); return;
+        }
         if (data.fatal && !s.directErrorPending) {
           s.directErrorPending = true;
           void confirmNormalSourceEnd(s, data).then(normal => {
-            if (session !== s || s.finishing || s.abort.signal.aborted) return;
+            if (session !== s || s.finishing || s.abort.signal.aborted || s.hls !== player) return;
             if (normal) { s.hls.stopLoad(); video.pause(); }
             else {
               s.playbackFailed = true;
@@ -928,7 +995,7 @@ async function initialise() {
           }).finally(() => { s.directErrorPending = false; });
         }
       });
-      s.hls.on(Hls.Events.MANIFEST_PARSED, () => { if (session === s) { s.mediaReady = true; controls(); void play(s); } });
+      s.hls.on(Hls.Events.MANIFEST_PARSED, () => { if (session === s && s.hls === player) { s.mediaReady = true; controls(); void play(s); } });
       s.hls.loadSource(url.href); s.hls.attachMedia(video);
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
       s.nativeHls = true;
