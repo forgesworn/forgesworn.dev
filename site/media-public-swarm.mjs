@@ -3,11 +3,10 @@
 // A receiver's ephemeral key wraps that digest for the existing live-commitment
 // verifier; this is local attestation, not a live broadcaster signing service.
 import { createHlsSwarm, commitmentContent, commitmentPieceSize, segmentMediaContext, KIND_SEGMENT_COMMITMENT, finalizeEvent,
-  generateSecretKey } from './vendor/media-peer-demo.js?v=9c167439';
+  generateSecretKey, relayswarmBuild } from './vendor/media-peer-demo.js?v=2c2708c9';
 import { observeOriginLoader } from './media-transfer-stats.mjs';
 
 export const PUBLIC_SWARM_LIMITS = Object.freeze({
-  maxDurationMs: 15 * 60 * 1000,
   maxPeers: 3,
   maxUploadPeers: 2,
   maxUploadBytesPerSecond: 4 * 1024 * 1024,
@@ -101,9 +100,12 @@ async function readCatalogue(signal) {
 
 /** Add opt-in peer delivery to an existing, visible hls.js instance.
  * Neither construction nor origin-only playback opens a socket or peer.
+ * Active playback has no elapsed-time cutoff; its upload allowance remains
+ * cumulative across pause/resume until this page-owned adapter is stopped.
  * setEnabled(false) restores the normal HTTP loader without replacing the
  * video, seeking, muting, or destroying its current MediaSource. */
-export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signal, onStats = () => {} }) {
+export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signal, onStats = () => {} },
+  { createSwarm = createHlsSwarm } = {}) {
   if (!Hls || !hls?.config || !video) throw new Error('An existing video and HLS player are required.');
   const origin = globalThis.location?.href;
   if (!origin) throw new Error('The public swarm needs a browser.');
@@ -113,10 +115,10 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
   const sockets = new Set(), connections = new Set(), peerObservations = new Map();
   const totals = { peerBytes: 0, uploadedBytes: 0, verifiedPeerSegments: 0, integrityRejected: 0, originFallbacks: 0 };
   const observedChannels = new WeakSet();
-  let stopped = false, enabled = false, enabling = null, generation = 0, swarm, key, plan, tick, cap, catalogueAbort;
+  let stopped = false, enabled = false, enabling = null, generation = 0, swarm, key, plan, tick, catalogueAbort;
   let lastDelivery = null, lastReason = 'off', receivedOriginBytes = 0, loadedMediaBytes = 0, lastPeerBytes = 0;
   let highWaterBytes = 0, signalErrors = 0, lastSnapshot = null, nextPeer = 1, observing = false, request = 0;
-  let firstEnabledAt = null, uploadChargedBytes = 0, cycleUploadLimit = 0;
+  let uploadChargedBytes = 0, cycleUploadLimit = 0;
   let sentMediaBytes = 0;
 
   const metrics = () => {
@@ -129,6 +131,7 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
     highWaterBytes = Math.max(highWaterBytes, n(live?.bytes.held));
     return { enabled, phase: stopped ? 'stopped' : !enabled ? 'origin' : enabling && !swarm ? 'connecting' :
       connectedPeers > 0 && ['peer', 'mixed'].includes(lastDelivery) ? 'peer' : connectedPeers > 0 ? 'connected' : 'waiting',
+      library: relayswarmBuild,
       lastDelivery, reason: lastReason, connectedPeers, serving: live?.serving === true,
       viewerId: live?.pubkey ?? null,
       peerBytes, originBytes: Math.max(0, loadedMediaBytes - peerBytes), loadedMediaBytes,
@@ -223,7 +226,7 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
   };
   const disable = (reason = 'off') => {
     generation++; enabled = false; lastReason = reason;
-    clearInterval(tick); clearTimeout(cap); catalogueAbort?.abort();
+    clearInterval(tick); catalogueAbort?.abort();
     if (swarm) { fold(); swarm.stop(); swarm = undefined; }
     for (const connection of connections) { try { connection.close(); } catch {} }
     for (const socket of sockets) { try { socket.close(); } catch {} }
@@ -253,8 +256,6 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
       return setEnabled(true);
     }
     if (typeof RTCPeerConnection !== 'function' || typeof WebSocket !== 'function' || !crypto?.subtle) throw new Error('Peer delivery is unavailable in this browser.');
-    if (firstEnabledAt !== null && performance.now() - firstEnabledAt >= PUBLIC_SWARM_LIMITS.maxDurationMs) { disable('time-limit'); return metrics(); }
-    firstEnabledAt ??= performance.now();
     enabled = true; lastReason = 'opted-in';
     const ownGeneration = ++generation;
     catalogueAbort = new AbortController();
@@ -304,7 +305,7 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
           close() { super.close(); connections.delete(this); peerObservations.delete(this); }
         }
         cycleUploadLimit = Math.max(0, PUBLIC_SWARM_LIMITS.maxUploadBytesPerSession - uploadChargedBytes);
-        swarm = createHlsSwarm({ mode: 'peer-first', swarmId: plan.swarmId, relays: [...PUBLIC_SWARM_RELAYS],
+        swarm = createSwarm({ mode: 'peer-first', swarmId: plan.swarmId, relays: [...PUBLIC_SWARM_RELAYS],
           streamEvent, getCommitment, serve: true, serveOnCellular: false,
           coreWasm: new URL('./vendor/relayswarm-core.wasm', import.meta.url), multiHolder: true,
           zeroBudgetPeerRace: true,
@@ -327,7 +328,6 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
         swarm.attach(hls);
         if (swarm.metrics().mode === 'off') throw new Error('Peer delivery could not start with this browser configuration.');
         tick = setInterval(() => { emit(); void observeTraffic(); }, 750);
-        cap = setTimeout(() => disable('time-limit'), Math.max(0, PUBLIC_SWARM_LIMITS.maxDurationMs - (performance.now() - firstEnabledAt)));
         emit();
         return metrics();
       } catch (error) {
