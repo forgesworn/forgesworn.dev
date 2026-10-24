@@ -1,0 +1,368 @@
+{
+  "schema": 1,
+  "measuredAt": "2026-10-24T08:50:49.922Z",
+  "scope": "RelaySwarm media accounting and 4K peer contribution investigation",
+  "boundaries": [
+    "Browser contexts share one heavily loaded Mac. This does not qualify cross-NAT, physical phones or production capacity.",
+    "The 4K timing experiment uses the previous d9358b8 bundle, not the new observation-hook bundle. It has identical pinned source files apart from the two declared wait values.",
+    "The preview check proves real verified media and matching graph counters, not sustained 4K offload."
+  ],
+  "fix": {
+    "graph": "Media sent and verified peer deliveries only; RTC control and partial receive counters are excluded.",
+    "origin": "Completed real HTTP fragment bodies before worker transfer; includes init data.",
+    "units": "Adaptive decimal B/KB/MB/GB, exact byte values retained.",
+    "peerAttribution": "Supported onPeerDelivery callback carries the actual native connection after aggregate counters and integrity acceptance.",
+    "relaySwarmSourceCommit": "75202874edc4dae69d4ccfc307cff3ac3841f8e1",
+    "bundleSha256": "271d14e4dbe43bbcd8b7488d022f175b6efdd06118cd57695a00ad5c96048c2f",
+    "unchangedTiming": {
+      "originFallbackMs": 1200,
+      "maxPeerWaitMs": 2500,
+      "originReserveMs": 2000
+    }
+  },
+  "graphRegression": {
+    "passed": true,
+    "checks": {
+      "controlOnly": {
+        "peerNodes": 1,
+        "flights": 0,
+        "label": "0 B to them · 0 B to you"
+      },
+      "hostOnly": {
+        "hostFlights": 1,
+        "peerFlights": 0
+      },
+      "media": {
+        "up": "918",
+        "down": "6206410",
+        "label": "918 B to them · 6.2 MB to you"
+      },
+      "resize": {
+        "flights": 0,
+        "label": "918 B to them · 6.2 MB to you"
+      },
+      "paused": {
+        "peerNodes": 0,
+        "flights": 0
+      }
+    }
+  },
+  "realPreviewVisitors": {
+    "passed": true,
+    "quality": "preview",
+    "oneVisibleVideoEach": true,
+    "pageErrors": 0,
+    "players": [
+      {
+        "verifiedPeerBytes": 0,
+        "sentMediaBytes": 378054,
+        "originMediaBytes": 11410231,
+        "connections": [
+          {
+            "id": "peer-1",
+            "uploadedBytes": 378054,
+            "verifiedPeerBytes": 0,
+            "label": "378.1 KB to them · 0 B to you"
+          }
+        ],
+        "connectedPeers": 1,
+        "viewerContribution": "0% of your loaded video came from viewers. Totals include buffered video; sent bytes may still be in transfer."
+      },
+      {
+        "verifiedPeerBytes": 378054,
+        "sentMediaBytes": 0,
+        "originMediaBytes": 9881152,
+        "connections": [
+          {
+            "id": "peer-1",
+            "uploadedBytes": 0,
+            "verifiedPeerBytes": 378054,
+            "label": "0 B to them · 378.1 KB to you"
+          }
+        ],
+        "connectedPeers": 1,
+        "viewerContribution": "3.7% of your loaded video came from viewers. Totals include buffered video; sent bytes may still be in transfer."
+      }
+    ],
+    "paused": {
+      "nativePaused": true,
+      "graphNodesRemoved": true,
+      "peerConnectionsClosed": true,
+      "socketsClosed": true
+    }
+  },
+  "full4kWaitExperiment": {
+    "adopted": false,
+    "conclusion": "Both 40-second windows delivered zero verified peer media. Increasing wait deadlines alone did not produce useful peer delivery. The treatment sender submitted 5.57 MB but requests were abandoned and the receiver played less video. Lower receiver HTTP bytes therefore do not establish origin savings.",
+    "bounds": [
+      "Both windows used one shared Mac under very high and differing system load. They are diagnostics, not a controlled performance winner.",
+      "Baseline did not capture browser stall counters; its values are unavailable rather than zero.",
+      "Absolute HTTP data includes manifests, init data, full fragments and partial response bodies observed by Chromium. It excludes peer protocol and transport overhead."
+    ],
+    "change": {
+      "originFallbackMs": {
+        "baseline": 1200,
+        "treatment": 2500
+      },
+      "maxPeerWaitMs": {
+        "baseline": 2500,
+        "treatment": 5000
+      },
+      "unchanged": {
+        "originReserveMs": 2000,
+        "uploadBytesPerSecond": 4194304,
+        "maxHeldBytes": 67108864,
+        "arrivalOffsetSeconds": 3,
+        "video": "original4K",
+        "hlsProfile": "same pinned media-lab.mjs"
+      }
+    },
+    "baseline": {
+      "observationSeconds": 40.162,
+      "hostLoadAtStart": [
+        43.23046875,
+        25.2919921875,
+        19.14892578125
+      ],
+      "hostLoadAtEnd": [
+        108.8662109375,
+        48.666015625,
+        28.443359375
+      ],
+      "totalHttpBodyDataBytes": 245884216,
+      "totalVerifiedPeerBytes": 0,
+      "players": [
+        {
+          "viewer": "A",
+          "endPlayhead": 36.169425,
+          "playheadAdvance": 32.85396299999999,
+          "bufferSeconds": 2.030575000000006,
+          "observedStalls": null,
+          "observedStalledSeconds": null,
+          "originMediaBytes": 116689366,
+          "verifiedPeerBytes": 0,
+          "submittedBinaryMediaBytes": 0,
+          "eligibility": {
+            "no-budget": 15,
+            "aborted-before-eligibility": 0,
+            "no-have-no-wait": 4,
+            "no-have-wait": 0,
+            "wait-no-longer-eligible": 0,
+            "wait-aborted": 0,
+            "wait-expired": 0,
+            "have-at-entry": 1,
+            "have-after-wait": 0,
+            "projected-late": 0
+          },
+          "requests": {
+            "payload": 0,
+            "none": 0,
+            "timeout": 1,
+            "abort": 0,
+            "abandoned": 0,
+            "closed": 0,
+            "busy": 0,
+            "send-error": 0
+          },
+          "requestRecords": [
+            {
+              "atMs": 29399,
+              "id": 1,
+              "holder": 1,
+              "cc": 0,
+              "level": 0,
+              "remainingMs": 35.022000000000844,
+              "outcome": "timeout",
+              "elapsedMs": 36.299999713897705,
+              "timeoutMs": 35.022000000000844,
+              "expectedBytes": 6357613,
+              "receivedBytes": 229376,
+              "firstByteMs": 4.199999809265137,
+              "metadataReceived": true,
+              "draining": true,
+              "closeReason": null
+            }
+          ]
+        },
+        {
+          "viewer": "B",
+          "endPlayhead": 37.598339,
+          "playheadAdvance": 37.598339,
+          "bufferSeconds": 4.401660999999997,
+          "observedStalls": null,
+          "observedStalledSeconds": null,
+          "originMediaBytes": 128161555,
+          "verifiedPeerBytes": 0,
+          "submittedBinaryMediaBytes": 409600,
+          "eligibility": {
+            "no-budget": 2,
+            "aborted-before-eligibility": 0,
+            "no-have-no-wait": 15,
+            "no-have-wait": 5,
+            "wait-no-longer-eligible": 0,
+            "wait-aborted": 0,
+            "wait-expired": 5,
+            "have-at-entry": 0,
+            "have-after-wait": 0,
+            "projected-late": 0
+          },
+          "requests": {
+            "payload": 0,
+            "none": 0,
+            "timeout": 0,
+            "abort": 0,
+            "abandoned": 0,
+            "closed": 0,
+            "busy": 0,
+            "send-error": 0
+          },
+          "requestRecords": []
+        }
+      ]
+    },
+    "treatment": {
+      "observationSeconds": 40.559,
+      "hostLoadAtStart": [
+        77.0849609375,
+        46.7998046875,
+        31.2392578125
+      ],
+      "hostLoadAtEnd": [
+        123.416015625,
+        82.09912109375,
+        48.08984375
+      ],
+      "totalHttpBodyDataBytes": 241970872,
+      "totalVerifiedPeerBytes": 0,
+      "players": [
+        {
+          "viewer": "A",
+          "endPlayhead": 43.085589,
+          "playheadAdvance": 39.703466999999996,
+          "bufferSeconds": 1.834411000000003,
+          "observedStalls": "1",
+          "observedStalledSeconds": "0.22 s",
+          "originMediaBytes": 137220411,
+          "verifiedPeerBytes": 0,
+          "submittedBinaryMediaBytes": 5570560,
+          "eligibility": {
+            "no-budget": 3,
+            "aborted-before-eligibility": 0,
+            "no-have-no-wait": 17,
+            "no-have-wait": 3,
+            "wait-no-longer-eligible": 0,
+            "wait-aborted": 0,
+            "wait-expired": 3,
+            "have-at-entry": 0,
+            "have-after-wait": 0,
+            "projected-late": 0
+          },
+          "requests": {
+            "payload": 0,
+            "none": 0,
+            "timeout": 0,
+            "abort": 0,
+            "abandoned": 0,
+            "closed": 0,
+            "busy": 0,
+            "send-error": 0
+          },
+          "requestRecords": []
+        },
+        {
+          "viewer": "B",
+          "endPlayhead": 31.608208,
+          "playheadAdvance": 31.608208,
+          "bufferSeconds": 0.5917920000000017,
+          "observedStalls": "3",
+          "observedStalledSeconds": "4.16 s",
+          "originMediaBytes": 98799575,
+          "verifiedPeerBytes": 0,
+          "submittedBinaryMediaBytes": 0,
+          "eligibility": {
+            "no-budget": 8,
+            "aborted-before-eligibility": 0,
+            "no-have-no-wait": 5,
+            "no-have-wait": 0,
+            "wait-no-longer-eligible": 0,
+            "wait-aborted": 0,
+            "wait-expired": 0,
+            "have-at-entry": 4,
+            "have-after-wait": 0,
+            "projected-late": 0
+          },
+          "requests": {
+            "payload": 0,
+            "none": 0,
+            "timeout": 0,
+            "abort": 0,
+            "abandoned": 2,
+            "closed": 0,
+            "busy": 0,
+            "send-error": 0
+          },
+          "requestRecords": [
+            {
+              "atMs": 10030,
+              "id": 1,
+              "holder": 1,
+              "cc": 0,
+              "level": 0,
+              "remainingMs": 2492.8999996185303,
+              "outcome": "abandoned",
+              "elapsedMs": 676.9000000953674,
+              "timeoutMs": 2492.8999996185303,
+              "expectedBytes": 5735496,
+              "receivedBytes": 1736704,
+              "firstByteMs": 7.199999809265137,
+              "metadataReceived": true,
+              "draining": true,
+              "closeReason": null
+            },
+            {
+              "atMs": 17136,
+              "id": 2,
+              "holder": 1,
+              "cc": 0,
+              "level": 0,
+              "remainingMs": 2495.800000190735,
+              "outcome": "abandoned",
+              "elapsedMs": 662.1000003814697,
+              "timeoutMs": 2495.800000190735,
+              "expectedBytes": 6058936,
+              "receivedBytes": 1654784,
+              "firstByteMs": 9.5,
+              "metadataReceived": true,
+              "draining": true,
+              "closeReason": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "validation": {
+    "siteUnitTests": 110,
+    "siteUnitFailures": 0,
+    "relaySwarmUnitTests": 248
+  },
+  "cleanup": {
+    "allRecordedBrowserRunsClosed": true,
+    "noServerCreatedForTheseChecks": true
+  },
+  "original4kPlayer": {
+    "passed": true,
+    "checks": [
+      "initial",
+      "playback",
+      "invitation",
+      "nativeControls",
+      "fullscreen",
+      "stats",
+      "sharing",
+      "mobile"
+    ],
+    "pageErrors": 0,
+    "browserClosed": true
+  }
+}

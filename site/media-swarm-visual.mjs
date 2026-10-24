@@ -1,8 +1,8 @@
 // A local view of real connections. No invented peers, global viewer count,
 // packet animation timer or remote-to-remote links.
+import { transferBytes as bytes } from './media-transfer-stats.mjs';
 const NS = 'http://www.w3.org/2000/svg';
 const number = value => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0;
-const bytes = value => value >= 1e6 ? `${(value / 1e6).toFixed(1)} MB` : `${(value / 1000).toFixed(0)} KB`;
 const make = (name, attributes = {}, text) => {
   const node = document.createElementNS(NS, name);
   for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, value);
@@ -17,7 +17,7 @@ export function observedTopology(metrics) {
   return records.filter(item => item && typeof item.id === 'string' && /^[a-z0-9-]{1,32}$/i.test(item.id) &&
     ['connected', 'connecting', 'new'].includes(item.state) && !seen.has(item.id) && seen.add(item.id)).slice(0, 5)
     .map(item => ({ id: item.id, state: item.state, kind: item.kind === 'relay' ? 'relay' : 'direct',
-      bytesSent: number(item.bytesSent), bytesReceived: number(item.bytesReceived) }));
+      mediaBytesSent: number(item.mediaBytesSent), verifiedMediaBytesReceived: number(item.verifiedMediaBytesReceived) }));
 }
 
 function drawSwarmVisual(container) {
@@ -26,7 +26,7 @@ function drawSwarmVisual(container) {
   const svg = make('svg', { viewBox: narrow ? '0 0 520 390' : '0 0 960 355', role: 'img', 'aria-label': 'The media host and your browser. No peer connections yet.',
     class: 'swarm-canvas', preserveAspectRatio: 'xMidYMid meet' });
   const title = make('title', {}, 'Your part of the swarm');
-  const description = make('desc', {}, 'Only peer connections observed by this browser are shown. Moving points represent measured traffic.');
+  const description = make('desc', {}, 'Only peer connections observed by this browser are shown. Moving points represent media sent or verified media received, not connection messages.');
   const style = make('style', {}, `
     .swarm-node text{font-family:Inter,system-ui,sans-serif;fill:#e8e6de;letter-spacing:-.2px}
     .swarm-node .swarm-sub{fill:#96999e;font-size:${narrow ? 15 : 12}px;letter-spacing:0}
@@ -77,10 +77,12 @@ function drawSwarmVisual(container) {
   let previousOrigin = 0, destroyed = false, animationFrame;
   const activeFlights = new Set();
 
-  function fly(from, to, colour, count) {
+  function fly(from, to, colour, count, source) {
     if (destroyed || reduced?.matches || !number(count) || activeFlights.size >= 16 || globalThis.document?.hidden) return;
     // One point represents a measured batch, never an invented packet count.
     const dot = make('circle', { r: 3.2, fill: colour, 'fill-opacity': .95 });
+    dot.dataset.flightSource = source;
+    dot.dataset.bytes = String(count);
     particles.append(dot);
     const flight = { dot, from, to, start: performance.now() };
     activeFlights.add(flight);
@@ -119,24 +121,29 @@ function drawSwarmVisual(container) {
       }
       record.link.classList.toggle('swarm-connecting', peer.state !== 'connected');
       record.link.setAttribute('stroke-dasharray', peer.kind === 'relay' ? '2 5' : '');
-      record.detail.textContent = peer.state !== 'connected' ? 'Connecting' : `${bytes(peer.bytesSent)} sent · ${bytes(peer.bytesReceived)} received`;
+      record.detail.textContent = peer.state !== 'connected' ? 'Connecting' : `${bytes(peer.mediaBytesSent)} to them · ${bytes(peer.verifiedMediaBytesReceived)} to you`;
+      record.group.dataset.mediaBytesSent = String(peer.mediaBytesSent);
+      record.group.dataset.verifiedMediaBytesReceived = String(peer.verifiedMediaBytesReceived);
       if (metrics.playing && !silent) {
-        fly(self, record.point, '#c7f36b', peer.bytesSent - record.sent);
-        fly(record.point, self, '#a1bfff', peer.bytesReceived - record.received);
+        fly(self, record.point, '#c7f36b', peer.mediaBytesSent - record.sent, 'peer-upload');
+        fly(record.point, self, '#a1bfff', peer.verifiedMediaBytesReceived - record.received, 'peer-download');
       }
-      record.sent = peer.bytesSent; record.received = peer.bytesReceived;
+      record.sent = peer.mediaBytesSent; record.received = peer.verifiedMediaBytesReceived;
     }
     const originBytes = number(metrics.originBytes);
-    if (metrics.playing && !silent) fly(origin, self, '#d6c5a1', originBytes - previousOrigin);
+    if (metrics.playing && !silent) fly(origin, self, '#d6c5a1', originBytes - previousOrigin, 'origin');
     previousOrigin = originBytes;
     emptyLabel.hidden = emptySub.hidden = peers.length > 0;
     emptyLabel.style.display = emptySub.style.display = peers.length ? 'none' : '';
     selfNode.detail.textContent = !metrics.active ? 'Ready to listen' : !metrics.playing ? 'Paused' : metrics.enabled && metrics.serving ? 'Listening & sharing' : 'Listening';
-    hostNode.detail.textContent = originBytes ? `${bytes(originBytes)} received` : 'Original 4K mix';
+    hostNode.detail.textContent = `${bytes(metrics.originBytes ?? (metrics.active ? null : 0))} to you`;
     originTag.textContent = !metrics.active ? 'Starts the stream' : peers.length ? 'Origin fallback' : 'HLS delivery';
     svg.setAttribute('aria-label', `The media host, your browser and ${peers.length} observed peer connection${peers.length === 1 ? '' : 's'}. ${number(metrics.peerBytes)} verified peer bytes received; ${number(metrics.uploadedBytes)} video bytes uploaded.`);
     container.dataset.connectedPeers = String(peers.filter(peer => peer.state === 'connected').length);
     container.dataset.observedPeers = String(peers.length);
+    container.dataset.originBytes = String(originBytes);
+    container.dataset.peerBytes = String(number(metrics.peerBytes));
+    container.dataset.uploadedBytes = String(number(metrics.uploadedBytes));
   }
   const destroy = () => {
     destroyed = true;

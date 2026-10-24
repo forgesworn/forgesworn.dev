@@ -4,6 +4,7 @@
 // verifier; this is local attestation, not a live broadcaster signing service.
 import { createHlsSwarm, commitmentContent, KIND_SEGMENT_COMMITMENT, finalizeEvent,
   generateSecretKey } from './vendor/media-peer-demo.js';
+import { observeOriginLoader } from './media-transfer-stats.mjs';
 
 export const PUBLIC_SWARM_LIMITS = Object.freeze({
   maxDurationMs: 15 * 60 * 1000,
@@ -106,7 +107,7 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
   const totals = { peerBytes: 0, uploadedBytes: 0, verifiedPeerSegments: 0, integrityRejected: 0, originFallbacks: 0 };
   const observedChannels = new WeakSet();
   let stopped = false, enabled = false, enabling = null, generation = 0, swarm, key, plan, tick, cap, catalogueAbort;
-  let lastDelivery = 'origin', lastReason = 'off', peerLoadsSeen = 0, receivedOriginBytes = 0;
+  let lastDelivery = null, lastReason = 'off', receivedOriginBytes = 0;
   let highWaterBytes = 0, signalErrors = 0, lastSnapshot = null, nextPeer = 1, observing = false, request = 0;
   let firstEnabledAt = null, uploadChargedBytes = 0, cycleUploadLimit = 0;
   let sentMediaBytes = 0;
@@ -137,6 +138,7 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
         const observation = peerObservations.get(connection);
         return { id: observation.id, state: connection.connectionState, iceState: connection.iceConnectionState,
           bytesSent: observation.sentBytes, bytesReceived: observation.receivedBytes, kind: observation.kind, trafficBasis: observation.trafficBasis,
+          mediaBytesSent: observation.mediaBytesSent, verifiedMediaBytesReceived: observation.verifiedMediaBytesReceived,
           observedAtMs: observation.observedAtMs };
       }) },
       uploadAllowanceRemaining: Math.max(0, PUBLIC_SWARM_LIMITS.maxUploadBytesPerSession - uploadChargedBytes - (swarm ? cycleUploadLimit - n(live?.bytes.uploadRemaining) : 0)),
@@ -147,7 +149,7 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
     };
   };
   const emit = () => { lastSnapshot = metrics(); try { onStats(lastSnapshot); } catch {} return lastSnapshot; };
-  const observeChannel = channel => {
+  const observeChannel = (channel, connection) => {
     if (observedChannels.has(channel)) return;
     observedChannels.add(channel);
     const send = channel.send;
@@ -156,10 +158,20 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
       // RelaySwarm uses text for protocol messages and binary chunks for media.
       // Count only binary bytes successfully submitted to the native channel.
       // Remote verification is reported by the receiving visitor separately.
-      if (this === channel && (data instanceof ArrayBuffer || ArrayBuffer.isView(data))) sentMediaBytes += data.byteLength;
+      if (this === channel && (data instanceof ArrayBuffer || ArrayBuffer.isView(data))) {
+        sentMediaBytes += data.byteLength;
+        const observation = peerObservations.get(connection);
+        if (observation) observation.mediaBytesSent += data.byteLength;
+      }
       return result;
     };
   };
+  const originalFragmentLoader = hls.config.fLoader;
+  const OriginLoader = observeOriginLoader(originalFragmentLoader || hls.config.loader, bytes => {
+    receivedOriginBytes += bytes;
+    lastDelivery = 'origin';
+  });
+  hls.config.fLoader = OriginLoader;
   const observeTraffic = async () => {
     if (observing || stopped || !enabled) return;
     observing = true;
@@ -201,16 +213,10 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
     for (const connection of connections) { try { connection.close(); } catch {} }
     for (const socket of sockets) { try { socket.close(); } catch {} }
     connections.clear(); sockets.clear(); peerObservations.clear();
-    key?.fill(0); key = undefined; peerLoadsSeen = 0; lastDelivery = 'origin';
+    key?.fill(0); key = undefined;
     emit();
   };
-  const onFragment = (_event, detail) => {
-    const peerLoads = n(swarm?.metrics().segments.peerFirstLoaded);
-    if (peerLoads > peerLoadsSeen) lastDelivery = 'peer';
-    else { lastDelivery = 'origin'; receivedOriginBytes += n(detail?.payload?.byteLength); }
-    peerLoadsSeen = peerLoads;
-    emit();
-  };
+  const onFragment = () => emit();
   hls.on(Hls.Events.FRAG_LOADED, onFragment);
 
   async function setEnabled(value) {
@@ -265,11 +271,12 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
             if (connections.size >= PUBLIC_SWARM_LIMITS.maxPeers + 2) throw new Error('Public peer connection limit reached.');
             super(config);
             connections.add(this);
-            peerObservations.set(this, { id: `peer-${nextPeer++}`, sentBytes: null, receivedBytes: null, kind: null, trafficBasis: null, observedAtMs: null });
-            this.addEventListener('datachannel', event => observeChannel(event.channel));
+            peerObservations.set(this, { id: `peer-${nextPeer++}`, sentBytes: null, receivedBytes: null, mediaBytesSent: 0,
+              verifiedMediaBytesReceived: 0, kind: null, trafficBasis: null, observedAtMs: null });
+            this.addEventListener('datachannel', event => observeChannel(event.channel, this));
             this.addEventListener('connectionstatechange', () => { if (this.connectionState === 'closed') { connections.delete(this); peerObservations.delete(this); } });
           }
-          createDataChannel(...args) { const channel = super.createDataChannel(...args); observeChannel(channel); return channel; }
+          createDataChannel(...args) { const channel = super.createDataChannel(...args); observeChannel(channel, this); return channel; }
           close() { super.close(); connections.delete(this); peerObservations.delete(this); }
         }
         cycleUploadLimit = Math.max(0, PUBLIC_SWARM_LIMITS.maxUploadBytesPerSession - uploadChargedBytes);
@@ -277,6 +284,12 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
           streamEvent, getCommitment, serve: true, serveOnCellular: false,
           iceServers: PUBLIC_SWARM_ICE.map(entry => ({ ...entry })), iceTransportPolicy: 'all',
           WebSocketImpl: ObservedSocket, RTCPeerConnectionImpl: ObservedConnection,
+          onPeerDelivery({ connection, bytes }) {
+            if (!enabled || stopped || ownGeneration !== generation) return;
+            const observation = peerObservations.get(connection);
+            if (observation) observation.verifiedMediaBytesReceived += n(bytes);
+            lastDelivery = 'peer';
+          },
           maxPeers: PUBLIC_SWARM_LIMITS.maxPeers, maxUploadPeers: PUBLIC_SWARM_LIMITS.maxUploadPeers,
           maxUploadBytesPerSecond: PUBLIC_SWARM_LIMITS.maxUploadBytesPerSecond,
           maxUploadBytesPerSession: cycleUploadLimit,
@@ -306,6 +319,7 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
   const stop = () => {
     if (stopped) return;
     stopped = true; lifetime.abort(); disable('stopped');
+    if (hls.config.fLoader === OriginLoader) hls.config.fLoader = originalFragmentLoader;
     signal?.removeEventListener('abort', stop);
     video.removeEventListener('ended', ended);
     globalThis.removeEventListener?.('pagehide', stop);

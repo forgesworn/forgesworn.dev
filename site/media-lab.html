@@ -52,13 +52,15 @@
       <section class="swarm-stage public-only" aria-labelledby="swarm-title">
         <div class="swarm-heading"><div><p class="eyebrow">This is happening in your browser</p><h2 id="swarm-title">Watch the stream <em>move.</em></h2></div><p id="public-delivery" class="delivery-path" role="status">Ready to play.  The origin gets you started.</p></div>
         <div id="public-swarm-map" class="swarm-map" role="img" aria-label="Observed connections between this browser, the media origin and other viewers"></div>
-        <div class="swarm-caption"><p>Your actual connections. Moving points show measured connection traffic.</p><p id="public-share-status" class="share-status" role="status">Play to join.  Peer counters rise only when verified video actually moves.</p></div>
+        <div class="swarm-caption"><p>Video transfers, from your point of view. Connection messages do not move the dots.</p><p id="public-share-status" class="share-status" role="status">Play to join.  Media-host delivery and verified peer delivery are counted separately.</p></div>
         <div class="listening-invite"><button id="public-invite" class="button quiet" type="button" disabled>Invite someone into this moment ↗</button><span id="public-invite-status" role="status"></span></div>
         <dl class="delivery-counters" aria-label="Actual RelaySwarm delivery in this browser">
-          <div><dt>Video from viewers</dt><dd id="public-peer-bytes">0 B</dd></div>
-          <div><dt>Video shared by you</dt><dd id="public-upload-bytes">0 B</dd></div>
+          <div><dt>From media host</dt><dd id="public-origin-bytes">0 B</dd></div>
+          <div><dt>Verified from viewers</dt><dd id="public-peer-bytes">0 B</dd></div>
+          <div><dt>Media sent by you</dt><dd id="public-upload-bytes">0 B</dd></div>
           <div><dt>Connected viewers</dt><dd id="public-peers">0</dd></div>
         </dl>
+        <p id="public-transfer-summary" class="transfer-summary">Totals for this playback. Peer downloads count only complete, verified video segments.</p>
         <details class="peer-details"><summary>What joining means</summary><p>RelaySwarm uses public Nostr relays to find viewers, then WebRTC to exchange verified media.  Connected peers can see one another's network addresses.  Sharing uses up to 4 MiB/s of upload, 1 GiB per playback session and a 64 MiB media cache. Pause or close the page to stop sharing.  Your player keeps the origin available whenever peers can't help.</p></details>
       </section>
       <p id="profile-note" class="context local-only">The origin and publisher have separate process readings.  Compare the same source, profile, transport and source window.</p>

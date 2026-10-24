@@ -53,10 +53,16 @@ async function snapshot(page) {
       visibleDelivery: document.getElementById('public-delivery').textContent,
       visiblePeerBytes: document.getElementById('public-peer-bytes').textContent,
       visibleUploadedBytes: document.getElementById('public-upload-bytes').textContent,
+      visibleOriginBytes: document.getElementById('public-origin-bytes')?.textContent,
+      originBytes: Number(document.getElementById('public-origin-bytes')?.dataset.bytes),
+      transferSummary: document.getElementById('public-transfer-summary')?.textContent,
       visiblePeers: document.getElementById('public-peers').textContent,
       sharingStatus: document.getElementById('public-share-status').textContent,
       graph: { peerBytes, uploadedBytes, observedPeers: Number(map.dataset.observedPeers), connectedPeers: Number(map.dataset.connectedPeers),
         drawnPeerNodes: map.querySelectorAll('[data-peer-id]').length, nativeDescription: label,
+        media: [...map.querySelectorAll('[data-peer-id]')].map(node => ({ id: node.dataset.peerId,
+          uploadedBytes: Number(node.dataset.mediaBytesSent), verifiedPeerBytes: Number(node.dataset.verifiedMediaBytesReceived),
+          label: node.querySelector('.swarm-sub').textContent })),
         viewBox: map.querySelector('svg').getAttribute('viewBox') },
       native: { connections, activeConnections: connections.filter(peer => ['new', 'connecting', 'connected'].includes(peer.state)).length,
         connectedConnections: connections.filter(peer => peer.state === 'connected').length,
@@ -127,6 +133,12 @@ try {
     assert.equal(player.graph.drawnPeerNodes, player.graph.observedPeers);
     assert.equal(player.graph.drawnPeerNodes, player.native.activeConnections);
     assert.equal(player.graph.connectedPeers, player.native.connectedConnections);
+    assert.equal(player.graph.media.reduce((sum, peer) => sum + peer.verifiedPeerBytes, 0), player.graph.peerBytes,
+      'Graph received video must match completed verified media, not RTC control or pending payloads.');
+    assert.equal(player.graph.media.reduce((sum, peer) => sum + peer.uploadedBytes, 0), player.graph.uploadedBytes,
+      'Graph uploaded video must match actual binary submissions.');
+    assert(player.originBytes > 0 && !player.visibleOriginBytes.startsWith('0 '));
+    assert(!player.visiblePeerBytes.startsWith('0.0 '));
     assert(player.native.connections.some(peer => peer.bytesSent > 0 || peer.bytesReceived > 0));
     assert.equal(player.quality, options.quality);
     assert.equal(player.height, options.quality === 'preview' ? 1080 : 2160);
