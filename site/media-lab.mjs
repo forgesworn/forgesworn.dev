@@ -1,6 +1,6 @@
 import { readInitialLiveStart } from './media-live-start.mjs';
 import { transferBytes } from './media-transfer-stats.mjs';
-import { createNativePlaybackFallback, prefersNativeHls } from './media-playback-fallback.mjs';
+import { createNativePlaybackFallback, prefersNativeHls } from './media-playback-fallback.mjs?v=20261024-ios-native-v2';
 
 const DASH = '—';
 export const observed = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
