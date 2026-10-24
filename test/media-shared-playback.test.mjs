@@ -67,9 +67,9 @@ test('seek recovery and a minimum correction interval break repeated slow-seek l
   const first = p.seeks[0].when;
   p.video.seeking = true; p.event('seeking'); p.follow(12_000, 5);
   assert.equal(p.seeks.length, 1);
-  p.video.seeking = false; p.event('seeked'); p.event('playing'); p.follow(first + 14_800, 2);
+  p.video.seeking = false; p.event('seeked'); p.event('playing'); p.follow(first + 14_800, 8);
   assert.equal(p.seeks.length, 1);
-  p.follow(first + 16_000, 2);
+  p.follow(first + 16_000, 8);
   assert.equal(p.seeks.length, 2);
   assert(p.seeks[1].when - first >= 15_000);
 });
@@ -115,4 +115,42 @@ test('cancelled player listeners are removed and invalid clocks cannot seek', ()
   assert.equal(q.sync.align(NaN, q.video.duration, true).corrected, false);
   assert.equal(q.sync.align(5, 0, true).corrected, false);
   assert.equal(q.seeks.length, 0);
+});
+
+function measuredSeek(p, start, cost) {
+  p.at(start); p.video.seeking = true; p.event('seeking');
+  p.at(start + cost); p.video.seeking = false; p.event('seeked');
+}
+
+test('a measured half-second seek prevents recurring interruptions for 770 ms drift', () => {
+  const p = player(); measuredSeek(p, 0, 500);
+  p.follow(60_000, 0.77);
+  assert.equal(p.seeks.length, 0, 'the 750 ms allowance includes the actual 500 ms seek cost');
+  assert.equal(p.video.playbackRate, undefined, 'the music stays at its original tempo');
+});
+
+test('a larger sustained offset still corrects after the measured seek-cost allowance', () => {
+  const p = player(); measuredSeek(p, 0, 500);
+  p.follow(6_500, 1.4);
+  assert.equal(p.seeks.length, 1, '1.4 s exceeds the 1.25 s allowance and still obeys settling');
+});
+
+test('explicit live alignment bypasses the measured ordinary allowance', () => {
+  const p = player(); measuredSeek(p, 0, 500);
+  assert.equal(p.sync.align(20.77, p.video.duration, true).corrected, true);
+  assert.equal(p.video.currentTime, 20.77);
+});
+
+test('the latest completed seek replaces old cost and unmatched seeked is neutral', () => {
+  const p = player(); measuredSeek(p, 0, 1_000); measuredSeek(p, 1_500, 50);
+  p.follow(8_000, 0.9);
+  assert.equal(p.seeks.length, 1, 'the most recent 50 ms seek gives an 800 ms allowance');
+  const q = player(); q.at(10_000); q.event('seeked'); q.follow(16_000, 0.9);
+  assert.equal(q.seeks.length, 1, 'an unmatched event does not invent a ten-second seek cost');
+});
+
+test('emptying the video clears measured seek cost for a replacement engine', () => {
+  const p = player(); measuredSeek(p, 0, 500); p.event('emptied');
+  p.follow(6_500, 0.77);
+  assert.equal(p.seeks.length, 1, 'a new pipeline starts with the existing 750 ms allowance');
 });

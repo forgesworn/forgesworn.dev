@@ -49,13 +49,16 @@ the room and stops peer sharing; Play discovers the current room again and
 returns to its live position.  Native seeking can move away from live, with
 **Back to live** to return. Following playback checks the circular clock
 offset through the existing browser observation timer. Automatic correction
-allows 750 ms of decoder offset, needs five seconds of stable playback and
+allows 750 ms of decoder offset plus the last observed seek interruption
+(`seeking` to `seeked`), needs five seconds of stable playback and
 an offset in the same direction for at least three seconds, and requires
 both positions in one continuous buffer with two seconds of headroom.
 Corrections are spaced at least 15 seconds apart. Waiting, seeking or
 pausing restarts the recovery period. Joining, **Back to live** and recording
 loops can align immediately; returning from full screen uses the recovery
-checks. The music's tempo stays unchanged. This avoids repeated clock seeks
+checks. For example, a 500 ms seek makes the ordinary allowance 1.25 seconds;
+removing 770 ms of offset must not itself cause another half-second interruption.
+Emptying the video clears the old engine's measured cost. The music's tempo stays unchanged. This avoids repeated clock seeks
 interrupting a slower decoder while it is trying to recover. Buffering and
 differences
 in device clocks or audio output can still create temporary offsets; this is
@@ -232,13 +235,33 @@ node scripts/package-media-rhythm.mjs \
 
 The counters distinguish:
 
-- **From media host:** the origin's share of media accepted for playback.
-  Completed HTTP response bodies are observed separately before worker buffer
-  transfer, including ranges that did not win a piece;
+- **Loaded from source:** media accepted through the source loader, including
+  responses supplied by the browser cache. Replaying a cached recording can
+  increase this logical total without downloading the film again. Completed
+  HTTP response bodies are observed separately before worker buffer transfer,
+  including ranges that did not win a piece;
   `originTransferredBytes` excludes partial bodies aborted before completion.
   Browser acceptance receipts use CDP to include those partial bodies in their
   HTTP measurement.  Playlist and Resource Timing sizes are not mixed into
   the useful-media counter.
+- **Source response bodies · network / browser cache:** separate readings in
+  Playback details, based on Resource Timing for the approved init and numbered
+  segment URLs only. Playlists, scripts, posters and the digest catalogue are
+  excluded. An exposed cache hit or validated response counts its encoded body
+  as cached; a normalised revalidation header allowance is not a new network
+  body. Network body readings exclude headers, transport overhead and request
+  timing gaps; in-flight and aborted requests are not fully accounted for.
+  These are browser-reported response-body counts, not total wire traffic or
+  proof that the player accepted every body.
+  A concealed `0 / 0` size remains unknown. If any included timing cannot be
+  classified, the cumulative network/cache readings are unavailable rather than
+  a misleading known subset. Coverage also stays incomplete while timing body
+  totals trail completed source-loader bodies, or dropped observer records are
+  reported. The coverage row gives classified and observed response counts.
+  Native HLS cannot guarantee this timing coverage and leaves the readings
+  unavailable. The graph receives `sourceNetworkBytes` only with complete
+  observed classification coverage; logical `originBytes` keeps its original
+  loaded-video meaning.
 - **Verified from viewers:** peer pieces that won verification and contributed
   to a complete segment accepted for playback.  Partial failed objects and
   duplicate losing copies do not increment this counter.
@@ -253,11 +276,15 @@ The counters distinguish:
 Units switch between B, KB, MB and GB so a small transfer is not rounded to
 `0.0 MB`.  The exact byte count is retained on each counter.  The viewer
 contribution percentage divides verified peer bytes by completed peer plus
-origin media bytes.  Totals include buffered video and remain cumulative
+logical source media bytes, including cache hits. It is a loaded-video share,
+not a network bandwidth saving. Totals include buffered video and remain cumulative
 across pause/resume; graph connection labels cover each current connection.
 The source label identifies the **latest segment received**, rather than
 claiming that a buffered segment is playing at this instant.  Native HLS,
 which cannot use this adapter, retains browser HTTP observations separately.
+The schema1 comparison export remains compatible: `browser.responseBytes`
+retains its existing response-body semantics, which can include cached loads;
+the new network/cache and coverage readings are separate live diagnostics.
 
 These are browser observations, not a claim of net bandwidth or financial
 savings.  Signalling, commitments, duplicate attempts and protocol overhead
@@ -386,12 +413,14 @@ A TCP/TLS TURN route is needed to support that policy without changing the
 browser's privacy preference. Private test credentials are never included in
 this site's bundle. See the [GrapheneOS explanation](https://bsky.app/profile/grapheneos.org/post/3lqpnxljvd22d).
 The pinned 689 KiB piece catalogue is bounded to 1 MiB, and the browser uses
-the existing 399 KiB Rust/WASM module.  Both load only after Play.  The bundle
+the existing 402 KiB Rust/WASM module.  Both load only after Play.  The bundle
 receipt records the exact source, WASM digest and dependency notices; the
 website build copies that public module without compiling Rust.
 
-The current browser bundle pins RelaySwarm 0.4.3, including sustainable peer
-waits and range-sized WASM upload inputs. A six MiB object requested in sixteen
+The current browser bundle pins RelaySwarm 0.4.4. Cached schema-3 media reaches
+the mixed piece planner even when the whole-object peer estimate is late, and
+waiting for unavailable media requires an active same-key fetch lease.
+Sustainable peer waits and range-sized WASM upload inputs are retained. A six MiB object requested in sixteen
 ranges copies six MiB into WASM instead of 96 MiB; this is input-copy accounting,
 not a throughput or device-continuity claim. Playback details show the actual native/MSE engine and
 vendored library version/source. The former 15-minute adapter cutoff was
