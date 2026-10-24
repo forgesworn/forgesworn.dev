@@ -1,0 +1,107 @@
+{
+  "schema": 1,
+  "checkedAt": "2026-10-24T02:46:30.361Z",
+  "scope": "Anonymous deployed players with actual hosted media; no route fulfilment",
+  "autoplayPolicyOverride": false,
+  "audioOutputSuppressed": false,
+  "checks": [
+    {
+      "url": "https://forgesworn.dev/media-lab.html",
+      "pageErrors": 0,
+      "localApiRequests": 0,
+      "qualities": [
+        {
+          "mediaWidth": 1920,
+          "mediaHeight": 1080,
+          "naturalWidth": 1920,
+          "naturalHeight": 1080,
+          "time": 0.319012,
+          "decodedFrames": 12,
+          "audioDecodedBytes": 8525,
+          "audioRms": 0.1513890054417914,
+          "volume": 1,
+          "muted": false,
+          "quality": "preview"
+        },
+        {
+          "mediaWidth": 3840,
+          "mediaHeight": 2160,
+          "naturalWidth": 3842,
+          "naturalHeight": 2160,
+          "time": 0.314667,
+          "decodedFrames": 12,
+          "audioDecodedBytes": 26554,
+          "audioRms": 0.0668967798042039,
+          "volume": 0.42,
+          "muted": false,
+          "quality": "full"
+        }
+      ],
+      "fullscreen": {
+        "sameVideo": true,
+        "sameSource": true,
+        "timeAdvanced": true,
+        "volume": 0.42,
+        "muted": false,
+        "quality": "full",
+        "focus": "lab-fullscreen"
+      },
+      "stopped": {
+        "paused": true,
+        "sourceRemoved": true
+      },
+      "mobileNoOverflow": true,
+      "passed": true
+    },
+    {
+      "url": "https://v4v.com/forgesworn-media-demo/player-v1/",
+      "pageErrors": 0,
+      "localApiRequests": 0,
+      "qualities": [
+        {
+          "mediaWidth": 1920,
+          "mediaHeight": 1080,
+          "naturalWidth": 1920,
+          "naturalHeight": 1080,
+          "time": 0.314667,
+          "decodedFrames": 12,
+          "audioDecodedBytes": 8525,
+          "audioRms": 0.14608020571875385,
+          "volume": 1,
+          "muted": false,
+          "quality": "preview"
+        },
+        {
+          "mediaWidth": 3840,
+          "mediaHeight": 2160,
+          "naturalWidth": 3842,
+          "naturalHeight": 2160,
+          "time": 0.314492,
+          "decodedFrames": 12,
+          "audioDecodedBytes": 26554,
+          "audioRms": 0.0668967798042039,
+          "volume": 0.42,
+          "muted": false,
+          "quality": "full"
+        }
+      ],
+      "fullscreen": {
+        "sameVideo": true,
+        "sameSource": true,
+        "timeAdvanced": true,
+        "volume": 0.42,
+        "muted": false,
+        "quality": "full",
+        "focus": "lab-fullscreen"
+      },
+      "stopped": {
+        "paused": true,
+        "sourceRemoved": true
+      },
+      "mobileNoOverflow": true,
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "browserClosed": true
+}
