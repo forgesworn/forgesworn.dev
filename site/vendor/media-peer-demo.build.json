@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "project": "https://github.com/forgesworn/relayswarm",
-  "sourceCommit": "6a6bc9ddc0c9c7cbb188c725af5596484a6666e7",
+  "sourceCommit": "85bbeface16e2df935cae467b06e3ad9b727efca",
   "version": "0.4.4",
-  "sourceArchiveSha256": "9faba61e0152115d21ddea40465fb0d8ace3101264cafaa88aa5b68eeab178d3",
+  "sourceArchiveSha256": "ec02113179000ce14fb84359ee0cc518765a88afdf53b90215532518ca1131ed",
   "packageLockSha256": "18a91b8d697ebcab1d259d4de876167dcbd4d47fc3c82196d179c4c490adca4a",
   "bundle": "media-peer-demo.js",
-  "bundleSha256": "4cd78e93a8a30d4cb4abddaf995549ba673499f5d6c5c1e0f9a029d706fe5898",
-  "bundleBytes": 199700,
+  "bundleSha256": "11d93b2065c0373324ef1b0eac1b8b46bc69b42baf942dab77d94d78321b7142",
+  "bundleBytes": 200040,
   "sourceMap": false,
   "originalSourceModified": false,
   "dependencies": [

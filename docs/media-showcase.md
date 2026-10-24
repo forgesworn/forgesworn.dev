@@ -419,7 +419,9 @@ website build copies that public module without compiling Rust.
 
 The current browser bundle pins RelaySwarm 0.4.4. Cached schema-3 media reaches
 the mixed piece planner even when the whole-object peer estimate is late, and
-waiting for unavailable media requires an active same-key fetch lease.
+waiting for unavailable main-rendition recorded media requires an active
+same-key fetch lease. Live and unknown playlists retain bounded seeding
+coordination.
 Sustainable peer waits and range-sized WASM upload inputs are retained. A six MiB object requested in sixteen
 ranges copies six MiB into WASM instead of 96 MiB; this is input-copy accounting,
 not a throughput or device-continuity claim. Playback details show the actual native/MSE engine and
