@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Live media benchmarks: Sapflow, RelaySwarm and Spry TURN | ForgeSworn</title>
+  <meta name="description" content="Measured on M4 Max: Sapflow's optional HTTP loop used 79% less CPU and 90% less process memory than MediaMTX. Spry TURN 0.2.1 delivered 16–22% more UDP and 27–35% more TLS packets/s than the tested coturn configuration. Methods and limits included.">
+  <meta name="theme-color" content="#0a0a0f">
+  <link rel="canonical" href="https://forgesworn.dev/live-media-benchmarks.html">
+  <style>
+    @font-face{font-family:Inter;src:url('/fonts/inter-latin.woff2') format('woff2');font-display:swap;font-weight:400 600}
+    @font-face{font-family:Fraunces;src:url('/fonts/fraunces-latin.woff2') format('woff2');font-display:swap;font-weight:300 700}
+    *{box-sizing:border-box}body{margin:0;background:#0a0a0f;color:#e8e6e3;font:1rem/1.7 Inter,system-ui,sans-serif}
+    a{color:#e8a838;text-underline-offset:.2em}a:hover{color:#ffce7b}a:focus-visible{outline:3px solid #e8a838;outline-offset:5px}
+    .wrap{width:min(1120px,100% - 40px);margin:auto}header{border-bottom:1px solid #2a2a3e}nav{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;padding:24px 0}
+    .brand{font-weight:600;text-decoration:none;color:#e8e6e3}.brand span{color:#e8a838}.navlinks{display:flex;gap:24px;flex-wrap:wrap}
+    main{padding:65px 0 70px}h1,h2,h3{font-family:Fraunces,Georgia,serif;line-height:1.2;font-weight:500}h1{font-size:clamp(2.6rem,6vw,4.6rem);max-width:900px;margin:18px 0 26px}h2{font-size:2rem;margin:0 0 20px}h3{font-size:1.35rem;margin:0 0 10px}
+    p{max-width:820px;margin:0 0 20px}.eyebrow{color:#e8a838;font-size:.85rem;letter-spacing:.1em;text-transform:uppercase}.lede{font-size:1.2rem;color:#b5b2bd;max-width:850px}section{margin-top:64px}.muted{color:#a4a0af}.path{list-style:none;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));padding:0;gap:14px;counter-reset:stage}
+    .path li{counter-increment:stage;background:#14141d;border:1px solid #2a2a3e;border-top:3px solid #e8a838;padding:22px}.path li::before{content:counter(stage);display:block;color:#e8a838;font-size:.85rem;margin-bottom:12px}.path p{font-size:.9rem;margin-bottom:0;color:#b5b2bd}
+    .table-wrap{overflow:auto;border:1px solid #2a2a3e}table{border-collapse:collapse;width:100%;min-width:680px;text-align:left;font-size:.94rem}caption{text-align:left;padding:18px;color:#b5b2bd}th,td{padding:18px;vertical-align:top;border-top:1px solid #2a2a3e}thead{background:#14141d}th{font-weight:600}td:first-child{width:23%}.note{border-left:3px solid #f472b6;background:#14141d;padding:24px}.note p:last-child{margin:0}
+    .extras{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}.extras article{border-top:1px solid #2a2a3e;padding-top:24px}code{font-size:.9em;overflow-wrap:anywhere}footer{border-top:1px solid #2a2a3e;padding:28px 0;color:#a4a0af}.skip{position:absolute;left:20px;top:-100px}.skip:focus{top:10px;background:#14141d;padding:10px}
+    .actions{display:flex;flex-wrap:wrap;gap:14px;margin:28px 0}.actions a{border:1px solid #e8a838;padding:10px 16px;text-decoration:none}.actions a:first-child{background:#e8a838;color:#0a0a0f}.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin:32px 0 20px}.metric{background:#14141d;border:1px solid #2a2a3e;padding:24px}.metric strong{display:block;font:500 clamp(2.4rem,5vw,3.5rem)/1.15 Fraunces,Georgia,serif;color:#e8a838;margin:12px 0}.metric h3{font:600 1rem/1.4 Inter,system-ui,sans-serif}.metric p{font-size:.88rem;color:#b5b2bd;margin:0 0 12px}.metric a{font-size:.88rem}.tag{font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:#b5b2bd}details{margin:24px 0;border:1px solid #2a2a3e;padding:20px}summary{cursor:pointer;color:#e8a838;font-weight:600}details p:first-of-type{margin-top:20px}details p:last-child{margin-bottom:0}.subheading{margin-top:30px}.benchmark-footnote{font-size:.9rem;color:#b5b2bd;margin-top:20px}.readiness{border-top:1px solid #2a2a3e;padding-top:24px}
+    @media(max-width:760px){.path,.extras{grid-template-columns:1fr 1fr}main{padding-top:40px}.navlinks{gap:16px}}
+    @media(max-width:620px){.metrics{grid-template-columns:1fr}.metric strong{font-size:3rem}}
+    @media(max-width:460px){.path,.extras{grid-template-columns:1fr}.wrap{width:calc(100% - 32px)}section{margin-top:44px}}
+    @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header><nav class="wrap" aria-label="Main navigation">
+    <a class="brand" href="/">Forge<span>Sworn</span></a>
+    <div class="navlinks"><a href="/#ecosystem">Libraries</a><a href="/use-cases.html">Use cases</a><a href="https://github.com/forgesworn/sapflow">Sapflow source</a></div>
+  </nav></header>
+  <main id="main" class="wrap">
+    <p class="eyebrow">Live media · benchmark report</p>
+    <h1>Live media measurements, methods and results.</h1>
+    <p class="lede">The measured origin, relay and browser paths behind the <a href="/live-media.html">ForgeSworn media stack</a>.  Compare the exact workloads, source versions and raw results before sizing your own deployment.</p>
+    <div class="actions"><a href="/live-media.html">Explore the media stack</a><a href="#performance">Origin benchmarks</a><a href="#spry">Relay benchmarks and interoperability</a></div>
+    <p class="muted">Native ARM64 binaries on one M4 Max, 23 October 2026.  The server and TURN trials are separate workloads.  These are measured resource gains; deployment capacity and operating costs need their own measurements.</p>
+
+    <section id="performance" aria-labelledby="performance-heading">
+      <h2 id="performance-heading">A smaller origin for the same viewer workload</h2>
+      <p>Sapflow takes H.264 and AAC over SRT or RTMP, packages Low-Latency HLS and records fragmented MP4.  Keeping that job small gives an operator a concrete reason to evaluate it: the 16-worker own HTTP loop used 79% less CPU and 90% less process RSS than MediaMTX in this test.</p>
+      <div class="table-wrap" role="region" aria-label="M4 Max origin benchmark at 750 simulated viewers" tabindex="0">
+        <table>
+          <caption>750 simulated viewers, three runs each.  Median server CPU, peak process RSS and per-run playlist p99.  CPU is a percentage of one core.</caption>
+          <thead><tr><th scope="col">Configuration</th><th scope="col">CPU</th><th scope="col">Peak RSS</th><th scope="col">Playlist p99</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">MediaMTX 1.21.2</th><td>167.8%</td><td>276.7 MiB</td><td>33.2 ms</td></tr>
+            <tr><th scope="row">Sapflow, default Hyper</th><td>60.9%</td><td>250.2 MiB</td><td>29.3 ms</td></tr>
+            <tr><th scope="row">Sapflow, own loop, 16 workers</th><td>35.0%</td><td>26.4 MiB</td><td>28.0 ms</td></tr>
+            <tr><th scope="row">Sapflow, own loop, 1 worker</th><td>20.3%</td><td>25.0 MiB</td><td>33.7 ms</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="benchmark-footnote">All twelve trials completed with zero errors across 7,055,374 requests.  The 79% CPU and 90% RSS comparison uses the 16-worker own loop; Hyper remains the default and used 64% less CPU than MediaMTX here.  One own-loop worker reduced CPU further, with a higher playlist p99 and median part fan-out delay than sixteen.</p>
+      <p>The HTTP implementation is a useful tuning target in its own right.  Against Sapflow on Hyper, the 16-worker own loop cut measured CPU by 43% and peak RSS by 89%.  The ingest and packaging paths were shared between those configurations.</p>
+      <details>
+        <summary>Test conditions, source versions and raw results</summary>
+        <p>Generated 720p30 H.264/AAC over RTMP, native ARM64 release binaries, loopback HTTP/1.1, recording off and no TLS.  Server, encoder and load generator shared the M4 Max with existing host workloads.  Each trial had warm-up, a ten-second viewer ramp and a sixty-second full-load target.</p>
+        <p>The measured Sapflow development snapshot is <code>2d20835ef246740ab42ca810df7c51fd43bf9ff6</code>, ahead of the published 0.1.0 crates.  These figures don't requalify another source revision.  The load generator includes ramp traffic in its counters and percentiles.  It fetches overlapping parts and segments and doesn't fetch MediaMTX's separate audio rendition; its byte count isn't unique-media throughput.  Peak RSS excludes kernel memory.</p>
+        <p><a href="https://github.com/forgesworn/sapflow/blob/688457f66a54449364643eb68b0b4f17d9721ed6/docs/performance-results-2026-10-23.md">Full dated method and ranges</a> &middot; <a href="https://github.com/forgesworn/sapflow/blob/688457f66a54449364643eb68b0b4f17d9721ed6/docs/performance-evidence/2026-10-23/results.json">Every scalar run and binary hash</a></p>
+      </details>
+    </section>
+
+    <section aria-labelledby="path-heading">
+      <h2 id="path-heading">The broadcast path</h2>
+      <ol class="path" aria-label="Broadcast stages in order">
+        <li><h3>Encode</h3><p>A native app or an existing encoder produces compressed H.264 video and AAC audio.</p></li>
+        <li><h3>Publish</h3><p>SRT carries media over UDP with recovery.  RTMP provides a publishing path for existing tools.</p></li>
+        <li><h3>Package</h3><p>Sapflow writes HLS parts, segments and playlists, with optional MP4 recording.</p></li>
+        <li><h3>Watch</h3><p>A player fetches HLS over HTTPS.  A reverse proxy supplies TLS and HTTP/2.</p></li>
+      </ol>
+      <p class="muted">The native adapters own the camera, microphone, hardware codecs and sockets.  The shared Rust libraries process compressed media.  Sapflow doesn't transcode a stream or create an adaptive bitrate ladder.</p>
+    </section>
+
+    <section aria-labelledby="libraries-heading">
+      <h2 id="libraries-heading">Why separate libraries?</h2>
+      <p>An application may need a publisher without a server, or a packager without a network runtime.  Separating protocol state from sockets lets the same code run under a server event loop or a native platform adapter.</p>
+      <div class="table-wrap" role="region" aria-label="Sapflow library responsibilities" tabindex="0">
+        <table>
+          <caption>The libraries share a repository.  Each has a specific responsibility.</caption>
+          <thead><tr><th scope="col">Component</th><th scope="col">What it supplies</th><th scope="col">When you need it</th></tr></thead>
+          <tbody>
+            <tr><td><a href="https://github.com/forgesworn/sapflow/tree/main/crates/sapflow-srt">sapflow-srt</a></td><td>Runtime-free SRT listener/receiver and caller/sender state, including optional AES-CTR encryption.</td><td>A Rust SRT implementation you can drive from your own sockets and clock.  Live mode is the supported scope; file transfer, bonding and full libsrt parity aren't promised.</td></tr>
+            <tr><td><a href="https://github.com/forgesworn/sapflow/tree/main/crates/sapflow-rtmp">sapflow-rtmp</a></td><td>RTMP publishing client and server-side protocol state.</td><td>Compatible publishing without embedding a C library or the whole media server.  It doesn't provide an RTMP playback service.</td></tr>
+            <tr><td><a href="https://github.com/forgesworn/sapflow/tree/main/crates/sapflow-hls">sapflow-hls</a></td><td>FLV/MPEG-TS ingest, fragmented MP4, LL-HLS parts and playlist rules.</td><td>Packaging H.264/AAC for HLS playback or reusing media handling in an application.</td></tr>
+            <tr><td><a href="https://github.com/forgesworn/sapflow/tree/main/crates/sapflow-core">sapflow-core</a></td><td>Shared media and stream types with no network or async runtime.</td><td>The common vocabulary used by the protocol and packaging libraries.</td></tr>
+            <tr><td><a href="https://github.com/forgesworn/sapflow/tree/main/crates/sapflow-client">sapflow-client</a> and <a href="https://github.com/forgesworn/sapflow/tree/main/crates/sapflow-ffi">sapflow-ffi</a></td><td>Compressed-sample validation, bounded queues, session policy and the Swift/Kotlin boundary.</td><td>Native app development.  These interfaces and native packages are still being qualified; they aren't a finished camera SDK.</td></tr>
+            <tr><td><a href="https://github.com/forgesworn/sapflow">Sapflow server</a></td><td>Socket adapters, HTTP serving, recording and application callbacks around those libraries.</td><td>A small origin for the specific SRT/RTMP-to-HLS job.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="spry" aria-labelledby="peers-heading">
+      <h2 id="peers-heading">RelaySwarm shares media.  Spry connects peers.</h2>
+      <p><a href="https://github.com/forgesworn/RelaySwarm">RelaySwarm</a> lets viewers exchange verified HLS media over WebRTC data channels, using application-selected Nostr relays for rendezvous.  <a href="https://github.com/forgesworn/relayswarm-kit">RelaySwarmKit</a> provides the Swift implementation.  The HTTP origin remains the fallback when peers can't provide media in time.</p>
+      <div class="note">
+        <p>Some peers can't connect directly through their networks.  <a href="https://github.com/forgesworn/spry-turn"><strong>Spry TURN</strong></a> is our small Rust STUN/TURN server for that relay role: UDP and TCP client connections, optional TLS, coturn-compatible shared-secret credentials and bounded resources.  It can run separately from the media server.</p>
+        <p>RelaySwarm accepts ICE server configuration, where an operator can supply Spry or <a href="https://github.com/coturn/coturn">coturn</a>.  The relay still needs reachable addresses, credentials and bandwidth.  Spry is optional for peer connectivity; ordinary Sapflow SRT/RTMP ingest and HLS playback don't require it.</p>
+      </div>
+      <h3 class="subheading">More UDP and TLS delivery in the measured workloads</h3>
+      <p>The published Spry 0.2.1 M4 Max binaries delivered 16–22% more UDP packets per second and 27–35% more TLS packets per second than the tested coturn configuration.  TCP ranged from 1.2% behind to 8.5% ahead.  The complete M4 matrix contains 108 runs and 53,075,648 checked forwarded packets, with no observed payload loss, reordering or corruption.</p>
+      <div class="table-wrap" role="region" aria-label="Spry TURN and coturn delivered-packet benchmark" tabindex="0">
+        <table>
+          <caption>Native ARM64, 128 allocations and 1,200-byte payloads.  Medians of three runs per server.  The final column spans all six allocation/payload cells per transport.</caption>
+          <thead><tr><th scope="col">Client transport</th><th scope="col">Spry packets/s</th><th scope="col">coturn 4.18.0 packets/s</th><th scope="col">Spry difference across six cells</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">UDP</th><td>271,644</td><td>223,168</td><td>+16.2% to +22.2%</td></tr>
+            <tr><th scope="row">TCP</th><td>302,240</td><td>305,790</td><td>−1.2% to +8.5%</td></tr>
+            <tr><th scope="row">TLS</th><td>264,697</td><td>196,161</td><td>+27.1% to +34.9%</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="benchmark-footnote">These are configuration-specific delivered rates.  Spry's <a href="https://github.com/forgesworn/spry-turn">source</a> and <a href="https://github.com/forgesworn/spry-turn/releases/tag/v0.2.1">0.2.1 prerelease</a> are public, under <a href="https://github.com/forgesworn/spry-turn/blob/main/LICENSE">MIT, &copy; 2026 TheCryptoDonkey</a>.  The <a href="https://github.com/forgesworn/spry-turn/blob/v0.2.1/docs/qualification-0.2.1.md">full method</a> and <a href="https://github.com/forgesworn/spry-turn/blob/v0.2.1/docs/evidence/m4-final-0.2.1.json">all 108 M4 samples</a> identify the source, executables and resource counters.</p>
+      <p>Platform choice matters.  Spry was slower in five of six UDP workloads on the constrained Linux ARM64 VM.  At 128 allocations and 1,200-byte payloads it was 15.4% behind coturn over UDP, 46.8% ahead over TCP and 30.2% ahead over TLS.  These VM results need a separate trial on an operator's Linux host.</p>
+      <p class="note">RelaySwarm's desktop HLS composition remains under qualification.  An earlier fixture shared one TURN credential across viewers and hit Spry's allocation quota.  A corrected Spry 0.2.1 run with separate viewer credentials passed UDP at 81% in-time delivery.  TCP and TLS carried verified media without ICE errors but reached 27% and 37.8%, below the unchanged 50% gate.  TLS also had no active selected path at the final sample and used an explicit test-certificate bypass.  The remaining timing failure has not been isolated to either implementation.  HTTP playback and tampering rejection passed.  The <a href="https://github.com/forgesworn/relayswarm/blob/34fa0b004c15434408c3ccca40cef339d774dccc/docs/interop/spry-turn.md">composition results and fixture correction</a> are pinned to the public main-branch update checked on 24 October 2026 and remain separate from the standalone relay benchmark.  The <a href="https://github.com/forgesworn/relayswarm/blob/34fa0b004c15434408c3ccca40cef339d774dccc/docs/interop/spry-turn-20261024.json">scalar receipt</a> retains the failed gates.  Internet NAT and physical-phone acceptance remain open.</p>
+      <h3 class="subheading">The actual KithMoot web client, through ordinary TURN settings</h3>
+      <p>Spry 0.2.1 also passed a separate local browser qualification using the actual KithMoot web application.  Two clients exchanged and decoded generated audio/video through forced UDP, TCP and TLS relay paths, with operator-generated short-lived credentials entered through the real Connections settings.  No HTTP credential issuer or publisher-operated default was added, and the client made no <code>/turn</code> request.  This qualifies the identified web source and executable on one machine; TLS used an explicit test-certificate bypass.  Cross-network reachability, public certificate validation and physical GrapheneOS acceptance remain separate gates.  Read the <a href="https://github.com/forgesworn/spry-turn/blob/v0.2.1/docs/kithmoot-acceptance.md">accepted path and limits</a> and <a href="https://github.com/forgesworn/spry-turn/blob/v0.2.1/docs/evidence/kithmoot-web-0.2.1.json">versioned browser receipt</a>.</p>
+      <details>
+        <summary>What changed, platform limits and all relay samples</summary>
+        <p>Spry reserves packet headroom to avoid a second media-payload copy, uses bounded readiness slots and connected client-facing UDP sockets for authenticated, concrete-IPv4 allocations.  Wildcard/IPv6 listeners use the portable path.  Version 0.2.1 also caches writable-interest state: the event loop registers write readiness when output blocks and removes it after draining.  A separate controlled before/after M4 experiment measured 5.8% higher Spry TCP delivery and 4.4% higher TLS delivery.</p>
+        <p>The primary M4 matrix covers 1, 16 and 128 allocations, 160- and 1,200-byte payloads and UDP/TCP/TLS, with an eight-packet window per load worker.  It uses generic ARM64 release builds without PGO and coturn 4.18.0 with one relay event loop.  Each throughput phase completes at least 200,000 round trips over at least two seconds.  Existing workloads remained running.  These closed-loop medians establish neither maximum WAN capacity nor statistical significance.</p>
+        <p>Process memory and kernel memory have separate budgets.  The connected-UDP path holds an extra client-facing socket per allocation.  TCP buffering can cost more process memory than coturn: the controlled 128-allocation experiment measured 12.21 MB versus 11.70 MB RSS over TCP.  Linux socket counters include nonzero drops despite successful payload checks, so the results do not establish zero kernel drops.</p>
+        <p><a href="https://github.com/forgesworn/spry-turn/blob/v0.2.1/docs/qualification-0.2.1.md">M4 and Linux methods, results and unsuccessful trials</a> &middot; <a href="https://github.com/forgesworn/spry-turn/blob/v0.2.1/docs/evidence/qualification-builds-0.2.1.json">Release binary and source receipts</a> &middot; <a href="https://github.com/forgesworn/spry-turn/blob/v0.2.1/docs/evidence/m4-tuning-0.2.1.json">Controlled 27-run tuning experiment</a></p>
+        <p>The earlier UDP optimisation study remains available: <a href="/benchmarks/2026-10-23/spry-native-final.json">36 historical samples</a> &middot; <a href="/benchmarks/2026-10-23/spry-native-connected.json">three-way experiment</a> &middot; <a href="/benchmarks/2026-10-23/spry-build.json">source and binary hashes</a> &middot; <a href="/benchmarks/2026-10-23/SHA256SUMS">checksums</a>.  Its pre-v0.2.0 executable and 32-packet window differ from the published 0.2.1 matrix above.</p>
+      </details>
+    </section>
+
+    <section aria-labelledby="comparison-heading">
+      <h2 id="comparison-heading">Choose for the job you have</h2>
+      <div class="table-wrap" role="region" aria-label="Media implementation alternatives" tabindex="0">
+        <table>
+          <caption>Feature trade-offs.  These aren't claims that one implementation wins every workload.</caption>
+          <thead><tr><th scope="col">Decision</th><th scope="col">ForgeSworn option</th><th scope="col">Alternative and reason to choose it</th></tr></thead>
+          <tbody>
+            <tr><td>Live media origin</td><td>Sapflow keeps the SRT/RTMP, H.264/AAC, HLS and recording scope small.</td><td><a href="https://mediamtx.org/docs/kickoff/introduction">MediaMTX</a> supports a much broader protocol and codec set, including RTSP, WebRTC and Media-over-QUIC, plus operational APIs.</td></tr>
+            <tr><td>SRT implementation</td><td>sapflow-srt is Rust with runtime-free protocol state and a narrow live-media profile.</td><td><a href="https://github.com/Haivision/srt">libsrt</a> is the established reference with a broader feature set.  Sapflow compares against its executables as black boxes.  This is not a claim of full compatibility.</td></tr>
+            <tr><td>RTMP implementation</td><td>sapflow-rtmp can be embedded in a Rust server or native publishing core.</td><td><a href="https://github.com/bluenviron/gortmplib">gortmplib</a> fits Go applications; <a href="https://github.com/arut/nginx-rtmp-module">nginx-rtmp-module</a> fits an existing nginx deployment.</td></tr>
+            <tr><td>HLS packaging</td><td>sapflow-hls supplies the Rust packager used by Sapflow.</td><td><a href="https://github.com/bluenviron/gohlslib">gohlslib</a> provides the Go implementation used by MediaMTX.  Language, supported tracks and playlist features affect the choice.</td></tr>
+            <tr><td>Peer-assisted HLS</td><td>RelaySwarm uses Nostr rendezvous, signed media authorisation and origin fallback.  Its protocol and field qualification are still developing.</td><td><a href="https://github.com/Novage/p2p-media-loader">P2P Media Loader</a> is an established player integration using WebTorrent-compatible tracker infrastructure.</td></tr>
+            <tr><td>STUN/TURN relay</td><td><a href="https://github.com/forgesworn/spry-turn">Spry</a> is a small public MIT Rust relay with measured UDP gains and bounded resources.  Its published 0.2.1 binaries have M4 and Linux measurements; RelaySwarm delivery-time qualification remains open.</td><td><a href="https://github.com/coturn/coturn">coturn</a> has a broader deployment and administration feature set, including database integrations and metrics.  Existing coturn configurations need an explicit compatibility review before migration.</td></tr>
+            <tr><td>Native broadcaster</td><td>Sapflow shares compressed-media and protocol logic between Swift and Kotlin adapters.</td><td><a href="https://github.com/HaishinKit/HaishinKit.swift">HaishinKit</a> and <a href="https://github.com/ThibaultBee/StreamPack">StreamPack</a> cover native broadcasting in their respective ecosystems.  No matched physical-device performance advantage is claimed here.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="margin-top:20px">The <a href="https://github.com/forgesworn/sapflow/blob/main/docs/comparison.md">detailed comparison</a> names supported features and current gaps.  The <a href="https://github.com/forgesworn/sapflow/blob/main/docs/benchmarks.md">benchmark record</a> keeps versions, conditions, results and limitations together.</p>
+    </section>
+
+    <section aria-labelledby="extras-heading">
+      <h2 id="extras-heading">Add storage and transfer when the application needs them</h2>
+      <div class="extras">
+        <article><h3>Move a recording</h3><p><a href="https://github.com/forgesworn/forgesworn-link">ForgeSworn Link</a> provides a separate transfer protocol.  It isn't an ingest protocol or a required Sapflow dependency.  Broadcast-time recording transfer needs its own integration and contention measurements.</p></article>
+        <article><h3>Store and recover files</h3><p><a href="https://github.com/forgesworn/shelter-kit">Shelter Kit</a> provides content-addressed storage and repair interfaces.  <a href="https://github.com/forgesworn/foregather-kit">Foregather</a> can supply pairing or invitation flows.  Neither belongs in a media callback or is required for basic HLS delivery.</p></article>
+      </div>
+    </section>
+
+    <section aria-labelledby="evidence-heading">
+      <h2 id="evidence-heading">What the measurements establish</h2>
+      <p>The origin and relay comparisons establish resource savings in their documented workloads.  They provide a reason to trial Sapflow and Spry on an operator's traffic and measure the resulting headroom.</p>
+      <p>Those results don't establish Linux capacity, internet latency, phone battery life or sustained hardware-codec performance.  Server, load generator and encoder sharing a Mac also compete for resources.  Read the conditions alongside the numbers before using them to size a deployment.</p>
+      <p><a href="https://github.com/forgesworn/sapflow/blob/main/docs/native-performance-contract.md">The native performance contract</a> sets out copying, queueing and physical-device gates.  New measurements belong with their exact source and binary versions.</p>
+      <p class="readiness"><strong>Next measurements:</strong> Sapflow's runner now separates steady-state collection from its ramp and balances treatment order.  Rerun 1/4/16 workers at 250 and 750 viewers on the current source revisions when the M4 is available.  Then exercise TLS, recording and multiple publishers on a separate Linux host, and measure RelaySwarm with Spry across real networks, including origin fallback and relay bandwidth.</p>
+    </section>
+
+    <section aria-labelledby="licence-heading">
+      <h2 id="licence-heading">Public source, with the actual notices</h2>
+      <p>The linked ForgeSworn source repositories are public and MIT-licensed.  Sapflow's <a href="https://github.com/forgesworn/sapflow/blob/main/LICENSE">licence</a> and Spry's <a href="https://github.com/forgesworn/spry-turn/blob/main/LICENSE">licence</a> name TheCryptoDonkey.  Other projects retain their own copyright notices, and dependencies retain theirs.  <a href="https://github.com/forgesworn/sapflow/blob/main/THIRD_PARTY_LICENSES.txt">Sapflow's third-party notices</a> list those separately.</p>
+      <p>Public source and a published package are separate things.  The SRT, RTMP, HLS and core crates and server have initial 0.1.0 releases.  Native consumer qualification and production readiness remain explicit in the project documentation.</p>
+    </section>
+  </main>
+  <footer><div class="wrap"><a href="/">ForgeSworn</a> &middot; <a href="https://github.com/forgesworn/sapflow">Source and evidence</a> &middot; Reviewed 24 October 2026</div></footer>
+</body>
+</html>

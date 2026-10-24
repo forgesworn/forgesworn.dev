@@ -1166,7 +1166,7 @@
         "A viewer announces presence as an ephemeral kind 24170 event scoped to the swarm; peers answer with kind 24171 signals addressed to it.",
         "SDP is NIP-44-encrypted to the counterparty, because an offer names the sender's network addresses and must never sit readable on a public relay.",
         "Peers open WebRTC data channels.  Peer-first delivery requires signed authorisation and expiring media commitments; bytes are checked against the authorised hashes before playback.",
-        "An operator-selected TURN server can relay WebRTC packets when direct connectivity fails.  Spry TURN is our public MIT Rust relay.  Desktop UDP RelaySwarm interoperability has passed; v0.2.0 TCP/TLS load behaviour needs further work and physical-phone/NAT qualification remains open.  An operator can also choose coturn.  TURN is optional and separate from Sapflow ingest and HLS serving.",
+        "An operator-selected TURN server can relay WebRTC packets when direct connectivity fails.  Spry TURN is our public MIT Rust relay.  The corrected v0.2.1 desktop RelaySwarm fixture passed UDP; TCP/TLS delivery-time and TLS final-path gates remain open, alongside physical-phone/NAT acceptance.  The media stack overview (https://forgesworn.dev/live-media.html) links the measured paths and full benchmark report.  An operator can also choose coturn.  TURN is optional and separate from Sapflow ingest and HLS serving.",
         "Every viewer keeps the origin as fallback: if no peer can serve a segment in time, it is fetched over plain HLS.",
         "RelaySwarmKit provides Swift signalling and libdatachannel transport.  Measured macOS/browser interoperability doesn't establish physical iPhone or internet NAT acceptance."
       ],
@@ -1185,7 +1185,7 @@
         },
         {
           "repo": "spry-turn",
-          "role": "Optional STUN/TURN peer-connectivity service selected through ICE configuration; TCP/TLS load and field qualification gates remain explicit"
+          "role": "Optional STUN/TURN peer-connectivity service selected through ICE configuration; delivery-time, TLS final-path and field qualification gates remain explicit"
         }
       ],
       "protocols": [

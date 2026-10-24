@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "generated": true,
+  "kind": "Original generated concert artwork; fictional scene and people",
+  "provider": "OpenAI Images API",
+  "requestedModel": "gpt-image-2.5-sunburst",
+  "quality": "high",
+  "prompt": "artwork-prompt.txt",
+  "originalPngSha256": "8bf5989e6a41825e1fe503d6d839b1cb687c1a157558d6839c0771909f5ae20e",
+  "poster": "poster.webp",
+  "posterSha256": "527e7136dddc159b2bdd134b58edf555c9617b8636fcc838470dbf12f5c922be",
+  "posterDimensions": [
+    1280,
+    720
+  ],
+  "derivation": "Cropped and resized from 1536x1024 PNG; WebP quality86; no source photograph."
+}
