@@ -1,6 +1,6 @@
 // A bounded picture of local video measurements and fresh listener reports.
 // Reported links stay visually distinct from transfers observed in this browser.
-import { transferBytes as bytes } from './media-transfer-stats.mjs';
+import { transferBytes as bytes } from './media-transfer-stats.mjs?v=20261024-peer-supply';
 const NS = 'http://www.w3.org/2000/svg';
 export const MAX_VISUAL_PEERS = 10;
 export const TRAFFIC_WINDOW_MS = 10_000;
@@ -85,8 +85,12 @@ export function observedRoomTopology(metrics = {}, now = Date.now(), remembered 
       peerId: peer.peerId ?? null, roomMember: false, report: null, connected: true, connectionId: peer.id }));
   }
   const byId = new Map(visible.map(item => [item.id, item]));
+  // Logical source loads include browser cache hits. New players supply the
+  // separately observed network body count; null means timing is unavailable.
+  const networkSource = Object.hasOwn(metrics, 'sourceNetworkBytes');
   const edges = [{ id: 'origin-self', kind: 'origin', from: 'origin', to: self.id, fromPeerId: null, toPeerId: viewerId,
-    forward: { sourceId: 'local-origin', value: counter(metrics.originBytes), sampledAt: now }, reverse: null }];
+    forward: { sourceId: networkSource ? 'local-network' : 'local-origin',
+      value: counter(networkSource ? metrics.sourceNetworkBytes : metrics.originBytes), sampledAt: now }, reverse: null }];
   let unmappedConnections = 0;
   for (const peer of peers) {
     const memberId = roomAvailable ? resolveMember(peer.peerId) : `connection-${peer.id}`;
@@ -220,7 +224,7 @@ function createStatistics(container) {
     linkSlot.dataset.swarmLinkStatistics = ''; details.append(summary, linkSlot); root.append(details);
   }
   const strength = document.createElement('div'); strength.className = 'swarm-strength';
-  strength.innerHTML = '<div class="swarm-strength-heading"><span>Your peer delivery</span><output data-swarm-strength-value>Waiting for video traffic</output></div><div class="swarm-strength-meter" data-swarm-strength-meter role="meter" aria-label="Share of video received here from verified peers over the last ten seconds" aria-valuemin="0" aria-valuemax="100"><span></span></div><p data-swarm-strength-note>Only this browser’s received video, over the last 10 seconds.</p>';
+  strength.innerHTML = '<div class="swarm-strength-heading"><span>Your peer delivery</span><output data-swarm-strength-value>Waiting for video traffic</output></div><div class="swarm-strength-meter" data-swarm-strength-meter role="meter" aria-label="Share of loaded video from verified peers over the last ten seconds, including source cache loads" aria-valuemin="0" aria-valuemax="100"><span></span></div><p data-swarm-strength-note>This browser’s loaded video, including source cache loads, over the last 10 seconds.</p>';
   strengthSlot.replaceChildren(strength);
   const value = strength.querySelector('[data-swarm-strength-value]'), meter = strength.querySelector('[data-swarm-strength-meter]'), note = strength.querySelector('[data-swarm-strength-note]');
   const rows = new Map();
@@ -230,9 +234,9 @@ function createStatistics(container) {
       value.textContent = percentage === null ? 'Waiting for video traffic' : `${percentage}%`;
       meter.firstElementChild.style.width = `${percentage ?? 0}%`;
       if (percentage === null) meter.removeAttribute('aria-valuenow'); else meter.setAttribute('aria-valuenow', percentage);
-      meter.setAttribute('aria-valuetext', percentage === null ? 'No recent received video measured' : `${percentage}% of received video from verified peers, over the last ten seconds`);
-      note.textContent = share === null ? 'Only this browser’s received video, over the last 10 seconds.' :
-        `${bytes(peerRate * 10)} verified from peers / ${bytes((peerRate + originRate) * 10)} received here · last 10 seconds`;
+      meter.setAttribute('aria-valuetext', percentage === null ? 'No recent loaded video measured' : `${percentage}% of loaded video from verified peers, over the last ten seconds`);
+      note.textContent = share === null ? 'This browser’s loaded video, including cached source loads, over the last 10 seconds.' :
+        `${bytes(peerRate * 10)} verified from peers / ${bytes((peerRate + originRate) * 10)} loaded here · includes source cache · last 10 seconds`;
     },
     links(model, readings, playing) {
       const live = new Set(model.edges.map(edge => edge.id)), names = new Map([['origin', 'Broadcast'], [model.self.id, model.self.label], ...model.members.map(member => [member.id, member.label])]);
@@ -247,14 +251,17 @@ function createStatistics(container) {
           element.append(route, forward, reverse); linkSlot.append(element); row = { element, name, scope, forward, reverse }; rows.set(edge.id, row);
         }
         row.name.textContent = `${names.get(edge.from)} ${edge.reverse ? '↔' : '→'} ${names.get(edge.to)}`;
-        row.scope.textContent = edge.kind.startsWith('reported') ? 'Listener report' : 'Measured here';
+        row.scope.textContent = edge.kind === 'origin' ? edge.forward.sourceId === 'local-network' ? 'Network response bodies measured here' : 'Loaded source · may be cached' :
+          edge.kind === 'reported-origin' ? 'Listener report · loaded source may be cached' :
+          edge.kind.startsWith('reported') ? 'Listener report' : 'Measured here';
         for (const direction of ['forward', 'reverse']) {
           const reading = readings.find(item => item.edge === edge && item.direction === direction), cell = row[direction];
           cell.hidden = !reading;
           if (!reading) continue;
           const rate = playing || edge.kind.startsWith('reported') ? reading.rate : 0;
-          cell.textContent = `${bytes(rate)}/s ${direction === 'forward' ? '→' : '←'}`;
-          cell.dataset.bytesPerSecond = String(rate);
+          const known = edge[direction]?.value !== null;
+          cell.textContent = known ? `${bytes(rate)}/s ${direction === 'forward' ? '→' : '←'}` : 'Measurement unavailable';
+          cell.dataset.bytesPerSecond = known ? String(rate) : '';
         }
       }
     },

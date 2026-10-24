@@ -83,7 +83,7 @@ let browser;
 function mockMedia() {
   const state = window.__nativeFixture = { hls: [], hlsImports: 0, hlsDestroy: 0, peerCreated: 0, peerStop: 0, peerEnabled: [],
     listenerCreated: 0, observe: 0, join: 0, leave: 0, listenerStop: 0, source: '', nativeAssignments: 0,
-    nativeMetadata: 0, nativePlay: 0, stalePlayRejected: 0, deferNextPlay: false, pendingPlay: null,
+    nativeMetadata: 0, nativePlay: 0, stalePlayRejected: 0, deferNextPlay: false, pendingPlay: null, unreadyFirstFrame: false,
     readyState: 0, paused: true, ended: false, seeking: false, error: null,
     time: 12.5, roomPosition: 12.5, frames: 0, ranges: [[0, 268.6]], callbacks: new Map(), nextFrame: 0, setters: [] };
   const proto = HTMLMediaElement.prototype;
@@ -114,7 +114,12 @@ function mockMedia() {
     }
     const wasPaused = state.paused; state.paused = false;
     if (state.nativeAssignments) state.nativePlay++;
-    if (wasPaused) queueMicrotask(() => { this.dispatchEvent(new Event('playing')); state.present(this); });
+    if (wasPaused) queueMicrotask(() => {
+      if (state.unreadyFirstFrame) {
+        state.readyState = 1; state.seeking = true;
+        state.present(this); this.dispatchEvent(new Event('waiting'));
+      } else { this.dispatchEvent(new Event('playing')); state.present(this); }
+    });
     return Promise.resolve();
   };
   proto.pause = function () {
@@ -158,6 +163,9 @@ async function state(page) {
       peerEnabled: [...s.peerEnabled], listenerCreated: s.listenerCreated, joins: s.join, leaves: s.leave, listenerStops: s.listenerStop,
       source: s.source, hlsSource: s.hls[0]?.url, nativeAssignments: s.nativeAssignments, nativeMetadata: s.nativeMetadata, nativePlay: s.nativePlay,
       stalePlayRejected: s.stalePlayRejected,
+      firstFrameDisplay: document.getElementById('first-frame').textContent,
+      stallCount: Number(document.getElementById('browser-stalls').textContent),
+      stallTime: document.getElementById('browser-stall-time').textContent,
       time: video.currentTime, volume: video.volume, muted: video.muted, videoCount: document.querySelectorAll('video').length,
       peerBytes: Number(document.getElementById('public-peer-bytes').dataset.bytes),
       uploadBytes: Number(document.getElementById('public-upload-bytes').dataset.bytes),
@@ -185,17 +193,46 @@ try {
   await waitFor(page, () => !document.getElementById('public-play').disabled && window.__nativeFixture.listener, 'ready landing');
   await page.evaluate(() => {
     const video = document.getElementById('lab-video'); video.volume = 0.37; video.muted = false;
+    window.__nativeFixture.unreadyFirstFrame = true;
     window.__nativeFixture.originalVideo = video; document.getElementById('public-play').click();
   });
+  await waitFor(page, () => window.__nativeFixture.frames > 0 && window.__nativeFixture.seeking, 'queued unready priming frame');
+  await page.clock.runFor(1200);
+  const unreadyFirstFrame = await state(page);
+  assert.equal(unreadyFirstFrame.firstFrameDisplay, '—', 'a queued priming frame is not playback while seeking with no current data');
+  assert.equal(unreadyFirstFrame.stallCount, 0, 'startup waiting is not a post-first-frame stall');
+  await page.evaluate(() => {
+    const s = window.__nativeFixture, video = document.getElementById('lab-video');
+    s.readyState = 4; s.present(video); video.dispatchEvent(new Event('waiting'));
+    s.seeking = false; s.readyState = 2; s.present(video); video.dispatchEvent(new Event('waiting'));
+  });
+  await page.clock.runFor(400);
+  const stillUnready = await state(page);
+  assert.equal(stillUnready.firstFrameDisplay, '—', 'seeking alone and insufficient data alone both defer first playback');
+  assert.equal(stillUnready.stallCount, 0);
+  await page.evaluate(() => {
+    const s = window.__nativeFixture, video = document.getElementById('lab-video');
+    s.unreadyFirstFrame = false; s.readyState = 4;
+    video.dispatchEvent(new Event('seeked')); video.dispatchEvent(new Event('playing')); s.present(video);
+  });
+  await page.clock.runFor(400);
   await waitFor(page, () => window.__nativeFixture.frames > 0 && window.__nativeFixture.peerEnabled.includes(true), 'first presented fixture frame');
   const before = await state(page); assert.equal(before.peerBytes, 4096); assert.equal(before.uploadBytes, 8192);
+  assert.notEqual(before.firstFrameDisplay, '—', 'the first playable frame starts playback measurement');
+  assert.equal(before.stallCount, 0);
   const savedTime = await page.evaluate(() => {
     const s = window.__nativeFixture, video = document.getElementById('lab-video');
     s.deferNextPlay = true; document.getElementById('public-play').click();
     s.time = 22.25; s.roomPosition = 52.25; s.readyState = 2; s.ranges = [];
     video.dispatchEvent(new Event('waiting')); return video.currentTime;
   });
-  await page.clock.runFor(9200);
+  await page.clock.runFor(1200);
+  await page.evaluate(() => window.__nativeFixture.present(document.getElementById('lab-video')));
+  await page.clock.runFor(400);
+  const unreadyDuringStall = await state(page);
+  assert.equal(unreadyDuringStall.stallCount, 1);
+  assert.ok(parseFloat(unreadyDuringStall.stallTime) >= 1.5, 'an unready queued frame does not end a real ongoing stall');
+  await page.clock.runFor(7600);
   await waitFor(page, () => document.getElementById('main').dataset.playbackEngine === 'Native HLS', 'native fallback');
   const after = await state(page);
   assert.equal(after.fallback, 'stalls'); assert.equal(after.hlsDestroyed, 1); assert.equal(after.peerStopped, 1);
@@ -215,7 +252,7 @@ try {
   assert.ok(paused.peerEnabled.slice(enabledCalls).every(value => value !== true), 'native Pause cannot reopen peer delivery');
   assert.equal(paused.listenerStops, 0); assert.equal(paused.engine, 'Native HLS');
   assert.deepEqual(receipt.pageErrors, []); assert.deepEqual(receipt.forbiddenRequests, []);
-  receipt.simulatedCases.push({ trigger: 'eight-second-frozen-playhead', before, after, paused });
+  receipt.simulatedCases.push({ trigger: 'eight-second-frozen-playhead', unreadyFirstFrame, stillUnready, before, unreadyDuringStall, after, paused });
   await page.close();
 
   const iphoneHlsRequests = [];

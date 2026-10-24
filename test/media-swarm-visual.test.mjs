@@ -21,6 +21,17 @@ function roomFixture() {
     })) } };
 }
 
+test('cached source loads do not become measured network flow and concealed timing stays unknown', () => {
+  const metrics = { originBytes: 6_000_000, sourceNetworkBytes: 0 };
+  assert.equal(observedRoomTopology(metrics, NOW).edges[0].forward.value, 0);
+  metrics.originBytes += 6_000_000;
+  assert.equal(observedRoomTopology(metrics, NOW + 1000).edges[0].forward.value, 0);
+  metrics.sourceNetworkBytes = 4096;
+  assert.equal(observedRoomTopology(metrics, NOW + 2000).edges[0].forward.value, 4096);
+  metrics.sourceNetworkBytes = null;
+  assert.equal(observedRoomTopology(metrics, NOW + 3000).edges[0].forward.value, null);
+});
+
 test('the connection picture uses observed connections rather than aggregate or invented viewer counts', () => {
   assert.deepEqual(observedTopology({ connectedPeers: 500, uploadedBytes: 1000 }), []);
   assert.deepEqual(observedTopology({ topology: { connections: [

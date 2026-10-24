@@ -45,6 +45,18 @@ try {
       peerFlights: document.querySelectorAll('[data-flight-source^="peer-"]').length };
   });
   assert.equal(receipt.checks.hostOnly.hostFlights, 1); assert.equal(receipt.checks.hostOnly.peerFlights, 0);
+  receipt.checks.cachedSource = await page.evaluate(() => {
+    observations.playing = false; render();
+    observations.playing = true; observations.sourceNetworkBytes = 0; render();
+    observations.originBytes += 6206410; render();
+    const cachedFlights = document.querySelectorAll('[data-flight-source="origin"]').length;
+    observations.sourceNetworkBytes += 4096; render();
+    const networkFlight = document.querySelector('[data-flight-source="origin"]')?.dataset.bytes;
+    observations.sourceNetworkBytes = null; render();
+    const unavailable = document.querySelector('[data-link-id="origin-self"]').textContent.includes('Measurement unavailable');
+    return { cachedFlights, networkFlight, unavailable };
+  });
+  assert.deepEqual(receipt.checks.cachedSource, { cachedFlights: 0, networkFlight: '4096', unavailable: true });
   receipt.checks.media = await page.evaluate(() => {
     Object.assign(observations.topology.connections[0], { mediaBytesSent: 918, verifiedMediaBytesReceived: 6206410 });
     Object.assign(observations, { uploadedBytes: 918, peerBytes: 6206410 }); render();
