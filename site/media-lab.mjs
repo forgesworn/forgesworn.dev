@@ -1,7 +1,7 @@
 import { readInitialLiveStart } from './media-live-start.mjs';
-import { transferBytes } from './media-transfer-stats.mjs';
-import { createNativePlaybackFallback } from './media-playback-fallback.mjs?v=20261024-peer-continuity';
-import { createPlaybackPrime } from './media-playback-prime.mjs?v=20261024-peer-continuity';
+import { createSourceResponseStats, publicSourceResource, transferBytes } from './media-transfer-stats.mjs?v=20261024-peer-supply';
+import { createNativePlaybackFallback } from './media-playback-fallback.mjs?v=20261024-peer-supply';
+import { createPlaybackPrime } from './media-playback-prime.mjs?v=20261024-peer-supply';
 
 const DASH = '—';
 export const observed = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
@@ -48,8 +48,18 @@ export function sharedPositionDifference(current, target, duration) {
 // it can keep a slower player buffering indefinitely, especially on iPhone.
 export function createSharedPlaybackSync(video, { now = () => performance.now(), signal, onSeek = () => {} } = {}) {
   let stableAt = null, driftAt = null, driftDirection = 0, lastSeekAt = -Infinity, nextCheckAt = 0, pendingAlignment = false;
+  let seekStartedAt = null, recentSeekCostMs = 0;
   const reset = () => { stableAt = null; driftAt = null; driftDirection = 0; };
-  for (const event of ['waiting', 'stalled', 'seeking', 'pause', 'emptied']) video.addEventListener(event, reset, { signal });
+  for (const event of ['waiting', 'stalled', 'pause']) video.addEventListener(event, reset, { signal });
+  video.addEventListener('seeking', () => { seekStartedAt ??= now(); reset(); }, { signal });
+  video.addEventListener('seeked', () => {
+    if (seekStartedAt !== null) {
+      const cost = now() - seekStartedAt;
+      if (Number.isFinite(cost) && cost >= 0) recentSeekCostMs = cost;
+      seekStartedAt = null;
+    }
+  }, { signal });
+  video.addEventListener('emptied', () => { seekStartedAt = null; recentSeekCostMs = 0; reset(); }, { signal });
   return {
     align(target, duration, force = false) {
       const difference = sharedPositionDifference(video.currentTime, target, duration);
@@ -75,7 +85,9 @@ export function createSharedPlaybackSync(video, { now = () => performance.now(),
         }
         if (!buffered) { reset(); return result; }
         stableAt ??= at;
-        if (Math.abs(difference) <= 0.75) { driftAt = null; driftDirection = 0; return result; }
+        // Avoid interrupting playback to remove an offset barely larger than
+        // the interruption this player's last actual seek already cost.
+        if (Math.abs(difference) <= 0.75 + recentSeekCostMs / 1000) { driftAt = null; driftDirection = 0; return result; }
         const direction = Math.sign(difference);
         if (direction !== driftDirection) { driftAt = at; driftDirection = direction; }
         if (at - stableAt < 5000 || at - driftAt < 3000 || at - lastSeekAt < 15000) return result;
@@ -351,7 +363,7 @@ async function initialise() {
     publicRoom?.stop(); publicRoom = null;
     const pending = (async () => {
       const [{ createListenerSession }, { PUBLIC_SWARM_SOURCE_SHA256, PUBLIC_SWARM_RELAYS }] = await Promise.all([
-        import('./media-listener-session.mjs?v=20261024-peer-continuity'), import('./media-public-swarm.mjs?v=20261024-peer-continuity'),
+        import('./media-listener-session.mjs?v=20261024-peer-supply'), import('./media-public-swarm.mjs?v=20261024-peer-supply'),
       ]);
       if (request !== publicRoomRequest || pageAbort.signal.aborted) return null;
       const clock = createListenerSession({ room: `forgesworn-dejavu-listening-v1-${quality}`, source: PUBLIC_SWARM_SOURCE_SHA256,
@@ -457,7 +469,22 @@ async function initialise() {
     const peerBytes = observed(metrics?.peerBytes) ?? 0;
     const uploaded = observed(metrics?.uploadedBytes) ?? 0;
     const peers = observed(metrics?.connectedPeers) ?? 0;
-    const originBytes = s?.nativeHls ? null : observed(metrics?.originBytes) ?? observed(s?.browser?.responseBytes) ?? (s ? null : 0);
+    // Resource Timing counts responses (including cache and losing requests),
+    // so it cannot substitute for media accepted by the source loader.
+    const originBytes = s?.nativeHls ? null : observed(metrics?.originBytes) ?? (s ? null : 0);
+    const timing = s?.browser?.sourceResponses?.snapshot(observed(metrics?.originTransferredBytes));
+    const timingCovered = Boolean(timing?.covered && !s?.nativeHls);
+    const sourceNetworkBytes = timingCovered ? timing.networkBodyBytes : null;
+    const sourceCacheBytes = timingCovered ? timing.cacheBodyBytes : null;
+    const sourceTimingCoverage = s?.nativeHls ? 'unavailable' : timing?.coverage ?? 'unavailable';
+    for (const [id, bytes] of [['browser-source-network-bytes', sourceNetworkBytes], ['browser-source-cache-bytes', sourceCacheBytes]]) {
+      optionalText(id, transferBytes(bytes));
+      if ($(id)) $(id).dataset.bytes = bytes === null ? '' : String(bytes);
+    }
+    const coverageLabel = !s ? DASH : !timing?.responses ? 'Unavailable · no source media timings' : s.nativeHls ?
+      'Unavailable · native playback coverage' :
+      `${timing.knownResponses} / ${timing.responses} source timings classified${timingCovered ? '' : ' · total unavailable'}${timing.missing ? ' · records missing' : ''}`;
+    optionalText('browser-source-timing-coverage', coverageLabel);
     for (const [id, bytes] of [['public-origin-bytes', originBytes], ['public-peer-bytes', peerBytes], ['public-upload-bytes', uploaded]]) {
       optionalText(id, transferBytes(bytes));
       if ($(id)) { $(id).dataset.bytes = bytes === null ? '' : String(bytes); $(id).title = bytes === null ? 'Byte count unavailable' : `${bytes.toLocaleString('en-GB')} bytes this playback`; }
@@ -484,15 +511,23 @@ async function initialise() {
     const loadedBytes = originBytes === null ? null : peerBytes + originBytes;
     optionalText('public-transfer-summary', s?.nativeHls ?
       'Native playback does not expose complete transfer totals. Earlier verified peer downloads and uploads are retained.' : loadedBytes > 0 ?
-      `${(100 * peerBytes / loadedBytes).toLocaleString('en-GB', { maximumFractionDigits: 1 })}% of your loaded video came from viewers. Totals include buffered video; sent bytes may still be in transfer.` :
-      'Totals for this playback. Peer downloads count only complete, verified video segments.');
+      `${(100 * peerBytes / loadedBytes).toLocaleString('en-GB', { maximumFractionDigits: 1 })}% of loaded video came from viewers. Source loads include browser cache. Sent bytes may still be in transfer.` :
+      'Source loads include browser cache. Peer downloads count only complete, verified video segments.');
     root.dataset.delivery = !s ? 'ready' : metrics?.phase ?? 'origin';
     root.dataset.peerEngine = metrics?.core?.state ?? '';
     root.dataset.multiHolderDelivered = String(metrics?.core?.multiHolder?.delivered ?? 0);
     root.dataset.originTransferredBytes = s?.nativeHls ? '' : String(metrics?.originTransferredBytes ?? 0);
     root.dataset.loadedMediaBytes = s?.nativeHls ? '' : String(metrics?.loadedMediaBytes ?? 0);
     root.dataset.cacheHighWaterBytes = String(metrics?.resources?.heldHighWaterBytes ?? 0);
+    root.dataset.sourceNetworkBytes = sourceNetworkBytes === null ? '' : String(sourceNetworkBytes);
+    root.dataset.sourceCacheBytes = sourceCacheBytes === null ? '' : String(sourceCacheBytes);
+    root.dataset.sourceTimingCoverage = sourceTimingCoverage;
+    root.dataset.sourceTimingResponses = String(timing?.responses ?? 0);
+    root.dataset.sourceTimingKnownResponses = String(timing?.knownResponses ?? 0);
+    root.dataset.sourceTimingUnknownResponses = String(timing?.unknownResponses ?? 0);
+    root.dataset.sourceTimingMissing = String(timing?.missing ?? false);
     swarmVisual?.update({ ...metrics, active: Boolean(s), playing: Boolean(playing), originBytes,
+      sourceNetworkBytes, sourceCacheBytes, sourceTimingCoverage,
       room: s?.listener?.snapshot() ?? publicRoom?.snapshot() ?? null });
     listenerStatus(s);
   }
@@ -784,6 +819,7 @@ async function initialise() {
       lastDecoded: 0, lastDecodeAt: null, fps: null, fpsSamples: [],
       width: null, height: null, mediaWidth: null, mediaHeight: null, stallCount: 0, waitingAt: null, finishedStallSeconds: 0, stallSeconds: 0,
       responseBytes: null, requests: null, playerErrors: 0, httpErrors: null,
+      sourceResponses: !local ? createSourceResponseStats() : null,
     };
     const endStall = () => {
       if (b.waitingAt !== null) { b.finishedStallSeconds += (performance.now() - b.waitingAt) / 1000; b.waitingAt = null; }
@@ -860,19 +896,22 @@ async function initialise() {
         if (session !== s || s.finishing || s.sourceEof) return;
         b.presentedFrames = (b.presentedFrames ?? 0) + 1;
         if (observed(metadata?.width) > 0 && observed(metadata?.height) > 0) { b.mediaWidth = metadata.width; b.mediaHeight = metadata.height; }
-        if (!b.seenFrame && !video.paused) {
+        // A callback queued for a paused priming frame can arrive after play()
+        // while the startup seek is still decoding. It is not playback yet.
+        const playableFrame = !video.paused && !video.seeking && video.readyState >= 3;
+        if (!b.seenFrame && playableFrame) {
           b.seenFrame = true; b.firstFrameMs = performance.now() - s.clickAt;
           b.lastDecodeAt = performance.now(); b.lastDecoded = observed(video.webkitDecodedFrameCount) ?? 0;
           $('video-empty').hidden = true;
           controls();
         }
-        if (!video.paused) endStall();
+        if (playableFrame) endStall();
         s.frameCallback = video.requestVideoFrameCallback(frame);
       };
       s.frameCallback = video.requestVideoFrameCallback(frame);
     } else {
       video.addEventListener('timeupdate', () => {
-        if (video.videoWidth > 0 && video.currentTime > 0) { b.seenFrame = true; $('video-empty').hidden = true; }
+        if (!video.paused && !video.seeking && video.readyState >= 3 && video.videoWidth > 0 && video.currentTime > 0) { b.seenFrame = true; $('video-empty').hidden = true; }
       }, { signal: s.abort.signal });
     }
     if (typeof PerformanceObserver === 'function' && PerformanceObserver.supportedEntryTypes?.includes('resource')) {
@@ -882,6 +921,7 @@ async function initialise() {
       if (!local && s.quality === 'full') {
         try { mediaBase = approvedMediaUrl(root.dataset.fullMediaBase, location.href, root.dataset.mediaOrigin); } catch {}
       }
+      const sourceBase = !local && s.quality === 'preview' ? new URL('.', playlist) : mediaBase;
       const entries = (list) => {
         for (const entry of list) {
           let url; try { url = new URL(entry.name); } catch { continue; }
@@ -891,10 +931,14 @@ async function initialise() {
           // Cross-origin entries without Timing-Allow-Origin can hide sizes/status.
           if (observed(entry.encodedBodySize) !== null && (url.origin === location.origin || entry.encodedBodySize > 0)) b.responseBytes = (b.responseBytes ?? 0) + entry.encodedBodySize;
           if (observed(entry.responseStatus) !== null && entry.responseStatus > 0) b.httpErrors = (b.httpErrors ?? 0) + (entry.responseStatus >= 400 ? 1 : 0);
+          if (sourceBase && publicSourceResource(url.href, { quality: s.quality, baseUrl: sourceBase.href })) b.sourceResponses?.add(entry);
         }
       };
       s.resourceEntries = entries;
-      s.observer = new PerformanceObserver((list) => entries(list.getEntries()));
+      s.observer = new PerformanceObserver((list, _observer, options) => {
+        if (options?.droppedEntriesCount > 0) b.sourceResponses?.invalidate();
+        entries(list.getEntries());
+      });
       s.observer.observe({ type: 'resource', buffered: false });
     }
     const tick = () => { if (session === s && !s.finishing) {
@@ -1034,7 +1078,7 @@ async function initialise() {
       if (!local && initial.epochId && initial.startPosition >= 0) s.listenerAlignedEpoch = initial.epochId;
       if (!local) {
         try {
-          const { createPublicSwarm } = await import('./media-public-swarm.mjs?v=20261024-peer-continuity');
+          const { createPublicSwarm } = await import('./media-public-swarm.mjs?v=20261024-peer-supply');
           if (session !== s || s.abort.signal.aborted || s.hls !== player) return;
           s.publicPeer = createPublicSwarm({ Hls, hls: s.hls, video, playlistUrl: url.href, quality: s.quality,
             signal: s.abort.signal, onStats: metrics => { if (session === s && !s.nativeHls && !s.finishing) publicDelivery(s, metrics); } });
@@ -1248,7 +1292,7 @@ async function initialise() {
       if (!document.hidden && session && !video.paused && session.followLive !== false) followListener(session);
     }, { signal: pageAbort.signal });
     try {
-      const { createSwarmVisual } = await import('./media-swarm-visual.mjs?v=20261024-swarm-calm');
+      const { createSwarmVisual } = await import('./media-swarm-visual.mjs?v=20261024-peer-supply');
       if (!pageAbort.signal.aborted && $('public-swarm-map')) {
         swarmVisual = createSwarmVisual($('public-swarm-map'));
         publicDelivery(session);

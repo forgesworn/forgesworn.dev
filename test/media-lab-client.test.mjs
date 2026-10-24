@@ -81,6 +81,18 @@ test('unobserved metrics remain unavailable rather than becoming zero', () => {
   assert.equal(reading(0), '0.0');
 });
 
+test('cache diagnostics do not rename or leak into the legacy comparison export', () => {
+  const f = fixture();
+  f.browser.responseBytes = 2_600_000_000;
+  f.browser.sourceResponses = { networkBodyBytes: 6_005_991, cacheBodyBytes: 2_593_994_009, privateToken: 'must-stay-private' };
+  const row = completedRecord(f.snapshot, f.session, f.config, f.browser);
+  const restored = recordedRuns({ schema: 1, runs: [row] })[0];
+  assert.equal(row.browser.responseBytes, 2_600_000_000);
+  assert.equal(restored.browser.responseBytes, 2_600_000_000);
+  assert.equal(Object.hasOwn(row.browser, 'sourceResponses'), false);
+  assert.doesNotMatch(JSON.stringify(restored), /must-stay-private|sourceResponses/);
+});
+
 test('normal source EOF requires independently completed matching publisher state', () => {
   const f = fixture(); f.snapshot.run.publisherEnded = true;
   assert(confirmedPublisherEnd({ ...f.snapshot, state: 'running' }, 'one'));

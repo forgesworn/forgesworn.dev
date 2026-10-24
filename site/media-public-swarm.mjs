@@ -3,8 +3,8 @@
 // A receiver's ephemeral key wraps that digest for the existing live-commitment
 // verifier; this is local attestation, not a live broadcaster signing service.
 import { createHlsSwarm, commitmentContent, commitmentPieceSize, segmentMediaContext, KIND_SEGMENT_COMMITMENT, finalizeEvent,
-  generateSecretKey, relayswarmBuild } from './vendor/media-peer-demo.js?v=20261024-peer-continuity';
-import { observeOriginLoader } from './media-transfer-stats.mjs';
+  generateSecretKey, relayswarmBuild } from './vendor/media-peer-demo.js?v=20261024-peer-supply';
+import { observeOriginLoader } from './media-transfer-stats.mjs?v=20261024-peer-supply';
 
 export const PUBLIC_SWARM_LIMITS = Object.freeze({
   maxPeers: 3,
@@ -311,7 +311,7 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
         }
         swarm = createSwarm({ mode: 'peer-first', swarmId: plan.swarmId, relays: [...PUBLIC_SWARM_RELAYS],
           streamEvent, getCommitment, serve: true, serveOnCellular: false,
-          coreWasm: new URL('./vendor/relayswarm-core.wasm?v=20261024-peer-continuity', import.meta.url), multiHolder: true,
+          coreWasm: new URL('./vendor/relayswarm-core.wasm?v=20261024-peer-supply', import.meta.url), multiHolder: true,
           zeroBudgetPeerRace: true, sustainablePeerWait: true,
           maxHoldersPerObject: PUBLIC_SWARM_LIMITS.maxPeers,
           iceServers: PUBLIC_SWARM_ICE.map(entry => ({ ...entry })), iceTransportPolicy: 'all',
