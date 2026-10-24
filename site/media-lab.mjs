@@ -1,0 +1,718 @@
+const DASH = '—';
+export const observed = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
+export function reading(value, suffix = '', digits = 1) {
+  return observed(value) === null ? DASH : `${value.toLocaleString('en-GB', { maximumFractionDigits: digits, minimumFractionDigits: digits })}${suffix}`;
+}
+export const megabytes = (value) => observed(value) === null ? DASH : reading(value / 1e6, ' MB');
+export function clock(value) {
+  if (observed(value) === null) return DASH;
+  const seconds = Math.floor(value);
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+}
+export function approvedMediaUrl(value, pageUrl, mediaOrigin = '') {
+  if (typeof value !== 'string' || !value || value.length > 2048) throw new Error('No media URL');
+  const page = new URL(pageUrl);
+  const url = new URL(value, page);
+  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) throw new Error('Media URL not approved');
+  if (url.origin === page.origin) return url;
+  const origins = new Set();
+  if (mediaOrigin) {
+    const allowed = new URL(mediaOrigin);
+    if (allowed.protocol !== 'https:' || allowed.pathname !== '/' || allowed.search || allowed.hash || allowed.username || allowed.password) throw new Error('Expected one HTTPS media origin');
+    origins.add(allowed.origin);
+  }
+  if (!origins.has(url.origin)) throw new Error('Media origin not approved');
+  return url;
+}
+const mean = (samples) => samples.length ? samples.reduce((a, b) => a + b, 0) / samples.length : null;
+const max = (samples) => samples.length ? Math.max(...samples) : null;
+const human = (value, fallback = DASH) => typeof value === 'string' && value.length <= 120 && !/[\r\n\\/<>]/.test(value) ? value : fallback;
+const sha = (value) => typeof value === 'string' && /^[a-f0-9]{64}$/i.test(value) ? value : null;
+
+export function publicSource(source = {}) {
+  const result = { label: human(source.label, 'Licensed source'), sha256: sha(source.sha256) };
+  for (const key of ['bytes', 'durationSeconds', 'width', 'height', 'fps', 'bitrateBps', 'audioSampleRate']) result[key] = observed(source[key]);
+  for (const key of ['videoCodec', 'audioCodec']) result[key] = human(source[key], null);
+  return result;
+}
+
+function publicProfile(profile = {}) {
+  const result = {};
+  for (const key of ['hlsMode', 'sapflowHttpImpl', 'httpImpl', 'viewerDelivery']) result[key] = human(profile[key], null);
+  for (const key of ['segmentCount', 'segmentDurationSeconds', 'partDurationSeconds', 'httpWorkers', 'endDrainSeconds', 'publisherCompletionToleranceSeconds']) result[key] = observed(profile[key]);
+  for (const key of ['transcode', 'recording', 'viewerLowLatencyMode']) result[key] = typeof profile[key] === 'boolean' ? profile[key] : null;
+  return result;
+}
+
+function publicHost(host = {}) {
+  return {
+    cpu: human(host.cpu, null), architecture: human(host.architecture, null),
+    platform: human(host.platform, null), release: human(host.release, null), logicalCpus: observed(host.logicalCpus),
+  };
+}
+
+const publicLoad = (load = {}) => Object.fromEntries(['oneMinute', 'fiveMinutes', 'fifteenMinutes'].map(key => [key, observed(load[key])]));
+
+function peerRecord(metrics) {
+  if (!metrics) return null;
+  return {
+    phase: human(metrics.phase, null),
+    peerBytes: observed(metrics.viewer?.peerBytes), originBytes: observed(metrics.viewer?.originBytes),
+    verifiedPeerSegments: observed(metrics.viewer?.verifiedPeerSegments),
+    originFallbacks: observed(metrics.viewer?.originFallbacks), integrityRejected: observed(metrics.viewer?.integrityRejected),
+    holderUploadedBytes: observed(metrics.holder?.uploadedBytes), holderOriginBytes: observed(metrics.holder?.originBytes),
+    cachePeakBytes: observed(metrics.resources?.heldHighWaterBytes), cacheBytes: observed(metrics.resources?.heldBytes),
+    activePeerConnections: observed(metrics.resources?.activePeerConnections),
+    requestedProtocol: human(metrics.transport?.requestedProtocol, null),
+    selectedPairs: (Array.isArray(metrics.transport?.selectedPairs) ? metrics.transport.selectedPairs : []).slice(0, 8).map((pair) => ({
+      localType: human(pair.localType, null), remoteType: human(pair.remoteType, null), relayProtocol: human(pair.relayProtocol, null),
+      bytesSent: observed(pair.bytesSent), bytesReceived: observed(pair.bytesReceived),
+    })),
+  };
+}
+
+function recordedPeer(peer) {
+  if (!peer || typeof peer !== 'object') return null;
+  return {
+    ...Object.fromEntries(['peerBytes', 'originBytes', 'verifiedPeerSegments', 'originFallbacks', 'integrityRejected', 'holderUploadedBytes', 'holderOriginBytes', 'cachePeakBytes', 'cacheBytes', 'activePeerConnections'].map((key) => [key, observed(peer[key])])),
+    phase: human(peer.phase, null), requestedProtocol: human(peer.requestedProtocol, null),
+    selectedPairs: (Array.isArray(peer.selectedPairs) ? peer.selectedPairs : []).slice(0, 8).map((pair) => ({
+      localType: human(pair.localType, null), remoteType: human(pair.remoteType, null), relayProtocol: human(pair.relayProtocol, null),
+      bytesSent: observed(pair.bytesSent), bytesReceived: observed(pair.bytesReceived),
+    })),
+  };
+}
+
+function processRecord(processes, samples = {}) {
+  return Object.fromEntries(['origin', 'publisher', 'srtSender', 'turn'].map((name) => {
+    const process = processes?.[name];
+    return [name, process ? {
+      cpuPercentLast: observed(process.cpuPercent), cpuMeanPercent: mean(samples[name] ?? []),
+      cpuSeconds: observed(process.cpuSeconds), rssBytes: observed(process.rssBytes),
+      peakSampledRssBytes: observed(process.peakSampledRssBytes), uptimeSeconds: observed(process.uptimeSeconds),
+    } : null];
+  }));
+}
+
+export function completedRecord(snapshot, session, config, browser) {
+  if (snapshot?.state !== 'ended' || snapshot.run?.id !== session?.id || snapshot.run?.publisherCompletedWindow !== true ||
+      snapshot.run?.publisherProgressEnded !== true || session.offsetSeconds !== 0 || !browser?.seenFrame ||
+      !((observed(browser.decodedFrames) ?? 0) > 0) || session.interrupted || session.playbackFailed) return null;
+  const engine = config.engines?.find((entry) => entry.id === session.engine);
+  return {
+    state: 'ended', completion: 'source-window-ended', measuredAt: new Date().toISOString(), offsetSeconds: 0,
+    engine: human(session.engine), engineLabel: human(engine?.label, human(session.engine)),
+    version: human(engine?.version), binarySha256: sha(engine?.binarySha256),
+    transport: human(session.transport), turnEngine: human(session.turnEngine, 'off'), turnTransport: human(session.turnTransport),
+    durationSeconds: observed(snapshot.run.durationSeconds) ?? observed(session.durationSeconds) ?? observed(snapshot.run.uptimeSeconds),
+    publisherMediaSeconds: observed(snapshot.run.publisherMediaSeconds), publisherProgressEnded: true, publisherCompletedWindow: true,
+    measurementScope: 'shared-host-observation', hostLoadAtStart: publicLoad(snapshot.run.hostLoadAtStart),
+    hostLoadAtEnd: publicLoad(snapshot.host?.loadAverage),
+    source: publicSource(config.source), host: publicHost(config.host),
+    profile: publicProfile({ ...(snapshot.run.profile ?? session.profile ?? engine?.profile ?? config.profile), viewerDelivery: 'full-segment-hls', viewerLowLatencyMode: false }),
+    originCpuMeanPercent: mean(session.cpuSamples),
+    originPeakSampledRssBytes: observed(snapshot.processes?.origin?.peakSampledRssBytes) ?? max(session.rssSamples),
+    originCpuSeconds: observed(snapshot.processes?.origin?.cpuSeconds),
+    processes: processRecord(snapshot.processes, session.processSamples), peer: recordedPeer(session.peerMetrics),
+    browser: {
+      firstFrameMs: observed(browser.firstFrameMs), decodedFpsMean: mean(browser.fpsSamples),
+      decodedFrames: observed(browser.decodedFrames), width: observed(browser.width), height: observed(browser.height),
+      videoTimeSeconds: observed(browser.videoTimeSeconds), playbackEndObserved: browser.playbackEndObserved === true,
+      stallCount: observed(browser.stallCount), stallSeconds: observed(browser.stallSeconds),
+      responseBytes: observed(browser.responseBytes), requests: observed(browser.requests),
+      playerErrors: observed(browser.playerErrors), httpErrors: observed(browser.httpErrors),
+    },
+    http: {
+      requests: observed(snapshot.http?.requests), completed: observed(snapshot.http?.completed),
+      errors: observed(snapshot.http?.errors), bytes: observed(snapshot.http?.bytes),
+    },
+  };
+}
+
+// Published receipts use this deliberately small schema, never a raw API response.
+export function recordedRuns(receipt) {
+  if (receipt?.schema !== 1 || !Array.isArray(receipt.runs)) return [];
+  return receipt.runs.slice(0, 100).filter((run) => run?.state === 'ended' && run.offsetSeconds === 0 &&
+    run.publisherCompletedWindow === true && run.publisherProgressEnded === true && (observed(run.browser?.decodedFrames) ?? 0) > 0).map((run) => ({
+    state: 'ended', completion: 'source-window-ended', measuredAt: human(run.measuredAt, null), offsetSeconds: 0,
+    engine: human(run.engine), engineLabel: human(run.engineLabel, human(run.engine)), version: human(run.version),
+    binarySha256: sha(run.binarySha256), transport: human(run.transport), turnEngine: human(run.turnEngine, 'off'), turnTransport: human(run.turnTransport),
+    durationSeconds: observed(run.durationSeconds), source: publicSource(run.source ?? receipt.source), host: publicHost(run.host ?? receipt.host), profile: publicProfile(run.profile ?? receipt.profile),
+    publisherMediaSeconds: observed(run.publisherMediaSeconds), publisherProgressEnded: true, publisherCompletedWindow: true,
+    measurementScope: 'shared-host-observation', hostLoadAtStart: publicLoad(run.hostLoadAtStart), hostLoadAtEnd: publicLoad(run.hostLoadAtEnd),
+    originCpuMeanPercent: observed(run.originCpuMeanPercent), originPeakSampledRssBytes: observed(run.originPeakSampledRssBytes), originCpuSeconds: observed(run.originCpuSeconds),
+    processes: Object.fromEntries(['origin', 'publisher', 'srtSender', 'turn'].map((name) => [name, run.processes?.[name] ? Object.fromEntries(['cpuPercentLast', 'cpuMeanPercent', 'cpuSeconds', 'rssBytes', 'peakSampledRssBytes', 'uptimeSeconds'].map((key) => [key, observed(run.processes[name][key])])) : null])),
+    peer: recordedPeer(run.peer),
+    browser: {
+      ...Object.fromEntries(['firstFrameMs', 'decodedFpsMean', 'decodedFrames', 'width', 'height', 'videoTimeSeconds', 'stallCount', 'stallSeconds', 'responseBytes', 'requests', 'playerErrors', 'httpErrors'].map((key) => [key, observed(run.browser?.[key])])),
+      playbackEndObserved: run.browser?.playbackEndObserved === true,
+    },
+    http: Object.fromEntries(['requests', 'completed', 'errors', 'bytes'].map((key) => [key, observed(run.http?.[key])])),
+  }));
+}
+
+async function initialise() {
+  const root = document.getElementById('main');
+  if (!root) return;
+  const $ = (id) => document.getElementById(id);
+  const text = (id, value) => { $(id).textContent = value; };
+  const video = $('lab-video');
+  const local = ['127.0.0.1', 'localhost'].includes(location.hostname);
+  root.dataset.mode = local ? 'local' : 'public';
+  const pageAbort = new AbortController();
+  const runs = [];
+  const saved = new Set();
+  let config = null;
+  let session = null;
+  let busy = false;
+  let polling = null;
+  let foreignRun = false;
+  let Hls;
+  let fullscreenReady = false;
+  let detachFullscreen;
+  const choices = {};
+  if (!local) {
+    for (const [id, label] of [['preview', '1080p preview'], ['full', '4K full mix']]) {
+      try {
+        const url = approvedMediaUrl(root.dataset[`${id}Url`], location.href, root.dataset.mediaOrigin);
+        const attr = (suffix) => {
+          const value = root.dataset[`${id}${suffix}`];
+          return value === undefined || value === '' ? null : observed(Number(value));
+        };
+        choices[id] = { id, label, url, bytes: attr('Bytes'), bitrateBps: attr('BitrateBps'), durationSeconds: attr('DurationSeconds') };
+      } catch { /* An unconfigured or unapproved source stays unavailable. */ }
+    }
+  }
+  const status = (message, error = false) => { text('lab-status', message); $('lab-status').classList.toggle('error', error); };
+
+  function sameSiteUrl(value) {
+    if (typeof value !== 'string' || !value || value.length > 2048) throw new Error('No media URL');
+    const url = new URL(value, location.href);
+    if (url.origin !== location.origin || !['http:', 'https:'].includes(url.protocol) || url.username || url.password) throw new Error('A same-origin media URL is required');
+    return url;
+  }
+
+  async function api(route, body) {
+    if (!local || pageAbort.signal.aborted) throw new Error('The local runner is unavailable');
+    const controller = new AbortController();
+    const abort = () => controller.abort();
+    pageAbort.signal.addEventListener('abort', abort, { once: true });
+    const timeout = setTimeout(abort, route === '/lab/run' ? 45000 : 12000);
+    try {
+      const reply = await fetch(route, {
+        method: body === undefined ? 'GET' : 'POST', cache: 'no-store', credentials: 'same-origin',
+        headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
+        body: body === undefined ? undefined : JSON.stringify(body), signal: controller.signal,
+      });
+      if (!reply.ok) throw new Error('The local runner could not complete that request');
+      return await reply.json();
+    } finally { clearTimeout(timeout); pageAbort.signal.removeEventListener('abort', abort); }
+  }
+
+  function controls() {
+    const running = Boolean(session);
+    const preview = !local && Boolean(choices[$('lab-quality').value]);
+    const engineAvailable = config?.engines?.some((entry) => entry.id === $('lab-engine').value && entry.available);
+    $('lab-run').disabled = busy || foreignRun || running || (!engineAvailable && !preview);
+    $('lab-run').textContent = preview ? `Play ${choices[$('lab-quality').value].label} with sound` : 'Run & play with sound ↗';
+    for (const id of ['lab-engine', 'lab-transport', 'lab-duration', 'lab-relay', 'lab-turn-transport']) $(id).disabled = !config || busy || running || foreignRun;
+    $('lab-turn-transport').disabled ||= $('lab-relay').value === 'off';
+    $('lab-play').disabled = !session?.mediaReady || busy;
+    $('lab-stop').disabled = !session || busy;
+    $('lab-stop').textContent = local ? 'Stop run' : 'Stop preview';
+    $('lab-fullscreen').disabled = !fullscreenReady || !session?.mediaReady;
+    $('lab-clear').disabled = !runs.length;
+    $('lab-export').disabled = !runs.length;
+  }
+
+  function qualityDetails() {
+    const choice = choices[$('lab-quality').value];
+    if (!choice) return;
+    const parts = [choice.label];
+    if (choice.durationSeconds !== null) parts.push(clock(choice.durationSeconds));
+    if (choice.bytes !== null) parts.push(`${megabytes(choice.bytes)} full asset`);
+    if (choice.bitrateBps !== null) parts.push(reading(choice.bitrateBps / 1e6, ' Mbps'));
+    text('lab-quality-note', `${parts.join(' · ')}. Playback starts only when you press Play.${choice.id === 'full' ? ' The full mix uses the configured media host.' : ''}`);
+    if (session && session.quality !== choice.id) status(`${choice.label} selected. Press Play with sound to restart from the beginning; the current source continues until then.`);
+    controls();
+  }
+
+  function sourceDetails(source) {
+    const data = publicSource(source);
+    text('source-title', data.label);
+    const parts = [];
+    if (data.width && data.height) parts.push(`${data.width.toLocaleString('en-GB')} × ${data.height.toLocaleString('en-GB')}`);
+    if (data.fps !== null) parts.push(`${reading(data.fps, '', 2).replace(/\.00$/, '')} fps`);
+    if (data.durationSeconds !== null) parts.push(clock(data.durationSeconds));
+    if (data.bytes !== null) parts.push(megabytes(data.bytes));
+    if (data.bitrateBps !== null) parts.push(reading(data.bitrateBps / 1e6, ' Mbps'));
+    if (data.videoCodec || data.audioCodec) parts.push([data.videoCodec, data.audioCodec].filter(Boolean).join(' + ').toUpperCase());
+    text('source-meta', parts.length ? parts.join(' · ') : 'Technical source metadata has not been supplied.');
+    text('source-tag', 'Owner-licensed media · offset 0');
+  }
+
+  function profileDetails(profile) {
+    const parts = [];
+    if (profile?.hlsMode) parts.push(human(profile.hlsMode));
+    if (observed(profile?.segmentDurationSeconds) !== null) parts.push(`${profile.segmentDurationSeconds}s segments`);
+    if (observed(profile?.partDurationSeconds) !== null) parts.push(`${profile.partDurationSeconds}s parts`);
+    if (profile?.transcode === false) parts.push('No transcoding');
+    if (profile?.recording === false) parts.push('Recording off');
+    parts.push('Full-segment browser playback');
+    if (profile?.sapflowHttpImpl) parts.push(`Sapflow HTTP: ${human(profile.sapflowHttpImpl)}`);
+    if (observed(profile?.httpWorkers) !== null) parts.push(`${profile.httpWorkers} HTTP worker`);
+    if (observed(profile?.endDrainSeconds) !== null) parts.push(`${profile.endDrainSeconds}s matched end drain`);
+    text('profile-note', parts.length ? `Matched profile · ${parts.join(' · ')}. Browser decoding is measured separately from server resource use.` : 'Read the source, host and profile alongside each completed run.');
+  }
+
+  function showEngineVersion() {
+    const entry = config?.engines?.find((engine) => engine.id === $('lab-engine').value);
+    text('engine-version', entry ? `${human(entry.label)} · ${human(entry.version)}${sha(entry.binarySha256) ? ` · SHA-256 ${entry.binarySha256.slice(0, 12)}…` : ''}` : 'Select a locally installed server to see its version.');
+  }
+
+  function processStats(processes) {
+    for (const name of ['origin', 'publisher', 'srtSender', 'relay']) {
+      const process = processes?.[name] ?? (name === 'relay' ? processes?.turn : null);
+      text(`process-${name}-cpu`, reading(process?.cpuPercent, '%'));
+      text(`process-${name}-seconds`, reading(process?.cpuSeconds, ' s', 2));
+      text(`process-${name}-rss`, megabytes(process?.rssBytes));
+      text(`process-${name}-peak`, megabytes(process?.peakSampledRssBytes));
+      if (name === 'relay') $('process-relay-row').hidden = !process && (!session || session.turnEngine === 'off');
+    }
+    text('origin-cpu', reading(processes?.origin?.cpuPercent, '%'));
+    text('origin-rss', megabytes(processes?.origin?.rssBytes));
+    text('origin-uptime', clock(processes?.origin?.uptimeSeconds));
+  }
+
+  function httpStats(http) {
+    const percentile = (group) => group && group.samples > 0 ? ['p50', 'p95', 'p99'].map((key) => reading(group[key], '', 1)).join(' / ') + ' ms' : DASH;
+    text('http-bytes', megabytes(http?.bytes));
+    text('http-requests', http ? [http.requests, http.completed, http.active].map((n) => reading(n, '', 0)).join(' / ') : DASH);
+    text('http-errors', reading(http?.errors, '', 0));
+    text('http-rate', observed(http?.bytesPerSecond) === null ? DASH : reading(http.bytesPerSecond / 1e6, ' MB/s', 2));
+    text('http-first-byte', percentile(http?.firstByteMs));
+    text('http-response', percentile(http?.responseMs));
+  }
+
+  function renderTable() {
+    const tbody = $('comparison-runs');
+    tbody.replaceChildren();
+    if (!runs.length) {
+      const td = document.createElement('td'); td.colSpan = 9; td.className = 'empty-cell';
+      td.textContent = 'Complete a local run, or open a published receipt, to put real measurements here.';
+      const tr = document.createElement('tr'); tr.append(td); tbody.append(tr);
+    }
+    for (const run of runs) {
+      const tr = document.createElement('tr');
+      const values = [
+        `${run.engineLabel} · ${run.version}`, run.transport.toUpperCase(),
+        run.turnEngine === 'off' ? 'Direct HLS' : `${run.turnEngine} · ${run.turnTransport.toUpperCase()}`,
+        clock(run.durationSeconds), reading(run.originCpuMeanPercent, '%'), megabytes(run.originPeakSampledRssBytes),
+        reading(run.browser.firstFrameMs, ' ms', 0), reading(run.browser.decodedFpsMean, ' fps'),
+        run.browser.stallCount === null ? DASH : `${run.browser.stallCount} / ${reading(run.browser.stallSeconds, ' s')}`,
+      ];
+      values.forEach((value, index) => {
+        const td = document.createElement('td'); td.textContent = value;
+        if (index === 0 && typeof run.measuredAt === 'string' && Number.isFinite(Date.parse(run.measuredAt))) {
+          const date = document.createElement('time'); date.dateTime = run.measuredAt;
+          date.style.cssText = 'display:block;color:var(--muted);font-size:.62rem;margin-top:5px';
+          date.textContent = new Date(run.measuredAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+          td.append(date);
+        }
+        tr.append(td);
+      });
+      tbody.append(tr);
+    }
+    controls();
+  }
+
+  function browserReadings(s) {
+    if (!s) {
+      for (const id of ['browser-fps', 'browser-time', 'browser-buffer', 'browser-stalls', 'browser-stall-time', 'browser-bytes', 'browser-requests', 'browser-errors', 'first-frame']) text(id, DASH);
+      text('browser-dimensions', 'Browser video dimensions');
+      return;
+    }
+    const b = s.browser;
+    const now = performance.now();
+    const decoded = observed(video.webkitDecodedFrameCount);
+    if (decoded !== null) {
+      if (decoded < b.frameBaseline) b.frameBaseline = 0;
+      b.decodedFrames = Math.max(0, decoded - b.frameBaseline);
+      if (b.seenFrame && b.lastDecodeAt !== null && now - b.lastDecodeAt >= 800) {
+        b.fps = Math.max(0, decoded - b.lastDecoded) * 1000 / (now - b.lastDecodeAt);
+        if (!video.paused && !video.ended) b.fpsSamples.push(b.fps);
+        b.lastDecodeAt = now; b.lastDecoded = decoded;
+      }
+      if (b.decodedFrames > 0 && b.lastDecodeAt === null) { b.lastDecodeAt = now; b.lastDecoded = decoded; }
+    }
+    b.width = video.videoWidth || null; b.height = video.videoHeight || null;
+    b.videoTimeSeconds = video.readyState > 0 ? observed(video.currentTime) : null;
+    b.playbackEndObserved = video.ended;
+    if (!local) text('run-clock', `${clock(video.currentTime)} / ${clock(video.duration)}`);
+    b.stallSeconds = b.finishedStallSeconds + (b.waitingAt === null ? 0 : (now - b.waitingAt) / 1000);
+    let buffer = video.readyState > 0 ? 0 : null;
+    for (let i = 0; i < video.buffered.length; i++) if (video.currentTime >= video.buffered.start(i) && video.currentTime <= video.buffered.end(i)) buffer = video.buffered.end(i) - video.currentTime;
+    text('browser-fps', reading(b.fps, ' fps'));
+    text('browser-dimensions', b.width && b.height ? `${b.width.toLocaleString('en-GB')} × ${b.height.toLocaleString('en-GB')} decoded` : 'Browser video dimensions');
+    text('first-frame', reading(b.firstFrameMs, ' ms', 0));
+    text('browser-time', video.readyState > 0 ? clock(video.currentTime) : DASH);
+    text('browser-buffer', reading(buffer, ' s', 2));
+    text('browser-stalls', reading(b.stallCount, '', 0));
+    text('browser-stall-time', reading(b.stallSeconds, ' s', 2));
+    text('browser-bytes', megabytes(b.responseBytes));
+    text('browser-requests', reading(b.requests, '', 0));
+    text('browser-errors', `${reading(b.playerErrors, '', 0)} / ${reading(b.httpErrors, '', 0)}`);
+  }
+
+  function trackBrowser(s, playlist) {
+    const b = s.browser = {
+      seenFrame: false, firstFrameMs: null, decodedFrames: null, frameBaseline: observed(video.webkitDecodedFrameCount) ?? 0,
+      lastDecoded: 0, lastDecodeAt: null, fps: null, fpsSamples: [],
+      width: null, height: null, stallCount: 0, waitingAt: null, finishedStallSeconds: 0, stallSeconds: 0,
+      responseBytes: null, requests: null, playerErrors: 0, httpErrors: null,
+    };
+    const endStall = () => {
+      if (b.waitingAt !== null) { b.finishedStallSeconds += (performance.now() - b.waitingAt) / 1000; b.waitingAt = null; }
+    };
+    const waiting = () => {
+      if (session === s && b.seenFrame && !video.paused && !video.ended && b.waitingAt === null) { b.waitingAt = performance.now(); b.stallCount++; }
+    };
+    video.addEventListener('waiting', waiting, { signal: s.abort.signal });
+    video.addEventListener('stalled', waiting, { signal: s.abort.signal });
+    video.addEventListener('playing', endStall, { signal: s.abort.signal });
+    video.addEventListener('pause', () => {
+      endStall();
+      if (!s.finishing && b.seenFrame) { s.interrupted = true; status('Playback paused. This interrupted run will not enter the comparison table.'); }
+    }, { signal: s.abort.signal });
+    let lastInteraction = -Infinity;
+    video.addEventListener('pointerdown', () => { lastInteraction = performance.now(); }, { signal: s.abort.signal });
+    video.addEventListener('keydown', () => { lastInteraction = performance.now(); }, { signal: s.abort.signal });
+    video.addEventListener('seeking', () => {
+      // HLS latency corrections can seek too; exclude deliberate viewer seeks.
+      if (b.seenFrame && !s.finishing && performance.now() - lastInteraction < 1500) s.interrupted = true;
+    }, { signal: s.abort.signal });
+    video.addEventListener('error', () => {
+      if (session !== s || s.finishing) return;
+      b.playerErrors++; s.playbackFailed = true;
+      status(local ? 'Playback could not continue. Stop the run, check the local runner and try again.' : 'The selected source could not be decoded. Try the preview or check the media-host response.', true);
+    }, { signal: s.abort.signal });
+    if (typeof video.requestVideoFrameCallback === 'function') {
+      const frame = () => {
+        if (session !== s || s.finishing) return;
+        if (!b.seenFrame) {
+          b.seenFrame = true; b.firstFrameMs = performance.now() - s.clickAt;
+          b.lastDecodeAt = performance.now(); b.lastDecoded = observed(video.webkitDecodedFrameCount) ?? 0;
+          $('video-empty').hidden = true;
+        }
+        endStall();
+        s.frameCallback = video.requestVideoFrameCallback(frame);
+      };
+      s.frameCallback = video.requestVideoFrameCallback(frame);
+    } else {
+      video.addEventListener('timeupdate', () => {
+        if (video.videoWidth > 0 && video.currentTime > 0) { b.seenFrame = true; $('video-empty').hidden = true; }
+      }, { signal: s.abort.signal });
+    }
+    if (typeof PerformanceObserver === 'function' && PerformanceObserver.supportedEntryTypes?.includes('resource')) {
+      b.requests = 0;
+      const prefix = playlist.pathname.slice(0, playlist.pathname.lastIndexOf('/') + 1);
+      const entries = (list) => {
+        for (const entry of list) {
+          let url; try { url = new URL(entry.name); } catch { continue; }
+          if (url.origin !== playlist.origin || !url.pathname.startsWith(prefix)) continue;
+          b.requests++;
+          // Cross-origin entries without Timing-Allow-Origin can hide sizes/status.
+          if (observed(entry.encodedBodySize) !== null && (url.origin === location.origin || entry.encodedBodySize > 0)) b.responseBytes = (b.responseBytes ?? 0) + entry.encodedBodySize;
+          if (observed(entry.responseStatus) !== null && entry.responseStatus > 0) b.httpErrors = (b.httpErrors ?? 0) + (entry.responseStatus >= 400 ? 1 : 0);
+        }
+      };
+      s.resourceEntries = entries;
+      s.observer = new PerformanceObserver((list) => entries(list.getEntries()));
+      s.observer.observe({ type: 'resource', buffered: false });
+    }
+    const tick = () => { if (session === s && !s.finishing) { browserReadings(s); s.browserTimer = setTimeout(tick, 400); } };
+    tick();
+  }
+
+  function peerStats(s, metrics) {
+    if (session !== s) return;
+    s.peerMetrics = peerRecord(metrics);
+    const viewer = metrics?.viewer;
+    const transport = metrics?.transport;
+    const pairs = Array.isArray(transport?.selectedPairs) ? transport.selectedPairs : [];
+    const selected = pairs.map((pair) => `${human(pair.localType)} → ${human(pair.remoteType)} (${human(pair.relayProtocol)})`).join(', ');
+    text('relay-summary', `Viewer path · ${human(s.turnEngine)} ${s.turnTransport.toUpperCase()} requested · ${selected || 'Waiting for a selected path'} · Verified peer bytes: ${megabytes(viewer?.peerBytes)} · Origin bytes: ${megabytes(viewer?.originBytes)} · Verified peer segments: ${reading(viewer?.verifiedPeerSegments, '', 0)} · Origin fallbacks: ${reading(viewer?.originFallbacks, '', 0)} · Phase: ${human(metrics?.phase)}`);
+    $('relay-summary').hidden = false;
+  }
+
+  async function play(s = session) {
+    if (!s || session !== s || !s.mediaReady) return;
+    video.muted = false;
+    if (video.volume === 0) video.volume = 1;
+    try { await video.play(); if (session === s) status('Playing with sound. Server and browser observations update separately.'); }
+    catch { if (session === s) status('The stream is ready. Press Play with sound to start playback.'); }
+  }
+
+  async function attach(s, url, runtime) {
+    if (!local && /\.mp4$/i.test(url.pathname)) {
+      trackBrowser(s, url);
+      video.crossOrigin = url.origin === location.origin ? '' : 'anonymous';
+      video.src = url.href; s.mediaReady = true; controls(); await play(s);
+      return;
+    }
+    Hls ??= (await import('./vendor/hls.light.min.mjs')).default;
+    if (session !== s || s.abort.signal.aborted) return;
+    trackBrowser(s, url);
+    if (s.turnEngine !== 'off') {
+      if (!runtime || !local) throw new Error('A local per-viewer relay runtime is required');
+      const { startLabPeer } = await import('./media-lab-peer.mjs');
+      if (session !== s || s.abort.signal.aborted) return;
+      s.mediaReady = true; controls();
+      s.peer = await startLabPeer({ Hls, video, playlistUrl: url.href, runtime, signal: s.abort.signal, onStats: (metrics) => peerStats(s, metrics) });
+      await play(s);
+    } else if (Hls.isSupported()) {
+      s.hls = new Hls({ lowLatencyMode: false, maxBufferLength: 4, backBufferLength: 0, enableWorker: true });
+      s.hls.on(Hls.Events.ERROR, (_, data) => {
+        if (session !== s || s.finishing) return;
+        s.browser.playerErrors++;
+        if (data.fatal) { s.playbackFailed = true; status(local ? 'The player could not continue. Stop this run and check the local runner.' : 'The selected source could not continue. Stop playback and try the preview.', true); }
+      });
+      s.hls.on(Hls.Events.MANIFEST_PARSED, () => { if (session === s) { s.mediaReady = true; controls(); void play(s); } });
+      s.hls.loadSource(url.href); s.hls.attachMedia(video);
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = url.href; s.mediaReady = true; controls(); await play(s);
+    } else throw new Error('This browser cannot play the HLS stream');
+  }
+
+  function dispose(s) {
+    s.finishing = true;
+    clearTimeout(s.browserTimer);
+    if (s.frameCallback !== undefined) video.cancelVideoFrameCallback?.(s.frameCallback);
+    if (s.observer) { s.resourceEntries(s.observer.takeRecords()); s.observer.disconnect(); }
+    s.abort.abort();
+    try { Promise.resolve(s.peer?.stop()).catch(() => {}); } catch {}
+    try { s.hls?.destroy(); } catch {}
+    video.pause(); video.removeAttribute('src'); video.load();
+    video.removeAttribute('crossorigin');
+  }
+
+  function finish(snapshot) {
+    const s = session;
+    if (!s || s.finishing) return;
+    browserReadings(s);
+    if (s.observer) s.resourceEntries(s.observer.takeRecords());
+    const record = completedRecord(snapshot, s, config, s.browser);
+    if (record && !saved.has(s.id)) { runs.push(record); saved.add(s.id); renderTable(); }
+    const ended = snapshot?.state === 'ended';
+    dispose(s); session = null; foreignRun = false;
+    processStats(snapshot?.processes); httpStats(snapshot?.http);
+    text('run-clock', ended ? 'Measurement complete' : 'Run stopped');
+    status(!local ? 'Playback stopped. Choose a quality and press Play to restart.' : record ? 'Run complete and recorded below. Choose the other server with the same settings to compare.' : ended ? 'Run finished. Playback was interrupted or no frame was observed, so it was not added to the comparison table.' : 'Run stopped. Partial runs stay out of the comparison table.');
+    controls();
+  }
+
+  async function poll() {
+    if (!local || !config || pageAbort.signal.aborted) return;
+    try {
+      const snapshot = await api('/lab/stats');
+      if (pageAbort.signal.aborted) return;
+      if (session?.id) {
+        const final = snapshot.lastRun;
+        if (final?.run?.id === session.id && ['ended', 'stopped', 'error'].includes(final.state)) finish(final);
+        else if (snapshot.run?.id === session.id) {
+          processStats(snapshot.processes); httpStats(snapshot.http);
+          const cpu = observed(snapshot.processes?.origin?.cpuPercent);
+          const rss = observed(snapshot.processes?.origin?.rssBytes);
+          if (cpu !== null) session.cpuSamples.push(cpu);
+          if (rss !== null) session.rssSamples.push(rss);
+          for (const name of ['origin', 'publisher', 'srtSender', 'turn']) {
+            const value = observed(snapshot.processes?.[name]?.cpuPercent);
+            if (value !== null) (session.processSamples[name] ??= []).push(value);
+          }
+          text('run-clock', snapshot.run.publisherEnded ? `${clock(snapshot.run.uptimeSeconds)} · draining final media` : `${clock(snapshot.run.uptimeSeconds)} elapsed · ${clock(snapshot.run.remainingSeconds)} budget`);
+        }
+      } else {
+        foreignRun = Boolean(snapshot.run);
+        if (foreignRun) { status('The local runner already has an active run. Let it finish before starting another comparison.'); processStats(snapshot.processes); httpStats(snapshot.http); }
+        controls();
+      }
+    } catch {
+      if (!pageAbort.signal.aborted) {
+        status('Live readings are unavailable. Check that the local runner is still running.', true);
+        processStats(null); httpStats(null);
+      }
+    } finally { if (!pageAbort.signal.aborted) polling = setTimeout(poll, 1000); }
+  }
+
+  async function start() {
+    if (busy || session || foreignRun) return;
+    const clickAt = performance.now();
+    busy = true; controls();
+    $('video-empty').hidden = false;
+    $('relay-summary').hidden = true;
+    processStats(null); httpStats(null); browserReadings(null);
+    try {
+      if (!local) {
+        const choice = choices[$('lab-quality').value];
+        if (!choice) throw new Error('No configured public source');
+        session = { id: null, engine: 'preview', quality: choice.id, turnEngine: 'off', clickAt, abort: new AbortController(), cpuSamples: [], rssSamples: [] };
+        text('player-label', `${choice.label} · licensed source`);
+        await attach(session, choice.url);
+        return;
+      }
+      const engine = $('lab-engine').value;
+      const transport = $('lab-transport').value;
+      const turnEngine = $('lab-relay').value;
+      const turnTransport = $('lab-turn-transport').value;
+      const duration = $('lab-duration').value;
+      status('Starting the selected server and publisher. Playback will begin with sound.');
+      const body = { engine, transport, turnEngine, turnTransport, offsetSeconds: 0 };
+      if (duration !== 'full') body.durationSeconds = Number(duration);
+      const run = await api('/lab/run', body);
+      if (!run.runId || run.state !== 'running') throw new Error('No active run returned');
+      const url = sameSiteUrl(run.playlistUrl);
+      session = {
+        id: run.runId, engine, transport, turnEngine, turnTransport, offsetSeconds: 0,
+        durationSeconds: duration === 'full' ? config.source?.durationSeconds : Number(duration),
+        profile: run.profile,
+        clickAt, abort: new AbortController(), cpuSamples: [], rssSamples: [], processSamples: {}, interrupted: false,
+      };
+      text('player-label', `${human(config.engines.find((entry) => entry.id === engine)?.label, engine)} · ${transport.toUpperCase()}`);
+      profileDetails(run.profile ?? config.engines.find((entry) => entry.id === engine)?.profile ?? config.profile);
+      await attach(session, url, run.runtime);
+    } catch {
+      if (session?.id) await api('/lab/stop', { runId: session.id }).catch(() => {});
+      if (session) dispose(session);
+      session = null;
+      status(local ? 'Could not start playback. Check the selected binaries and the local runner output, then try again.' : 'This source could not be played. Try the preview or open the reproduction guide.', true);
+    } finally { busy = false; controls(); }
+  }
+
+  async function stop() {
+    if (busy || !session) return;
+    busy = true; controls();
+    const s = session;
+    let confirmed = true;
+    let final = { state: 'stopped', run: { id: s.id } };
+    try {
+      if (s.id) {
+        const result = await api('/lab/stop', { runId: s.id });
+        if (result?.lastRun?.run?.id === s.id) final = result.lastRun;
+      }
+    } catch { confirmed = false; }
+    finally {
+      // A lost API connection must not prevent the user's local Stop action.
+      if (session === s) finish(final);
+      busy = false; controls();
+      if (!confirmed) status('Player stopped. Server shutdown could not be confirmed; the runner retains its configured time limit.', true);
+    }
+  }
+
+  $('lab-run').addEventListener('click', () => { void start(); });
+  $('lab-play').addEventListener('click', () => {
+    if (!local && session && session.quality !== $('lab-quality').value) {
+      dispose(session); session = null; void start();
+    } else void play();
+  });
+  $('lab-stop').addEventListener('click', () => { void stop(); });
+  $('lab-engine').addEventListener('change', showEngineVersion);
+  $('lab-relay').addEventListener('change', controls);
+  $('lab-quality').addEventListener('change', qualityDetails);
+  $('lab-clear').addEventListener('click', () => { runs.length = 0; renderTable(); });
+  $('lab-export').addEventListener('click', () => {
+    const data = { schema: 1, exportedAt: new Date().toISOString(), runs };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2) + '\n'], { type: 'application/json' }));
+    const link = document.createElement('a'); link.href = url; link.download = 'forgesworn-media-comparison.json'; link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && session?.id) session.interrupted = true; });
+  window.addEventListener('pagehide', () => {
+    clearTimeout(polling); pageAbort.abort();
+    detachFullscreen?.();
+    if (session) {
+      if (local && session.id) navigator.sendBeacon?.('/lab/stop', new Blob([JSON.stringify({ runId: session.id })], { type: 'application/json' }));
+      dispose(session); session = null;
+    }
+  }, { once: true });
+
+  try {
+    const { attachFullscreen } = await import('./media-fullscreen.mjs');
+    if (!pageAbort.signal.aborted) {
+      detachFullscreen = attachFullscreen({
+        container: $('lab-video-wrap'), video, button: $('lab-fullscreen'),
+        onError: () => status('Full screen is unavailable here. Playback continues inline.'),
+      });
+      fullscreenReady = true;
+      controls();
+    }
+  } catch { /* Playback remains available if this browser cannot offer the fullscreen helper. */ }
+
+  if (root.dataset.resultsUrl) {
+    try {
+      const url = sameSiteUrl(root.dataset.resultsUrl);
+      const response = await fetch(url, { cache: 'no-cache', signal: pageAbort.signal });
+      if (response.ok) {
+        const receipt = await response.json();
+        runs.push(...recordedRuns(receipt)); renderTable();
+        if (!local && receipt.source) sourceDetails(receipt.source);
+        if (!local && receipt.profile) profileDetails(receipt.profile);
+        if (runs.length) text('comparison-note', 'Published completed measurements. Each downloadable row retains its source, profile and date. Compare like-for-like windows and hosts; these are recorded observations, not live process readings.');
+      }
+    } catch { /* A missing optional receipt does not turn the public page into a failed live dashboard. */ }
+  }
+  if (local) {
+    text('mode-label', 'Local runner · same-machine measurement');
+    try {
+      config = await api('/lab/config');
+      sourceDetails(config.source); profileDetails(config.profile);
+      const host = publicHost(config.host);
+      text('mode-label', ['Local runner', host.cpu, host.platform, host.architecture].filter(Boolean).join(' · '));
+      const engineSelect = $('lab-engine'); engineSelect.replaceChildren();
+      for (const engine of config.engines ?? []) {
+        const option = document.createElement('option'); option.value = engine.id; option.textContent = `${human(engine.label)}${engine.available ? '' : ' · not installed'}`; option.disabled = !engine.available; engineSelect.append(option);
+      }
+      const available = (config.engines ?? []).find((entry) => entry.available);
+      if (available) engineSelect.value = available.id;
+      const transports = (config.transports ?? []).map((entry) => typeof entry === 'string' ? entry : entry.id).filter((entry) => ['rtmp', 'srt'].includes(entry));
+      if (transports.length) {
+        $('lab-transport').replaceChildren(...transports.map((entry) => { const option = document.createElement('option'); option.value = entry; option.textContent = entry.toUpperCase(); return option; }));
+      }
+      if (Array.isArray(config.relays)) {
+        $('lab-relay').replaceChildren(...config.relays.map((entry) => { const option = document.createElement('option'); option.value = entry.id; option.textContent = `${human(entry.label)}${entry.available ? '' : ' · not installed'}`; option.disabled = !entry.available; return option; }));
+        $('relay-controls').hidden = false;
+      }
+      text('measurement-scope', 'Live process readings from the local runner. Browser observations come from this player; missing measurements remain a dash.');
+      $('public-guide').hidden = true;
+      $('lab-mode').dataset.live = 'true';
+      showEngineVersion(); controls();
+      if (!available) { status('No media server is configured. Supply a Sapflow or MediaMTX executable to the local runner.'); $('lab-run').disabled = true; }
+      else status('Ready. Choose a server and press Run to begin the same source at offset 0.');
+      void poll();
+    } catch {
+      config = null;
+      status('The comparison runner is not connected. Open the URL printed by the local runner to use your full source.');
+      $('public-guide').hidden = false;
+      controls();
+    }
+  } else {
+    // Public hosting has recordings, not access to a live server process.
+    $('origin-cpu').closest('.metric').hidden = true;
+    $('origin-rss').closest('.metric').hidden = true;
+    $('http-bytes').closest('.panel').hidden = true;
+    $('process-origin-cpu').closest('.processes').hidden = true;
+    $('readings-title').closest('section').hidden = !Object.keys(choices).length;
+    text('readings-title', 'What this browser plays.');
+    text('measurement-scope', 'Playback observations from the public excerpt. Server resource measurements belong to the dated recorded runs below.');
+    $('first-frame').nextElementSibling.textContent = 'From this Play click to the first frame';
+    if (Object.keys(choices).length) {
+      $('lab-quality-field').hidden = false;
+      $('lab-quality-note').hidden = false;
+      for (const option of $('lab-quality').options) option.disabled = !choices[option.value];
+      $('lab-quality').value = choices.preview ? 'preview' : 'full';
+      qualityDetails();
+    }
+    controls();
+  }
+}
+
+if (typeof document !== 'undefined') void initialise();

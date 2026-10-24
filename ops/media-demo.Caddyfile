@@ -1,0 +1,22 @@
+# Import inside an existing HTTPS site block. Stage only the licensed public
+# artefacts under this dedicated root; never point it at a private media library.
+handle_path /forgesworn-media-demo/* {
+	route {
+		header {
+			Access-Control-Allow-Origin https://forgesworn.dev
+			Access-Control-Allow-Methods "GET, HEAD, OPTIONS"
+			Access-Control-Allow-Headers Range
+			Access-Control-Expose-Headers "Content-Length, Content-Range, Accept-Ranges"
+			Timing-Allow-Origin https://forgesworn.dev
+			Cross-Origin-Resource-Policy cross-origin
+			X-Content-Type-Options nosniff
+			Cache-Control "public, max-age=31536000, immutable"
+		}
+		@forgeswornDemoPreflight method OPTIONS
+		respond @forgeswornDemoPreflight 204
+		@forgeswornDemoUnsupported not method GET HEAD
+		respond @forgeswornDemoUnsupported 405
+		root * /var/www/forgesworn-media-demo
+		file_server
+	}
+}
