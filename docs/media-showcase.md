@@ -100,7 +100,8 @@ measurements, separate from this public replay.
 
 The [24 October accounting and delivery receipt](evidence/media-transfer-stats-20261024.json)
 records the zero-video/moving-arrow regression, the corrected two-browser
-preview transfer and sustained original-4K acceptance.  The final candidate
+preview transfer and sustained original-4K acceptance.  The candidate pinned
+to RelaySwarm `1cc8ff6` before the subsequent main-branch integration
 delivered 11,798,811 verified peer bytes over 45.7 seconds: 14.4% of the
 receiver's accepted video.  Its actual HTTP media response bodies, including
 cancelled partial downloads, totalled 71,493,897 bytes against 81,756,904
@@ -108,6 +109,10 @@ accepted video bytes.  Both players decoded the original 2160p recording.
 Pausing removed the remote node and resuming restored the dense current
 listener labels.  The source commit and bundle hashes are pinned in the
 receipt; immutable v0.3.0 release assets do not contain these later fixes.
+The shipped bundle also incorporates the newer main branch's selection and
+discovery core.  Its exact source and matching WASM are recorded in
+`site/vendor/media-peer-demo.build.json`; the earlier contribution measurement
+does not automatically qualify that newer runtime.
 
 Earlier 40-second windows on a heavily loaded shared Mac delivered zero complete verified peer
 segments.  Increasing the peer wait from 1.2 to 2.5 seconds and its ceiling
@@ -115,7 +120,7 @@ from 2.5 to 5 seconds still completed no peer segment, despite 5.57 MB sent.
 The receiver stalled and played less video.  Its lower HTTP total does not
 establish a saving, and those timings were not adopted.  The receipt keeps
 the failed attempts and host load alongside the subsequent fixes.  These
-earlier observations use the previous browser bundle.  The final candidate
+earlier observations use the previous browser bundle.  The measured candidate
 still recorded six stalls per player (14.48 and 8.89 seconds); the result
 proves useful peer delivery, not smooth playback, a controlled speed win,
 cross-NAT performance or production capacity.

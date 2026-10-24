@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "project": "https://github.com/forgesworn/relayswarm",
-  "sourceCommit": "1cc8ff6ffbae785dd51a172989444c2ff603835e",
-  "version": "0.3.0",
-  "sourceArchiveSha256": "88a78940e38e44d4db37319752e8b6832ddd7ccfff55394b6f90b367bc658495",
-  "packageLockSha256": "c577761c9a501857630444d6b79d0d6ae696aa41106dac080bbe1d4d6658fd1a",
+  "sourceCommit": "0c6dd8a6045e6460c69eac231dffe9b97f1dd076",
+  "version": "0.4.0",
+  "sourceArchiveSha256": "c5454e3859a65924fc13e6e80bbfd7bb7aa27af3b03411f449474e259c015db0",
+  "packageLockSha256": "2c31bf72cb30b63e2295a519b17783b9a8976605830fe899417ebbeec74ebf63",
   "bundle": "media-peer-demo.js",
-  "bundleSha256": "8da99fedbf27dc06a9db024f55196ddeeffab070244b4c0474d173b6de0124f7",
-  "bundleBytes": 193488,
+  "bundleSha256": "d8ec287d69dd7dfc709d9cb3b1cba08824f9e0412fa4550a51f63d1e56bf89eb",
+  "bundleBytes": 198309,
   "sourceMap": false,
   "originalSourceModified": false,
   "dependencies": [
@@ -39,8 +39,8 @@
   ],
   "coreWasm": {
     "file": "relayswarm-core.wasm",
-    "bytes": 409206,
-    "sha256": "d2f60abd886b153ed0b16e719a947b8c74fa3d600fed46eff6315c5829caa8c4",
+    "bytes": 411298,
+    "sha256": "eda9d5f970920d353a1ae76b4fa92f0a0eb0976683a3d5b58a596006b780e8c5",
     "source": "src/browser/relayswarm-core.wasm",
     "rustBuildPerformed": false,
     "dependencies": [

@@ -1,8 +1,9 @@
 {
   "schema": 2,
   "measuredAt": "2026-10-24T10:54:26.084Z",
-  "scope": "Verified original-4K peer contribution, accurate media counters and current listener topology",
+  "scope": "Measured pre-integration original-4K candidate, media counters and current listener topology",
   "boundaries": [
+    "This receipt measures exact pre-integration candidate1cc8ff6. The current bundle also integrates newer main-branch selection/discovery and ships matching JS/WASM; this older contribution measurement is not assigned to the newer runtime.",
     "Two independent Chrome contexts share one heavily loaded Mac, with actual public Nostr WSS, native WebRTC and the original remote 4K media. This does not qualify cross-NAT, physical phones or production capacity.",
     "No hidden holders, seeded test objects, simulated media or autoplay override in the original-4K homepage gate. Candidate static assets are routed at the approved public website origin.",
     "The candidate had six observed stalls per player. Useful peer delivery is proven; smooth playback, a controlled speed win and net bandwidth savings are not asserted.",
@@ -922,5 +923,20 @@
   "cleanup": {
     "browserRunsClosed": true,
     "noLongRunningServerCreated": true
+  },
+  "subsequentIntegration": {
+    "sourceCommit": "0c6dd8a6045e6460c69eac231dffe9b97f1dd076",
+    "bundleSha256": "d8ec287d69dd7dfc709d9cb3b1cba08824f9e0412fa4550a51f63d1e56bf89eb",
+    "bundleBytes": 198309,
+    "wasmSha256": "eda9d5f970920d353a1ae76b4fa92f0a0eb0976683a3d5b58a596006b780e8c5",
+    "wasmBytes": 411298,
+    "validation": {
+      "focusedCachedRaceAndOriginChecks": 22,
+      "syntaxModules": 191,
+      "authoredDocs": 28,
+      "links": 434,
+      "independentReadReview": "No API or catalogue migration and no functional blocker found."
+    },
+    "delivery": "Commit, push and merge followed by live browser verification, as requested. Earlier measured contribution belongs to its exact original pin."
   }
 }
