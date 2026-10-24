@@ -22,9 +22,9 @@ signing identity, and does not count the page visitor as a listener.
 Play enables public peer rendezvous and native WebRTC data channels;
 RelaySwarm can serve already held fragments to other visitors.  Pause
 and page departure close sharing connections and release the
-media cache.  Native play rejoins; its cumulative upload allowance
-is retained across pause/resume. Peer networking has no wall-clock cutoff
-while listening. The read-only ticker remains connected
+media cache. Native play rejoins; cumulative video counters are retained
+across pause/resume. Peer networking has no wall-clock or cumulative-upload
+cutoff while listening. The read-only ticker remains connected
 after Pause. Closing the page closes its room subscriptions too.
 
 The first viewer normally receives media from the HTTPS host.  Origin
@@ -340,10 +340,9 @@ capacity qualification.  RelaySwarm remains experimental.
 
 ## Bounds and privacy
 
-The public profile allows three peers, two concurrent upload peers, at most
-4 MiB/s upload and 1 GiB of charged upload per playback session. Exhausting
-the upload allowance stops serving and is shown in the sharing status;
-downloads can continue. Pause and page departure close peer networking.
+The public profile allows three peers, two concurrent upload peers and at
+most 4 MiB/s upload. Contribution continues throughout active playback,
+with no cumulative byte quota. Pause and page departure close peer networking.
 The media cache is bounded to 12 objects and 64 MiB; one fragment may be at
 most 16 MiB. The player targets a twenty-second forward buffer with a
 twenty-four-second time ceiling, four seconds behind and a 64 MiB byte target.
