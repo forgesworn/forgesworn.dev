@@ -19,6 +19,7 @@ const receipt = { scope: 'generated-landing-controller-native-fallback-with-expl
   pageErrors: [], forbiddenRequests: [], simulatedCases: [] };
 
 const hlsModule = `
+window.__nativeFixture.hlsImports++;
 export default class Hls {
   static Events={MANIFEST_PARSED:'manifest',MEDIA_ATTACHED:'attached',FRAG_LOADED:'fragment',ERROR:'hls-error'};
   static isSupported(){return true;}
@@ -80,7 +81,7 @@ await new Promise((done, fail) => { server.once('error', fail); server.listen(0,
 let browser;
 
 function mockMedia() {
-  const state = window.__nativeFixture = { hls: [], hlsDestroy: 0, peerCreated: 0, peerStop: 0, peerEnabled: [],
+  const state = window.__nativeFixture = { hls: [], hlsImports: 0, hlsDestroy: 0, peerCreated: 0, peerStop: 0, peerEnabled: [],
     listenerCreated: 0, observe: 0, join: 0, leave: 0, listenerStop: 0, source: '', nativeAssignments: 0,
     nativeMetadata: 0, nativePlay: 0, stalePlayRejected: 0, deferNextPlay: false, pendingPlay: null,
     readyState: 0, paused: true, ended: false, seeking: false, error: null,
@@ -102,7 +103,7 @@ function mockMedia() {
     if (wasPlaying) this.dispatchEvent(new Event('pause'));
     // A queued event from the detached source has no current MediaError.
     // A genuine non-null error from the new native source must stay actionable.
-    this.dispatchEvent(new Event('error'));
+    if (state.hlsDestroy) this.dispatchEvent(new Event('error'));
     queueMicrotask(() => { state.readyState = 4; state.error = null; state.nativeMetadata++; this.dispatchEvent(new Event('loadedmetadata')); });
   } });
   proto.canPlayType = type => /(?:mpegurl|mp2t)/i.test(type) ? 'probably' : '';
@@ -153,13 +154,15 @@ async function state(page) {
   return page.evaluate(() => {
     const s = window.__nativeFixture, video = document.getElementById('lab-video'), root = document.getElementById('main');
     return { engine: root.dataset.playbackEngine, fallback: root.dataset.playbackFallback, room: s.listener?.snapshot(),
-      hlsCreated: s.hls.length, hlsDestroyed: s.hlsDestroy, peerCreated: s.peerCreated, peerStopped: s.peerStop,
+      hlsCreated: s.hls.length, hlsImported: s.hlsImports, hlsDestroyed: s.hlsDestroy, peerCreated: s.peerCreated, peerStopped: s.peerStop,
       peerEnabled: [...s.peerEnabled], listenerCreated: s.listenerCreated, joins: s.join, leaves: s.leave, listenerStops: s.listenerStop,
       source: s.source, nativeAssignments: s.nativeAssignments, nativeMetadata: s.nativeMetadata, nativePlay: s.nativePlay,
       stalePlayRejected: s.stalePlayRejected,
       time: video.currentTime, volume: video.volume, muted: video.muted, videoCount: document.querySelectorAll('video').length,
       peerBytes: Number(document.getElementById('public-peer-bytes').dataset.bytes),
       uploadBytes: Number(document.getElementById('public-upload-bytes').dataset.bytes),
+      originBytesValue: document.getElementById('public-origin-bytes').dataset.bytes,
+      originBytesDisplay: document.getElementById('public-origin-bytes').textContent,
       localPeers: document.getElementById('public-local-peers').textContent,
       delivery: document.getElementById('public-share-status').textContent, status: document.getElementById('lab-status').textContent };
   });
@@ -213,6 +216,52 @@ try {
   assert.equal(paused.listenerStops, 0); assert.equal(paused.engine, 'Native HLS');
   assert.deepEqual(receipt.pageErrors, []); assert.deepEqual(receipt.forbiddenRequests, []);
   receipt.simulatedCases.push({ trigger: 'eight-second-frozen-playhead', before, after, paused });
+  await page.close();
+
+  const iphoneHlsRequests = [];
+  const iphone = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true,
+    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1' });
+  iphone.setDefaultTimeout(3000); iphone.on('pageerror', error => receipt.pageErrors.push(error.message));
+  iphone.on('request', request => {
+    if (/\/vendor\/hls(?:\.light)?\.min\.mjs$/u.test(new URL(request.url()).pathname)) iphoneHlsRequests.push(request.url());
+  });
+  await iphone.route('**/*', route => new URL(route.request().url()).origin === origin ? route.continue() : route.abort());
+  await iphone.addInitScript(mockMedia); await iphone.clock.install();
+  await iphone.goto(origin, { waitUntil: 'domcontentloaded', timeout: 10000 });
+  await waitFor(iphone, () => !document.getElementById('public-play').disabled && window.__nativeFixture.listener, 'iPhone ready landing');
+  await iphone.evaluate(() => {
+    const video = document.getElementById('lab-video'); video.volume = 0.61; video.muted = false;
+    window.__nativeFixture.originalVideo = video; document.getElementById('public-play').click();
+  });
+  await waitFor(iphone, () => document.getElementById('main').dataset.playbackEngine === 'Native HLS' && window.__nativeFixture.frames > 0,
+    'iPhone first-play native HLS');
+  const nativeFirst = await state(iphone);
+  assert.equal(nativeFirst.hlsImported, 0); assert.equal(nativeFirst.hlsCreated, 0); assert.equal(nativeFirst.hlsDestroyed, 0);
+  assert.deepEqual(iphoneHlsRequests, [], 'native-first iPhone does not even request the hls.js bundle');
+  assert.equal(nativeFirst.peerCreated, 0); assert.deepEqual(nativeFirst.peerEnabled, []); assert.equal(nativeFirst.peerStopped, 0);
+  assert.equal(new URL(nativeFirst.source).origin, origin); assert.equal(new URL(nativeFirst.source).pathname, '/media/dejavu-4k/index.m3u8');
+  assert.equal(nativeFirst.nativeAssignments, 1); assert.equal(nativeFirst.listenerCreated, 1); assert.equal(nativeFirst.joins, 1);
+  assert.equal(nativeFirst.leaves, 0); assert.equal(nativeFirst.listenerStops, 0); assert.equal(nativeFirst.room.ready, true);
+  assert.equal(nativeFirst.peerBytes, 0); assert.equal(nativeFirst.uploadBytes, 0); assert.equal(nativeFirst.originBytesValue, '');
+  assert.equal(nativeFirst.originBytesDisplay, '—', 'native HTTP bytes remain unavailable instead of fabricated');
+  assert.equal(nativeFirst.volume, 0.61); assert.equal(nativeFirst.muted, false); assert.match(nativeFirst.localPeers, /^0\b/);
+  assert.match(nativeFirst.delivery, /native|media host|origin/i); assert.equal(nativeFirst.videoCount, 1);
+  await iphone.evaluate(() => document.getElementById('lab-video').pause()); await iphone.clock.runFor(400);
+  const nativePaused = await state(iphone);
+  assert.equal(nativePaused.leaves, 1); assert.equal(nativePaused.listenerStops, 0); assert.equal(nativePaused.room.ready, false);
+  await iphone.evaluate(() => document.getElementById('public-play').click());
+  await waitFor(iphone, () => window.__nativeFixture.listener.snapshot().ready && !document.getElementById('lab-video').paused, 'iPhone native resume');
+  const nativeResumed = await state(iphone);
+  assert.equal(nativeResumed.engine, 'Native HLS'); assert.equal(nativeResumed.listenerCreated, 1); assert.equal(nativeResumed.joins, 2);
+  assert.equal(nativeResumed.room.id, nativeFirst.room.id); assert.equal(nativeResumed.room.epochId, nativeFirst.room.epochId);
+  assert.equal(nativeResumed.nativeAssignments, 1); assert.equal(nativeResumed.volume, 0.61);
+  assert.equal(nativeResumed.hlsImported, 0); assert.equal(nativeResumed.peerCreated, 0); assert.deepEqual(nativeResumed.peerEnabled, []);
+  assert.equal(nativeResumed.peerBytes, 0); assert.equal(nativeResumed.uploadBytes, 0); assert.equal(nativeResumed.originBytesValue, '');
+  assert.equal(await iphone.evaluate(() => window.__nativeFixture.originalVideo === document.getElementById('lab-video')), true);
+  assert.deepEqual(receipt.pageErrors, []); assert.deepEqual(receipt.forbiddenRequests, []);
+  receipt.simulatedCases.push({ trigger: 'iphone-native-first', userAgentEmulated: true, nativeMediaSimulated: true,
+    hlsBundleRequests: iphoneHlsRequests.length, first: nativeFirst, paused: nativePaused, resumed: nativeResumed });
+  await iphone.close();
   receipt.passed = true;
   console.log(JSON.stringify(receipt, null, 2));
 } finally {
