@@ -41,13 +41,15 @@ browser clocks, not an authoritative synchronisation service.
 ## What the picture shows
 
 The graph shows the media host, this browser and its actual native peer
-connections.  Peer identities are temporary local labels.  It contains no
+connections accepted by RelaySwarm, obtained from `peerConnections()`.
+Pending dials and losing negotiations do not become listener nodes.
+Labels are numbered 1 through the current visible count: ten becoming five
+shows Listener 1 to Listener 5.  Stable internal connection IDs retain the
+correct traffic history while those display labels change.  It contains no
 global viewer total, guessed peer-to-peer links or network-address display.
-Connecting edges become connected only when native connection state changes.
 
-Moving points represent media transfers.  Origin movement follows completed
-HTTP fragment responses, measured by the real loader before its buffer can be
-transferred to a decoder worker.  Peer upload movement counts binary media
+Moving points represent media contributions.  Origin movement follows its
+share of media accepted for playback.  Peer upload movement counts binary media
 successfully submitted to that connection's native data channel.  Download
 movement uses RelaySwarm's `onPeerDelivery` callback, after size/hash
 verification and acceptance within the playback deadline.  That callback
@@ -63,11 +65,16 @@ remains still.  Resizing changes layout without replaying old traffic.
 
 The counters distinguish:
 
-- **From media host:** completed HTTP media response bodies, including the
-  initialisation fragment.  Playlist bytes, failed partial responses and
-  Resource Timing sizes are not mixed into this hls.js media counter.
-- **Verified from viewers:** complete peer media bytes accepted by RelaySwarm's
-  verification path.  HTTP fallback does not increment this counter.
+- **From media host:** the origin's share of media accepted for playback.
+  Completed HTTP response bodies are observed separately before worker buffer
+  transfer, including ranges that did not win a piece;
+  `originTransferredBytes` excludes partial bodies aborted before completion.
+  Browser acceptance receipts use CDP to include those partial bodies in their
+  HTTP measurement.  Playlist and Resource Timing sizes are not mixed into
+  the useful-media counter.
+- **Verified from viewers:** peer pieces that won verification and contributed
+  to a complete segment accepted for playback.  Partial failed objects and
+  duplicate losing copies do not increment this counter.
 - **Media sent by you:** binary media bytes successfully submitted to the
   native data channel.  These are not a claim that the recipient decoded
   them.  The library's larger response-reservation counter is retained
@@ -92,28 +99,45 @@ measurements, separate from this public replay.
 ## 4K delivery observations
 
 The [24 October accounting and delivery receipt](evidence/media-transfer-stats-20261024.json)
-records the zero-video/moving-arrow regression and the corrected real
-two-browser preview transfer.  Its media arrows match verified bytes by
-connection, while HTTP has its own counter.  This uses a pinned public
-RelaySwarm source commit containing the observation hook; immutable v0.3.0
-release assets do not contain that later addition.
+records the zero-video/moving-arrow regression, the corrected two-browser
+preview transfer and sustained original-4K acceptance.  The final candidate
+delivered 11,798,811 verified peer bytes over 45.7 seconds: 14.4% of the
+receiver's accepted video.  Its actual HTTP media response bodies, including
+cancelled partial downloads, totalled 71,493,897 bytes against 81,756,904
+accepted video bytes.  Both players decoded the original 2160p recording.
+Pausing removed the remote node and resuming restored the dense current
+listener labels.  The source commit and bundle hashes are pinned in the
+receipt; immutable v0.3.0 release assets do not contain these later fixes.
 
-Useful 4K peer delivery remains an experimental limitation.  Two 40-second
-windows on a heavily loaded shared Mac delivered zero complete verified peer
+Earlier 40-second windows on a heavily loaded shared Mac delivered zero complete verified peer
 segments.  Increasing the peer wait from 1.2 to 2.5 seconds and its ceiling
 from 2.5 to 5 seconds still completed no peer segment, despite 5.57 MB sent.
 The receiver stalled and played less video.  Its lower HTTP total does not
 establish a saving, and those timings were not adopted.  The receipt keeps
-the failed attempts and host load rather than selecting only a small
-successful exchange.  These observations use the previous browser bundle;
-the new observation callback is not a measured performance improvement.
+the failed attempts and host load alongside the subsequent fixes.  These
+earlier observations use the previous browser bundle.  The final candidate
+still recorded six stalls per player (14.48 and 8.89 seconds); the result
+proves useful peer delivery, not smooth playback, a controlled speed win,
+cross-NAT performance or production capacity.
 
-The current public profile requires a complete verified segment before the
-peer-first handoff.  A large 4K fragment, limited useful buffer time and
-non-overlapping viewer caches can therefore yield a connection with little
-or no useful delivery.  The page reports that outcome directly.  Improving
-4K contribution needs separate scheduling and fragment-size evidence, with
-playback progress and stalls considered alongside peer bytes.
+The public profile now uses schema-3 piece commitments and the Rust/WASM
+multi-holder scheduler.  Viewers can supply small verified ranges of an
+unchanged 4K fragment, with HTTP filling the remaining pieces.  A complete
+segment still passes all verification before reaching the player.  Each
+source is credited only for the first verified copy that contributes to that
+accepted segment.  Performance receipts must include playback progress and
+stalls alongside useful peer bytes; an open connection alone proves no
+contribution.
+
+The demo also opts into `zeroBudgetPeerRace`.  When there is no safe time to
+wait before starting HTTP, the normal request starts immediately.  Only a
+peer that already advertised the exact cached object may race it through the
+verified piece engine.  The first complete accepted source wins; the losing
+arm is cancelled.  This creates no additional origin request and does not
+prefetch media outside the visible player's demand.  Progressive HTTP payload
+locks that load to HTTP, so sources cannot mix after an append.  Pausing or
+turning off the swarm stops its peer arm while preserving normal HTTP
+playback.
 
 ## Integrity and scope
 
@@ -123,8 +147,9 @@ sample aspect ratio produces a natural HTML display width of 3842.  The
 optional 1080p excerpt was captured from actual Sapflow publishing.
 The public film is not a continuously running Sapflow origin.
 
-`site/media/dejavu-swarm/catalogue-v1.json` records the exact sequence, size
-and SHA-256 of every approved media fragment.  The adapter pins that
+`site/media/dejavu-swarm/catalogue-v2.json` records the exact sequence, size,
+whole-object SHA-256 and canonical piece hashes of every approved fragment.
+The adapter pins that
 catalogue's SHA-256 in source and independently checks its identity, origin,
 path, sequence and size.  Its trust anchor is the reviewed website over
 HTTPS.  Each browser generates a temporary local signing key to wrap those
@@ -135,9 +160,12 @@ embedded in the website, and the library verifier is unmodified.
 
 The shared swarm identity is fixed for each immutable quality.  Regenerate
 the catalogue and bump its version and swarm IDs if media is repackaged.
-`scripts/package-public-swarm-catalogue.mjs` builds it from the verified full
-media manifest and shipped Sapflow preview; tests hash every local preview
-segment.  The source recording and signing keys do not enter the repository.
+`scripts/package-public-swarm-pieces.mjs` verifies every full-media body against
+the original pinned hashes before deriving pieces, and checks every local
+preview piece.  `/media/dejavu-4k/index.m3u8` is a small, reviewed playlist alias
+whose fragment URLs still point to the same remote media.  It gives schema 3
+an exact `/media/` identity without moving or altering the recording.  The
+source recording and signing keys do not enter the repository.
 
 Rendezvous uses the explicitly listed public Nostr relays and encrypted peer
 signals.  The public STUN setting supplies direct candidate discovery;
@@ -155,6 +183,10 @@ The public profile allows three peers, two concurrent upload peers, at most
 buffer with a fourteen-second configured ceiling and a 32 MiB media budget.
 An appended fragment can overshoot a buffer target; decoder memory is
 separate.  There is no background download of the full 817 MB recording.
+The pinned 689 KiB piece catalogue is bounded to 1 MiB, and the browser uses
+the existing 399 KiB Rust/WASM module.  Both load only after Play.  The bundle
+receipt records the exact source, WASM digest and dependency notices; the
+website build copies that public module without compiling Rust.
 
 Public relays see connecting addresses and metadata.  Connected peers can
 learn one another's network addresses.  The page explains participation
@@ -177,6 +209,9 @@ node test/media-public-swarm-browser.mjs --public-relays --quality full \
   --output .local/visitor-swarm.json
 node test/media-showcase-visitors.mjs --site site --quality preview \
   --output .local/visible-visitors.json
+node test/media-showcase-visitors.mjs --site site --quality full \
+  --observe-seconds 45 --min-peer-bytes 10000000 --min-peer-share 0.1 \
+  --output .local/4k-peer-contribution.json
 node test/media-swarm-visual-browser.mjs .local/graph-observation-regression.json
 ```
 

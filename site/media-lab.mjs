@@ -228,6 +228,7 @@ async function initialise() {
     const playing = s && !video.paused && !video.ended;
     const enabled = metrics?.enabled === true;
     optionalText('public-delivery', !s ? 'Ready when you are' : video.ended ? 'Mix finished' : !playing && s.browser?.seenFrame ? 'Paused' :
+      metrics?.lastDelivery === 'mixed' ? 'Latest segment: viewers + media host' :
       metrics?.lastDelivery === 'peer' ? 'Latest segment: from a viewer' : metrics?.lastDelivery === 'origin' ? 'Latest segment: from the media host' :
       peers > 0 ? 'Connected to other viewers' : 'Waiting for the first segment');
     optionalText('public-share-status', !s ? 'Press Play & join. Your browser can pass verified video segments to other viewers.' :
@@ -242,6 +243,11 @@ async function initialise() {
       `${(100 * peerBytes / loadedBytes).toLocaleString('en-GB', { maximumFractionDigits: 1 })}% of your loaded video came from viewers. Totals include buffered video; sent bytes may still be in transfer.` :
       'Totals for this playback. Peer downloads count only complete, verified video segments.');
     root.dataset.delivery = !s ? 'ready' : metrics?.phase ?? 'origin';
+    root.dataset.peerEngine = metrics?.core?.state ?? '';
+    root.dataset.multiHolderDelivered = String(metrics?.core?.multiHolder?.delivered ?? 0);
+    root.dataset.originTransferredBytes = String(metrics?.originTransferredBytes ?? 0);
+    root.dataset.loadedMediaBytes = String(metrics?.loadedMediaBytes ?? 0);
+    root.dataset.cacheHighWaterBytes = String(metrics?.resources?.heldHighWaterBytes ?? 0);
     swarmVisual?.update({ ...metrics, active: Boolean(s), playing: Boolean(playing), originBytes });
   }
 
@@ -534,10 +540,15 @@ async function initialise() {
     if (typeof PerformanceObserver === 'function' && PerformanceObserver.supportedEntryTypes?.includes('resource')) {
       b.requests = 0;
       const prefix = playlist.pathname.slice(0, playlist.pathname.lastIndexOf('/') + 1);
+      let mediaBase;
+      if (!local && s.quality === 'full') {
+        try { mediaBase = approvedMediaUrl(root.dataset.fullMediaBase, location.href, root.dataset.mediaOrigin); } catch {}
+      }
       const entries = (list) => {
         for (const entry of list) {
           let url; try { url = new URL(entry.name); } catch { continue; }
-          if (url.origin !== playlist.origin || !url.pathname.startsWith(prefix)) continue;
+          if (!(url.origin === playlist.origin && url.pathname.startsWith(prefix)) &&
+              !(mediaBase && url.origin === mediaBase.origin && url.pathname.startsWith(mediaBase.pathname))) continue;
           b.requests++;
           // Cross-origin entries without Timing-Allow-Origin can hide sizes/status.
           if (observed(entry.encodedBodySize) !== null && (url.origin === location.origin || entry.encodedBodySize > 0)) b.responseBytes = (b.responseBytes ?? 0) + entry.encodedBodySize;
@@ -609,7 +620,7 @@ async function initialise() {
         signal: s.abort.signal, onStats: (metrics) => peerStats(s, metrics), confirmSourceEnd: error => confirmNormalSourceEnd(s, error) });
       await play(s);
     } else if (Hls.isSupported()) {
-      s.hls = new Hls({ lowLatencyMode: false, maxBufferLength: local ? 4 : 10, maxMaxBufferLength: local ? 6 : 14,
+      s.hls = new Hls({ lowLatencyMode: false, progressive: false, maxBufferLength: local ? 4 : 10, maxMaxBufferLength: local ? 6 : 14,
         maxBufferSize: (local ? 8 : 32) * 1024 * 1024, backBufferLength: 0, enableWorker: true, startPosition: initial.startPosition });
       if (!local) {
         try {

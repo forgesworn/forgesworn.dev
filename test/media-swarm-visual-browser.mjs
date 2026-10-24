@@ -1,4 +1,4 @@
-// Manual DOM regression for the zero-video / moving-peer-arrows report.
+// Manual DOM regressions for traffic attribution and current listener labels.
 // These are explicit input observations, not a simulated media benchmark.
 import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
@@ -26,12 +26,16 @@ try {
     const map = document.getElementById('map');
     window.visual = createSwarmVisual(map);
     window.observations = { active: true, playing: true, enabled: true, serving: true, peerBytes: 0, uploadedBytes: 0, originBytes: 0,
-      topology: { connections: [{ id: 'peer-1', state: 'connected', bytesSent: 1008, bytesReceived: 279479 }] } };
+      topology: { connections: [
+        { id: 'peer-1', state: 'connected', bytesSent: 1008, bytesReceived: 279479 },
+        { id: 'peer-2', state: 'connecting' }, { id: 'peer-3', state: 'new' },
+      ] } };
     visual.update(observations);
     return { peerNodes: map.querySelectorAll('[data-peer-id]').length, flights: map.querySelectorAll('[data-flight-source]').length,
-      label: map.querySelector('[data-peer-id] .swarm-sub').textContent };
+      label: map.querySelector('[data-peer-id] .swarm-sub').textContent,
+      listener: map.querySelector('[data-peer-id] .swarm-label').textContent };
   });
-  assert.deepEqual(receipt.checks.controlOnly, { peerNodes: 1, flights: 0, label: '0 B to them · 0 B to you' });
+  assert.deepEqual(receipt.checks.controlOnly, { peerNodes: 1, flights: 0, label: '0 B to them · 0 B to you', listener: 'Listener 1' });
   receipt.checks.hostOnly = await page.evaluate(() => {
     observations.originBytes = 6206410; visual.update(observations);
     return { hostFlights: document.querySelectorAll('[data-flight-source="origin"]').length,
@@ -56,6 +60,55 @@ try {
     return { peerNodes: document.querySelectorAll('[data-peer-id]').length, flights: document.querySelectorAll('[data-flight-source]').length };
   });
   assert.deepEqual(receipt.checks.paused, { peerNodes: 0, flights: 0 });
+  receipt.checks.tenListeners = await page.evaluate(() => {
+    window.numberedConnections = Array.from({ length: 10 }, (_, index) => ({
+      id: `peer-${index + 101}`, state: 'connected', mediaBytesSent: (index + 1) * 1024,
+      verifiedMediaBytesReceived: (index + 1) * 2048,
+    }));
+    observations.playing = false;
+    observations.topology.connections = numberedConnections;
+    visual.update(observations);
+    const map = document.getElementById('map'), nodes = [...map.querySelectorAll('[data-peer-id]')];
+    window.retainedNodes = new Map(nodes.map(node => [node.dataset.peerId, node]));
+    return { count: nodes.length, labels: nodes.map(node => node.querySelector('.swarm-label').textContent),
+      observedPeers: map.dataset.observedPeers, connectedPeers: map.dataset.connectedPeers };
+  });
+  assert.equal(receipt.checks.tenListeners.count, 10);
+  assert.deepEqual(receipt.checks.tenListeners.labels, Array.from({ length: 10 }, (_, index) => `Listener ${index + 1}`));
+  assert.equal(receipt.checks.tenListeners.observedPeers, '10');
+  assert.equal(receipt.checks.tenListeners.connectedPeers, '10');
+  receipt.checks.fiveRemaining = await page.evaluate(() => {
+    observations.topology.connections = numberedConnections.slice(5);
+    visual.update(observations);
+    const nodes = [...document.querySelectorAll('[data-peer-id]')];
+    return { count: nodes.length, ids: nodes.map(node => node.dataset.peerId),
+      labels: nodes.map(node => node.querySelector('.swarm-label').textContent),
+      sameNodes: nodes.every(node => retainedNodes.get(node.dataset.peerId) === node),
+      mediaBytesSent: nodes.map(node => node.dataset.mediaBytesSent) };
+  });
+  assert.equal(receipt.checks.fiveRemaining.count, 5);
+  assert.deepEqual(receipt.checks.fiveRemaining.ids, ['peer-106', 'peer-107', 'peer-108', 'peer-109', 'peer-110']);
+  assert.deepEqual(receipt.checks.fiveRemaining.labels, ['Listener 1', 'Listener 2', 'Listener 3', 'Listener 4', 'Listener 5']);
+  assert.equal(receipt.checks.fiveRemaining.sameNodes, true);
+  assert.deepEqual(receipt.checks.fiveRemaining.mediaBytesSent, ['6144', '7168', '8192', '9216', '10240']);
+  receipt.checks.retainedTraffic = await page.evaluate(() => {
+    observations.playing = true; visual.update(observations);
+    const flightsBefore = document.querySelectorAll('[data-flight-source]').length;
+    observations.topology.connections[0].mediaBytesSent += 42;
+    visual.update(observations);
+    return { flightsBefore, uploadDelta: document.querySelector('[data-flight-source="peer-upload"]').dataset.bytes,
+      listener: document.querySelector('[data-peer-id="peer-106"] .swarm-label').textContent };
+  });
+  assert.deepEqual(receipt.checks.retainedTraffic, { flightsBefore: 0, uploadDelta: '42', listener: 'Listener 1' });
+  receipt.checks.negotiatingOnly = await page.evaluate(() => {
+    observations.playing = false;
+    observations.topology.connections = [{ id: 'peer-201', state: 'new' }, { id: 'peer-202', state: 'connecting' }];
+    visual.update(observations);
+    const map = document.getElementById('map');
+    return { peerNodes: map.querySelectorAll('[data-peer-id]').length, flights: map.querySelectorAll('[data-flight-source]').length,
+      connectedPeers: map.dataset.connectedPeers, observedPeers: map.dataset.observedPeers };
+  });
+  assert.deepEqual(receipt.checks.negotiatingOnly, { peerNodes: 0, flights: 0, connectedPeers: '0', observedPeers: '0' });
   await page.evaluate(() => visual.destroy());
   assert.equal(receipt.pageErrors.length, 0);
   receipt.passed = true;

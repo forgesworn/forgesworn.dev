@@ -7,14 +7,14 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const SOURCE = '75202874edc4dae69d4ccfc307cff3ac3841f8e1';
+const SOURCE = '1cc8ff6ffbae785dd51a172989444c2ff603835e';
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const root = fileURLToPath(new URL('../', import.meta.url));
 
 export async function buildPeerDemo(checkout) {
   const scratch = await mkdtemp(join(tmpdir(), 'forgesworn-media-peer-'));
   try {
-    const archive = execFileSync('git', ['archive', SOURCE, 'src', 'package.json', 'package-lock.json', 'LICENSE'],
+    const archive = execFileSync('git', ['archive', SOURCE, 'src', 'core', 'package.json', 'package-lock.json', 'LICENSE'],
       { cwd: checkout, maxBuffer: 16 * 1024 * 1024 });
     execFileSync('tar', ['-x', '-C', scratch], { input: archive });
     const packageJson = JSON.parse(await readFile(join(scratch, 'package.json'), 'utf8'));
@@ -25,7 +25,7 @@ export async function buildPeerDemo(checkout) {
     await symlink(join(checkout, 'node_modules'), join(scratch, 'node_modules'), 'dir');
     const { build } = await import(pathToFileURL(join(checkout, 'node_modules/esbuild/lib/main.js')).href);
     const entry = `export { createHlsSwarm } from './src/browser/hls-swarm.mjs';
-export { commitmentContent, KIND_SEGMENT_COMMITMENT, segmentMediaContext } from './src/browser/segment-commitment.mjs';
+export { commitmentContent, commitmentPieceSize, KIND_SEGMENT_COMMITMENT, segmentMediaContext } from './src/browser/segment-commitment.mjs';
 export { finalizeEvent, generateSecretKey, verifyEvent } from 'nostr-tools/pure';
 export { matchFilter } from 'nostr-tools/filter';\n`;
     await writeFile(join(scratch, 'entry.mjs'), entry);
@@ -55,12 +55,38 @@ export { matchFilter } from 'nostr-tools/filter';\n`;
     }
     const directory = join(root, 'site/vendor');
     await mkdir(directory, { recursive: true });
+    const wasm = await readFile(join(scratch, 'src/browser/relayswarm-core.wasm'));
+    if (wasm.length > 1024 * 1024 || !WebAssembly.validate(wasm)) throw new Error('The pinned browser core is not a bounded valid WASM module.');
+    // Resolve the pinned lockfile offline to collect notices. This neither
+    // builds Rust nor creates a target directory; it reuses installed sources.
+    const metadata = JSON.parse(execFileSync('cargo', ['metadata', '--offline', '--locked', '--filter-platform', 'wasm32-unknown-unknown', '--format-version', '1'],
+      { cwd: join(scratch, 'core'), encoding: 'utf8', maxBuffer: 4 * 1024 * 1024 }));
+    const packagesById = new Map(metadata.packages.map(pkg => [pkg.id, pkg]));
+    const nodesById = new Map(metadata.resolve.nodes.map(node => [node.id, node]));
+    const wasmRoot = metadata.packages.find(pkg => pkg.name === 'relayswarm-wasm');
+    if (!wasmRoot) throw new Error('The pinned source has no browser core package.');
+    const included = new Set();
+    const visit = id => { if (included.has(id)) return; included.add(id); for (const dep of nodesById.get(id)?.deps ?? []) visit(dep.pkg); };
+    visit(wasmRoot.id);
+    const wasmDependencies = [], wasmNotices = [`RelaySwarm Rust/WebAssembly core\nhttps://github.com/forgesworn/relayswarm/tree/${SOURCE}\n`, await readFile(join(scratch, 'LICENSE'), 'utf8')];
+    for (const pkg of [...included].map(id => packagesById.get(id)).filter(pkg => pkg.source).sort((a, b) => a.name.localeCompare(b.name))) {
+      const dependencyDirectory = dirname(pkg.manifest_path);
+      const files = (await readdir(dependencyDirectory)).filter(file => /^(?:licen[cs]e|copying|notice)(?:[.-][a-z0-9_.-]+)?$/i.test(file));
+      if (!pkg.license || !files.length) throw new Error('A browser core dependency has no licence notice.');
+      wasmDependencies.push({ name: pkg.name, version: pkg.version, licence: pkg.license });
+      wasmNotices.push(`\n\n===== ${pkg.name} ${pkg.version} (${pkg.license}) =====\n`);
+      for (const file of files.sort()) wasmNotices.push(await readFile(join(dependencyDirectory, file), 'utf8'));
+    }
+    await writeFile(join(directory, 'relayswarm-core.wasm'), wasm);
+    await writeFile(join(directory, 'relayswarm-core.NOTICE.txt'), wasmNotices.join('\n').replace(/\r\n/g, '\n').replace(/[ \t]+$/gm, ''));
     await writeFile(join(directory, 'media-peer-demo.js'), bytes);
     await writeFile(join(directory, 'media-peer-demo.NOTICE.txt'), notices.join('\n'));
     const receipt = { schema: 1, project: 'https://github.com/forgesworn/relayswarm', sourceCommit: SOURCE,
       version: packageJson.version, sourceArchiveSha256: sha(archive), packageLockSha256: sha(lock),
       bundle: 'media-peer-demo.js', bundleSha256: sha(bytes), bundleBytes: bytes.length,
-      sourceMap: false, originalSourceModified: false, dependencies };
+      sourceMap: false, originalSourceModified: false, dependencies,
+      coreWasm: { file: 'relayswarm-core.wasm', bytes: wasm.length, sha256: sha(wasm), source: 'src/browser/relayswarm-core.wasm',
+        rustBuildPerformed: false, dependencies: wasmDependencies } };
     await writeFile(join(directory, 'media-peer-demo.build.json'), JSON.stringify(receipt, null, 2) + '\n');
     return receipt;
   } finally {

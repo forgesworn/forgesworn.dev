@@ -134,7 +134,7 @@ try {
   receipt.sources = [];
   const entryPath = url.pathname === '/' ? 'index.html' : url.pathname.replace(/^\/+/, '');
   for (const file of [...new Set([entryPath, 'media-lab.html', 'media-lab.mjs', 'media-showcase.css',
-    'media-public-swarm.mjs', 'media-swarm-visual.mjs', 'media/dejavu-swarm/catalogue-v1.json',
+    'media-public-swarm.mjs', 'media-swarm-visual.mjs', 'media/dejavu-swarm/catalogue-v2.json', 'vendor/relayswarm-core.wasm',
     'vendor/media-peer-demo.js', 'vendor/hls.light.min.mjs'])]) {
     try { receipt.sources.push({ path: `site/${file}`, sha256: createHash('sha256').update(await readFile(resolve(options.site ?? resolve(root, 'site'), file))).digest('hex') }); } catch { /* Deployed-only invocation can omit candidate source hashes. */ }
   }
