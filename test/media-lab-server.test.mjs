@@ -12,7 +12,7 @@ async function until(check, ms = 3500) { const end = Date.now() + ms; while (Dat
 function alive(pid) { try { process.kill(pid, 0); return true; } catch (error) { if (error.code === 'ESRCH') return false; throw error; } }
 const data = Buffer.alloc(32768, 90);
 
-async function fixture(t, { stalled = false, stubborn = false, publisherStalls = false, publisherEarlyExit = false } = {}) {
+async function fixture(t, { stalled = false, stubborn = false, publisherStalls = false, publisherEarlyExit = false, srtSenderDrainFailure = false } = {}) {
   const root = await mkdtemp(path.join(os.tmpdir(), 'forgesworn-lab-test-')), bin = path.join(root, 'bin'), site = path.join(root, 'site');
   await mkdir(bin); await mkdir(site);
   const pidFile = path.join(root, 'pids.jsonl'), requestFile = path.join(root, 'requests.jsonl');
@@ -30,7 +30,7 @@ if(kind==='mediamtx'){config=JSON.parse(fs.readFileSync(args[0]));port=+config.h
 fs.appendFileSync(${JSON.stringify(pidFile)},JSON.stringify({kind,pid:process.pid,group:process.pid,args,config,cwd:process.cwd()})+'\\n');
 console.error('MUST_NOT_ESCAPE',${JSON.stringify(root)},process.env.SAPFLOW_PUBLISH_PASS||'');
 if(kind==='ffmpeg'){if(args.at(-1)!=='-'&&!/^live[/]event-[a-z0-9-]+$/.test(new URL(args.at(-1)).pathname.slice(1))){console.error('invalid public Sapflow stream path');process.exit(64);}const seconds=+args[args.indexOf('-t')+1];let tick;if(args.at(-1)==='-')tick=setInterval(()=>process.stdout.write(Buffer.alloc(1316)),20);if(${publisherStalls}){setInterval(()=>{},1000);return;}const sentSeconds=${publisherEarlyExit}?0.1:seconds;setTimeout(()=>{clearInterval(tick);process.stderr.write('out_time_us='+Math.round(sentSeconds*1e6)+'\\nprogress=end\\n',()=>process.exit(0));},sentSeconds*1000);return;}
-if(kind==='srt-live-transmit'){if(!/^live[/]event-[a-z0-9-]+$/.test(new URL(args.at(-1)).searchParams.get('streamid').split(':')[1]))process.exit(64);process.stdin.resume();process.stdin.on('end',()=>process.exit(0));return;}
+if(kind==='srt-live-transmit'){if(!/^live[/]event-[a-z0-9-]+$/.test(new URL(args.at(-1)).searchParams.get('streamid').split(':')[1]))process.exit(64);process.stdin.resume();process.stdin.on('end',()=>setTimeout(()=>process.exit(${srtSenderDrainFailure}?65:0),150));return;}
 if(${stubborn}){process.on('SIGTERM',()=>{});const c=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'ignore'});fs.appendFileSync(${JSON.stringify(pidFile)},JSON.stringify({kind:'descendant',pid:c.pid,group:process.pid})+'\\n');}
 if(${stalled}){setInterval(()=>{},1000);return;}
 net.createServer(socket=>socket.end()).listen(rtmp,'127.0.0.1');dgram.createSocket('udp4').bind(srt,'127.0.0.1');
@@ -163,6 +163,16 @@ test('hard deadline without publisher EOF is an error, never a completed observa
   await until(async () => (await request(base, '/lab/stats')).data.lastRun?.state === 'error', 4500);
   const final = (await request(base, '/lab/stats')).data.lastRun;
   assert.equal(final.run.id, started.data.runId); assert.equal(final.run.publisherEnded, false); assert.equal(final.error, 'run_timeout'); assert.equal(final.run.endedReason, 'run_timeout');
+  for (const row of await f.records()) assert.ok(!alive(row.pid));
+});
+
+test('SRT sender failure after publisher EOF invalidates the drain and completed observation', { timeout: 8000 }, async t => {
+  const f = await fixture(t, { srtSenderDrainFailure: true }), lab = await startMediaLab({ ...f.options, maxRunSeconds: 5 }); t.after(() => lab.stop()); const base = new URL(lab.url).origin;
+  const started = await run(base, 'sapflow', 'srt', { durationSeconds: 1 }); assert.equal(started.status, 200);
+  await until(async () => (await request(base, '/lab/stats')).data.lastRun?.state === 'error', 4500);
+  const final = (await request(base, '/lab/stats')).data.lastRun;
+  assert.equal(final.run.id, started.data.runId); assert.equal(final.error, 'srt_sender_exited'); assert.equal(final.run.endedReason, 'srt_sender_exited');
+  assert.equal(final.run.publisherEnded, true); assert.equal(final.run.publisherCompletedWindow, true); assert.equal(final.run.publisherMediaSeconds, 1);
   for (const row of await f.records()) assert.ok(!alive(row.pid));
 });
 

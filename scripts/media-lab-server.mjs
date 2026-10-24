@@ -320,7 +320,7 @@ export async function startMediaLab({ input, sapflow, mediamtx, spry, coturn, po
         run.records.publisher = spawnOwned(tools.ffmpeg, [...args, '-f', 'mpegts', '-'], { cwd: run.cwd, env: safeEnv() }, 'publisher-srt');
         run.records.publisher.child.stdout.pipe(run.records.srtSender.child.stdin);
         run.records.srtSender.child.stdin.on('error', () => {});
-        run.records.srtSender.completion.then(result => { if (!run.abort.signal.aborted && !run.publisherEnded && result.code !== 0) { run.error = 'srt_sender_exited'; void stopRun(run, 'srt_sender_exited').catch(() => {}); } });
+        run.records.srtSender.completion.then(result => { if (!run.abort.signal.aborted && result.code !== 0) { run.error = 'srt_sender_exited'; void stopRun(run, 'srt_sender_exited').catch(() => {}); } });
       }
       run.records.publisher.completion.then(result => {
         if (run.abort.signal.aborted) return;

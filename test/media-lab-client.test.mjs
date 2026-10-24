@@ -20,7 +20,7 @@ const fixture = () => ({
   session: { id: 'one', engine: 'sapflow', transport: 'rtmp', offsetSeconds: 0, cpuSamples: [10, 20], rssSamples: [50000], processSamples: {} },
   config: { source: { label: 'Licensed recording', sha256: 'a'.repeat(64), bytes: 123, privatePath: '/private/source.mp4' },
     host: { cpu: 'Apple Silicon', platform: 'darwin', architecture: 'arm64', logicalCpus: 8, privateKey: 'secret' },
-    engines: [{ id: 'sapflow', label: 'Sapflow', version: '0.1.0', binarySha256: 'b'.repeat(64) }], profile: {} },
+    engines: [{ id: 'sapflow', label: 'Sapflow', version: '0.1.0', binarySha256: 'b'.repeat(64) }], profile: { publisherCompletionToleranceSeconds: 0.25 } },
   browser: { seenFrame: true, decodedFrames: 600, fpsSamples: [25, 25], firstFrameMs: 1000, width: 3840, height: 2160 },
 });
 
@@ -31,6 +31,7 @@ test('a completed measurement needs actual publisher completion and rendered fra
   f.snapshot.state = 'ended'; f.snapshot.run.publisherCompletedWindow = false; assert.equal(build(), null);
   f.snapshot.run.publisherCompletedWindow = true; f.snapshot.run.publisherProgressEnded = false; assert.equal(build(), null);
   f.snapshot.run.publisherProgressEnded = true; f.browser.decodedFrames = 0; assert.equal(build(), null);
+  f.browser.decodedFrames = '600'; assert.equal(build(), null);
   f.browser.decodedFrames = 600; f.session.interrupted = true; assert.equal(build(), null);
   f.session.interrupted = false; f.session.id = 'different-run'; assert.equal(build(), null);
 });
@@ -43,8 +44,9 @@ test('exports preserve host pressure while excluding paths and arbitrary private
   assert.equal(row.hostLoadAtEnd.oneMinute, 30);
   assert.equal(row.measurementScope, 'shared-host-observation');
   assert.equal(row.publisherMediaSeconds, 30.01);
+  assert.equal(row.profile.publisherCompletionToleranceSeconds, 0.25);
   assert.doesNotMatch(JSON.stringify(row), /secret|privatePath|privateKey|privateToken|\/private\//);
-  const receipt = { schema: 1, runs: [row, { ...row, publisherCompletedWindow: false }, { ...row, browser: { decodedFrames: 0 } }] };
+  const receipt = { schema: 1, runs: [row, { ...row, publisherCompletedWindow: false }, { ...row, browser: { decodedFrames: 0 } }, { ...row, browser: { decodedFrames: '600' } }] };
   assert.equal(recordedRuns(receipt).length, 1);
   assert.equal(recordedRuns(receipt)[0].hostLoadAtEnd.oneMinute, 30);
   assert.deepEqual(publicSource({ label: '/private/source.mp4' }).label, 'Licensed source');

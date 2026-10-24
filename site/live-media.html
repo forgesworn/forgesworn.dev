@@ -11,7 +11,7 @@
   <meta property="og:title" content="Bring your broadcast to the browser | ForgeSworn">
   <meta property="og:description" content="Watch the demo, then build your own media stack with Sapflow, RelaySwarm and Spry TURN.">
   <meta property="og:url" content="https://forgesworn.dev/live-media.html">
-  <meta property="og:image" content="https://forgesworn.dev/media/demo/poster.webp">
+  <meta property="og:image" content="https://forgesworn.dev/media/dejavu-preview/poster.jpg">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preload" href="/fonts/fraunces-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
@@ -164,10 +164,10 @@
         <p class="hero-note">MIT-licensed tools for your own application and infrastructure.  <a href="/media-lab.html">Try the broadcast comparison player <span aria-hidden="true">↗</span></a></p>
       </div>
 
-      <section id="demo" class="demo-shell" aria-label="Interactive Sapflow and RelaySwarm video demonstration">
-        <div class="demo-topline"><strong>Sapflow + RelaySwarm</strong><span class="topline-format">Generated concert · HLS replay</span></div>
+      <section id="demo" class="demo-shell" data-media-base="/media/dejavu-preview/" aria-label="Interactive Sapflow and RelaySwarm video demonstration">
+        <div class="demo-topline"><strong>Sapflow + RelaySwarm</strong><span class="topline-format">Deja Vu · 1080p preview</span></div>
         <div id="media-video-wrap" class="demo-video-wrap">
-          <video id="media-video" controls playsinline preload="none" poster="/media/demo/poster.webp" width="1280" height="720" aria-label="Sapflow-packaged demonstration stream" aria-describedby="demo-scope">
+          <video id="media-video" controls playsinline preload="none" poster="/media/dejavu-preview/poster.jpg" width="1920" height="1080" aria-label="Sapflow-packaged Deja Vu Ambient Sunrise Mix preview" aria-describedby="demo-scope">
             Your browser needs HTML video support to play this demonstration.
           </video>
           <button id="demo-fullscreen" class="media-fullscreen-button" type="button" aria-pressed="false">Full screen</button>
@@ -186,7 +186,7 @@
           <div><dt>Peer bytes received</dt><dd id="demo-bytes">0 B</dd></div>
           <div><dt>Peer connections</dt><dd id="demo-peers">0</dd></div>
         </dl>
-        <p id="demo-scope" class="demo-scope">Sapflow-packaged HLS replay, with two viewers in this browser.  Playback and peer counters are measured here.  <a href="https://github.com/forgesworn/forgesworn.dev/blob/main/docs/media-demo.md">Run it through Spry locally <span aria-hidden="true">↗</span></a></p>
+        <p id="demo-scope" class="demo-scope">A Sapflow-packaged excerpt of the licensed Deja Vu mix, with two viewers in this browser.  Playback and peer counters are measured here.  <a href="/media-lab.html">Play the full 4K mix with stats <span aria-hidden="true">↗</span></a> · <a href="https://github.com/forgesworn/forgesworn.dev/blob/main/docs/media-demo.md">Run it through Spry locally <span aria-hidden="true">↗</span></a></p>
         <noscript><p class="demo-scope">JavaScript enables the interactive player.  The source and setup guides below are available without it.</p></noscript>
       </section>
     </div>
@@ -273,6 +273,6 @@
       <p class="footer-note">Open-source media tools.  MIT-licensed projects with their own dependency notices.</p>
     </div>
   </footer>
-  <script type="module" src="/media-demo.mjs?v=20261024-player"></script>
+  <script type="module" src="/media-demo.mjs?v=20261024-dejavu"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 Deja Vu Ambient Sunrise Mix
 
-The owner authorised this recording and its preview for this public demonstration on24October2026. The music and video retain their existing rights. They are excluded from the repository MIT licence; this notice does not grant reuse or redistribution rights. The surrounding software is MIT licensed.
+The owner authorised this recording and its preview for this public demonstration on 24 October 2026. The music and video retain their existing rights. They are excluded from the repository MIT licence; this notice does not grant reuse or redistribution rights. The surrounding software is MIT licensed.
 
-The preview was normalised to1080p25 H.264/AAC and captured through real Sapflow RTMP and SRT publishing. The separately hosted full4K recording keeps the original compressed video/audio tracks and is packaged as static HLS. See manifest.json and playback.json for exact provenance and scope.
+The preview was normalised to 1080p25 H.264/AAC and captured through real Sapflow RTMP and SRT publishing. The separately hosted full 4K recording keeps the original compressed video/audio tracks and is packaged as static HLS. See manifest.json and playback.json for exact provenance and scope.

@@ -131,7 +131,9 @@ async function play() {
   setCounter('transport', 'Preparing');
   setStatus('Loading the Sapflow-packaged video…');
   try {
-    const base = new URL('./media/demo/', import.meta.url);
+    const mediaBase = element('demo')?.dataset.mediaBase ?? '/media/demo/';
+    if (!/^\/media\/[a-z0-9-]+\/$/.test(mediaBase)) throw new Error('Invalid demonstration media path.');
+    const base = new URL(mediaBase, import.meta.url);
     const catalogue = await json(new URL('manifest.json', base), abort.signal);
     const key = selector.value === 'srt' ? 'srt' : 'rtmp';
     const clip = catalogue.clips?.[key];
@@ -143,7 +145,7 @@ async function play() {
     if (generation !== operation) return;
     let runtime;
     if (new URL(location.href).searchParams.get('relay') === 'local' && ['127.0.0.1', 'localhost'].includes(location.hostname)) {
-      runtime = await json(new URL('runtime.json', base), abort.signal);
+      runtime = await json(new URL('./media/demo/runtime.json', import.meta.url), abort.signal);
     }
     if (Hls.isSupported() && typeof RTCPeerConnection === 'function') {
       try {

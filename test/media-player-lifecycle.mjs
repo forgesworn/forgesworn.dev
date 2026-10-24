@@ -64,8 +64,8 @@ const server = createServer(async (request, response) => {
     const send = (type, body) => { response.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-store' }); response.end(body); };
     if (pathname === '/vendor/hls.light.min.mjs') return send('application/javascript', hlsFixture);
     if (pathname === '/media-peer-demo.mjs') return send('application/javascript', peerFixture);
-    if (pathname === '/media/demo/manifest.json') return send('application/json', JSON.stringify(catalogue));
-    if (/^\/media\/demo\/(rtmp|srt)\/segments\.json$/.test(pathname)) return send('application/json', '{"schema":1,"segments":[]}');
+    if (/^\/media\/(?:demo|dejavu-preview)\/manifest\.json$/.test(pathname)) return send('application/json', JSON.stringify(catalogue));
+    if (/^\/media\/(?:demo|dejavu-preview)\/(rtmp|srt)\/segments\.json$/.test(pathname)) return send('application/json', '{"schema":1,"segments":[]}');
     if (pathname.startsWith('/fixture-video-')) { response.writeHead(204); return response.end(); }
     const target = resolve(root, `.${decodeURIComponent(pathname)}`);
     if (!target.startsWith(resolve(root) + sep)) { response.writeHead(404); return response.end(); }

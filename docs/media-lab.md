@@ -148,6 +148,8 @@ hard deadline expired before successful publisher completion.  FFmpeg's actual
 250 ms tolerance, as well as exit successfully; wall time or exit code alone
 does not establish completion.  Stats expose `publisherMediaSeconds` and
 `publisherCompletedWindow` alongside the raw `publisherEnded` flag.
+An unexpected SRT sender failure also invalidates the run during the tail
+drain, even when FFmpeg has already completed its intended media window.
 Final counters retain the matching run ID.  A browser must also
 prove actual decoded frames before saving a playback observation.  Do not
 report an interrupted or failed treatment as a performance win.
@@ -294,3 +296,24 @@ backpressure, timed completion, profile selection, ranges and hash eviction.
 They are not evidence of native media compatibility.  The separate real-browser
 qualification must show decoded source video/audio, actual selected relay
 candidates when requested, and clean shutdown.
+
+Run the production-page qualification manually with Chromium available through
+the installed Playwright dependency:
+
+```sh
+node test/media-lab-full-browser.mjs \
+  --input /path/to/licensed-recording.mp4 \
+  --sapflow /path/to/sapflow --mediamtx /path/to/mediamtx \
+  --spry /path/to/spry-turn --coturn /path/to/turnserver \
+  --engine sapflow --transport rtmp --relays spry,coturn \
+  --turn-transport udp --duration full \
+  --output .local/evidence/media-lab-browser.json
+```
+
+The runner uses the actual page, Run button, native origins and selected relay.
+It checks decoded audio/video, selected relay candidates, fullscreen, completed
+source-window observations and the page's downloadable result.  It closes its
+browser and child processes on success or failure.  `--duration` also accepts
+`30` or `60`, and `--relays` can select either relay independently.  Keep host
+load with the results and distinguish a functional playback pass from a clean
+paired performance experiment.  This browser check is separate from `npm test`.
