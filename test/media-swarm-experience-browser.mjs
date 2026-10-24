@@ -68,7 +68,7 @@ function instrumentation() {
     navigator.mediaDevices.getUserMedia = (...args) => { qa.getUserMedia++; return original(...args); };
   }
 }
-const fixtureHtml = `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/media-showcase.css"><body class="media-page"><main class="media-showcase"><section class="swarm-stage"><div id="public-swarm-map" class="swarm-map"></div></section></main><script type="module">
+const fixtureHtml = `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/media-showcase.css"><body class="media-page"><main class="media-showcase"><section class="swarm-stage"><div id="public-swarm-map" class="swarm-map" data-statistics="public-swarm-statistics"></div><div id="public-swarm-statistics" class="swarm-statistics" data-swarm-statistics></div></section></main><script type="module">
 import {createSwarmVisual} from '/media-swarm-visual.mjs';
 const id=n=>n.toString(16).padStart(64,'0');const visual=createSwarmVisual(document.getElementById('public-swarm-map'));
 function metrics(kind){if(kind==='unknown')return{active:false,playing:false,room:{observed:false,members:[]}};if(kind==='empty')return{active:false,playing:false,room:{observed:true,members:[],listeners:0}};
@@ -124,7 +124,7 @@ function checkGeometry(value, ten) {
   for(let i=0;i<value.labels.length;i++)for(let j=i+1;j<value.labels.length;j++){const a=value.labels[i],b=value.labels[j];assert(a.right+2<=b.x||b.right+2<=a.x||a.bottom+2<=b.y||b.bottom+2<=a.y,`Labels overlap: ${a.text}/${b.text}`);}
 }
 async function zeroPulse(page, state) {
-  await page.waitForFunction(state=>document.getElementById('public-swarm-map').dataset.musicPulseState===state,state,{timeout:5000});
+  await page.waitForFunction(state=>document.getElementById('public-swarm-map').dataset.musicPulseState===state,state,{polling:100,timeout:5000});
   await page.waitForTimeout(350);
   const value=await page.evaluate(()=>{const map=document.getElementById('public-swarm-map'),node=map.querySelector('[data-audio-pulse]'),last=window.__swarmExperienceQa.calls.at(-1);return{state:map.dataset.musicPulseState,ornament:node&&{...node.dataset},last,video:{time:document.getElementById('lab-video').currentTime,paused:document.getElementById('lab-video').paused}};});
   assert.equal(value.last.energy,0);assert.equal(value.last.beat,0);return value;
@@ -166,7 +166,7 @@ try {
     stage='pause-stops-music-pulse';await page.evaluate(()=>document.getElementById('lab-video').pause());receipt.media.paused=await zeroPulse(page,'idle');
     await page.evaluate(()=>document.getElementById('lab-video').play());await page.waitForFunction(()=>document.getElementById('public-swarm-map').dataset.musicPulseState==='live');
     stage='real-hidden-tab-stops-music-pulse';const blank=await mediaContext.newPage();await blank.goto('about:blank');await blank.bringToFront();
-    await page.waitForFunction(()=>document.hidden,undefined,{timeout:5000});receipt.media.hidden=await zeroPulse(page,'hidden');await blank.close();await page.bringToFront();
+    await page.waitForFunction(()=>document.hidden,undefined,{polling:100,timeout:5000});receipt.media.hidden=await zeroPulse(page,'hidden');await blank.close();await page.bringToFront();
     await page.waitForFunction(()=>document.getElementById('public-swarm-map').dataset.musicPulseState==='live');
     stage='reduced-motion-stops-decoration-only';await page.emulateMedia({reducedMotion:'reduce'});receipt.media.reduced=await zeroPulse(page,'reduced');assert.equal(receipt.media.reduced.video.paused,false);
     await page.emulateMedia({reducedMotion:'no-preference'});await page.waitForFunction(()=>document.getElementById('public-swarm-map').dataset.musicPulseState==='live');
