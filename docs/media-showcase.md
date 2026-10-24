@@ -18,8 +18,8 @@ Each visitor has one visible video and one hls.js player.  There is no hidden
 holder, second player, prefetching copy of the film or fabricated viewer.
 Before Play, no media is requested and no signalling socket or peer opens.
 Play enables public Nostr rendezvous and native WebRTC data channels;
-RelaySwarm can serve already held fragments to other visitors.  Pause,
-completion and page departure close sharing connections and release the
+RelaySwarm can serve already held fragments to other visitors.  Pause
+and page departure close sharing connections and release the
 media cache.  Native play rejoins; its upload allowance and original lifetime
 are retained across pause/resume.
 
@@ -31,12 +31,47 @@ through it.  The received-video counter rises only after peer media passes
 integrity verification.
 
 The small rolling cache means viewers need overlapping media positions to
-help one another.  **Invite someone into this moment** copies a public link
-containing only quality, playback time and the time of the invitation.  The
-recipient's Play advances that position by elapsed time, keeping a promptly
-opened invitation near the sender's cache window.  Old or completed
-invitations start from the beginning.  This is approximate alignment using
-browser clocks, not an authoritative synchronisation service.
+help one another.  **Invite someone to the room** copies a public link with
+the recording's quality.  The recipient's Play discovers the active shared
+clock and joins its current position, including when they arrive from the
+homepage without an invitation.
+
+## Shared listening session
+
+The first Play in an empty room creates its clock.  Later listeners join
+that clock; the person who started it can leave without ending it for the
+others.  The recording loops while the room remains occupied.  Pause leaves
+the room and stops peer sharing; Play discovers the current room again and
+returns to its live position.  Native seeking can move away from live, with
+**Back to live** to return.  Following playback tolerates buffering and only
+corrects drift over six seconds.  Full screen and playback details retain
+the same video and session.
+
+There is no always-running encoder or new coordination service.  Existing
+Nostr relays carry a small signed clock/presence event every six seconds,
+bound to the exact room, immutable source digest and recording duration.
+The 4K mix and the shorter 1080p excerpt have separate rooms.  Networking
+begins after Play, and initial discovery is bounded; a relay must accept the
+listener's publication before the page calls it shared.  If coordination is
+unavailable, playback falls back to the media host and says it is playing
+on its own.
+
+Presence expires after approximately 24 seconds.  Explicit departures keep
+that short epoch grace so refreshes can rejoin; after every listener's lease
+has expired, the next Play starts a fresh recording at the beginning.  Abrupt
+tab closes and lost connections need no permanently running cleanup process.
+An expiry tag does not guarantee that a relay deletes its stored event.
+
+The experimental public addressable event uses kind `30378` and the
+[NIP-01](https://github.com/nostr-protocol/nips/blob/master/01.md) replacement
+rules, with client-enforced expiry.  It uses a fresh temporary signing key
+per join, at most three relay sockets, bounded messages and 256 presence
+records.  Media delivery retains its own existing sockets and resource
+limits.  Concurrent starters converge on the oldest valid observed epoch.
+Relay partitions, device clock differences and anonymous participants mean
+this is a shared browser clock with observed presence, not authoritative
+global audience counting or frame-accurate synchronisation.  The graph
+continues to show this browser's actual media connections.
 
 ## What the picture shows
 

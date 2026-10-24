@@ -14,7 +14,7 @@
   <meta property="og:image" content="https://forgesworn.dev/media/dejavu-preview/poster.jpg">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/media-showcase.css?v=20261024-showcase">
+  <link rel="stylesheet" href="/media-showcase.css?v=20261024-shared-room">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"ForgeSworn 4K listening room","url":"https://forgesworn.dev/media-lab.html","description":"Licensed 4K playback, observed peer-assisted delivery and open-source media libraries.","isPartOf":{"@type":"WebSite","name":"ForgeSworn","url":"https://forgesworn.dev/"},"potentialAction":{"@type":"DonateAction","target":"https://github.com/sponsors/TheCryptoDonkey"}}</script>
 </head>
 <body class="media-page">
@@ -39,7 +39,10 @@
             <button id="lab-fullscreen" class="fullscreen-button local-only" type="button" disabled>Full screen</button>
             <div id="video-empty" class="video-empty local-only"><strong>Same source.  Your machine.</strong><p>Choose a server and run the comparison.</p></div>
           </div>
-          <p id="lab-status" class="player-status" role="status" aria-live="polite">The complete 4K mix.  Press play, put your headphones on, and watch the stream move.</p>
+          <div class="player-status">
+            <div class="shared-room public-only"><p id="public-session-status" class="shared-room-status" role="status" aria-live="polite">Press Play to start or join the shared stream.</p><button id="public-live-edge" class="room-live-button" type="button" hidden>Back to live</button></div>
+            <p id="lab-status" class="playback-status" role="status" aria-live="polite">The complete 4K mix.  Press play, put your headphones on, and watch the stream move.</p>
+          </div>
         </section>
         <section class="settings local-only" aria-labelledby="settings-title"><h2 id="settings-title">Choose your run</h2><div class="settings-fields"><label class="field"><span>Media server</span><select id="lab-engine" disabled><option value="sapflow">Sapflow</option><option value="mediamtx">MediaMTX</option></select></label><label class="field"><span>Publisher ingest</span><select id="lab-transport" disabled><option value="rtmp">RTMP</option><option value="srt">SRT</option></select></label><label class="field"><span>Measurement window</span><select id="lab-duration" disabled><option value="full">Full mix</option><option value="30">30 seconds</option><option value="60">60 seconds</option></select></label><label class="field"><span>Source offset</span><select disabled aria-label="Fixed source offset"><option>0:00 · matched</option></select></label><div id="relay-controls" class="field-row" hidden><label class="field"><span>Viewer packet relay</span><select id="lab-relay"><option value="off">Off · direct HLS</option></select></label><label class="field"><span>Client → relay</span><select id="lab-turn-transport"><option value="udp">UDP</option><option value="tcp">TCP</option></select></label></div></div><p id="engine-version" class="engine-version">Select a locally installed server to see its version.</p><button id="lab-run" class="button run-button" disabled>Run &amp; play with sound <span aria-hidden="true">↗</span></button><div class="button-row"><button id="lab-play" class="button quiet" disabled>Play with sound</button><button id="lab-stop" class="button quiet" disabled>Stop run</button></div><p class="settings-note">Same source and offset for every run. Switching servers starts a fresh measurement. The origin and the publisher have separate CPU and memory readings.</p></section>
       </div>
@@ -49,11 +52,12 @@
       </section>
       <p id="lab-quality-note" class="quality-note public-only" hidden></p>
       <p id="public-play-note" class="participation-note public-only">Playing shares video segments with other viewers.  Pause to stop sharing.</p>
+      <p class="session-note public-only">The first listener starts the room.  New arrivals join at its live position.  After the last listener leaves, it closes following a short grace period.  The 1080p excerpt has its own room.</p>
       <section class="swarm-stage public-only" aria-labelledby="swarm-title">
         <div class="swarm-heading"><div><p class="eyebrow">This is happening in your browser</p><h2 id="swarm-title">Watch the stream <em>move.</em></h2></div><p id="public-delivery" class="delivery-path" role="status">Ready to play.  The origin gets you started.</p></div>
         <div id="public-swarm-map" class="swarm-map" role="img" aria-label="Observed connections between this browser, the media origin and other viewers"></div>
         <div class="swarm-caption"><p>Video transfers, from your point of view. Connection messages do not move the dots.</p><p id="public-share-status" class="share-status" role="status">Play to join.  Media-host delivery and verified peer delivery are counted separately.</p></div>
-        <div class="listening-invite"><button id="public-invite" class="button quiet" type="button" disabled>Invite someone into this moment ↗</button><span id="public-invite-status" role="status"></span></div>
+        <div class="listening-invite"><button id="public-invite" class="button quiet" type="button" disabled>Invite someone to the room ↗</button><span id="public-invite-status" role="status"></span></div>
         <dl class="delivery-counters" aria-label="Actual RelaySwarm delivery in this browser">
           <div><dt>From media host</dt><dd id="public-origin-bytes">0 B</dd></div>
           <div><dt>Verified from viewers</dt><dd id="public-peer-bytes">0 B</dd></div>
@@ -112,6 +116,6 @@
   </main>
   <!-- SHOWCASE_END -->
   <footer class="site-footer"><div class="page-wrap"><div class="footer-inner"><a class="brand" href="/">Forge<span>Sworn</span></a><div class="footer-links"><a href="https://github.com/forgesworn">GitHub</a><a href="/live-media-benchmarks.html">Measured results</a><a href="https://github.com/sponsors/TheCryptoDonkey">Support the work ↗</a></div></div><p class="footer-note">Open-source media software, yours to run.  The supplied mix is licensed for this demonstration; its media rights are separate from the MIT code.  <a href="/media/dejavu-preview/NOTICE.txt">Media permission</a> · <a href="/llms.txt">For developers and LLMs</a></p></div></footer>
-  <script type="module" src="/media-lab.mjs?v=20261024-showcase"></script>
+  <script type="module" src="/media-lab.mjs?v=20261024-shared-room"></script>
 </body>
 </html>

@@ -214,6 +214,104 @@ async function initialise() {
   if (!local) video.controls = false;
   const optionalText = (id, value) => { if ($(id)) $(id).textContent = value; };
 
+  function listenerStatus(s) {
+    if (local) return;
+    const state = s?.listener?.snapshot() ?? s?.listenerState;
+    const joined = Boolean(state?.ready && state.joined && s?.listenerWanted);
+    root.dataset.sharedSession = !s ? 'idle' : s.listenerFailed ? 'unavailable' : !s.listenerWanted ? 'paused' : joined ? 'live' : 'joining';
+    root.dataset.sharedEpoch = state?.epochId ?? '';
+    root.dataset.sharedStartedAt = String(state?.startedAt ?? '');
+    root.dataset.sharedPosition = String(state?.position ?? '');
+    root.dataset.sharedListeners = String(state?.listeners ?? 0);
+    optionalText('public-session-status', !s ? 'Press Play to start or join the shared stream.' :
+      s.listenerFailed ? 'Shared stream unavailable · playing on your own' :
+      !s.listenerWanted ? 'You left the stream · Play to rejoin live' :
+      !joined ? 'Joining the shared stream…' :
+      !state.connectedRelays ? 'Room connection interrupted · the music continues' :
+      s.followLive === false ? 'Away from the live stream' :
+      state.role === 'starter' ? 'You started the stream · live' : 'Shared stream · live');
+    if ($('public-live-edge')) $('public-live-edge').hidden = !joined || s.followLive !== false;
+  }
+
+  function followListener(s, force = false) {
+    if (local || session !== s || s.finishing || !s.listenerWanted || !s.listener?.snapshot().ready ||
+        !s.mediaReady || video.readyState < 1 || !Number.isFinite(video.duration)) return;
+    const now = performance.now();
+    if (!force && (s.followLive === false || video.paused || video.seeking || now < (s.nextLiveCheck ?? 0))) return;
+    const target = s.listener.position();
+    const duration = s.durationSeconds;
+    if (!Number.isFinite(target) || !(duration > 0)) return;
+    let difference = target - video.currentTime;
+    if (difference > duration / 2) difference -= duration;
+    if (difference < -duration / 2) difference += duration;
+    s.nextLiveCheck = now + 6000;
+    if (force || Math.abs(difference) > 6) {
+      s.roomAdjustingUntil = now + 2000;
+      video.currentTime = Math.max(0, Math.min(target, video.duration - 0.05));
+    }
+    listenerStatus(s);
+  }
+
+  async function joinListener(s, align = true) {
+    if (local || session !== s || s.finishing || s.abort.signal.aborted) return;
+    s.listenerWanted = true;
+    if (s.listener?.snapshot().ready) {
+      const epoch = s.listener.snapshot().epochId;
+      if (align && s.mediaReady && s.listenerAlignedEpoch !== epoch) {
+        s.listenerAlignedEpoch = epoch;
+        followListener(s, true);
+      }
+      listenerStatus(s); return;
+    }
+    if (s.listenerJoining) {
+      await s.listenerJoining;
+      if (session === s && s.listenerWanted && !s.finishing && !s.listenerFailed && !s.listener?.snapshot().ready) return joinListener(s, align);
+      return;
+    }
+    const request = s.listenerRequest = (s.listenerRequest ?? 0) + 1;
+    s.listenerFailed = false;
+    listenerStatus(s);
+    const pending = (async () => {
+      try {
+        if (!s.listener) {
+          const [{ createListenerSession }, { PUBLIC_SWARM_SOURCE_SHA256, PUBLIC_SWARM_RELAYS }] = await Promise.all([
+            import('./media-listener-session.mjs'), import('./media-public-swarm.mjs?v=20261024-shared-room'),
+          ]);
+          if (session !== s || !s.listenerWanted || request !== s.listenerRequest || s.abort.signal.aborted) return;
+          s.listener = createListenerSession({ room: `forgesworn-dejavu-listening-v1-${s.quality}`, source: PUBLIC_SWARM_SOURCE_SHA256,
+            duration: s.durationSeconds, relays: [...PUBLIC_SWARM_RELAYS], signal: s.abort.signal,
+            onChange(state) {
+              if (session !== s || s.finishing) return;
+              const previous = s.listenerState?.epochId;
+              s.listenerState = state;
+              if (previous && state.ready && state.epochId !== previous) {
+                s.followLive = true;
+                if (s.mediaReady) s.listenerAlignedEpoch = state.epochId;
+                followListener(s, true);
+              }
+              listenerStatus(s);
+            } });
+        }
+        await s.listener.join();
+        if (session !== s || !s.listenerWanted || request !== s.listenerRequest || s.abort.signal.aborted) { s.listener.leave(); return; }
+        s.listenerFailed = false; s.followLive = true;
+        if (align) { s.listenerAlignedEpoch = s.listener.snapshot().epochId; followListener(s, true); }
+      } catch {
+        if (session === s && s.listenerWanted && request === s.listenerRequest && !s.abort.signal.aborted) s.listenerFailed = true;
+      } finally { if (session === s && !s.finishing) listenerStatus(s); }
+    })();
+    s.listenerJoining = pending;
+    try { await pending; }
+    finally { if (s.listenerJoining === pending) s.listenerJoining = null; }
+  }
+
+  function leaveListener(s) {
+    s.listenerWanted = false;
+    s.listenerRequest = (s.listenerRequest ?? 0) + 1;
+    s.listener?.leave();
+    listenerStatus(s);
+  }
+
   function publicDelivery(s, metrics = s?.publicPeer?.metrics()) {
     if (local) return;
     const peerBytes = observed(metrics?.peerBytes) ?? 0;
@@ -249,6 +347,7 @@ async function initialise() {
     root.dataset.loadedMediaBytes = String(metrics?.loadedMediaBytes ?? 0);
     root.dataset.cacheHighWaterBytes = String(metrics?.resources?.heldHighWaterBytes ?? 0);
     swarmVisual?.update({ ...metrics, active: Boolean(s), playing: Boolean(playing), originBytes });
+    listenerStatus(s);
   }
 
   function shareWhilePlaying(s, enabled) {
@@ -309,6 +408,7 @@ async function initialise() {
     $('lab-play').disabled = !session?.mediaReady || busy || Boolean(session?.sourceEof);
     $('lab-stop').disabled = !session || busy;
     $('lab-stop').textContent = local ? 'Stop run' : 'Stop preview';
+    if (!local) $('lab-quality').disabled = busy;
     $('lab-fullscreen').disabled = !fullscreenReady || !session?.mediaReady;
     if ($('public-invite')) $('public-invite').disabled = !session?.mediaReady || Boolean(video.ended);
     if (!local && publicPlay) {
@@ -492,13 +592,19 @@ async function initialise() {
     if (!local) {
       video.addEventListener('playing', () => {
         controls();
-        status(`${s.quality === 'full' ? '4K' : '1080p'} mix playing. Use the video controls to pause, seek, change the volume or go full screen.`);
-        shareWhilePlaying(s, true);
+        status(`${s.quality === 'full' ? '4K' : '1080p'} mix playing. Pause to leave, or use the native controls for volume and full screen.`);
+        void joinListener(s).then(() => { if (session === s && !video.paused && !s.finishing) shareWhilePlaying(s, true); });
       }, { signal: s.abort.signal });
-      video.addEventListener('ended', () => { shareWhilePlaying(s, false); controls(); publicDelivery(s); }, { signal: s.abort.signal });
+      video.addEventListener('ended', () => {
+        if (s.listenerWanted && s.listener?.snapshot().ready && !s.finishing) {
+          s.followLive = true; followListener(s, true); void play(s);
+        } else shareWhilePlaying(s, false);
+        controls(); publicDelivery(s);
+      }, { signal: s.abort.signal });
     }
     video.addEventListener('pause', () => {
       endStall();
+      if (!local && !s.finishing && !video.ended) { leaveListener(s); shareWhilePlaying(s, false); }
       if (!s.finishing && !s.sourceEof && b.seenFrame) {
         if (local) { s.interrupted = true; status('Playback paused. This interrupted run will not enter the comparison table.'); }
         else { shareWhilePlaying(s, false); status('Paused. Press play on the video to keep listening and rejoin.'); publicDelivery(s); }
@@ -506,16 +612,21 @@ async function initialise() {
     }, { signal: s.abort.signal });
     let lastInteraction = -Infinity;
     video.addEventListener('pointerdown', () => { lastInteraction = performance.now(); }, { signal: s.abort.signal });
+    video.addEventListener('pointerup', () => { lastInteraction = performance.now(); }, { signal: s.abort.signal });
     video.addEventListener('keydown', () => { lastInteraction = performance.now(); }, { signal: s.abort.signal });
     video.addEventListener('seeking', () => {
       // HLS latency corrections can seek too; exclude deliberate viewer seeks.
-      if (b.seenFrame && !s.finishing && performance.now() - lastInteraction < 1500) s.interrupted = true;
+      if (b.seenFrame && !s.finishing && performance.now() - lastInteraction < 1500) {
+        s.interrupted = true;
+        if (!local && performance.now() > (s.roomAdjustingUntil ?? 0)) { s.followLive = false; listenerStatus(s); }
+      }
     }, { signal: s.abort.signal });
     video.addEventListener('error', () => {
       if (session !== s || s.finishing) return;
       b.playerErrors++;
       if (s.sourceEof && video.error?.code === 2) return;
       s.playbackFailed = true;
+      if (!local) { leaveListener(s); shareWhilePlaying(s, false); }
       status(local ? 'Playback could not continue. Stop the run, check the local runner and try again.' : 'The selected source could not be decoded. Try the preview or check the media-host response.', true);
     }, { signal: s.abort.signal });
     if (typeof video.requestVideoFrameCallback === 'function') {
@@ -559,7 +670,7 @@ async function initialise() {
       s.observer = new PerformanceObserver((list) => entries(list.getEntries()));
       s.observer.observe({ type: 'resource', buffered: false });
     }
-    const tick = () => { if (session === s && !s.finishing) { browserReadings(s); s.browserTimer = setTimeout(tick, 400); } };
+    const tick = () => { if (session === s && !s.finishing) { followListener(s); browserReadings(s); s.browserTimer = setTimeout(tick, 400); } };
     tick();
   }
 
@@ -596,7 +707,10 @@ async function initialise() {
     if (!s || session !== s || !s.mediaReady || s.sourceEof) return;
     if (local) { video.muted = false; if (video.volume === 0) video.volume = 1; }
     try { await video.play(); if (session === s && local) status('Playing with sound. Server and browser observations update separately.'); }
-    catch { if (session === s) { status('The mix is ready. Press play to start listening.'); controls(); } }
+    catch { if (session === s) {
+      if (!local) { leaveListener(s); shareWhilePlaying(s, false); }
+      status('The mix is ready. Press play to start listening.'); controls();
+    } }
   }
 
   async function attach(s, url, runtime) {
@@ -609,7 +723,8 @@ async function initialise() {
     Hls ??= (await import(local ? './vendor/hls.min.mjs' : './vendor/hls.light.min.mjs')).default;
     if (session !== s || s.abort.signal.aborted) return;
     trackBrowser(s, url);
-    const initial = local ? await readInitialLiveStart(url.href, { signal: s.abort.signal }) : { startPosition: s.invitedStart || -1 };
+    const initial = local ? await readInitialLiveStart(url.href, { signal: s.abort.signal }) :
+      { startPosition: s.listener?.snapshot().ready ? s.listener.position() : s.invitedStart || -1 };
     if (session !== s || s.abort.signal.aborted) return;
     if (s.turnEngine !== 'off') {
       if (!runtime || !local) throw new Error('A local per-viewer relay runtime is required');
@@ -624,7 +739,7 @@ async function initialise() {
         maxBufferSize: (local ? 8 : 32) * 1024 * 1024, backBufferLength: 0, enableWorker: true, startPosition: initial.startPosition });
       if (!local) {
         try {
-          const { createPublicSwarm } = await import('./media-public-swarm.mjs');
+          const { createPublicSwarm } = await import('./media-public-swarm.mjs?v=20261024-shared-room');
           if (session !== s || s.abort.signal.aborted) return;
           s.publicPeer = createPublicSwarm({ Hls, hls: s.hls, video, playlistUrl: url.href, quality: s.quality,
             signal: s.abort.signal, onStats: metrics => { if (session === s) publicDelivery(s, metrics); } });
@@ -639,7 +754,11 @@ async function initialise() {
           void confirmNormalSourceEnd(s, data).then(normal => {
             if (session !== s || s.finishing || s.abort.signal.aborted) return;
             if (normal) { s.hls.stopLoad(); video.pause(); }
-            else { s.playbackFailed = true; status(local ? 'The player could not continue. Stop this run and check the local runner.' : 'The selected source could not continue. Stop playback and try the preview.', true); }
+            else {
+              s.playbackFailed = true;
+              if (!local) { leaveListener(s); shareWhilePlaying(s, false); }
+              status(local ? 'The player could not continue. Stop this run and check the local runner.' : 'The selected source could not continue. Stop playback and try the preview.', true);
+            }
           }).finally(() => { s.directErrorPending = false; });
         }
       });
@@ -647,6 +766,7 @@ async function initialise() {
       s.hls.loadSource(url.href); s.hls.attachMedia(video);
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
       s.nativeHls = true;
+      video.addEventListener('loadedmetadata', () => followListener(s, true), { once: true, signal: s.abort.signal });
       video.src = url.href; s.mediaReady = true; controls(); await play(s); publicDelivery(s);
     } else throw new Error('This browser cannot play the HLS stream');
   }
@@ -657,6 +777,7 @@ async function initialise() {
     if (s.frameCallback !== undefined) video.cancelVideoFrameCallback?.(s.frameCallback);
     if (s.observer) { s.resourceEntries(s.observer.takeRecords()); s.observer.disconnect(); }
     s.abort.abort();
+    try { s.listener?.stop(); } catch {}
     try { Promise.resolve(s.peer?.stop()).catch(() => {}); } catch {}
     try { s.publicPeer?.stop(); } catch {}
     try { s.hls?.destroy(); } catch {}
@@ -724,10 +845,12 @@ async function initialise() {
       if (!local) {
         const choice = choices[$('lab-quality').value];
         if (!choice) throw new Error('No configured public source');
-        session = { id: null, engine: 'preview', quality: choice.id, turnEngine: 'off', clickAt, abort: new AbortController(), cpuSamples: [], rssSamples: [],
+        session = { id: null, engine: 'preview', quality: choice.id, durationSeconds: choice.durationSeconds, turnEngine: 'off', clickAt, abort: new AbortController(), cpuSamples: [], rssSamples: [],
           invitedStart: invitationUsed ? 0 : invitedPlaybackStart(location.search, Date.now(), choice.durationSeconds, choice.id) };
         invitationUsed = true;
         text('player-label', `${choice.label} · licensed source`);
+        await joinListener(session, false);
+        if (!session || session.finishing || session.abort.signal.aborted) return;
         await attach(session, choice.url);
         return;
       }
@@ -805,17 +928,20 @@ async function initialise() {
       if (!session?.mediaReady) return;
       const invitation = new URL('https://forgesworn.dev/live-media.html');
       invitation.searchParams.set('q', session.quality);
-      invitation.searchParams.set('t', video.currentTime.toFixed(2));
-      invitation.searchParams.set('at', String(Date.now()));
       if (!navigator.clipboard?.writeText) {
         optionalText('public-invite-status', 'Share this listening link: ' + invitation.href);
         return;
       }
       void navigator.clipboard.writeText(invitation.href).then(() => {
-        optionalText('public-invite-status', 'Link copied. They’ll join near the moment you shared.');
+        optionalText('public-invite-status', 'Link copied. They’ll join the shared stream live.');
       }).catch(() => {
         optionalText('public-invite-status', 'Share this listening link: ' + invitation.href);
       });
+    });
+    $('public-live-edge')?.addEventListener('click', () => {
+      if (!session) return;
+      session.followLive = true;
+      void joinListener(session).then(() => { if (session) { followListener(session, true); void play(session); } });
     });
     try {
       const { createSwarmVisual } = await import('./media-swarm-visual.mjs');

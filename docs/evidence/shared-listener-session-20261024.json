@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "at": "2026-10-24T12:00:14.144Z",
+  "scope": "Shared listening session functional acceptance",
+  "bounds": [
+    "Candidate static assets at the approved public origin, real remote1080p preview media, local signed Nostr wire relay; at most two independent browser contexts at once.",
+    "Default1250ms discovery,6000ms heartbeat,24000ms lease; no timing overrides.",
+    "An independent isolated-room check used the actual public relays and received positive publication acknowledgement. It does not qualify the full deployed browser integration.",
+    "Public relay partitions and device clocks prevent authoritative global audience counting or frame-accurate consensus.",
+    "After candidate measurement, entry/CSS/adapter import cache-version keys changed to deliver the new code to returning visitors; playback logic was unchanged."
+  ],
+  "validation": {
+    "sessionUnitTests": 14,
+    "sessionUnitFailures": 0,
+    "focusedPlayerCatalogueBuildGraphTests": 37,
+    "focusedFailures": 0,
+    "independentReview": "No functional blocker found."
+  },
+  "candidate": {
+    "passed": true,
+    "lateJoinDifferenceSeconds": 0.509,
+    "pauseRejoinDifferenceSeconds": 0.049,
+    "starterCanLeave": true,
+    "emptyRoomWaitMs": 26534,
+    "thirdVisitorStartsFresh": true,
+    "decodedRemoteFrames": true,
+    "pageErrors": 0,
+    "wireRejected": 0,
+    "cleanup": {
+      "openContexts": 0,
+      "browserClosed": true,
+      "localRelayClients": 0
+    },
+    "sources": [
+      {
+        "path": "index.html",
+        "sha256": "f1d96b324cf907b5550c88376dbb720f44c8ac01d9fff0640a62103d2986af2c"
+      },
+      {
+        "path": "media-lab.mjs",
+        "sha256": "575eccb830b713a0f7e9f7326a45b3cd31749e9dde58625f76a109bbf44a501e"
+      },
+      {
+        "path": "media-listener-session.mjs",
+        "sha256": "a85b6830353ac7ee7654a1a7dbc1eac1fc3923b3236d55b513d718aef2372786"
+      },
+      {
+        "path": "media-public-swarm.mjs",
+        "sha256": "31445611dbd1ef7e6adbfec187998b0f8d0d8789306c3eafce36dabca521f0ec"
+      }
+    ]
+  },
+  "publicRelayProtocol": {
+    "passed": true,
+    "elapsedMs": 2042,
+    "connectedRelays": 1,
+    "scope": "One isolated qualification room on actual public relays; publication acknowledged. Protocol only, not video or authoritative audience qualification."
+  },
+  "firstSmoke": {
+    "passed": false,
+    "reason": "Startup alignment was captured before a decoded frame; later join differed4.09s. Corrected one-time ready alignment and required a decoded frame before the final smoke; failed receipt retained privately."
+  }
+}

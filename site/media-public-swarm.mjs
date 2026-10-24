@@ -21,6 +21,7 @@ export const PUBLIC_SWARM_CATALOGUE_SHA256 = 'fe69bf7b88279f796956a021db96b3fc99
 export const PUBLIC_SWARM_RELAYS = Object.freeze(['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net']);
 export const PUBLIC_SWARM_ICE = Object.freeze([{ urls: 'stun:stun.cloudflare.com:3478' }]);
 const SOURCE_SHA256 = '76d90719a756c77d1008088c58ca6b28a74eb0ef01e5337906cfb68d3e2b13aa';
+export { SOURCE_SHA256 as PUBLIC_SWARM_SOURCE_SHA256 };
 const FULL_PLAYLIST = '/media/dejavu-4k/index.m3u8';
 const FULL_MEDIA_BASE = 'https://v4v.com/forgesworn-media-demo/dejavu-4k-v1/';
 const PREVIEW_PLAYLIST = '/media/dejavu-preview/rtmp/index.m3u8';

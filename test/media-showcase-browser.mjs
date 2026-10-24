@@ -211,7 +211,7 @@ try {
   await page.waitForFunction(() => window.__showcaseQa.sockets.length > 0, undefined, { timeout: 15000 });
   assert.equal(actual.videoElementCount, 1);
   receipt.checks.playback = { ...actual, source: actual.source ? 'actual-media-source-attached' : null };
-  stage = 'invite-the-current-moment';
+  stage = 'invite-the-shared-room';
   await page.evaluate(() => {
     if (!navigator.clipboard?.writeText) return;
     const nativeWrite = navigator.clipboard.writeText.bind(navigator.clipboard);
@@ -219,16 +219,15 @@ try {
     // The test never reads the user's existing clipboard.
     navigator.clipboard.writeText = value => { window.__showcaseQa.invitation = value; return nativeWrite(value); };
   });
-  const inviteTime = (await state()).time;
   await page.locator('#public-invite').click();
   await page.waitForFunction(() => /Link copied|Share this listening link/.test(document.getElementById('public-invite-status')?.textContent ?? ''));
   const invitation = await page.evaluate(() => window.__showcaseQa.invitation ?? document.getElementById('public-invite-status').textContent.split('Share this listening link: ')[1]);
   const inviteUrl = new URL(invitation);
   assert.equal(inviteUrl.origin, 'https://forgesworn.dev'); assert.equal(inviteUrl.pathname, '/live-media.html');
   assert.equal(inviteUrl.searchParams.get('q'), 'full');
-  assert(Number(inviteUrl.searchParams.get('t')) >= inviteTime - 0.1);
-  assert(Math.abs(Date.now() - Number(inviteUrl.searchParams.get('at'))) < 10000);
-  receipt.checks.invitation = { actualButtonClicked: true, nativeClipboardWriteOrVisibleFallback: true, qualityAndCurrentMomentIncluded: true,
+  assert.equal(inviteUrl.searchParams.has('t'), false);
+  assert.equal(inviteUrl.searchParams.has('at'), false);
+  receipt.checks.invitation = { actualButtonClicked: true, nativeClipboardWriteOrVisibleFallback: true, sharedRoomQualityLink: true,
     clipboardExistingContentsRead: false, status: await page.locator('#public-invite-status').innerText() };
   stage = 'native-pause-resume-seek';
   const video = page.locator('#lab-video');
