@@ -68,7 +68,7 @@ async function visitor(index) {
     window.WebSocket = class extends WS { constructor(...args) { super(...args); qa.sockets.push(this); } };
     document.addEventListener('DOMContentLoaded', () => {
       const video = document.getElementById('lab-video'); if (!video) return;
-      for (const name of ['ended', 'pause', 'playing']) video.addEventListener(name, () => {
+      for (const name of ['ended', 'pause', 'playing', 'waiting', 'stalled', 'seeking', 'seeked']) video.addEventListener(name, () => {
         qa.events.push({ name, at: Date.now(), time: video.currentTime, ended: video.ended });
         if (qa.events.length > 80) qa.events.shift();
       });

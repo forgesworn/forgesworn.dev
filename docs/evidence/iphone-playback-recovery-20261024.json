@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "measuredAt": "2026-10-24T13:36:11.508Z",
+  "scope": "Shared-clock recovery regression; original phone symptom remains a physical-device acceptance check",
+  "passed": true,
+  "controllerSha256": "12e2868fff7040f80f71d2a95f1d13978969393b8064b2359c32f324743bc533",
+  "policy": {
+    "toleranceSeconds": 0.75,
+    "stablePlaybackMs": 5000,
+    "sustainedDriftMs": 3000,
+    "minimumCorrectionIntervalMs": 15000,
+    "bufferHeadroomSeconds": 2,
+    "pitchOrTempoChanged": false,
+    "queuedExplicitAlignment": "One fresh target after the current seek settles"
+  },
+  "tests": {
+    "node": {
+      "passed": 165,
+      "failed": 0,
+      "recoveryCases": 9
+    },
+    "browsers": {
+      "engine": "macOS Chromium",
+      "contexts": 3,
+      "media": "Unmodified public1080p preview",
+      "signalling": "Local bounded signed Nostr wire fixture",
+      "observedSamples": 45,
+      "clock": {
+        "maxSpreadSeconds": 0.6358740000000012,
+        "p95SpreadSeconds": 0.6356020000000022
+      },
+      "recordingLoopsRetainMembershipAndPeers": true,
+      "errors": 0,
+      "pausedListenerRemoved": true,
+      "cleanup": {
+        "browserClosed": true,
+        "openContexts": 0,
+        "relayClients": 0
+      }
+    },
+    "webkit": {
+      "playbackQualified": false,
+      "blockedAt": "Cached macOS WebKit context.newPage before navigation",
+      "physicalIphone": false
+    }
+  },
+  "boundary": "Same-Mac preview checks do not qualify physical iPhone decoding, audio synchrony or WAN capacity. The original4K media and peer delivery protocol are unchanged."
+}

@@ -47,9 +47,16 @@ others.  The recording loops while the room remains occupied.  Pause leaves
 the room and stops peer sharing; Play discovers the current room again and
 returns to its live position.  Native seeking can move away from live, with
 **Back to live** to return. Following playback checks the circular clock
-offset through the existing browser observation timer, correcting offsets
-above 250 ms with a seek rather than changing the music's tempo. Seek
-corrections are spaced at least 1.2 seconds apart. Buffering and differences
+offset through the existing browser observation timer. Automatic correction
+allows 750 ms of decoder offset, needs five seconds of stable playback and
+an offset in the same direction for at least three seconds, and requires
+both positions in one continuous buffer with two seconds of headroom.
+Corrections are spaced at least 15 seconds apart. Waiting, seeking or
+pausing restarts the recovery period. Joining, **Back to live** and recording
+loops can align immediately; returning from full screen uses the recovery
+checks. The music's tempo stays unchanged. This avoids repeated clock seeks
+interrupting a slower decoder while it is trying to recover. Buffering and
+differences
 in device clocks or audio output can still create temporary offsets; this is
 not a multi-speaker audio synchronisation protocol. Full screen and playback
 details retain the same video and session. A natural recording boundary
@@ -178,11 +185,20 @@ measurements, separate from this public replay.
 
 ## 4K delivery observations
 
+The [playback recovery receipt](evidence/iphone-playback-recovery-20261024.json)
+records nine focused recovery cases and a three-browser preview check using
+the current correction policy. All three retained their membership and peer
+connections over a recording loop, with a maximum media-clock spread of
+0.636 seconds. The cached macOS WebKit runner could not create a page, so
+physical iPhone playback remains an acceptance check.
+
 The [shared listener and topology receipt](evidence/shared-listener-topology-20261024.json)
 records three actual browser contexts decoding the public preview over native
 WebRTC and a local signed Nostr relay. All three retained their exact peer
 connections and shared epoch across a recording loop. The largest circular
 media-clock spread was 0.208 seconds, with a 0.161-second 95th percentile.
+Those timing observations predate the more tolerant playback recovery policy
+above and do not qualify physical iPhone playback.
 Membership changes reached the other local pages 17–29 ms after an accepted
 join and 100 ms after Pause. Remote graph edges were checked against each
 other browser's actual connection identities. A separate isolated room

@@ -42,6 +42,51 @@ export function sharedPositionDifference(current, target, duration) {
   if (![current, target, duration].every(Number.isFinite) || duration <= 0) return null;
   return ((target - current + duration / 2) % duration + duration) % duration - duration / 2;
 }
+// A wall clock advances while a decoder buffers. Repeatedly seeking to catch
+// it can keep a slower player buffering indefinitely, especially on iPhone.
+export function createSharedPlaybackSync(video, { now = () => performance.now(), signal, onSeek = () => {} } = {}) {
+  let stableAt = null, driftAt = null, driftDirection = 0, lastSeekAt = -Infinity, nextCheckAt = 0, pendingAlignment = false;
+  const reset = () => { stableAt = null; driftAt = null; driftDirection = 0; };
+  for (const event of ['waiting', 'stalled', 'seeking', 'pause', 'emptied']) video.addEventListener(event, reset, { signal });
+  return {
+    align(target, duration, force = false) {
+      const difference = sharedPositionDifference(video.currentTime, target, duration);
+      const result = { difference, corrected: false };
+      if (difference === null) return result;
+      pendingAlignment ||= force;
+      force = pendingAlignment;
+      const at = now();
+      if (!force && at < nextCheckAt) return result;
+      nextCheckAt = at + 800;
+      if (video.seeking) { reset(); return result; }
+      // Coalesce explicit requests made during an existing seek. The next
+      // check uses the latest room position rather than a stale saved target.
+      pendingAlignment = false;
+      if (!force) {
+        if (video.paused || video.ended || video.readyState < 3) { reset(); return result; }
+        // Both positions must share a continuous buffer with two seconds to
+        // spare, avoiding a jump into missing media or the edge of the buffer.
+        const start = Math.min(video.currentTime, target), end = Math.max(video.currentTime, target) + 2;
+        let buffered = false;
+        for (let i = 0; i < video.buffered.length; i++) {
+          if (video.buffered.start(i) <= start && video.buffered.end(i) >= end) { buffered = true; break; }
+        }
+        if (!buffered) { reset(); return result; }
+        stableAt ??= at;
+        if (Math.abs(difference) <= 0.75) { driftAt = null; driftDirection = 0; return result; }
+        const direction = Math.sign(difference);
+        if (direction !== driftDirection) { driftAt = at; driftDirection = direction; }
+        if (at - stableAt < 5000 || at - driftAt < 3000 || at - lastSeekAt < 15000) return result;
+      } else if (Math.abs(difference) < 0.1 && !video.ended) return result;
+      reset();
+      lastSeekAt = at;
+      onSeek(at);
+      video.currentTime = Math.max(0, Math.min(target, video.duration - 0.05));
+      result.corrected = true;
+      return result;
+    },
+  };
+}
 const mean = (samples) => samples.length ? samples.reduce((a, b) => a + b, 0) / samples.length : null;
 const max = (samples) => samples.length ? Math.max(...samples) : null;
 const human = (value, fallback = DASH) => typeof value === 'string' && value.length <= 120 && !/[\r\n\\/<>]/.test(value) ? value : fallback;
@@ -303,23 +348,14 @@ async function initialise() {
   function followListener(s, force = false) {
     if (local || session !== s || s.finishing || !s.listenerWanted || !s.listener?.snapshot().ready ||
         !s.mediaReady || video.readyState < 1 || !Number.isFinite(video.duration)) return;
-    const now = performance.now();
-    if (!force && (s.followLive === false || video.paused || video.seeking || now < (s.nextLiveCheck ?? 0))) return;
+    if (!force && s.followLive === false) return;
     const target = s.listener.position();
     const duration = s.durationSeconds;
     if (!Number.isFinite(target) || !(duration > 0)) return;
-    const difference = sharedPositionDifference(video.currentTime, target, duration);
+    const { difference } = s.playbackSync.align(target, duration, force);
     if (difference === null) return;
     root.dataset.sharedDrift = String(difference);
     optionalText('browser-sync', `${difference > 0 ? '+' : ''}${difference.toFixed(2)} s to the room clock`);
-    s.nextLiveCheck = now + 800;
-    if (force || Math.abs(difference) > 0.25) {
-      // Seek rather than changing the tempo of the music. The normal browser
-      // observation timer performs this check; no extra animation loop is used.
-      s.roomSeekAt = now;
-      s.nextLiveCheck = now + 1200;
-      video.currentTime = Math.max(0, Math.min(target, video.duration - 0.05));
-    }
     listenerStatus(s);
   }
 
@@ -633,6 +669,7 @@ async function initialise() {
   }
 
   function trackBrowser(s, playlist) {
+    s.playbackSync = createSharedPlaybackSync(video, { signal: s.abort.signal, onSeek: at => { s.roomSeekAt = at; } });
     const b = s.browser = {
       seenFrame: false, firstFrameMs: null, decodedFrames: null, frameBaseline: observed(video.webkitDecodedFrameCount) ?? 0,
       lastDecoded: 0, lastDecodeAt: null, fps: null, fpsSamples: [],
@@ -828,7 +865,10 @@ async function initialise() {
       s.hls.loadSource(url.href); s.hls.attachMedia(video);
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
       s.nativeHls = true;
-      video.addEventListener('loadedmetadata', () => followListener(s, true), { once: true, signal: s.abort.signal });
+      video.addEventListener('loadedmetadata', () => {
+        s.listenerAlignedEpoch = s.listener?.snapshot().epochId;
+        followListener(s, true);
+      }, { once: true, signal: s.abort.signal });
       video.src = url.href; s.mediaReady = true; controls(); await play(s); publicDelivery(s);
     } else throw new Error('This browser cannot play the HLS stream');
   }
@@ -1007,7 +1047,7 @@ async function initialise() {
       void joinListener(session).then(() => { if (session) { followListener(session, true); void play(session); } });
     });
     document.addEventListener('visibilitychange', () => {
-      if (!document.hidden && session && !video.paused && session.followLive !== false) followListener(session, true);
+      if (!document.hidden && session && !video.paused && session.followLive !== false) followListener(session);
     }, { signal: pageAbort.signal });
     try {
       const { createSwarmVisual } = await import('./media-swarm-visual.mjs?v=20261024-swarm-room');
