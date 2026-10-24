@@ -63,24 +63,30 @@ not a multi-speaker audio synchronisation protocol. Full screen and playback
 details retain the same video and session. A natural recording boundary
 retains room membership, native peer connections, identity and cached media.
 
-HLS starts at the discovered room position and treats that initial seek as
-the startup alignment. The first decoded frame does not force a second jump
-past freshly downloaded media. Later clock corrections use the recovery
-checks above. Recorded public playback targets 20 seconds of forward buffer,
+HLS loads at the discovered room position, then primes the existing paused
+player until the fresh room position has three seconds of continuous media
+ahead. It aligns once before playing, rather than correcting startup delay
+with an audible seek after the music begins. On a recording loop the same
+HLS instance loads from zero before choosing the new room position; room and
+peer identities remain intact. Near the end it prepares zero and waits for
+the room to wrap. After twelve seconds a safely buffered current position
+can start away from live; if a managed source needs playback demand, a
+one-shot bootstrap prevents an indefinite paused wait. Later clock corrections
+use the recovery checks above. Loop priming time remains in the measured wait
+count and duration. Recorded public playback targets 20 seconds of forward buffer,
 caps its time target at 24 seconds and retains four seconds behind the
 playhead. Its hls.js byte target is 64 MiB, which is not a hard process-memory
 limit. The local live-server comparison keeps its original smaller buffers.
 
-Public playback on iPhone and iPad starts with the browser's native HLS
-player before importing hls.js or constructing its peer adapter. The approved
-original 4K playlist and shared listener session remain the same. Native
-playback uses the media host and does not participate in RelaySwarm; the page
-states this and leaves native origin byte totals unavailable. This is an iOS
-playback workaround while the ManagedMediaSource path remains unqualified.
-It also covers iPad's desktop identity and iPhone's desktop-site request.
-Local server benchmarks and other public browsers retain their existing path.
+Public iPhone and iPad playback uses the same peer-capable hls.js integration
+as other MediaSource-capable browsers. Browser identity no longer bypasses
+RelaySwarm. The public integration enables `sustainablePeerWait`: a positive
+peer wait must fit the fragment's media duration after allowing measured HTTP
+recovery time. Its extension has the same cap; repeated peer misses cannot
+continually spend more time than each segment replenishes. Cached peer races
+still start HTTP immediately and keep their separate deadline.
 
-On other public browsers with native HLS available, playback can recover from a failing
+On public browsers with native HLS available, playback can recover from a failing
 hls.js path without replacing the visible video or listener session. Eight
 seconds without healthy progress, three rebuffer episodes of at least one
 second within thirty seconds, or a fatal playback error after the first frame
@@ -372,13 +378,22 @@ most 16 MiB. The player targets a twenty-second forward buffer with a
 twenty-four-second time ceiling, four seconds behind and a 64 MiB byte target.
 An appended fragment can overshoot a buffer target; decoder memory is
 separate.  There is no background download of the full 817 MB recording.
+The public profile currently supplies STUN discovery, with no public TURN
+service. A browser which gathers no local ICE candidates cannot join a peer
+route; the player reports that condition while continuing HTTPS playback.
+Vanadium's default restriction on non-proxied UDP can produce this result.
+A TCP/TLS TURN route is needed to support that policy without changing the
+browser's privacy preference. Private test credentials are never included in
+this site's bundle. See the [GrapheneOS explanation](https://bsky.app/profile/grapheneos.org/post/3lqpnxljvd22d).
 The pinned 689 KiB piece catalogue is bounded to 1 MiB, and the browser uses
 the existing 399 KiB Rust/WASM module.  Both load only after Play.  The bundle
 receipt records the exact source, WASM digest and dependency notices; the
 website build copies that public module without compiling Rust.
 
-The current browser bundle pins RelaySwarm 0.4.2, including its peer ticket
-renewal upload fix. Playback details show the actual native/MSE engine and
+The current browser bundle pins RelaySwarm 0.4.3, including sustainable peer
+waits and range-sized WASM upload inputs. A six MiB object requested in sixteen
+ranges copies six MiB into WASM instead of 96 MiB; this is input-copy accounting,
+not a throughput or device-continuity claim. Playback details show the actual native/MSE engine and
 vendored library version/source. The former 15-minute adapter cutoff was
 removed; recordings and native loop connections can continue while playing.
 

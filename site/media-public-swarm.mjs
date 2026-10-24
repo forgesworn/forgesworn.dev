@@ -3,7 +3,7 @@
 // A receiver's ephemeral key wraps that digest for the existing live-commitment
 // verifier; this is local attestation, not a live broadcaster signing service.
 import { createHlsSwarm, commitmentContent, commitmentPieceSize, segmentMediaContext, KIND_SEGMENT_COMMITMENT, finalizeEvent,
-  generateSecretKey, relayswarmBuild } from './vendor/media-peer-demo.js?v=2c2708c9';
+  generateSecretKey, relayswarmBuild } from './vendor/media-peer-demo.js?v=20261024-peer-continuity';
 import { observeOriginLoader } from './media-transfer-stats.mjs';
 
 export const PUBLIC_SWARM_LIMITS = Object.freeze({
@@ -117,7 +117,7 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
   let stopped = false, enabled = false, enabling = null, generation = 0, swarm, key, plan, tick, catalogueAbort;
   let lastDelivery = null, lastReason = 'off', receivedOriginBytes = 0, loadedMediaBytes = 0, lastPeerBytes = 0;
   let highWaterBytes = 0, signalErrors = 0, lastSnapshot = null, nextPeer = 1, observing = false, request = 0;
-  let sentMediaBytes = 0;
+  let sentMediaBytes = 0, noLocalRoutes = 0;
 
   const metrics = () => {
     const live = swarm?.metrics();
@@ -144,7 +144,7 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
       resources: { activePeerConnections: [...connections].filter(connection => connection.connectionState !== 'closed').length,
         signallingConnections: [...sockets].filter(socket => socket.readyState < 2).length,
         heldBytes: n(live?.bytes.held), heldHighWaterBytes: highWaterBytes },
-      diagnostics: { signalErrors, dialling: n(live?.peers.dialling), dialsStarted: n(live?.peers.dialsStarted),
+      diagnostics: { signalErrors, noLocalRoutes, dialling: n(live?.peers.dialling), dialsStarted: n(live?.peers.dialsStarted),
         disabledReason: live?.disabledReason ?? null, commitmentUnavailable: n(live?.segments.commitmentUnavailable),
         signallingConnected: n(live?.relays.connected), signallingPublished: n(live?.relays.published),
         signallingPublishErrors: n(live?.relays.publishErrors), relayRejected: n(live?.relays.rejected),
@@ -293,6 +293,14 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
             if (connections.size >= PUBLIC_SWARM_LIMITS.maxPeers + 2) throw new Error('Public peer connection limit reached.');
             super(config);
             connections.add(this);
+            let candidates = 0, complete = false;
+            this.addEventListener('icecandidate', event => {
+              if (event.candidate) candidates++;
+              else if (!complete) {
+                complete = true;
+                if (!candidates) { noLocalRoutes++; emit(); }
+              }
+            });
             peerObservations.set(this, { id: `peer-${nextPeer++}`, sentBytes: null, receivedBytes: null, mediaBytesSent: 0,
               verifiedMediaBytesReceived: 0, kind: null, trafficBasis: null, observedAtMs: null });
             this.addEventListener('datachannel', event => observeChannel(event.channel, this));
@@ -303,8 +311,8 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
         }
         swarm = createSwarm({ mode: 'peer-first', swarmId: plan.swarmId, relays: [...PUBLIC_SWARM_RELAYS],
           streamEvent, getCommitment, serve: true, serveOnCellular: false,
-          coreWasm: new URL('./vendor/relayswarm-core.wasm', import.meta.url), multiHolder: true,
-          zeroBudgetPeerRace: true,
+          coreWasm: new URL('./vendor/relayswarm-core.wasm?v=20261024-peer-continuity', import.meta.url), multiHolder: true,
+          zeroBudgetPeerRace: true, sustainablePeerWait: true,
           maxHoldersPerObject: PUBLIC_SWARM_LIMITS.maxPeers,
           iceServers: PUBLIC_SWARM_ICE.map(entry => ({ ...entry })), iceTransportPolicy: 'all',
           WebSocketImpl: ObservedSocket, RTCPeerConnectionImpl: ObservedConnection,
