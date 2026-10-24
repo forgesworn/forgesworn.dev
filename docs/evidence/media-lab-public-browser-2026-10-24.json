@@ -1,0 +1,160 @@
+{
+  "schema": 1,
+  "measuredAt": "2026-10-24T01:34:46.913Z",
+  "scope": "Actual public-origin lab UI and approved licensed media",
+  "passed": true,
+  "autoplayPolicyOverride": false,
+  "browserAudioSuppressed": false,
+  "localSiteRouteFulfilment": true,
+  "remote4kMediaRouteFulfilment": false,
+  "fullPlaybackBoundary": "The 4K path is observed briefly; complete 268.6-second playback is not asserted.",
+  "audioBoundary": "Real user clicks start unmuted audio; a connected Web Audio analyser measures nonzero decoded signal. Physical speaker listening is not asserted.",
+  "audioInstrumentation": "MediaElementAudioSource -> analyser -> destination; context resumes only on actual Play-button clicks. The video play method is not replaced.",
+  "dimensionBoundary": "Original source is coded 3840x2160 with sample aspect 17415:17408. HTML natural display width rounds to3842; decoded-frame pixel metadata is recorded separately.",
+  "sourceAspectRatio": {
+    "numerator": 17415,
+    "denominator": 17408,
+    "expectedNaturalWidth": 3842,
+    "evidence": "Independent ffprobe of the exact licensed source hash"
+  },
+  "hostLoadAtStart": [
+    18.81201171875,
+    17.88671875,
+    35.890625
+  ],
+  "sources": [
+    {
+      "path": "site/media-lab.html",
+      "sha256": "aff9a720fba534ccf03dd900f016a6c2e6ba13ab05b43677e90c0b8a262bed49"
+    },
+    {
+      "path": "site/media-lab.mjs",
+      "sha256": "2297ae2bfb141c9404530a67155a10d3643b1874bb32e4ab78a8d2bb5d2c0e4c"
+    },
+    {
+      "path": "site/media-live-start.mjs",
+      "sha256": "df5d43956d8141e0a8cf63eca59e273a46570d772a2c6731f8e7d6987bf6761c"
+    },
+    {
+      "path": "site/media-fullscreen.mjs",
+      "sha256": "3b116adcf2c093ca2cbe87d5114b530e74cbb3864698f495ba482483331d14df"
+    },
+    {
+      "path": "site/vendor/hls.light.min.mjs",
+      "sha256": "5d9a5d76f8a0cb9dc18fac597a0a0e71e02550d6e7f28a3fa2ae8c996df42464"
+    },
+    {
+      "path": "site/media/dejavu-preview/manifest.json",
+      "sha256": "006bb90524b9bcd2d5017765565db4f3d7eb994ec4d8a6c49da0cc5517f4f211"
+    }
+  ],
+  "checks": [
+    {
+      "quality": "1080p-preview",
+      "actualPlayback": {
+        "width": 1920,
+        "height": 1080,
+        "currentTime": 1.538958,
+        "decodedFrameWidth": 1920,
+        "decodedFrameHeight": 1080,
+        "paused": false,
+        "muted": false,
+        "volume": 1,
+        "decodedFrames": 43,
+        "audioDecodedBytes": 28414,
+        "audioContextState": "running",
+        "audioRms": 0.1317573855195252,
+        "quality": "preview",
+        "fpsDisplay": "24.8 fps",
+        "dimensionsDisplay": "1,920 \u00d7 1,080 video",
+        "firstFrameDisplay": "220 ms",
+        "responseBytesDisplay": "11.9 MB",
+        "requestsDisplay": "33",
+        "errorsDisplay": "0 / 0",
+        "bufferDisplay": "28.56 s",
+        "stallsDisplay": "0",
+        "stallTimeDisplay": "0.00 s",
+        "currentSourceConfigured": true
+      },
+      "fullscreen": {
+        "enteredAndExited": true,
+        "sameElement": true,
+        "timeAdvanced": true,
+        "volumePreserved": true,
+        "selectionPreserved": true,
+        "focusRestored": true
+      }
+    },
+    {
+      "quality": "4k-full-source-short-observation",
+      "actualPlayback": {
+        "width": 3842,
+        "height": 2160,
+        "currentTime": 1.598331,
+        "decodedFrameWidth": 3840,
+        "decodedFrameHeight": 2160,
+        "paused": false,
+        "muted": false,
+        "volume": 0.47,
+        "decodedFrames": 44,
+        "audioDecodedBytes": 79218,
+        "audioContextState": "running",
+        "audioRms": 0.0679801051758128,
+        "quality": "full",
+        "fpsDisplay": "25.9 fps",
+        "dimensionsDisplay": "3,840 \u00d7 2,160 video \u00b7 3,842 \u00d7 2,160 display",
+        "firstFrameDisplay": "1,375 ms",
+        "responseBytesDisplay": "12.6 MB",
+        "requestsDisplay": "4",
+        "errorsDisplay": "0 / 0",
+        "bufferDisplay": "2.53 s",
+        "stallsDisplay": "0",
+        "stallTimeDisplay": "0.00 s",
+        "currentSourceConfigured": true
+      },
+      "fullscreen": {
+        "enteredAndExited": true,
+        "sameElement": true,
+        "timeAdvanced": true,
+        "volumePreserved": true,
+        "selectionPreserved": true,
+        "focusRestored": true
+      },
+      "qualityChangeWaitedForPlay": true,
+      "actualRemoteMedia": true
+    }
+  ],
+  "pageErrors": 0,
+  "localApiRequests": 0,
+  "unexpectedRequests": 0,
+  "mediaHttpErrors": [],
+  "browserVersion": "155.0.8059.85",
+  "stopCleanup": {
+    "paused": true,
+    "sourceDetached": true,
+    "mediaRequestsInFlight": 0,
+    "qualityPreserved": true,
+    "noComparisonRowInvented": true
+  },
+  "browserClosed": true,
+  "hostLoadAtEnd": [
+    18.103515625,
+    17.75927734375,
+    35.634765625
+  ],
+  "priorLongerObservation": {
+    "classification": "Earlier exact-natural-width assertion was corrected using independently verified source sample aspect ratio; these playback observations are retained.",
+    "source": "same approved hosted 4K HLS",
+    "currentTime": 47.859278,
+    "decodedFrames": 1205,
+    "naturalWidth": 3842,
+    "naturalHeight": 2160,
+    "muted": false,
+    "volume": 0.47,
+    "audioRms": 0.08972953847903553,
+    "stallsDisplay": "4",
+    "stallTimeDisplay": "5.10 s",
+    "playerAndHttpErrorsDisplay": "4 / 0",
+    "boundary": "This longer observation had stalls. The shorter functional pass is not evidence of stall-free or complete-file playback."
+  }
+}

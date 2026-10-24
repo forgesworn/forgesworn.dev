@@ -1,14 +1,33 @@
 import { createHash, randomBytes } from 'node:crypto';
+import { createReadStream } from 'node:fs';
 import { spawn, execFileSync } from 'node:child_process';
 import { createServer } from 'node:net';
 import { createSocket } from 'node:dgram';
-import { readFile, writeFile, mkdir, readdir, mkdtemp, rm } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, readdir, mkdtemp, rm, stat, lstat, open, rmdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms).unref());
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
+
+export function mediaPermission({ generated = false, licensed = false, provenance } = {}) {
+  if (generated === licensed) throw new Error('Choose exactly one provenance: --generated or --licensed');
+  if (licensed && (typeof provenance?.title !== 'string' || !provenance.title.trim() ||
+      provenance.permission !== 'owner-authorised-public-demo')) {
+    throw new Error('Licensed media needs a title and owner-authorised-public-demo permission in its provenance');
+  }
+  return generated ? { generated: true } : {
+    generated: false, licensed: true,
+    licence: { title: provenance.title.trim().slice(0, 160), permission: 'owner-authorised-public-demo' },
+  };
+}
+
+async function fileIdentity(path) {
+  const hash = createHash('sha256');
+  for await (const chunk of createReadStream(path)) hash.update(chunk);
+  return { sha256: hash.digest('hex'), bytes: (await stat(path)).size };
+}
 
 // Capture only complete media segments. Initial live-window GAP entries are
 // absent from the replay; the original media bytes and durations are retained.
@@ -111,12 +130,27 @@ async function sourceReceipt(source, binary) {
     binarySha256: digest(await readFile(binary)), runtimeSourceSha256: digest(JSON.stringify(checksums)), files: checksums };
 }
 
-export async function packageDemo({ input, sapflow, source, out, seconds = 18, generated = false, provenance }) {
-  if (!generated) throw new Error('Only original generated demo media is permitted; pass --generated after verifying provenance');
+export async function packageDemo({ input, sapflow, source, out, seconds = 18, generated = false, licensed = false, quality = '720p', provenance }) {
+  const permission = mediaPermission({ generated, licensed, provenance });
+  if (!['720p', '1080p'].includes(quality)) throw new Error('Demo quality must be 720p or 1080p');
+  const profile = quality === '1080p'
+    ? { width: 1920, height: 1080, fps: 25, videoBps: 3_000_000, maxBps: 4_000_000, bufferBps: 6_000_000, audioBps: 128_000 }
+    : { width: 1280, height: 720, fps: 24, videoBps: 1_200_000, maxBps: 1_600_000, bufferBps: 2_400_000, audioBps: 96_000 };
   if (!Number.isInteger(seconds) || seconds < 12 || seconds > 45) throw new Error('Capture duration must be 12–45 whole seconds');
   input = resolve(input); sapflow = resolve(sapflow); source = resolve(source); out = resolve(out);
+  for (const name of ['rtmp', 'srt', 'source.mp4', 'manifest.json']) {
+    try { await lstat(join(out, name)); throw new Error(`Output already exists: ${name}`); }
+    catch (error) { if (error.code !== 'ENOENT') throw error; }
+  }
   const scratch = await mkdtemp(join(tmpdir(), 'forgesworn-media-package-'));
   const children = new Set();
+  const createdOutputs = [];
+  let published = false;
+  async function writeNewFile(file, bytes) {
+    const handle = await open(file, 'wx', 0o644);
+    createdOutputs.push(file);
+    try { await handle.writeFile(bytes); } finally { await handle.close(); }
+  }
   let interrupted = false;
   const interrupt = () => { interrupted = true; for (const child of children) void stop(child); };
   process.once('SIGINT', interrupt); process.once('SIGTERM', interrupt);
@@ -128,23 +162,23 @@ export async function packageDemo({ input, sapflow, source, out, seconds = 18, g
     const args = ['-hide_banner', '-loglevel', 'error', '-stream_loop', '-1', '-i', input];
     if (!hasAudio) args.push('-f', 'lavfi', '-i', 'sine=frequency=220:sample_rate=48000');
     args.push('-t', String(seconds), '-map', '0:v:0', '-map', hasAudio ? '0:a:0' : '1:a:0',
-      '-vf', 'scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,fps=24',
+      '-vf', `scale=${profile.width}:${profile.height}:force_original_aspect_ratio=decrease,pad=${profile.width}:${profile.height}:(ow-iw)/2:(oh-ih)/2,fps=${profile.fps}`,
       '-pix_fmt', 'yuv420p', '-c:v', 'libx264', '-threads', '2', '-preset', 'fast', '-tune', 'zerolatency',
-      '-g', '24', '-keyint_min', '24', '-sc_threshold', '0', '-b:v', '1200k', '-maxrate', '1600k', '-bufsize', '2400k',
-      '-c:a', 'aac', '-b:a', '96k', '-ar', '48000', '-ac', '2', '-map_metadata', '-1', '-movflags', '+faststart', prepared);
+      '-g', String(profile.fps), '-keyint_min', String(profile.fps), '-sc_threshold', '0', '-b:v', String(profile.videoBps), '-maxrate', String(profile.maxBps), '-bufsize', String(profile.bufferBps),
+      '-c:a', 'aac', '-b:a', String(profile.audioBps), '-ar', '48000', '-ac', '2',
+      '-map_metadata', '-1', '-map_metadata:s:v', '-1', '-map_metadata:s:a', '-1', '-map_chapters', '-1', '-movflags', '+faststart', prepared);
     const encoder = start('ffmpeg', args); children.add(encoder);
     const encoded = await Promise.race([encoder.completion, pause(90_000).then(() => ({ code: -1 }))]);
-    if (encoded.code !== 0 || interrupted) throw new Error('Generated source normalisation failed');
+    if (encoded.code !== 0 || interrupted) throw new Error('Demo source normalisation failed');
     await stop(encoder); children.delete(encoder);
     const receipt = await sourceReceipt(source, sapflow);
-    const sourceBytes = await readFile(input);
     const build = {
-      schema: 1, generated: true,
-      source: { sha256: digest(sourceBytes), bytes: sourceBytes.length,
-        provider: provenance?.provider ?? 'original generated fixture',
+      schema: 1, ...permission,
+      source: { ...await fileIdentity(input),
+        provider: provenance?.provider ?? (generated ? 'original generated fixture' : 'owner-licensed media'),
         model: provenance?.model ?? null,
         audio: hasAudio ? 'source audio' : 'generated test tone' },
-      sapflow: receipt, captureSeconds: seconds,
+      sapflow: receipt, captureSeconds: seconds, preparedProfile: profile,
       preparedSource: { file: 'source.mp4', sha256: digest(await readFile(prepared)) }, clips: {},
       playback: 'Finite HLS replay captured from real loopback Sapflow SRT and RTMP ingest. The public static page does not run a live media origin.',
     };
@@ -157,6 +191,7 @@ export async function packageDemo({ input, sapflow, source, out, seconds = 18, g
         if (error.code === 'EEXIST') throw new Error(`Output already exists: ${transport}`);
         throw error;
       }
+      createdOutputs.push(output);
       const ports = { http: await tcpPort(), rtmp: await tcpPort(), srt: await udpPort() };
       const pass = randomBytes(24).toString('hex');
       const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('SAPFLOW_')));
@@ -252,12 +287,17 @@ export async function packageDemo({ input, sapflow, source, out, seconds = 18, g
       await stop(server); children.delete(server);
       console.log(`${transport.toUpperCase()}: ${segments.length} Sapflow segments captured and independently decoded`);
     }
-    await writeFile(join(out, 'source.mp4'), await readFile(prepared));
-    await writeFile(join(out, 'manifest.json'), JSON.stringify(build, null, 2) + '\n');
+    if (interrupted) throw new Error('Capture interrupted');
+    await writeNewFile(join(out, 'source.mp4'), await readFile(prepared));
+    if (interrupted) throw new Error('Capture interrupted');
+    await writeNewFile(join(out, 'manifest.json'), JSON.stringify(build, null, 2) + '\n');
+    if (interrupted) throw new Error('Capture interrupted');
+    published = true;
     return build;
   } finally {
     process.removeListener('SIGINT', interrupt); process.removeListener('SIGTERM', interrupt);
     await Promise.allSettled([...children].map(stop));
+    if (!published) await Promise.allSettled(createdOutputs.reverse().map(path => rm(path, { recursive: true, force: true })));
     await rm(scratch, { recursive: true, force: true });
   }
 }
@@ -267,18 +307,26 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   for (let i = 0; i < args.length; i++) {
     const key = args[i];
     if (key === '--generated') options.generated = true;
-    else if (['--input', '--sapflow', '--source', '--out', '--seconds', '--provenance'].includes(key)) {
+    else if (key === '--licensed') options.licensed = true;
+    else if (['--input', '--sapflow', '--source', '--out', '--seconds', '--quality', '--provenance'].includes(key)) {
       if (!args[i + 1] || args[i + 1].startsWith('--')) throw new Error(`Missing value for ${key}`);
       options[key.slice(2)] = key === '--seconds' ? Number(args[++i]) : args[++i];
     } else throw new Error(`Unknown option ${key}`);
   }
   options.out ??= 'site/media/demo';
   if (!options.input || !options.sapflow || !options.source) {
-    console.error('Usage: node scripts/package-media-demo.mjs --generated --input generated.mp4 --sapflow /path/to/sapflow --source /path/to/source [--out site/media/demo]');
+    console.error('Usage: node scripts/package-media-demo.mjs (--generated | --licensed --provenance permission.json) --input clip.mp4 --sapflow /path/to/sapflow --source /path/to/source [--quality 720p|1080p] [--out site/media/demo]');
     process.exitCode = 2;
   } else {
     if (options.provenance) options.provenance = JSON.parse(await readFile(options.provenance, 'utf8'));
-    try { await mkdir(resolve(options.out), { recursive: true }); await packageDemo(options); }
-    catch (error) { console.error(error.message); process.exitCode = 1; }
+    let createdRoot = false;
+    try {
+      try { await mkdir(resolve(options.out)); createdRoot = true; }
+      catch (error) { if (error.code !== 'EEXIST') throw error; }
+      await packageDemo(options);
+    } catch (error) {
+      if (createdRoot) { try { await rmdir(resolve(options.out)); } catch {} }
+      console.error(error.message); process.exitCode = 1;
+    }
   }
 }

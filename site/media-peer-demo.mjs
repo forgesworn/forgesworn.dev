@@ -179,7 +179,7 @@ export async function startPeerDemo({ Hls, video, playlistUrl, manifest, runtime
   const swarmId = `forgesworn-demo-${hex(crypto.getRandomValues(new Uint8Array(12)))}`;
   const publisherKey = generateSecretKey();
   const streamEvent = finalizeEvent({ kind: 30311, created_at: Math.floor(Date.now() / 1000),
-    tags: [['d', swarmId], ['relayswarm', 'redistribute', '1']], content: 'Generated, browser-local media demonstration.' }, publisherKey);
+    tags: [['d', swarmId], ['relayswarm', 'redistribute', '1']], content: 'Browser-local media demonstration.' }, publisherKey);
   const relay = createInPageRelay(swarmId);
   const connections = new Set(), players = [], swarms = [];
   const started = performance.now();
@@ -302,7 +302,7 @@ export async function startPeerDemo({ Hls, video, playlistUrl, manifest, runtime
       (swarms[0].metrics().bytes.held === 0 || swarms[1].metrics().peers.connected < 1)) {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
-    if (fatal) throw new Error('The generated clip could not be decoded.');
+    if (fatal) throw new Error('The demonstration clip could not be decoded.');
     if (stopped) return { stop, disconnectPeer, metrics: () => snapshot() };
     startedViewer = true;
     players[1].startLoad(0);
@@ -312,7 +312,7 @@ export async function startPeerDemo({ Hls, video, playlistUrl, manifest, runtime
     while (!stopped && video.readyState < 2 && performance.now() < mediaDeadline) {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
-    if (fatal || !stopped && video.readyState < 2) throw new Error('The generated clip could not start playback.');
+    if (fatal || !stopped && video.readyState < 2) throw new Error('The demonstration clip could not start playback.');
     return { stop, disconnectPeer, metrics: () => snapshot() };
   } catch (failure) {
     stop();

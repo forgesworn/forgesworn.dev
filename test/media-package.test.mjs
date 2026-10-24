@@ -1,6 +1,19 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseSnapshot, replayPlaylist } from '../scripts/package-media-demo.mjs';
+import { parseSnapshot, replayPlaylist, mediaPermission } from '../scripts/package-media-demo.mjs';
+
+test('generated and owner-licensed public media retain separate explicit provenance', () => {
+  assert.throws(() => mediaPermission(), /exactly one provenance/);
+  assert.throws(() => mediaPermission({ generated: true, licensed: true }), /exactly one provenance/);
+  assert.throws(() => mediaPermission({ licensed: true }), /permission/);
+  assert.throws(() => mediaPermission({ licensed: true, provenance: { title: 'Mix', permission: 'unverified' } }), /permission/);
+  assert.deepEqual(mediaPermission({ generated: true }), { generated: true });
+  assert.deepEqual(mediaPermission({ licensed: true, provenance: {
+    title: 'Deja Vu Ambient Sunrise Mix', permission: 'owner-authorised-public-demo',
+    privatePath: '/private/source.mp4', token: 'must-not-be-copied',
+  } }), { generated: false, licensed: true,
+    licence: { title: 'Deja Vu Ambient Sunrise Mix', permission: 'owner-authorised-public-demo' } });
+});
 
 test('live capture skips placeholder gaps while preserving complete segment durations', () => {
   const snapshot = '#EXTM3U\n#EXT-X-MAP:URI="epoch_init.mp4"\n#EXT-X-GAP\n#EXTINF:2.0,\nepoch_seg0.mp4\n#EXTINF:1.984,\nepoch_seg1.mp4\n#EXT-X-PART:DURATION=0.2,URI="epoch_part2.mp4"\n';

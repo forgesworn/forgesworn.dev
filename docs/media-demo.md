@@ -1,6 +1,11 @@
 # Run the media demonstration locally
 
-The public page replays generated HLS packaged by Sapflow. It does not run a
+The public page replays a licensed 1080p excerpt of Deja Vu Ambient Sunrise Mix,
+packaged by Sapflow.  The [comparison player](https://forgesworn.dev/media-lab.html)
+also offers the complete 4K recording, with sound, full screen and a return to
+the measured browser stats.  Its full recording uses static packet-copy HLS;
+the [local comparison runner](media-lab.md) exercises actual live origins.
+The public site does not run a
 public ingest service, TURN server or credential issuer. Its two logical
 viewers use the real RelaySwarm browser loader; the HLS origin remains the
 fallback. Local mode adds an actual Spry TURN process and forces relay ICE
@@ -8,8 +13,9 @@ for the two viewers.
 
 Use a current Node installation, a built Sapflow executable/source checkout
 and a Spry TURN 0.2.1 executable. These tools are supplied separately; the
-helper does not download, build or install them. Use generated media without
-personal recordings or production credentials.
+helper does not download, build or install them.  Use generated media or a
+recording whose owner has authorised public demonstration.  The supplied mix
+has that permission.  Keep production credentials out of the fixture.
 
 The published page includes prepared media, so start the local page and relay
 with those files:
@@ -40,6 +46,14 @@ It refuses to replace an existing capture directory, terminates its process
 groups and removes temporary working files on exit.
 The browser serves the resulting files as replay; that is separate from
 running a continuously publishing SRT/RTMP origin.
+
+The main page selects its media catalogue with `data-media-base`.  Its current
+catalogue is `/media/dejavu-preview/`; the original generated film remains at
+`/media/demo/` with its own provenance.  The local runtime endpoint keeps the
+fixed `/media/demo/runtime.json` path regardless of the selected recording.
+See [media-lab.md](media-lab.md#public-playback-and-permission) for the explicit
+`--licensed` permission file and 1080p packaging command.  Demo media retains
+its existing rights and is excluded from the software's MIT licence.
 
 Open the printed `http://127.0.0.1:PORT/live-media.html?relay=local` URL. The
 HTTP server and Spry's UDP/TCP listeners bind only to `127.0.0.1`. Ports are
@@ -100,7 +114,7 @@ delivery.
 |---------|---------------------------------|
 | sapflow-core | Publisher and stream validation in the captured ingest pipeline |
 | sapflow-rtmp | Real RTMP ingest into Sapflow |
-| sapflow-srt | Sapflow's own SRT listener receiving generated MPEG-TS |
+| sapflow-srt | Sapflow's own SRT listener receiving the prepared source as MPEG-TS |
 | sapflow-hls | Actual H.264/AAC packaging, playlists and captured fMP4 segments |
 | Sapflow server | Loopback sockets and HTTP output during preparation |
 | RelaySwarm | Browser rendezvous, WebRTC transfer, signed commitments, hash verification and origin fallback |

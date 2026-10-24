@@ -71,4 +71,13 @@ Both pages are generated output (gitignored) and are rebuilt in CI on deploy.
 
 ## Licence
 
-MIT. See [LICENCE](LICENCE).
+MIT for the code. See [LICENSE](LICENSE).  Owner-licensed demonstration media
+has its own permission notice and is not relicensed under MIT.
+
+## Media comparison
+
+[Watch the broadcast](https://forgesworn.dev/media-lab.html) or run the
+[local comparison](docs/media-lab.md) with the same recording through native
+Sapflow and MediaMTX.  Optional RelaySwarm delivery compares Spry and coturn
+with real UDP/TCP TURN paths.  Process readings belong to the local runner;
+public playback and recorded comparisons are labelled separately.

@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "source": {
+    "label": "Deja Vu Ambient Sunrise Mix",
+    "sha256": "76d90719a756c77d1008088c58ca6b28a74eb0ef01e5337906cfb68d3e2b13aa",
+    "bytes": 817058874,
+    "width": 3840,
+    "height": 2160,
+    "fps": 25,
+    "durationSeconds": 268.6,
+    "bitrateBps": 24335335,
+    "videoCodec": "h264",
+    "audioCodec": "aac",
+    "audioSampleRate": 48000
+  },
+  "runs": [],
+  "permission": {
+    "title": "Deja Vu Ambient Sunrise Mix",
+    "permission": "owner-authorised-public-demo"
+  },
+  "playback": {
+    "preview": {
+      "playlist": "/media/dejavu-preview/rtmp/index.m3u8",
+      "durationSeconds": 29.96,
+      "mediaBytes": 11902497,
+      "capturedFrom": "Sapflow RTMP ingest;1920x1080/25 H264/AAC excerpt",
+      "manifest": "/media/dejavu-preview/manifest.json"
+    },
+    "full": {
+      "playlist": "https://v4v.com/forgesworn-media-demo/dejavu-4k-v1/index.m3u8",
+      "durationSeconds": 268.6,
+      "mediaBytes": 817057825,
+      "packaging": {
+        "implementation": "FFmpeg static HLS packet copy",
+        "transcode": false,
+        "liveOrigin": false,
+        "videoTracks": 1,
+        "audioTracks": 1,
+        "targetSegmentSeconds": 2,
+        "playlist": "index.m3u8",
+        "validation": "Independent ffprobe parsed the HLS video/audio tracks, dimensions and duration; browser playback is qualified separately."
+      },
+      "manifest": "https://v4v.com/forgesworn-media-demo/dejavu-4k-v1/manifest.json"
+    }
+  },
+  "measurementStatus": "Public player measures browser playback. Native origin and TURN process measurements require the local runner; no full-source performance winner is claimed."
+}

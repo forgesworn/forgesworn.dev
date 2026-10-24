@@ -14,6 +14,8 @@
     "test:media:ui": "node test/media-ui-browser.mjs",
     "demo:media": "node scripts/serve-media-demo.mjs",
     "demo:package": "node scripts/package-media-demo.mjs",
+    "demo:compare": "node scripts/media-lab-server.mjs",
+    "demo:broadcast": "node scripts/package-media-broadcast.mjs",
     "map": "node scripts/build-map.mjs"
   },
   "license": "MIT",

@@ -50,7 +50,7 @@ async function playbackState(page) {
 const cancelled = () => { process.exitCode = 130; void browser?.close(); void operator?.stop(); };
 process.once('SIGINT', cancelled); process.once('SIGTERM', cancelled);
 try {
-  const manifest = await readFile(new URL('../site/media/demo/manifest.json', import.meta.url));
+  const manifest = await readFile(new URL('../site/media/dejavu-preview/manifest.json', import.meta.url));
   receipt.mediaManifestSha256 = createHash('sha256').update(manifest).digest('hex');
   receipt.spryBinarySha256 = createHash('sha256').update(await readFile(resolve(options.spry))).digest('hex');
   operator = await startMediaDemo({ spry: resolve(options.spry), transport: options.transport });
@@ -78,7 +78,7 @@ try {
     };
   });
   await page.goto(options.mode === 'relay' ? operator.url : new URL('/live-media.html', origin).href, { waitUntil: 'networkidle', timeout: 20_000 });
-  receipt.versionedPlayerScript = await page.locator('script[src^="/media-demo.mjs"]').getAttribute('src') === '/media-demo.mjs?v=20261024-player';
+  receipt.versionedPlayerScript = await page.locator('script[src^="/media-demo.mjs"]').getAttribute('src') === '/media-demo.mjs?v=20261024-dejavu';
   assert(receipt.versionedPlayerScript);
   await page.selectOption('#demo-ingest', options.clip);
   await page.click('#demo-start');
