@@ -1,0 +1,885 @@
+{
+  "schema": 1,
+  "date": "2026-10-24",
+  "mediaManifestSha256": "60598b87fbc5772e8b8882084108b433c02e73200b6d8ca05ed17d404e6b9dc9",
+  "passed": true,
+  "scope": "Original generated concert replay, packaged through public Sapflow. Actual browser RelaySwarm peer transfer through local Spry UDP/TCP, forced holder-disconnection HTTP recovery, real landing controls and complete cleanup. Separate native binding receipt; no physical-device or internet-NAT claim.",
+  "receipts": [
+    {
+      "name": "film-peer-udp-rtmp",
+      "schema": 1,
+      "scope": "same-page-relayswarm-with-sapflow-packaged-replay",
+      "passed": true,
+      "clip": "rtmp",
+      "fixture": "Higgsfield",
+      "mediaManifestSha256": "6db1849788f23da001303d31e4eccfa2ea9a06dfc9dcdb10988e0ac8167b53cb",
+      "catalogueSha256": "60598b87fbc5772e8b8882084108b433c02e73200b6d8ca05ed17d404e6b9dc9",
+      "relayswarmSourceCommit": "55424c9cda739091acc5d641d3ef701678d97ffd",
+      "relayswarmBundleSha256": "d9358b8964ec72e803e88a9f43065668f0e55b841850a54c6b67eb87f99bc87e",
+      "requestedPeerTransport": "udp",
+      "limits": "Finite Sapflow-packaged replay, two logical viewers in one browser page and in-page Nostr signalling. Not live capture, an internet Nostr service, WAN/NAT acceptance or native phone qualification.",
+      "peer": {
+        "phase": "peer",
+        "elapsedMs": 1242,
+        "viewer": {
+          "peerBytes": 896200,
+          "originBytes": 150139,
+          "verifiedPeerSegments": 5,
+          "originFallbacks": 1,
+          "connectedPeers": 1,
+          "integrityRejected": 0
+        },
+        "holder": {
+          "uploadedBytes": 896200,
+          "connectedPeers": 1
+        },
+        "transport": {
+          "mode": "local-turn",
+          "requestedProtocol": "udp",
+          "selectedPairs": [
+            {
+              "localType": "relay",
+              "remoteType": "relay",
+              "relayProtocol": "udp"
+            },
+            {
+              "localType": "relay",
+              "remoteType": "relay",
+              "relayProtocol": "udp"
+            }
+          ],
+          "signalling": "in-page Nostr adapter",
+          "signallingEvents": 6
+        },
+        "playback": {
+          "currentTime": 0.079393,
+          "readyState": 4,
+          "paused": false,
+          "decodedFrames": 6
+        },
+        "resources": {
+          "activePeerConnections": 2,
+          "signallingConnections": 2,
+          "heldBytes": 3057720
+        },
+        "diagnostics": {
+          "holderErrors": {
+            "total": 0,
+            "byStage": {}
+          },
+          "viewerErrors": {
+            "total": 0,
+            "byStage": {}
+          },
+          "holderHeldBytes": 3057720,
+          "viewerDials": 0,
+          "viewerMisses": 0,
+          "viewerCommitmentRejected": 0,
+          "viewerCommitmentUnavailable": 0,
+          "eligibility": {
+            "no-budget": 1,
+            "aborted-before-eligibility": 0,
+            "no-have-no-wait": 0,
+            "no-have-wait": 0,
+            "wait-no-longer-eligible": 0,
+            "wait-aborted": 0,
+            "wait-expired": 0,
+            "have-at-entry": 5,
+            "have-after-wait": 0,
+            "projected-late": 0
+          },
+          "connections": [
+            {
+              "state": "connected",
+              "ice": "connected"
+            },
+            {
+              "state": "connected",
+              "ice": "connected"
+            }
+          ],
+          "localRelay": {
+            "published": 6,
+            "delivered": 20,
+            "rejected": 0,
+            "connections": 2,
+            "retainedPresences": 2
+          }
+        },
+        "limits": {
+          "maxDurationMs": 90000,
+          "maxUploadBytes": 33554432
+        }
+      },
+      "disconnectStarted": {
+        "phase": "origin-fallback",
+        "elapsedMs": 1262,
+        "viewer": {
+          "peerBytes": 896200,
+          "originBytes": 150139,
+          "verifiedPeerSegments": 5,
+          "originFallbacks": 1,
+          "connectedPeers": 1,
+          "integrityRejected": 0
+        },
+        "holder": {
+          "uploadedBytes": 1051891,
+          "connectedPeers": 0
+        },
+        "transport": {
+          "mode": "local-turn",
+          "requestedProtocol": "udp",
+          "selectedPairs": [
+            {
+              "localType": "relay",
+              "remoteType": "relay",
+              "relayProtocol": "udp"
+            },
+            {
+              "localType": "relay",
+              "remoteType": "relay",
+              "relayProtocol": "udp"
+            }
+          ],
+          "signalling": "in-page Nostr adapter",
+          "signallingEvents": 6
+        },
+        "playback": {
+          "currentTime": 0.104183,
+          "readyState": 4,
+          "paused": false,
+          "decodedFrames": 7
+        },
+        "resources": {
+          "activePeerConnections": 1,
+          "signallingConnections": 1,
+          "heldBytes": 0
+        },
+        "diagnostics": {
+          "holderErrors": {
+            "total": 0,
+            "byStage": {}
+          },
+          "viewerErrors": {
+            "total": 0,
+            "byStage": {}
+          },
+          "holderHeldBytes": 0,
+          "viewerDials": 0,
+          "viewerMisses": 0,
+          "viewerCommitmentRejected": 0,
+          "viewerCommitmentUnavailable": 0,
+          "eligibility": {
+            "no-budget": 1,
+            "aborted-before-eligibility": 0,
+            "no-have-no-wait": 0,
+            "no-have-wait": 0,
+            "wait-no-longer-eligible": 0,
+            "wait-aborted": 0,
+            "wait-expired": 0,
+            "have-at-entry": 6,
+            "have-after-wait": 0,
+            "projected-late": 0
+          },
+          "connections": [
+            {
+              "state": "closed",
+              "ice": "closed"
+            },
+            {
+              "state": "connected",
+              "ice": "connected"
+            }
+          ],
+          "localRelay": {
+            "published": 6,
+            "delivered": 20,
+            "rejected": 0,
+            "connections": 1,
+            "retainedPresences": 1
+          }
+        },
+        "limits": {
+          "maxDurationMs": 90000,
+          "maxUploadBytes": 33554432
+        }
+      },
+      "afterDisconnect": {
+        "phase": "origin-fallback",
+        "elapsedMs": 1462,
+        "viewer": {
+          "peerBytes": 896200,
+          "originBytes": 305830,
+          "verifiedPeerSegments": 5,
+          "originFallbacks": 2,
+          "connectedPeers": 0,
+          "integrityRejected": 0
+        },
+        "holder": {
+          "uploadedBytes": 1051891,
+          "connectedPeers": 0
+        },
+        "transport": {
+          "mode": "local-turn",
+          "requestedProtocol": "udp",
+          "selectedPairs": [
+            {
+              "localType": "relay",
+              "remoteType": "relay",
+              "relayProtocol": "udp"
+            },
+            {
+              "localType": "relay",
+              "remoteType": "relay",
+              "relayProtocol": "udp"
+            }
+          ],
+          "signalling": "in-page Nostr adapter",
+          "signallingEvents": 6
+        },
+        "playback": {
+          "currentTime": 0.305214,
+          "readyState": 4,
+          "paused": false,
+          "decodedFrames": 11
+        },
+        "resources": {
+          "activePeerConnections": 0,
+          "signallingConnections": 1,
+          "heldBytes": 0
+        },
+        "diagnostics": {
+          "holderErrors": {
+            "total": 0,
+            "byStage": {}
+          },
+          "viewerErrors": {
+            "total": 0,
+            "byStage": {}
+          },
+          "holderHeldBytes": 0,
+          "viewerDials": 0,
+          "viewerMisses": 0,
+          "viewerCommitmentRejected": 0,
+          "viewerCommitmentUnavailable": 0,
+          "eligibility": {
+            "no-budget": 1,
+            "aborted-before-eligibility": 0,
+            "no-have-no-wait": 0,
+            "no-have-wait": 0,
+            "wait-no-longer-eligible": 0,
+            "wait-aborted": 0,
+            "wait-expired": 0,
+            "have-at-entry": 6,
+            "have-after-wait": 0,
+            "projected-late": 0
+          },
+          "connections": [
+            {
+              "state": "closed",
+              "ice": "closed"
+            },
+            {
+              "state": "closed",
+              "ice": "closed"
+            }
+          ],
+          "localRelay": {
+            "published": 6,
+            "delivered": 20,
+            "rejected": 0,
+            "connections": 1,
+            "retainedPresences": 1
+          }
+        },
+        "limits": {
+          "maxDurationMs": 90000,
+          "maxUploadBytes": 33554432
+        }
+      },
+      "completedInflightPeerBytes": 0,
+      "stopped": {
+        "phase": "stopped",
+        "elapsedMs": 1517,
+        "viewer": {
+          "peerBytes": 896200,
+          "originBytes": 305830,
+          "verifiedPeerSegments": 5,
+          "originFallbacks": 2,
+          "connectedPeers": 0,
+          "integrityRejected": 0
+        },
+        "holder": {
+          "uploadedBytes": 1051891,
+          "connectedPeers": 0
+        },
+        "transport": {
+          "mode": "local-turn",
+          "requestedProtocol": "udp",
+          "selectedPairs": [
+            {
+              "localType": "relay",
+              "remoteType": "relay",
+              "relayProtocol": "udp"
+            },
+            {
+              "localType": "relay",
+              "remoteType": "relay",
+              "relayProtocol": "udp"
+            }
+          ],
+          "signalling": "in-page Nostr adapter",
+          "signallingEvents": 6
+        },
+        "playback": {
+          "currentTime": 0,
+          "readyState": 0,
+          "paused": true,
+          "decodedFrames": 0
+        },
+        "resources": {
+          "activePeerConnections": 0,
+          "signallingConnections": 0,
+          "heldBytes": 0
+        },
+        "diagnostics": {
+          "holderErrors": {
+            "total": 0,
+            "byStage": {}
+          },
+          "viewerErrors": {
+            "total": 0,
+            "byStage": {}
+          },
+          "holderHeldBytes": 0,
+          "viewerDials": 0,
+          "viewerMisses": 0,
+          "viewerCommitmentRejected": 0,
+          "viewerCommitmentUnavailable": 0,
+          "eligibility": {
+            "no-budget": 1,
+            "aborted-before-eligibility": 0,
+            "no-have-no-wait": 0,
+            "no-have-wait": 0,
+            "wait-no-longer-eligible": 0,
+            "wait-aborted": 0,
+            "wait-expired": 0,
+            "have-at-entry": 6,
+            "have-after-wait": 0,
+            "projected-late": 0
+          },
+          "connections": [
+            {
+              "state": "closed",
+              "ice": "closed"
+            },
+            {
+              "state": "closed",
+              "ice": "closed"
+            }
+          ],
+          "localRelay": {
+            "published": 6,
+            "delivered": 20,
+            "rejected": 0,
+            "connections": 0,
+            "retainedPresences": 0
+          }
+        },
+        "limits": {
+          "maxDurationMs": 90000,
+          "maxUploadBytes": 33554432
+        }
+      },
+      "externalHttpRequests": 0,
+      "pageErrors": 0,
+      "ownedProcessesStopped": true,
+      "spryBinarySha256": "0bbcfa0c3efd6cce6a749c706e144de1740e37eb44c146f37a8887319c7085fb",
+      "spryVersion": "spry-turn 0.2.1",
+      "localOperatorProcessesStopped": true
+    },
+    {
+      "name": "film-peer-tcp-srt",
+      "schema": 1,
+      "scope": "same-page-relayswarm-with-sapflow-packaged-replay",
+      "passed": true,
+      "clip": "srt",
+      "fixture": "Higgsfield",
+      "mediaManifestSha256": "5d241f8bde2fbf859239efdcea0ad8553a6d907b5a95ee051fb1ece9e429972f",
+      "catalogueSha256": "60598b87fbc5772e8b8882084108b433c02e73200b6d8ca05ed17d404e6b9dc9",
+      "relayswarmSourceCommit": "55424c9cda739091acc5d641d3ef701678d97ffd",
+      "relayswarmBundleSha256": "d9358b8964ec72e803e88a9f43065668f0e55b841850a54c6b67eb87f99bc87e",
+      "requestedPeerTransport": "tcp",
+      "limits": "Finite Sapflow-packaged replay, two logical viewers in one browser page and in-page Nostr signalling. Not live capture, an internet Nostr service, WAN/NAT acceptance or native phone qualification.",
+      "peer": {
+        "phase": "peer",
+        "elapsedMs": 1218,
+        "viewer": {
+          "peerBytes": 1043467,
+          "originBytes": 171216,
+          "verifiedPeerSegments": 6,
+          "originFallbacks": 1,
+          "connectedPeers": 1,
+          "integrityRejected": 0
+        },
+        "holder": {
+          "uploadedBytes": 1043467,
+          "connectedPeers": 1
+        },
+        "transport": {
+          "mode": "local-turn",
+          "requestedProtocol": "tcp",
+          "selectedPairs": [
+            {
+              "localType": "relay",
+              "remoteType": "relay",
+              "relayProtocol": "tcp"
+            },
+            {
+              "localType": "relay",
+              "remoteType": "relay",
+              "relayProtocol": "tcp"
+            }
+          ],
+          "signalling": "in-page Nostr adapter",
+          "signallingEvents": 6
+        },
+        "playback": {
+          "currentTime": 0.069121,
+          "readyState": 4,
+          "paused": false,
+          "decodedFrames": 6
+        },
+        "resources": {
+          "activePeerConnections": 2,
+          "signallingConnections": 2,
+          "heldBytes": 2750615
+        },
+        "diagnostics": {
+          "holderErrors": {
+            "total": 0,
+            "byStage": {}
+          },
+          "viewerErrors": {
+            "total": 0,
+            "byStage": {}
+          },
+          "holderHeldBytes": 2750615,
+          "viewerDials": 0,
+          "viewerMisses": 0,
+          "viewerCommitmentRejected": 0,
+          "viewerCommitmentUnavailable": 0,
+          "eligibility": {
+            "no-budget": 1,
+            "aborted-before-eligibility": 0,
+            "no-have-no-wait": 0,
+            "no-have-wait": 0,
+            "wait-no-longer-eligible": 0,
+            "wait-aborted": 0,
+            "wait-expired": 0,
+            "have-at-entry": 6,
+            "have-after-wait": 0,
+            "projected-late": 0
+          },
+          "connections": [
+            {
+              "state": "connected",
+              "ice": "connected"
+            },
+            {
+              "state": "connected",
+              "ice": "connected"
+            }
+          ],
+          "localRelay": {
+            "published": 6,
+            "delivered": 20,
+            "rejected": 0,
+            "connections": 2,
+            "retainedPresences": 2
+          }
+        },
+        "limits": {
+          "maxDurationMs": 90000,
+          "maxUploadBytes": 33554432
+        }
+      },
+      "disconnectStarted": {
+        "phase": "origin-fallback",
+        "elapsedMs": 1233,
+        "viewer": {
+          "peerBytes": 1043467,
+          "originBytes": 171216,
+          "verifiedPeerSegments": 6,
+          "originFallbacks": 1,
+          "connectedPeers": 1,
+          "integrityRejected": 0
+        },
+        "holder": {
+          "uploadedBytes": 1043467,
+          "connectedPeers": 0
+        },
+        "transport": {
+          "mode": "local-turn",
+          "requestedProtocol": "tcp",
+          "selectedPairs": [
+            {
+              "localType": "relay",
+              "remoteType": "relay",
+              "relayProtocol": "tcp"
+            },
+            {
+              "localType": "relay",
+              "remoteType": "relay",
+              "relayProtocol": "tcp"
+            }
+          ],
+          "signalling": "in-page Nostr adapter",
+          "signallingEvents": 6
+        },
+        "playback": {
+          "currentTime": 0.083949,
+          "readyState": 4,
+          "paused": false,
+          "decodedFrames": 6
+        },
+        "resources": {
+          "activePeerConnections": 1,
+          "signallingConnections": 1,
+          "heldBytes": 0
+        },
+        "diagnostics": {
+          "holderErrors": {
+            "total": 0,
+            "byStage": {}
+          },
+          "viewerErrors": {
+            "total": 0,
+            "byStage": {}
+          },
+          "holderHeldBytes": 0,
+          "viewerDials": 0,
+          "viewerMisses": 0,
+          "viewerCommitmentRejected": 0,
+          "viewerCommitmentUnavailable": 0,
+          "eligibility": {
+            "no-budget": 1,
+            "aborted-before-eligibility": 0,
+            "no-have-no-wait": 0,
+            "no-have-wait": 0,
+            "wait-no-longer-eligible": 0,
+            "wait-aborted": 0,
+            "wait-expired": 0,
+            "have-at-entry": 6,
+            "have-after-wait": 0,
+            "projected-late": 0
+          },
+          "connections": [
+            {
+              "state": "closed",
+              "ice": "closed"
+            },
+            {
+              "state": "connected",
+              "ice": "connected"
+            }
+          ],
+          "localRelay": {
+            "published": 6,
+            "delivered": 20,
+            "rejected": 0,
+            "connections": 1,
+            "retainedPresences": 1
+          }
+        },
+        "limits": {
+          "maxDurationMs": 90000,
+          "maxUploadBytes": 33554432
+        }
+      },
+      "afterDisconnect": {
+        "phase": "origin-fallback",
+        "elapsedMs": 2241,
+        "viewer": {
+          "peerBytes": 1043467,
+          "originBytes": 355446,
+          "verifiedPeerSegments": 6,
+          "originFallbacks": 2,
+          "connectedPeers": 0,
+          "integrityRejected": 0
+        },
+        "holder": {
+          "uploadedBytes": 1043467,
+          "connectedPeers": 0
+        },
+        "transport": {
+          "mode": "local-turn",
+          "requestedProtocol": "tcp",
+          "selectedPairs": [],
+          "signalling": "in-page Nostr adapter",
+          "signallingEvents": 7
+        },
+        "playback": {
+          "currentTime": 1.09331,
+          "readyState": 4,
+          "paused": false,
+          "decodedFrames": 31
+        },
+        "resources": {
+          "activePeerConnections": 0,
+          "signallingConnections": 1,
+          "heldBytes": 0
+        },
+        "diagnostics": {
+          "holderErrors": {
+            "total": 0,
+            "byStage": {}
+          },
+          "viewerErrors": {
+            "total": 0,
+            "byStage": {}
+          },
+          "holderHeldBytes": 0,
+          "viewerDials": 0,
+          "viewerMisses": 0,
+          "viewerCommitmentRejected": 0,
+          "viewerCommitmentUnavailable": 0,
+          "eligibility": {
+            "no-budget": 1,
+            "aborted-before-eligibility": 0,
+            "no-have-no-wait": 1,
+            "no-have-wait": 0,
+            "wait-no-longer-eligible": 0,
+            "wait-aborted": 0,
+            "wait-expired": 0,
+            "have-at-entry": 6,
+            "have-after-wait": 0,
+            "projected-late": 0
+          },
+          "connections": [
+            {
+              "state": "closed",
+              "ice": "closed"
+            },
+            {
+              "state": "closed",
+              "ice": "closed"
+            }
+          ],
+          "localRelay": {
+            "published": 7,
+            "delivered": 22,
+            "rejected": 0,
+            "connections": 1,
+            "retainedPresences": 1
+          }
+        },
+        "limits": {
+          "maxDurationMs": 90000,
+          "maxUploadBytes": 33554432
+        }
+      },
+      "completedInflightPeerBytes": 0,
+      "stopped": {
+        "phase": "stopped",
+        "elapsedMs": 2249,
+        "viewer": {
+          "peerBytes": 1043467,
+          "originBytes": 355446,
+          "verifiedPeerSegments": 6,
+          "originFallbacks": 2,
+          "connectedPeers": 0,
+          "integrityRejected": 0
+        },
+        "holder": {
+          "uploadedBytes": 1043467,
+          "connectedPeers": 0
+        },
+        "transport": {
+          "mode": "local-turn",
+          "requestedProtocol": "tcp",
+          "selectedPairs": [],
+          "signalling": "in-page Nostr adapter",
+          "signallingEvents": 7
+        },
+        "playback": {
+          "currentTime": 0,
+          "readyState": 0,
+          "paused": true,
+          "decodedFrames": 0
+        },
+        "resources": {
+          "activePeerConnections": 0,
+          "signallingConnections": 0,
+          "heldBytes": 0
+        },
+        "diagnostics": {
+          "holderErrors": {
+            "total": 0,
+            "byStage": {}
+          },
+          "viewerErrors": {
+            "total": 0,
+            "byStage": {}
+          },
+          "holderHeldBytes": 0,
+          "viewerDials": 0,
+          "viewerMisses": 0,
+          "viewerCommitmentRejected": 0,
+          "viewerCommitmentUnavailable": 0,
+          "eligibility": {
+            "no-budget": 1,
+            "aborted-before-eligibility": 0,
+            "no-have-no-wait": 1,
+            "no-have-wait": 0,
+            "wait-no-longer-eligible": 0,
+            "wait-aborted": 0,
+            "wait-expired": 0,
+            "have-at-entry": 6,
+            "have-after-wait": 0,
+            "projected-late": 0
+          },
+          "connections": [
+            {
+              "state": "closed",
+              "ice": "closed"
+            },
+            {
+              "state": "closed",
+              "ice": "closed"
+            }
+          ],
+          "localRelay": {
+            "published": 7,
+            "delivered": 22,
+            "rejected": 0,
+            "connections": 0,
+            "retainedPresences": 0
+          }
+        },
+        "limits": {
+          "maxDurationMs": 90000,
+          "maxUploadBytes": 33554432
+        }
+      },
+      "externalHttpRequests": 0,
+      "pageErrors": 0,
+      "ownedProcessesStopped": true,
+      "spryBinarySha256": "0bbcfa0c3efd6cce6a749c706e144de1740e37eb44c146f37a8887319c7085fb",
+      "spryVersion": "spry-turn 0.2.1",
+      "localOperatorProcessesStopped": true
+    },
+    {
+      "name": "film-ui-udp-rtmp",
+      "schema": 1,
+      "scope": "actual-media-landing-page-with-forced-local-turn",
+      "passed": true,
+      "clip": "rtmp",
+      "mode": "relay",
+      "clientTransport": "udp",
+      "pageErrors": 0,
+      "externalRequests": 0,
+      "mediaManifestSha256": "60598b87fbc5772e8b8882084108b433c02e73200b6d8ca05ed17d404e6b9dc9",
+      "spryBinarySha256": "0bbcfa0c3efd6cce6a749c706e144de1740e37eb44c146f37a8887319c7085fb",
+      "playback": {
+        "verifiedPeerFragments": 6,
+        "peerBytesDisplay": "1.0 MB",
+        "deliveryPath": "Spry TURN",
+        "decodedFrames": 21,
+        "currentTime": 0.682667,
+        "selectedPairs": [
+          {
+            "localType": "relay",
+            "remoteType": "relay",
+            "relayProtocol": "udp"
+          },
+          {
+            "localType": "relay",
+            "remoteType": "relay",
+            "relayProtocol": "udp"
+          }
+        ],
+        "activeConnections": 2
+      },
+      "stopped": {
+        "peers": 0,
+        "path": "Stopped",
+        "activeConnections": 0,
+        "videoPaused": true,
+        "videoSourceRemoved": true
+      },
+      "localProcessesStopped": true
+    },
+    {
+      "name": "film-ui-tcp-srt",
+      "schema": 1,
+      "scope": "actual-media-landing-page-with-forced-local-turn",
+      "passed": true,
+      "clip": "srt",
+      "mode": "relay",
+      "clientTransport": "tcp",
+      "pageErrors": 0,
+      "externalRequests": 0,
+      "mediaManifestSha256": "60598b87fbc5772e8b8882084108b433c02e73200b6d8ca05ed17d404e6b9dc9",
+      "spryBinarySha256": "0bbcfa0c3efd6cce6a749c706e144de1740e37eb44c146f37a8887319c7085fb",
+      "playback": {
+        "verifiedPeerFragments": 6,
+        "peerBytesDisplay": "1019 KB",
+        "deliveryPath": "Spry TURN",
+        "decodedFrames": 4,
+        "currentTime": 0.020936,
+        "selectedPairs": [
+          {
+            "localType": "relay",
+            "remoteType": "relay",
+            "relayProtocol": "tcp"
+          },
+          {
+            "localType": "relay",
+            "remoteType": "relay",
+            "relayProtocol": "tcp"
+          }
+        ],
+        "activeConnections": 2
+      },
+      "stopped": {
+        "peers": 0,
+        "path": "Stopped",
+        "activeConnections": 0,
+        "videoPaused": true,
+        "videoSourceRemoved": true
+      },
+      "localProcessesStopped": true
+    },
+    {
+      "name": "film-host-udp-rtmp",
+      "schema": 1,
+      "scope": "actual-public-mode-playback-and-cleanup; peer-transfer-not-required",
+      "passed": true,
+      "clip": "rtmp",
+      "mode": "host",
+      "clientTransport": null,
+      "pageErrors": 0,
+      "externalRequests": 0,
+      "mediaManifestSha256": "60598b87fbc5772e8b8882084108b433c02e73200b6d8ca05ed17d404e6b9dc9",
+      "spryBinarySha256": "0bbcfa0c3efd6cce6a749c706e144de1740e37eb44c146f37a8887319c7085fb",
+      "playback": {
+        "verifiedPeerFragments": 0,
+        "peerBytesDisplay": "0 KB",
+        "deliveryPath": "HLS origin",
+        "decodedFrames": 4,
+        "currentTime": 0.018578,
+        "selectedPairs": [],
+        "activeConnections": 2
+      },
+      "stopped": {
+        "peers": 0,
+        "path": "Stopped",
+        "activeConnections": 0,
+        "videoPaused": true,
+        "videoSourceRemoved": true
+      },
+      "localProcessesStopped": true
+    }
+  ]
+}

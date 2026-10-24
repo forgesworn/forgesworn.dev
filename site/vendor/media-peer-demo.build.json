@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "project": "https://github.com/forgesworn/relayswarm",
+  "sourceCommit": "55424c9cda739091acc5d641d3ef701678d97ffd",
+  "version": "0.2.1",
+  "sourceArchiveSha256": "eebe51c29dcd20433fd9c0f15df36c42aada663cf7d8b22d8b72d8cecf5be8b8",
+  "packageLockSha256": "6c29ebc1331ad4fea1bfe6345a4165189ed8678ceda3d4a1f12697043a3620ea",
+  "bundle": "media-peer-demo.js",
+  "bundleSha256": "d9358b8964ec72e803e88a9f43065668f0e55b841850a54c6b67eb87f99bc87e",
+  "bundleBytes": 148620,
+  "sourceMap": false,
+  "originalSourceModified": false,
+  "dependencies": [
+    {
+      "name": "@noble/ciphers",
+      "version": "2.1.1",
+      "licence": "MIT"
+    },
+    {
+      "name": "@noble/curves",
+      "version": "2.0.1",
+      "licence": "MIT"
+    },
+    {
+      "name": "@noble/hashes",
+      "version": "2.0.1",
+      "licence": "MIT"
+    },
+    {
+      "name": "@scure/base",
+      "version": "2.0.0",
+      "licence": "MIT"
+    },
+    {
+      "name": "nostr-tools",
+      "version": "2.24.1",
+      "licence": "Unlicense"
+    }
+  ]
+}

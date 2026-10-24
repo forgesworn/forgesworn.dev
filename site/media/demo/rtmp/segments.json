@@ -1,0 +1,131 @@
+{
+  "schema": 1,
+  "segments": [
+    {
+      "path": "segment-000.mp4",
+      "sha256": "9ee58289b3458d80b15900f67d16aa68ccf1d28db818976581742ab3fbda15c3",
+      "size": 150139,
+      "sn": 0,
+      "cc": 0
+    },
+    {
+      "path": "segment-001.mp4",
+      "sha256": "8fc914f9a71ebe9500c44d35c95c02163236a2ea4d0470b5f1505a273e178635",
+      "size": 173504,
+      "sn": 1,
+      "cc": 0
+    },
+    {
+      "path": "segment-002.mp4",
+      "sha256": "a157ef818d42703e39ef6b946c2bc56a3cc222510a0de5c6678f7a286a1b62bd",
+      "size": 179329,
+      "sn": 2,
+      "cc": 0
+    },
+    {
+      "path": "segment-003.mp4",
+      "sha256": "e1ae416e6c1d547968cf1a33d0864c86e3d2436e31c947dcefc8a8976101a6a5",
+      "size": 193108,
+      "sn": 3,
+      "cc": 0
+    },
+    {
+      "path": "segment-004.mp4",
+      "sha256": "30733c8793d25cb580889fa0cdf4e8afeb07b386748871f8024fea9e135073cd",
+      "size": 179165,
+      "sn": 4,
+      "cc": 0
+    },
+    {
+      "path": "segment-005.mp4",
+      "sha256": "582b3e0d98d2a3bb2f6dca4c838aa9f196c26a257547f683be8bd80df85fa586",
+      "size": 171094,
+      "sn": 5,
+      "cc": 0
+    },
+    {
+      "path": "segment-006.mp4",
+      "sha256": "d468c7239d249ed0d839d0d637cfe1ae1689b04dd783ba1cad82c851c56d8562",
+      "size": 155691,
+      "sn": 6,
+      "cc": 0
+    },
+    {
+      "path": "segment-007.mp4",
+      "sha256": "64b61913ba24bffed4af7dc9291ec9be80ce90782866ce3a0d7bc5e9c6ea81bf",
+      "size": 163670,
+      "sn": 7,
+      "cc": 0
+    },
+    {
+      "path": "segment-008.mp4",
+      "sha256": "80217255b2e69c789086dac289b7b76fca40a7bd0dc77c1e3707fb818026aa5d",
+      "size": 185123,
+      "sn": 8,
+      "cc": 0
+    },
+    {
+      "path": "segment-009.mp4",
+      "sha256": "c83e9fc7d44b1d665e56b6dabf9616d58ab0a69e1f25bbfcfcff00a6979c0e08",
+      "size": 179118,
+      "sn": 9,
+      "cc": 0
+    },
+    {
+      "path": "segment-010.mp4",
+      "sha256": "caf1dcbad826ca954bb6c2a48889579695665582f283a80f46e11c2e131420b1",
+      "size": 169404,
+      "sn": 10,
+      "cc": 0
+    },
+    {
+      "path": "segment-011.mp4",
+      "sha256": "df16cf8ac527f629630e1e78fd79358fa30e4e59b22f7016220a39f8346ba684",
+      "size": 154794,
+      "sn": 11,
+      "cc": 0
+    },
+    {
+      "path": "segment-012.mp4",
+      "sha256": "38efa92c661be73043e79e333c5b83cae0a0a6cb37541344cabab9879f851c5a",
+      "size": 161415,
+      "sn": 12,
+      "cc": 0
+    },
+    {
+      "path": "segment-013.mp4",
+      "sha256": "a65ec03ef07276d3b830d28cc714050fbdba2db65889050da2a8ee2b3724487f",
+      "size": 181498,
+      "sn": 13,
+      "cc": 0
+    },
+    {
+      "path": "segment-014.mp4",
+      "sha256": "c18fa73d21ad71b9b332c72d7a02a082ef30c185792d4bd9cae5819f94a9713f",
+      "size": 180607,
+      "sn": 14,
+      "cc": 0
+    },
+    {
+      "path": "segment-015.mp4",
+      "sha256": "e8e2f13c21eb57cb8f5c0332d0f37a90b1c86f7e20ea9bee1222244a324bc428",
+      "size": 170929,
+      "sn": 15,
+      "cc": 0
+    },
+    {
+      "path": "segment-016.mp4",
+      "sha256": "45d7203200e81adda0b27f2cde1a1e7d044063fc617071c77d6215b912e7bea0",
+      "size": 153760,
+      "sn": 16,
+      "cc": 0
+    },
+    {
+      "path": "segment-017.mp4",
+      "sha256": "5239e77f76d60f1b7eaf7d9cb7e7983eae56b6414b6388e26513f55bc7838a9a",
+      "size": 155372,
+      "sn": 17,
+      "cc": 0
+    }
+  ]
+}

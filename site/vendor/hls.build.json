@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "package": "hls.js",
+  "version": "1.7.3",
+  "licence": "Apache-2.0",
+  "source": "https://www.npmjs.com/package/hls.js/v/1.7.3",
+  "distributionFile": "dist/hls.light.min.mjs",
+  "sourceSha256": "c60e98c83e5b2ce6875ea6ca27e51f63b7a6f00e9d9b64b588c92261bd69d439",
+  "file": "hls.light.min.mjs",
+  "sha256": "5d9a5d76f8a0cb9dc18fac597a0a0e71e02550d6e7f28a3fa2ae8c996df42464",
+  "bytes": 371178,
+  "change": "Removed only the sourceMappingURL comment; no source map is published."
+}

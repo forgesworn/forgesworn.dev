@@ -9,6 +9,11 @@
     "build": "node scripts/build-site.mjs",
     "check:drift": "node scripts/check-catalogue-drift.mjs",
     "test": "node --test test/*.test.mjs",
+    "test:media:lifecycle": "node test/media-player-lifecycle.mjs",
+    "test:media:peer": "node test/media-peer-browser.mjs",
+    "test:media:ui": "node test/media-ui-browser.mjs",
+    "demo:media": "node scripts/serve-media-demo.mjs",
+    "demo:package": "node scripts/package-media-demo.mjs",
     "map": "node scripts/build-map.mjs"
   },
   "license": "MIT",

@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "source": {
+    "project": "https://github.com/forgesworn/sapflow",
+    "commit": "b2668893d48e1e21e9c52c64f951f896d3856ef8",
+    "publicCommitVerified": true,
+    "runtimeConsumerAndStatusLeaseSourceFilesMatched": 57,
+    "runtimeSourceUnmodified": true,
+    "publicConsumerSourceUnmodified": true
+  },
+  "command": "CARGO_BUILD_JOBS=2 node scripts/build-native.mjs check",
+  "buildAdjustments": {
+    "scope": "Local build-name aliases in a pinned public-source archive, reusing the existing target cache; no Rust runtime or public consumer source changes.",
+    "ffiLibraryName": "sapflow_media_demo_ffi",
+    "bindgenBinaryName": "sapflow-demo-bindgen",
+    "archivedBuildScript": "Expected library, linker, bindgen and generated Kotlin file names changed to the local aliases.",
+    "kotlinCdylibName": "sapflow_media_demo_ffi",
+    "generatedKotlinNamespaceForwarders": {
+      "count": 2,
+      "reason": "The unchanged public status-lease consumer directly names two original UniFFI raw symbols. Generated Kotlin extension functions forward those names to the corresponding aliased native functions; generated native declarations and method bodies are unchanged."
+    },
+    "freshCargoTargetDirectory": false,
+    "buildJobs": 2,
+    "existingPrimaryFfiAndBindgenArtefactsChecked": 4,
+    "existingPrimaryFfiAndBindgenArtefactsUnchanged": true
+  },
+  "result": {
+    "passed": true,
+    "nativeConsumers": true,
+    "swift": true,
+    "kotlin": true,
+    "temporaryStagingRemoved": true,
+    "kotlinStatusLeaseChecksPassed": 8
+  },
+  "scope": "Generated Swift and Kotlin bindings with real native consumers of the pinned public sapflow-ffi and sapflow-client, using generated compressed samples and socket-free protocol state. The local artefact names differ from ordinary builds as recorded above. This is separate from browser video decoding, native app publishing, packaged SDK acceptance, camera hardware or physical-phone qualification.",
+  "logSha256": "90a6e348e17bd4a7459c97dba034b0ffca549cc501b1950c26ce0735a2d84b7d"
+}
