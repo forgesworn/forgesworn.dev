@@ -77,7 +77,7 @@ try {
       constructor(config) { super(config); window.__acceptancePeers.push(this); }
     };
   });
-  await page.goto(options.mode === 'relay' ? operator.url : new URL('/live-media.html', origin).href, { waitUntil: 'networkidle', timeout: 20_000 });
+  await page.goto(options.mode === 'relay' ? operator.url : new URL('/media-peer-fixture.html', origin).href, { waitUntil: 'networkidle', timeout: 20_000 });
   receipt.versionedPlayerScript = await page.locator('script[src^="/media-demo.mjs"]').getAttribute('src') === '/media-demo.mjs?v=20261024-dejavu';
   assert(receipt.versionedPlayerScript);
   await page.selectOption('#demo-ingest', options.clip);

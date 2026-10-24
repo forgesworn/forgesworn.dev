@@ -497,6 +497,16 @@ ${cards}
 
 // ─── Main build function ───────────────────────────────────────────────────────
 
+export function buildMediaShowcaseHtml(source) {
+  const match = /<!-- SHOWCASE_START -->\s*(<main\b[\s\S]*?<\/main>)\s*<!-- SHOWCASE_END -->/.exec(source);
+  if (!match || !/^<main\b[^>]*\bdata-showcase="true"/.test(match[1])) {
+    throw new Error('The homepage requires the public media showcase, including its player and delivery observations.');
+  }
+  // Reuse the actual public experience inside the homepage's existing main.
+  // Changes to the player therefore reach every public entry point together.
+  return match[1].replace(/^<main\b/, '<div').replace(/<\/main>$/, '</div>');
+}
+
 export async function build(jsonPath, useCasesJsonPath) {
   const resolvedJson = jsonPath || join(ROOT, 'forgesworn-repos.json');
   const resolvedUseCases = useCasesJsonPath || join(ROOT, 'forgesworn-use-cases.json');
@@ -507,6 +517,7 @@ export async function build(jsonPath, useCasesJsonPath) {
   const useCasesData = JSON.parse(readFileSync(resolvedUseCases, 'utf8'));
   let template = readFileSync(templatePath, 'utf8');
 
+  template = template.replace('<!-- MEDIA_SHOWCASE -->', buildMediaShowcaseHtml(readFileSync(join(ROOT, 'site', 'live-media.html'), 'utf8')));
   template = template.replace('<!-- HERO_STATS -->', buildHeroStatsHtml(data));
   template = template.replace('<!-- STACK_MAP_CARDS -->', buildStackMapCardsHtml(data));
   template = template.replace('<!-- STACK_MAP_SVG -->', buildStackMapSvgHtml(data));

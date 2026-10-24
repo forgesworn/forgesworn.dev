@@ -26,6 +26,15 @@ export function approvedMediaUrl(value, pageUrl, mediaOrigin = '') {
   if (!origins.has(url.origin)) throw new Error('Media origin not approved');
   return url;
 }
+export function invitedPlaybackStart(search, now, duration, quality) {
+  const query = new URLSearchParams(search);
+  if (query.get('q') !== quality || !['full', 'preview'].includes(quality) || !query.has('t') || !query.has('at')) return 0;
+  const position = Number(query.get('t')), created = Number(query.get('at'));
+  if (![position, created, now, duration].every(Number.isFinite) || position < 0 || position >= duration ||
+      created < now - 15 * 60 * 1000 || created > now + 5000) return 0;
+  const joined = position + Math.max(0, now - created) / 1000;
+  return joined < duration - 2 ? joined : 0;
+}
 const mean = (samples) => samples.length ? samples.reduce((a, b) => a + b, 0) / samples.length : null;
 const max = (samples) => samples.length ? Math.max(...samples) : null;
 const human = (value, fallback = DASH) => typeof value === 'string' && value.length <= 120 && !/[\r\n\\/<>]/.test(value) ? value : fallback;
@@ -185,7 +194,7 @@ async function initialise() {
   const $ = (id) => document.getElementById(id);
   const text = (id, value) => { $(id).textContent = value; };
   const video = $('lab-video');
-  const local = ['127.0.0.1', 'localhost'].includes(location.hostname);
+  const local = !root.hasAttribute('data-showcase') && ['127.0.0.1', 'localhost'].includes(location.hostname);
   root.dataset.mode = local ? 'local' : 'public';
   const pageAbort = new AbortController();
   const runs = [];
@@ -198,6 +207,44 @@ async function initialise() {
   let Hls;
   let fullscreenReady = false;
   let detachFullscreen;
+  let swarmVisual;
+  let invitationUsed = false;
+  const publicPlay = $('public-play');
+  if (!local) video.controls = false;
+  const optionalText = (id, value) => { if ($(id)) $(id).textContent = value; };
+
+  function publicDelivery(s, metrics = s?.publicPeer?.metrics()) {
+    if (local) return;
+    const peerBytes = observed(metrics?.peerBytes) ?? 0;
+    const uploaded = observed(metrics?.uploadedBytes) ?? 0;
+    const peers = observed(metrics?.connectedPeers) ?? 0;
+    optionalText('public-peer-bytes', megabytes(peerBytes));
+    optionalText('public-upload-bytes', megabytes(uploaded));
+    optionalText('public-peers', String(peers));
+    const playing = s && !video.paused && !video.ended;
+    const enabled = metrics?.enabled === true;
+    optionalText('public-delivery', !s ? 'Ready when you are' : video.ended ? 'Mix finished' : !playing && s.browser?.seenFrame ? 'Paused' :
+      metrics?.lastDelivery === 'peer' ? 'Video from another viewer' : peers > 0 ? 'Connected to other viewers' : 'Video from the media host');
+    optionalText('public-share-status', !s ? 'Press Play & join. Your browser can pass verified video segments to other viewers.' :
+      video.ended ? 'Thanks for listening. Peer connections are closed.' : !playing && s.browser?.seenFrame ? 'Sharing is paused with the music. Press play to rejoin.' :
+      enabled && peers > 0 ? `${peers} viewer${peers === 1 ? '' : 's'} connected to you. The counters show verified video received and video sent.` :
+      enabled ? 'Looking for other viewers. The media host keeps the music playing while peers connect.' :
+      s.publicSharingFailed ? 'Playing from the media host. Peer sharing could not connect in this browser.' :
+      s.nativeHls ? 'Your browser is using native HLS. Peer sharing needs a browser with Media Source Extensions and WebRTC.' :
+      'Playing from the media host. Peer sharing is starting.');
+    root.dataset.delivery = !s ? 'ready' : metrics?.phase ?? 'origin';
+    swarmVisual?.update({ ...metrics, active: Boolean(s), playing: Boolean(playing),
+      originBytes: Math.max(observed(metrics?.originBytes) ?? 0, observed(s?.browser?.responseBytes) ?? 0) });
+  }
+
+  function shareWhilePlaying(s, enabled) {
+    if (local || session !== s || s.finishing || !s.publicPeer) return;
+    void s.publicPeer.setEnabled(enabled).then(() => {
+      if (session === s) { s.publicSharingFailed = false; publicDelivery(s); }
+    }).catch(() => {
+      if (session === s && !s.abort.signal.aborted) { s.publicSharingFailed = true; publicDelivery(s); }
+    });
+  }
   const choices = {};
   if (!local) {
     for (const [id, label] of [['preview', '1080p preview'], ['full', '4K full mix']]) {
@@ -249,6 +296,17 @@ async function initialise() {
     $('lab-stop').disabled = !session || busy;
     $('lab-stop').textContent = local ? 'Stop run' : 'Stop preview';
     $('lab-fullscreen').disabled = !fullscreenReady || !session?.mediaReady;
+    if ($('public-invite')) $('public-invite').disabled = !session?.mediaReady || Boolean(video.ended);
+    if (!local && publicPlay) {
+      const ready = Boolean(session?.mediaReady);
+      const finished = video.ended || session?.playbackFailed;
+      publicPlay.disabled = busy && !ready;
+      publicPlay.hidden = Boolean(session?.browser?.seenFrame) && !finished;
+      publicPlay.setAttribute('aria-label', busy && !ready ? 'Loading the mix' : finished ? 'Replay the mix and join the swarm' : ready ? 'Play the mix and join the swarm' : 'Play the mix and join the swarm');
+      const label = publicPlay.querySelector('[data-play-label]');
+      if (label) label.textContent = busy && !ready ? 'Loading the mix…' : finished ? 'Play again' : 'Play & join';
+      video.controls = ready;
+    }
     $('lab-clear').disabled = !runs.length;
     $('lab-export').disabled = !runs.length;
   }
@@ -260,8 +318,9 @@ async function initialise() {
     if (choice.durationSeconds !== null) parts.push(clock(choice.durationSeconds));
     if (choice.bytes !== null) parts.push(`${megabytes(choice.bytes)} full asset`);
     if (choice.bitrateBps !== null) parts.push(reading(choice.bitrateBps / 1e6, ' Mbps'));
-    text('lab-quality-note', `${parts.join(' · ')}. Playback starts only when you press Play.${choice.id === 'full' ? ' The full mix uses the configured media host.' : ''}`);
-    if (session && session.quality !== choice.id) status(`${choice.label} selected. Press Play with sound to restart from the beginning; the current source continues until then.`);
+    text('lab-quality-note', `${parts.join(' · ')}. The full mix streams at about 24 Mb/s.`);
+    const corner = root.querySelector('.film-corner');
+    if (corner) corner.textContent = choice.id === 'full' ? '4K / ORIGINAL MIX' : '1080P / EXCERPT';
     controls();
   }
 
@@ -397,6 +456,7 @@ async function initialise() {
     text('browser-bytes', megabytes(b.responseBytes));
     text('browser-requests', reading(b.requests, '', 0));
     text('browser-errors', `${reading(b.playerErrors, '', 0)} / ${reading(b.httpErrors, '', 0)}`);
+    publicDelivery(s);
   }
 
   function trackBrowser(s, playlist) {
@@ -415,9 +475,20 @@ async function initialise() {
     video.addEventListener('waiting', waiting, { signal: s.abort.signal });
     video.addEventListener('stalled', waiting, { signal: s.abort.signal });
     video.addEventListener('playing', endStall, { signal: s.abort.signal });
+    if (!local) {
+      video.addEventListener('playing', () => {
+        controls();
+        status(`${s.quality === 'full' ? '4K' : '1080p'} mix playing. Use the video controls to pause, seek, change the volume or go full screen.`);
+        shareWhilePlaying(s, true);
+      }, { signal: s.abort.signal });
+      video.addEventListener('ended', () => { shareWhilePlaying(s, false); controls(); publicDelivery(s); }, { signal: s.abort.signal });
+    }
     video.addEventListener('pause', () => {
       endStall();
-      if (!s.finishing && !s.sourceEof && b.seenFrame) { s.interrupted = true; status('Playback paused. This interrupted run will not enter the comparison table.'); }
+      if (!s.finishing && !s.sourceEof && b.seenFrame) {
+        if (local) { s.interrupted = true; status('Playback paused. This interrupted run will not enter the comparison table.'); }
+        else { shareWhilePlaying(s, false); status('Paused. Press play on the video to keep listening and rejoin.'); publicDelivery(s); }
+      }
     }, { signal: s.abort.signal });
     let lastInteraction = -Infinity;
     video.addEventListener('pointerdown', () => { lastInteraction = performance.now(); }, { signal: s.abort.signal });
@@ -441,6 +512,7 @@ async function initialise() {
           b.seenFrame = true; b.firstFrameMs = performance.now() - s.clickAt;
           b.lastDecodeAt = performance.now(); b.lastDecoded = observed(video.webkitDecodedFrameCount) ?? 0;
           $('video-empty').hidden = true;
+          controls();
         }
         endStall();
         s.frameCallback = video.requestVideoFrameCallback(frame);
@@ -503,10 +575,9 @@ async function initialise() {
 
   async function play(s = session) {
     if (!s || session !== s || !s.mediaReady || s.sourceEof) return;
-    video.muted = false;
-    if (video.volume === 0) video.volume = 1;
-    try { await video.play(); if (session === s) status('Playing with sound. Server and browser observations update separately.'); }
-    catch { if (session === s) status('The stream is ready. Press Play with sound to start playback.'); }
+    if (local) { video.muted = false; if (video.volume === 0) video.volume = 1; }
+    try { await video.play(); if (session === s && local) status('Playing with sound. Server and browser observations update separately.'); }
+    catch { if (session === s) { status('The mix is ready. Press play to start listening.'); controls(); } }
   }
 
   async function attach(s, url, runtime) {
@@ -519,7 +590,7 @@ async function initialise() {
     Hls ??= (await import(local ? './vendor/hls.min.mjs' : './vendor/hls.light.min.mjs')).default;
     if (session !== s || s.abort.signal.aborted) return;
     trackBrowser(s, url);
-    const initial = local ? await readInitialLiveStart(url.href, { signal: s.abort.signal }) : { startPosition: -1 };
+    const initial = local ? await readInitialLiveStart(url.href, { signal: s.abort.signal }) : { startPosition: s.invitedStart || -1 };
     if (session !== s || s.abort.signal.aborted) return;
     if (s.turnEngine !== 'off') {
       if (!runtime || !local) throw new Error('A local per-viewer relay runtime is required');
@@ -530,8 +601,17 @@ async function initialise() {
         signal: s.abort.signal, onStats: (metrics) => peerStats(s, metrics), confirmSourceEnd: error => confirmNormalSourceEnd(s, error) });
       await play(s);
     } else if (Hls.isSupported()) {
-      s.hls = new Hls({ lowLatencyMode: false, maxBufferLength: 4, maxMaxBufferLength: 6,
-        maxBufferSize: 8 * 1024 * 1024, backBufferLength: 0, enableWorker: true, startPosition: initial.startPosition });
+      s.hls = new Hls({ lowLatencyMode: false, maxBufferLength: local ? 4 : 10, maxMaxBufferLength: local ? 6 : 14,
+        maxBufferSize: (local ? 8 : 32) * 1024 * 1024, backBufferLength: 0, enableWorker: true, startPosition: initial.startPosition });
+      if (!local) {
+        try {
+          const { createPublicSwarm } = await import('./media-public-swarm.mjs');
+          if (session !== s || s.abort.signal.aborted) return;
+          s.publicPeer = createPublicSwarm({ Hls, hls: s.hls, video, playlistUrl: url.href, quality: s.quality,
+            signal: s.abort.signal, onStats: metrics => { if (session === s) publicDelivery(s, metrics); } });
+          shareWhilePlaying(s, true);
+        } catch { s.publicSharingFailed = true; publicDelivery(s); }
+      }
       s.hls.on(Hls.Events.ERROR, (_, data) => {
         if (session !== s || s.finishing) return;
         s.browser.playerErrors++;
@@ -547,7 +627,8 @@ async function initialise() {
       s.hls.on(Hls.Events.MANIFEST_PARSED, () => { if (session === s) { s.mediaReady = true; controls(); void play(s); } });
       s.hls.loadSource(url.href); s.hls.attachMedia(video);
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = url.href; s.mediaReady = true; controls(); await play(s);
+      s.nativeHls = true;
+      video.src = url.href; s.mediaReady = true; controls(); await play(s); publicDelivery(s);
     } else throw new Error('This browser cannot play the HLS stream');
   }
 
@@ -558,6 +639,7 @@ async function initialise() {
     if (s.observer) { s.resourceEntries(s.observer.takeRecords()); s.observer.disconnect(); }
     s.abort.abort();
     try { Promise.resolve(s.peer?.stop()).catch(() => {}); } catch {}
+    try { s.publicPeer?.stop(); } catch {}
     try { s.hls?.destroy(); } catch {}
     video.pause(); video.removeAttribute('src'); video.load();
     video.removeAttribute('crossorigin');
@@ -576,6 +658,7 @@ async function initialise() {
     text('run-clock', ended ? 'Measurement complete' : 'Run stopped');
     status(!local ? 'Playback stopped. Choose a quality and press Play to restart.' : record ? 'Run complete and recorded below. Choose the other server with the same settings to compare.' : ended ? 'Run finished. Playback was interrupted or no frame was observed, so it was not added to the comparison table.' : 'Run stopped. Partial runs stay out of the comparison table.');
     controls();
+    publicDelivery(null);
   }
 
   async function poll() {
@@ -622,7 +705,9 @@ async function initialise() {
       if (!local) {
         const choice = choices[$('lab-quality').value];
         if (!choice) throw new Error('No configured public source');
-        session = { id: null, engine: 'preview', quality: choice.id, turnEngine: 'off', clickAt, abort: new AbortController(), cpuSamples: [], rssSamples: [] };
+        session = { id: null, engine: 'preview', quality: choice.id, turnEngine: 'off', clickAt, abort: new AbortController(), cpuSamples: [], rssSamples: [],
+          invitedStart: invitationUsed ? 0 : invitedPlaybackStart(location.search, Date.now(), choice.durationSeconds, choice.id) };
+        invitationUsed = true;
         text('player-label', `${choice.label} · licensed source`);
         await attach(session, choice.url);
         return;
@@ -685,6 +770,42 @@ async function initialise() {
   $('lab-engine').addEventListener('change', showEngineVersion);
   $('lab-relay').addEventListener('change', controls);
   $('lab-quality').addEventListener('change', qualityDetails);
+  if (!local) {
+    publicPlay?.addEventListener('click', () => {
+      if (!session) { void start(); return; }
+      if (session.playbackFailed) { dispose(session); session = null; void start(); return; }
+      if (video.ended) video.currentTime = 0;
+      void play();
+    });
+    $('lab-quality').addEventListener('change', () => {
+      if (!session || session.quality === $('lab-quality').value) return;
+      // A quality choice replaces playback only after that deliberate gesture.
+      dispose(session); session = null; controls(); publicDelivery(null); void start();
+    });
+    $('public-invite')?.addEventListener('click', () => {
+      if (!session?.mediaReady) return;
+      const invitation = new URL('https://forgesworn.dev/live-media.html');
+      invitation.searchParams.set('q', session.quality);
+      invitation.searchParams.set('t', video.currentTime.toFixed(2));
+      invitation.searchParams.set('at', String(Date.now()));
+      if (!navigator.clipboard?.writeText) {
+        optionalText('public-invite-status', 'Share this listening link: ' + invitation.href);
+        return;
+      }
+      void navigator.clipboard.writeText(invitation.href).then(() => {
+        optionalText('public-invite-status', 'Link copied. They’ll join near the moment you shared.');
+      }).catch(() => {
+        optionalText('public-invite-status', 'Share this listening link: ' + invitation.href);
+      });
+    });
+    try {
+      const { createSwarmVisual } = await import('./media-swarm-visual.mjs');
+      if (!pageAbort.signal.aborted && $('public-swarm-map')) {
+        swarmVisual = createSwarmVisual($('public-swarm-map'));
+        publicDelivery(session);
+      }
+    } catch { /* Playback and counters remain available without the diagram. */ }
+  }
   $('lab-clear').addEventListener('click', () => { runs.length = 0; renderTable(); });
   $('lab-export').addEventListener('click', () => {
     const data = { schema: 1, exportedAt: new Date().toISOString(), runs };
@@ -696,13 +817,14 @@ async function initialise() {
   window.addEventListener('pagehide', () => {
     clearTimeout(polling); pageAbort.abort();
     detachFullscreen?.();
+    swarmVisual?.destroy();
     if (session) {
       if (local && session.id) navigator.sendBeacon?.('/lab/stop', new Blob([JSON.stringify({ runId: session.id })], { type: 'application/json' }));
       dispose(session); session = null;
     }
   }, { once: true });
 
-  try {
+  try { if (local) {
     const { attachFullscreen } = await import('./media-fullscreen.mjs');
     if (!pageAbort.signal.aborted) {
       detachFullscreen = attachFullscreen({
@@ -712,7 +834,7 @@ async function initialise() {
       fullscreenReady = true;
       controls();
     }
-  } catch { /* Playback remains available if this browser cannot offer the fullscreen helper. */ }
+  } } catch { /* Playback remains available if this browser cannot offer the fullscreen helper. */ }
 
   if (root.dataset.resultsUrl) {
     try {
@@ -728,6 +850,8 @@ async function initialise() {
     } catch { /* A missing optional receipt does not turn the public page into a failed live dashboard. */ }
   }
   if (local) {
+    if ($('public-stats-details')) $('public-stats-details').open = true;
+    if ($('recorded-details')) $('recorded-details').open = true;
     $('title').innerHTML = 'Same broadcast.<br><em>Compare the servers.</em>';
     text('mode-label', 'Local runner · same-machine measurement');
     try {
@@ -767,26 +891,28 @@ async function initialise() {
     $('settings-title').textContent = 'Watch the mix';
     document.querySelector('.settings-fields').hidden = true;
     $('engine-version').hidden = true;
-    document.querySelector('.settings > .settings-note:last-child').textContent = 'Choose a quick preview or the full 4K mix. Full screen and Back to stats keep the same player running.';
+    const settingsNote = document.querySelector('.settings > .settings-note:last-child');
+    if (settingsNote) settingsNote.textContent = 'Use the video controls for playback, volume and full screen.';
     $('mode-label').textContent = 'Your browser · real playback observations';
     $('comparison-title').closest('section').hidden = !runs.length;
-    root.append($('public-guide'));
     $('origin-cpu').closest('.metric').hidden = true;
     $('origin-rss').closest('.metric').hidden = true;
     $('http-bytes').closest('.panel').hidden = true;
     $('process-origin-cpu').closest('.processes').hidden = true;
     $('readings-title').closest('section').hidden = !Object.keys(choices).length;
     text('readings-title', 'What this browser plays.');
-    text('measurement-scope', 'Playback observations from the public excerpt. Server resource measurements belong to the dated recorded runs below.');
+    text('measurement-scope', 'Live observations from your browser. Server resource measurements belong to the dated recorded runs below.');
     $('first-frame').nextElementSibling.textContent = 'From this Play click to the first frame';
     if (Object.keys(choices).length) {
       $('lab-quality-field').hidden = false;
       $('lab-quality-note').hidden = false;
       for (const option of $('lab-quality').options) option.disabled = !choices[option.value];
-      $('lab-quality').value = choices.preview ? 'preview' : 'full';
+      const requested = new URLSearchParams(location.search).get('q');
+      $('lab-quality').value = ['full', 'preview'].includes(requested) && choices[requested] ? requested : choices.full ? 'full' : 'preview';
       qualityDetails();
     }
     controls();
+    publicDelivery(null);
   }
 }
 

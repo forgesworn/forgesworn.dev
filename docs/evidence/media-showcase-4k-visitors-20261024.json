@@ -1,0 +1,522 @@
+{
+  "schema": 1,
+  "measuredAt": "2026-10-24T07:45:17.447Z",
+  "passed": true,
+  "scope": "Functional public 4K playback and independent visitor transfer; same-machine WebRTC with actual internet rendezvous",
+  "performanceBoundary": "No cross-NAT, physical-device, sustained-load, net bandwidth saving or comparative speed claim. This is a short observation, not complete 268.6-second playback.",
+  "siteAssets": "candidate local files routed at production site origin for the media host CORS policy",
+  "signalling": "actual public Nostr WSS relays",
+  "remoteMediaRouteFulfilment": false,
+  "nativeWebRtc": true,
+  "nativeMediaDecoding": true,
+  "hiddenHolders": 0,
+  "beforeGestureNoSockets": true,
+  "players": [
+    {
+      "peerBytes": 0,
+      "originBytes": 75399291,
+      "uploadedBytes": 8385482,
+      "acceptedUploadBytes": 12265346,
+      "verifiedPeerSegments": 0,
+      "originFallbacks": 12,
+      "integrityRejected": 0,
+      "connectedPeers": 1,
+      "decodedFrames": 433,
+      "currentTime": 17.125333,
+      "naturalWidth": 3842,
+      "naturalHeight": 2160,
+      "codedFrame": {
+        "width": 3840,
+        "height": 2160
+      },
+      "audioRmsPeak": 0.236580415396822,
+      "muted": false,
+      "volume": 1,
+      "videoElements": 1,
+      "visibleVideoElements": 1,
+      "resources": {
+        "activePeerConnections": 1,
+        "signallingConnections": 2,
+        "heldBytes": 62852387,
+        "heldHighWaterBytes": 63047012
+      },
+      "diagnostics": {
+        "signalErrors": 2,
+        "dialling": 0,
+        "dialsStarted": 0,
+        "disabledReason": null,
+        "commitmentUnavailable": 0,
+        "signallingConnected": 2,
+        "signallingPublished": 2,
+        "signallingPublishErrors": 0,
+        "relayRejected": 0
+      },
+      "connections": [
+        {
+          "id": "peer-1",
+          "state": "connected",
+          "iceState": "connected",
+          "bytesSent": 8387223,
+          "bytesReceived": 1550,
+          "kind": "direct",
+          "trafficBasis": "data-channel"
+        }
+      ]
+    },
+    {
+      "peerBytes": 6206410,
+      "originBytes": 63047012,
+      "uploadedBytes": 0,
+      "acceptedUploadBytes": 0,
+      "verifiedPeerSegments": 1,
+      "originFallbacks": 10,
+      "integrityRejected": 0,
+      "connectedPeers": 1,
+      "decodedFrames": 315,
+      "currentTime": 12.442667,
+      "naturalWidth": 3842,
+      "naturalHeight": 2160,
+      "codedFrame": {
+        "width": 3840,
+        "height": 2160
+      },
+      "audioRmsPeak": 0.2246369480786537,
+      "muted": false,
+      "volume": 1,
+      "videoElements": 1,
+      "visibleVideoElements": 1,
+      "resources": {
+        "activePeerConnections": 1,
+        "signallingConnections": 3,
+        "heldBytes": 62781456,
+        "heldHighWaterBytes": 63047012
+      },
+      "diagnostics": {
+        "signalErrors": 2,
+        "dialling": 0,
+        "dialsStarted": 1,
+        "disabledReason": null,
+        "commitmentUnavailable": 0,
+        "signallingConnected": 2,
+        "signallingPublished": 2,
+        "signallingPublishErrors": 0,
+        "relayRejected": 0
+      },
+      "connections": [
+        {
+          "id": "peer-1",
+          "state": "connected",
+          "iceState": "connected",
+          "bytesSent": 1550,
+          "bytesReceived": 8387223,
+          "kind": "direct",
+          "trafficBasis": "data-channel"
+        }
+      ]
+    }
+  ],
+  "relayObservations": [
+    {
+      "browser": 0,
+      "url": "wss://relay.primal.net/",
+      "sent": 7,
+      "received": 9,
+      "errors": 0
+    },
+    {
+      "browser": 0,
+      "url": "wss://relay.damus.io/",
+      "sent": 7,
+      "received": 6,
+      "errors": 0
+    },
+    {
+      "browser": 1,
+      "url": "wss://relay.damus.io/",
+      "sent": 0,
+      "received": 0,
+      "errors": 1
+    },
+    {
+      "browser": 1,
+      "url": "wss://relay.primal.net/",
+      "sent": 6,
+      "received": 7,
+      "errors": 0
+    },
+    {
+      "browser": 0,
+      "url": "wss://nos.lol/",
+      "sent": 0,
+      "received": 0,
+      "errors": 1
+    },
+    {
+      "browser": 1,
+      "url": "wss://nos.lol/",
+      "sent": 0,
+      "received": 0,
+      "errors": 1
+    },
+    {
+      "browser": 1,
+      "url": "wss://relay.damus.io/",
+      "sent": 4,
+      "received": 4,
+      "errors": 0
+    },
+    {
+      "browser": 0,
+      "url": "wss://nos.lol/",
+      "sent": 0,
+      "received": 0,
+      "errors": 1
+    },
+    {
+      "browser": 1,
+      "url": "wss://nos.lol/",
+      "sent": 0,
+      "received": 0,
+      "errors": 1
+    },
+    {
+      "browser": 0,
+      "url": "wss://relay.damus.io/",
+      "sent": 0,
+      "received": 0,
+      "errors": 1
+    },
+    {
+      "browser": 0,
+      "url": "wss://nos.lol/",
+      "sent": 0,
+      "received": 0,
+      "errors": 1
+    },
+    {
+      "browser": 0,
+      "url": "wss://relay.primal.net/",
+      "sent": 0,
+      "received": 0,
+      "errors": 1
+    },
+    {
+      "browser": 0,
+      "url": "wss://relay.damus.io/",
+      "sent": 0,
+      "received": 0,
+      "errors": 1
+    },
+    {
+      "browser": 0,
+      "url": "wss://nos.lol/",
+      "sent": 0,
+      "received": 0,
+      "errors": 1
+    },
+    {
+      "browser": 0,
+      "url": "wss://relay.primal.net/",
+      "sent": 0,
+      "received": 0,
+      "errors": 1
+    }
+  ],
+  "afterOff": {
+    "resources": {
+      "activePeerConnections": 0,
+      "signallingConnections": 0,
+      "heldBytes": 0,
+      "heldHighWaterBytes": 63047012
+    },
+    "paused": false,
+    "volume": 0.37
+  },
+  "rapidResume": {
+    "beforeRemaining": 1061476478,
+    "afterRemaining": 1061476478
+  },
+  "stopped": [
+    {
+      "resources": {
+        "activePeerConnections": 0,
+        "signallingConnections": 0,
+        "heldBytes": 0,
+        "heldHighWaterBytes": 63047012
+      },
+      "enabled": false
+    },
+    {
+      "resources": {
+        "activePeerConnections": 0,
+        "signallingConnections": 0,
+        "heldBytes": 0,
+        "heldHighWaterBytes": 63047012
+      },
+      "enabled": false
+    }
+  ],
+  "cleanup": {
+    "browserClosed": true,
+    "serverClosed": true,
+    "fixtureClients": 0
+  },
+  "homepage": {
+    "page": "https://forgesworn.dev/",
+    "browserVersion": "155.0.8059.85",
+    "candidateSiteRouteFulfilment": true,
+    "remoteMediaRouteFulfilment": false,
+    "checks": {
+      "initial": {
+        "defaultQuality": "full-4k",
+        "visiblePlayActions": 1,
+        "noMediaBeforePlay": true,
+        "noPeerNetworkBeforePlayAndJoin": true,
+        "videoElements": 1,
+        "videoGeometry": {
+          "x": 41,
+          "y": 368.375,
+          "width": 1358,
+          "height": 760
+        }
+      },
+      "playback": {
+        "width": 3842,
+        "height": 2160,
+        "time": 1.134493,
+        "geometry": {
+          "x": 41,
+          "y": 368.375,
+          "width": 1358,
+          "height": 760,
+          "top": 368.375,
+          "right": 1399,
+          "bottom": 1128.375,
+          "left": 41
+        },
+        "decodedFrameWidth": 3840,
+        "decodedFrameHeight": 2160,
+        "frames": 32,
+        "audioDecodedBytes": 60215,
+        "muted": false,
+        "volume": 1,
+        "paused": false,
+        "controls": true,
+        "sourceConfigured": true,
+        "source": "actual-media-source-attached",
+        "audioRms": 0.1533778518297331,
+        "audioState": "running",
+        "quality": "full",
+        "videoElementCount": 1,
+        "delivery": "Video from the media host",
+        "peerBytes": "0.0 MB",
+        "uploadedBytes": "0.0 MB",
+        "peers": "0",
+        "sharingStatus": "Looking for other viewers. The media host keeps the music playing while peers connect.",
+        "fps": "11.1 fps",
+        "firstFrame": "1,740 ms",
+        "dimensions": "3,840 × 2,160 video · 3,842 × 2,160 display",
+        "statsBytes": "12.6 MB",
+        "statsRequests": "4",
+        "map": {
+          "exists": true,
+          "observedPeers": "0",
+          "connectedPeers": "0",
+          "drawnPeerNodes": 0,
+          "description": "The media host, your browser and 0 observed peer connections. 0 verified peer bytes received; 0 video bytes uploaded."
+        },
+        "resources": {
+          "websocketCreated": 3,
+          "websocketOpen": 2,
+          "peerCreated": 0,
+          "peerOpen": 0
+        }
+      },
+      "invitation": {
+        "actualButtonClicked": true,
+        "nativeClipboardWriteOrVisibleFallback": true,
+        "qualityAndCurrentMomentIncluded": true,
+        "clipboardExistingContentsRead": false,
+        "status": "Link copied. They’ll join near the moment you shared."
+      },
+      "nativeControls": {
+        "pauseResumeViaKeyboard": true,
+        "pauseClosedSharingSocketsAndPeers": true,
+        "resumeRejoined": true,
+        "seekViaKeyboard": true,
+        "browserControlsPresent": true
+      },
+      "fullscreen": {
+        "actualNativeEnterAndExitControlsClicked": true,
+        "returnedInline": true,
+        "sameElement": true,
+        "sourcePreserved": true,
+        "timeAdvanced": true,
+        "volumePreserved": true
+      },
+      "stats": {
+        "openedWithoutRestart": true,
+        "sourcePreserved": true,
+        "volumePreserved": true,
+        "timeAdvanced": true,
+        "measuredFrameRateVisible": true
+      },
+      "sharing": {
+        "explainedPlayAndJoinOpenedSignalling": true,
+        "hiddenViewers": 0,
+        "pauseClosedSocketsAndPeers": true,
+        "resumeRejoined": true,
+        "signallingSocketsCreated": 6,
+        "signallingSocketsOpen": 3,
+        "observedDelivery": "Video from the media host",
+        "observedPeerBytes": "0.0 MB",
+        "observedUploadedBytes": "0.0 MB",
+        "observedPeers": "0",
+        "status": "Looking for other viewers. The media host keeps the music playing while peers connect.",
+        "observedMap": {
+          "exists": true,
+          "observedPeers": "0",
+          "connectedPeers": "0",
+          "drawnPeerNodes": 0,
+          "description": "The media host, your browser and 0 observed peer connections. 0 verified peer bytes received; 0 video bytes uploaded."
+        }
+      },
+      "mobile": {
+        "viewportWidth": 390,
+        "horizontalOverflow": false,
+        "sameVideo": true,
+        "swarmViewBox": "0 0 520 390"
+      }
+    },
+    "pageErrors": 0,
+    "localApiRequests": 0,
+    "mediaHttpErrors": [],
+    "browserClosed": true
+  },
+  "reviewedSourceHashes": [
+    {
+      "path": "site/live-media.html",
+      "sha256": "6ff180d056b12b303945852f9c8000c5402feba918b81c94c53cc09050b82a76"
+    },
+    {
+      "path": "site/media-lab.html",
+      "sha256": "0970815c4ac8bf1e0685a790891135f7703ab4e39a24e89779fcb4061e059e90"
+    },
+    {
+      "path": "site/media-lab.mjs",
+      "sha256": "0b3dc6921e52278cae01ea9e9b5bc4283eb92a65f7c54f39405dba59adde3fc0"
+    },
+    {
+      "path": "site/media-public-swarm.mjs",
+      "sha256": "316f9030399a01fbd4224ee206a37ca944089548cc44f24083d030de42cda2df"
+    },
+    {
+      "path": "site/media-showcase.css",
+      "sha256": "45a9b2f7070f0cd86febd3910f52bfa319599c8d38e00fc2455dfb4be34a66b4"
+    },
+    {
+      "path": "site/media-swarm-visual.mjs",
+      "sha256": "8298c2e31a9121cf38f18fc8ddd46c6c2161ed491958dbc8dadfd7114f2d76fc"
+    },
+    {
+      "path": "site/media/dejavu-swarm/catalogue-v1.json",
+      "sha256": "8b8276556c7aaaaac8fe61716c51648ce00bfdfb8d5a81a2d81490d97b21b7d4"
+    }
+  ],
+  "reviewedSourcesAt": "2026-10-24T07:52:54.036Z",
+  "reviewedSourcesBoundary": "Final reviewed assets; minor presentation text and layout edits followed the recorded measurements. Exact retained run receipts remain private. Deployment is verified separately.",
+  "actualHomepageVisitors": {
+    "measuredAt": "2026-10-24T07:50:06.461Z",
+    "passed": true,
+    "quality": "preview",
+    "candidateStaticFileRouting": true,
+    "publicSignallingSimulated": false,
+    "networkBoundary": "Two browser contexts on one Mac using actual public Nostr WSS and native WebRTC. Separate physical networks and internet NAT traversal are not asserted.",
+    "trafficBoundary": "Verified media counters come from the actual production UI. Native RTC wire counters can also contain protocol traffic.",
+    "players": [
+      {
+        "currentTime": 12.969634,
+        "width": 1920,
+        "height": 1080,
+        "decodedFrames": 329,
+        "paused": false,
+        "muted": false,
+        "volume": 1,
+        "totalVideoElements": 1,
+        "visibleVideoElements": 1,
+        "quality": "preview",
+        "visibleDelivery": "Connected to other viewers",
+        "visiblePeerBytes": "0.0 MB",
+        "visibleUploadedBytes": "0.4 MB",
+        "visiblePeers": "1",
+        "sharingStatus": "1 viewer connected to you. The counters show verified video received and video sent.",
+        "graph": {
+          "peerBytes": 0,
+          "uploadedBytes": 391011,
+          "observedPeers": 1,
+          "connectedPeers": 1,
+          "drawnPeerNodes": 1,
+          "nativeDescription": "The media host, your browser and 1 observed peer connection. 0 verified peer bytes received; 391011 video bytes uploaded.",
+          "viewBox": "0 0 960 355"
+        },
+        "native": {
+          "connections": [
+            {
+              "state": "connected",
+              "bytesSent": 391980,
+              "bytesReceived": 1170
+            }
+          ],
+          "activeConnections": 1,
+          "connectedConnections": 1,
+          "openSockets": 3
+        }
+      },
+      {
+        "currentTime": 9.300364,
+        "width": 1920,
+        "height": 1080,
+        "decodedFrames": 237,
+        "paused": false,
+        "muted": false,
+        "volume": 1,
+        "totalVideoElements": 1,
+        "visibleVideoElements": 1,
+        "quality": "preview",
+        "visibleDelivery": "Video from another viewer",
+        "visiblePeerBytes": "0.4 MB",
+        "visibleUploadedBytes": "0.0 MB",
+        "visiblePeers": "1",
+        "sharingStatus": "1 viewer connected to you. The counters show verified video received and video sent.",
+        "graph": {
+          "peerBytes": 391011,
+          "uploadedBytes": 0,
+          "observedPeers": 1,
+          "connectedPeers": 1,
+          "drawnPeerNodes": 1,
+          "nativeDescription": "The media host, your browser and 1 observed peer connection. 391011 verified peer bytes received; 0 video bytes uploaded.",
+          "viewBox": "0 0 960 355"
+        },
+        "native": {
+          "connections": [
+            {
+              "state": "connected",
+              "bytesSent": 1170,
+              "bytesReceived": 391980
+            }
+          ],
+          "activeConnections": 1,
+          "connectedConnections": 1,
+          "openSockets": 2
+        }
+      }
+    ],
+    "pageErrors": [],
+    "localApiRequests": 0,
+    "cleanup": {
+      "browserClosed": true,
+      "staticServerCreated": false,
+      "fixtureServiceCreated": false
+    }
+  }
+}

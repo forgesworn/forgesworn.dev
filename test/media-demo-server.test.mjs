@@ -106,7 +106,7 @@ test('real local child, per-viewer runtime credentials, origin guard and bounded
   const f = await fixture(t);
   const demo = await startMediaDemo({ spry: f.binary, siteRoot: f.site, transport: 'tcp' });
   t.after(() => demo.stop());
-  assert.match(demo.url, /^http:\/\/127\.0\.0\.1:\d+\/live-media\.html\?relay=local$/);
+  assert.match(demo.url, /^http:\/\/127\.0\.0\.1:\d+\/media-peer-fixture\.html\?relay=local$/);
   const runtime = await request(demo.port, '/media/demo/runtime.json');
   assert.equal(runtime.status, 200);
   assert.equal(runtime.headers['cache-control'], 'no-store');
@@ -219,7 +219,7 @@ test('import is inert; CLI emits only a local URL and handles SIGTERM', { timeou
   const closed = new Promise((resolve) => cli.once('exit', (code, signal) => resolve({ code, signal })));
   t.after(async () => { if (cli.exitCode === null && cli.signalCode === null) { cli.kill('SIGTERM'); await closed; } });
   await eventually(() => output.includes('?relay=local'));
-  assert.match(output, /^http:\/\/127\.0\.0\.1:\d+\/live-media\.html\?relay=local\n$/);
+  assert.match(output, /^http:\/\/127\.0\.0\.1:\d+\/media-peer-fixture\.html\?relay=local\n$/);
   assert.equal(errors, '');
   const pids = JSON.parse(await readFile(f.pidFile));
   cli.kill('SIGTERM');
