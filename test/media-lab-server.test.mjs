@@ -52,18 +52,26 @@ http.createServer((req,res)=>{fs.appendFileSync(${JSON.stringify(requestFile)},J
 `;
   for (const name of ['sapflow', 'mediamtx', 'ffmpeg', 'ffprobe', 'srt-live-transmit']) await writeFile(path.join(bin, name), code, { mode: 0o700 });
   const records = async () => { try { return (await readFile(pidFile, 'utf8')).trim().split('\n').filter(Boolean).map(JSON.parse); } catch (error) { if (error.code === 'ENOENT') return []; throw error; } };
+  const labs = new Set();
+  const options = { input, siteRoot: site, sapflow: path.join(bin, 'sapflow'), mediamtx: path.join(bin, 'mediamtx'),
+    ffmpeg: path.join(bin, 'ffmpeg'), ffprobe: path.join(bin, 'ffprobe'), srtLiveTransmit: path.join(bin, 'srt-live-transmit'), startupTimeoutMs: 1500, stopGraceMs: 150, sampleIntervalMs: 100, maxRunSeconds: 3 };
   t.after(async () => {
-    for (const group of new Set((await records()).map(row => row.group))) { try { process.kill(-group, 'SIGKILL'); } catch (error) { if (error.code !== 'ESRCH') throw error; } }
-    await rm(root, { recursive: true, force: true });
+    const stopped = await Promise.allSettled([...labs].map(lab => lab.stop()));
+    try {
+      // Owners stop and reap first. This is fallback cleanup after a failed
+      // assertion or failed owner shutdown, not a competing process owner.
+      for (const group of new Set((await records()).map(row => row.group))) { try { process.kill(-group, 'SIGKILL'); } catch (error) { if (error.code !== 'ESRCH') throw error; } }
+    } finally { await rm(root, { recursive: true, force: true }); }
+    for (const result of stopped) if (result.status === 'rejected') throw result.reason;
   });
-  return { root, input, site, records, requestFile, options: { input, siteRoot: site, sapflow: path.join(bin, 'sapflow'), mediamtx: path.join(bin, 'mediamtx'),
-    ffmpeg: path.join(bin, 'ffmpeg'), ffprobe: path.join(bin, 'ffprobe'), srtLiveTransmit: path.join(bin, 'srt-live-transmit'), startupTimeoutMs: 1500, stopGraceMs: 150, sampleIntervalMs: 100, maxRunSeconds: 3 } };
+  const startLab = async (overrides = {}) => { const lab = await startMediaLab({ ...options, ...overrides }); labs.add(lab); return lab; };
+  return { root, input, site, records, requestFile, options, startLab };
 }
-function request(base, name, { method = 'GET', value, headers = {} } = {}) {
+function request(base, name, { method = 'GET', value, headers = {}, agent } = {}) {
   return new Promise((resolve, reject) => {
     const body = value === undefined ? undefined : JSON.stringify(value);
     const endpoint = new URL(base);
-    const req = http.request({ hostname: endpoint.hostname, port: endpoint.port, path: name, method, headers: { ...(body === undefined ? {} : { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }), ...headers } }, res => {
+    const req = http.request({ hostname: endpoint.hostname, port: endpoint.port, path: name, method, ...(agent === undefined ? {} : { agent }), headers: { ...(body === undefined ? {} : { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }), ...headers } }, res => {
       const chunks = []; res.on('data', chunk => chunks.push(chunk)); res.once('error', reject);
       res.once('end', () => { const bytes = Buffer.concat(chunks), text = bytes.toString(); let data; try { data = JSON.parse(text); } catch {} resolve({ status: res.statusCode, headers: res.headers, bytes, text, data }); });
     }); req.once('error', reject); req.end(body);
@@ -71,7 +79,7 @@ function request(base, name, { method = 'GET', value, headers = {} } = {}) {
 }
 const run = (base, engine = 'sapflow', transport = 'rtmp', extra = {}) => request(base, '/lab/run', { method: 'POST', value: { engine, transport, offsetSeconds: 0, durationSeconds: 2, ...extra } });
 
-async function labFixture(t, options) { const f = await fixture(t, options); const lab = await startMediaLab(f.options); t.after(() => lab.stop()); return { ...f, lab, base: new URL(lab.url).origin }; }
+async function labFixture(t, options) { const f = await fixture(t, options); const lab = await f.startLab(); return { ...f, lab, base: new URL(lab.url).origin }; }
 
 test('sanitised config, strict local origin and immutable executable/source choices', { timeout: 10000 }, async t => {
   const f = await labFixture(t);
@@ -184,6 +192,30 @@ test('native session cookies have finite count and byte bounds', { timeout: 1000
   assert.equal(stats.requests, 1); assert.equal(stats.originRequests, 1); assert.equal(stats.errors, 1); assert.equal(stats.active, 0);
 });
 
+test('a child-cleanup error still closes the runner HTTP listener and remains an error', { timeout: 10000 }, async t => {
+  const f = await fixture(t);
+  // This owner deliberately fails shutdown; the fixture's final fallback owns
+  // the remaining test children. Do not register this expected failed owner.
+  const lab = await startMediaLab(f.options), base = new URL(lab.url).origin;
+  const kill = process.kill;
+  try {
+    assert.equal((await run(base)).status, 200);
+    const origin = (await f.records()).find(row => row.kind === 'sapflow');
+    assert.ok(origin);
+    process.kill = function (pid, signal) {
+      if (pid === -origin.pid && signal === 'SIGTERM') throw Object.assign(new Error('Fixture refuses an owned child signal'), { code: 'EPERM' });
+      return kill.call(this, pid, signal);
+    };
+    await assert.rejects(lab.stop(), { code: 'child_cleanup_failed' });
+    // A new TCP connection proves listener closure. A reused pooled socket can
+    // instead race shutdown and report ECONNRESET before observing the close.
+    await assert.rejects(request(base, '/lab/stats', { agent: false }), { code: 'ECONNREFUSED' });
+  } finally {
+    process.kill = kill;
+    await lab.stop().catch(() => {});
+  }
+});
+
 test('client cancellation aborts origin stream without caching incomplete bytes', { timeout: 10000 }, async t => {
   const f = await labFixture(t), started = await run(f.base), url = started.data.playlistUrl.replace('index.m3u8', 'slow.mp4');
   await new Promise((resolve, reject) => { const req = http.get(new URL(url, f.base), res => { res.once('data', () => { res.destroy(); req.destroy(); resolve(); }); }); req.once('error', error => { if (error.code !== 'ECONNRESET') reject(error); }); });
@@ -193,7 +225,7 @@ test('client cancellation aborts origin stream without caching incomplete bytes'
 });
 
 test('bounded normal completion yields ended with final matching measurements', { timeout: 10000 }, async t => {
-  const f = await fixture(t), lab = await startMediaLab({ ...f.options, maxRunSeconds: 4 }); t.after(() => lab.stop()); const base = new URL(lab.url).origin;
+  const f = await fixture(t), lab = await f.startLab({ maxRunSeconds: 4 }); const base = new URL(lab.url).origin;
   const started = await run(base, 'sapflow', 'rtmp', { durationSeconds: 1 }); assert.equal(started.status, 200);
   await until(async () => (await request(base, '/lab/stats')).data.lastRun?.state === 'ended', 6500);
   const final = (await request(base, '/lab/stats')).data; assert.equal(final.lastRun.run.id, started.data.runId); assert.ok(final.lastRun.processes.origin.peakSampledRssBytes > 0);
@@ -202,7 +234,7 @@ test('bounded normal completion yields ended with final matching measurements', 
 });
 
 test('a clean early publisher exit is incomplete, not a completed source window', { timeout: 8000 }, async t => {
-  const f = await fixture(t, { publisherEarlyExit: true }), lab = await startMediaLab(f.options); t.after(() => lab.stop()); const base = new URL(lab.url).origin;
+  const f = await fixture(t, { publisherEarlyExit: true }), lab = await f.startLab(); const base = new URL(lab.url).origin;
   const started = await run(base, 'sapflow', 'rtmp', { durationSeconds: 2 });
   await until(async () => (await request(base, '/lab/stats')).data.lastRun?.state === 'error');
   const final = (await request(base, '/lab/stats')).data.lastRun;
@@ -220,7 +252,7 @@ test('full-window completion independently checks video frames, mapped AAC and t
     { name: 'unknown video total retains the original time gate', options: { sourceVideoFrames: null }, state: 'error', expectedClock: 1, expectedFrames: null },
   ]) await t.test(scenario.name, { timeout: 8000 }, async subtest => {
     const options = { sourceVideoSeconds: 1, sourceAudioSeconds: 0.5, publisherProgressSeconds: 0.5, publisherVideoFrames: 25, ...scenario.options };
-    const f = await fixture(subtest, options), lab = await startMediaLab(f.options); subtest.after(() => lab.stop()); const base = new URL(lab.url).origin;
+    const f = await fixture(subtest, options), lab = await f.startLab(); const base = new URL(lab.url).origin;
     const started = await run(base, 'sapflow', 'rtmp', { durationSeconds: Math.max(options.sourceVideoSeconds, options.sourceAudioSeconds) }); assert.equal(started.status, 200);
     await until(async () => (await request(base, '/lab/stats')).data.lastRun?.state === scenario.state, 6000);
     const final = (await request(base, '/lab/stats')).data.lastRun;
@@ -235,7 +267,7 @@ test('full-window completion independently checks video frames, mapped AAC and t
 });
 
 test('hard deadline without publisher EOF is an error, never a completed observation', { timeout: 8000 }, async t => {
-  const f = await fixture(t, { publisherStalls: true }), lab = await startMediaLab({ ...f.options, maxRunSeconds: 1.5 }); t.after(() => lab.stop()); const base = new URL(lab.url).origin;
+  const f = await fixture(t, { publisherStalls: true }), lab = await f.startLab({ maxRunSeconds: 1.5 }); const base = new URL(lab.url).origin;
   const started = await run(base, 'sapflow', 'rtmp', { durationSeconds: 1 }); assert.equal(started.status, 200);
   await until(async () => (await request(base, '/lab/stats')).data.lastRun?.state === 'error', 4500);
   const final = (await request(base, '/lab/stats')).data.lastRun;
@@ -244,7 +276,7 @@ test('hard deadline without publisher EOF is an error, never a completed observa
 });
 
 test('SRT sender failure after publisher EOF invalidates the drain and completed observation', { timeout: 8000 }, async t => {
-  const f = await fixture(t, { srtSenderDrainFailure: true }), lab = await startMediaLab({ ...f.options, maxRunSeconds: 5 }); t.after(() => lab.stop()); const base = new URL(lab.url).origin;
+  const f = await fixture(t, { srtSenderDrainFailure: true }), lab = await f.startLab({ maxRunSeconds: 5 }); const base = new URL(lab.url).origin;
   const started = await run(base, 'sapflow', 'srt', { durationSeconds: 1 }); assert.equal(started.status, 200);
   await until(async () => (await request(base, '/lab/stats')).data.lastRun?.state === 'error', 4500);
   const final = (await request(base, '/lab/stats')).data.lastRun;
@@ -254,16 +286,16 @@ test('SRT sender failure after publisher EOF invalidates the drain and completed
 });
 
 test('startup timeout and disconnect clean children; shutdown escalates stubborn groups', { timeout: 12000 }, async t => {
-  const f = await fixture(t, { stalled: true }), lab = await startMediaLab({ ...f.options, startupTimeoutMs: 200 }); t.after(() => lab.stop());
+  const f = await fixture(t, { stalled: true }), lab = await f.startLab({ startupTimeoutMs: 200 });
   const base = new URL(lab.url).origin; const result = await run(base); assert.equal(result.status, 504);
   assert.ok(!result.text.includes(f.root)); for (const row of await f.records()) assert.ok(!alive(row.pid));
-  const g = await fixture(t, { stubborn: true }), active = await startMediaLab(g.options); t.after(() => active.stop());
+  const g = await fixture(t, { stubborn: true }), active = await g.startLab();
   assert.equal((await run(new URL(active.url).origin)).status, 200); await active.stop(); await active.stop();
   for (const row of await g.records()) assert.ok(!alive(row.pid));
 });
 
 test('aborted run POST cancels startup without leaving an unknown owned run', { timeout: 8000 }, async t => {
-  const f = await fixture(t, { stalled: true }), lab = await startMediaLab(f.options); t.after(() => lab.stop());
+  const f = await fixture(t, { stalled: true }), lab = await f.startLab();
   const base = new URL(lab.url), body = JSON.stringify({ engine: 'sapflow', transport: 'rtmp', offsetSeconds: 0, durationSeconds: 2 });
   const outgoing = http.request({ hostname: base.hostname, port: base.port, path: '/lab/run', method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) } });
   outgoing.on('error', () => {}); outgoing.end(body);
@@ -280,7 +312,7 @@ test('aborted run POST cancels startup without leaving an unknown owned run', { 
 });
 
 test('hash catalogue is bounded and does not refetch missing metadata', { timeout: 10000 }, async t => {
-  const f = await fixture(t), lab = await startMediaLab({ ...f.options, maxRunSeconds: 15 }); t.after(() => lab.stop()); const base = new URL(lab.url).origin;
+  const f = await fixture(t), lab = await f.startLab({ maxRunSeconds: 15 }); const base = new URL(lab.url).origin;
   const started = await run(base, 'sapflow', 'rtmp', { durationSeconds: 12 }); assert.equal(started.status, 200);
   const prefix = started.data.playlistUrl.replace('index.m3u8', '');
   for (let index = 0; index < 513; index++) assert.equal((await request(base, `${prefix}segment-${index}.mp4`)).status, 200);
