@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { MAX_VISUAL_PEERS, observedTopology, observedRoomTopology, createTrafficWindow, peerDeliveryShare } from '../site/media-swarm-visual.mjs';
+import { MAX_VISUAL_PEERS, observedTopology, observedRoomTopology, createTrafficWindow, peerDeliveryShare, swarmLayout } from '../site/media-swarm-visual.mjs';
 
 const NOW = 1_800_000_000_000;
 const authors = ['a', 'b', 'c'].map(value => value.repeat(64));
@@ -154,4 +154,19 @@ test('peer delivery strength is received verified video share, with no health sc
   assert.equal(peerDeliveryShare(0, 0), null);
   assert.equal(peerDeliveryShare(null, 400), null);
   assert.equal(peerDeliveryShare(-1, 400), null);
+});
+
+test('small and wide room pictures reserve enough space for every listener instead of shrinking crowded labels', () => {
+  for (const width of [240, 288, 320, 358, 390, 600, 780, 1024, 1440]) for (let count = 0; count <= 10; count++) {
+    const layout = swarmLayout(width, count), points = [layout.origin, layout.self, ...layout.positions];
+    assert.equal(layout.positions.length, count);
+    for (const point of points) {
+      assert(point.x - point.radius >= 0 && point.x + point.radius <= layout.width, `${width}px: horizontal node clipping`);
+      assert(point.y - point.radius >= 0 && point.y + 50 <= layout.height, `${width}px: vertical node or label clipping`);
+    }
+    for (let first = 0; first < points.length; first++) for (let second = first + 1; second < points.length; second++) {
+      const a = points[first], b = points[second];
+      assert(Math.abs(a.x - b.x) >= 75 || Math.abs(a.y - b.y) >= 95, `${width}px / ${count} listeners: crowding`);
+    }
+  }
 });
