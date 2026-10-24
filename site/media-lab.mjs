@@ -304,7 +304,7 @@ async function initialise() {
     publicRoom?.stop(); publicRoom = null;
     const pending = (async () => {
       const [{ createListenerSession }, { PUBLIC_SWARM_SOURCE_SHA256, PUBLIC_SWARM_RELAYS }] = await Promise.all([
-        import('./media-listener-session.mjs?v=20261024-swarm-room'), import('./media-public-swarm.mjs?v=20261024-swarm-room'),
+        import('./media-listener-session.mjs?v=20261024-buffer-continuity'), import('./media-public-swarm.mjs?v=20261024-buffer-continuity'),
       ]);
       if (request !== publicRoomRequest || pageAbort.signal.aborted) return null;
       const clock = createListenerSession({ room: `forgesworn-dejavu-listening-v1-${quality}`, source: PUBLIC_SWARM_SOURCE_SHA256,
@@ -416,6 +416,7 @@ async function initialise() {
       if ($(id)) { $(id).dataset.bytes = bytes === null ? '' : String(bytes); $(id).title = bytes === null ? 'Byte count unavailable' : `${bytes.toLocaleString('en-GB')} bytes this playback`; }
     }
     optionalText('public-local-peers', `${peers} connected to you`);
+    optionalText('browser-swarm-version', metrics?.library ? `RelaySwarm ${metrics.library.version} · ${metrics.library.sourceCommit.slice(0, 8)}` : DASH);
     const playing = s && !video.paused && !video.ended;
     const enabled = metrics?.enabled === true;
     optionalText('public-delivery', !s ? 'Ready when you are' : video.ended ? 'Mix finished' : !playing && s.browser?.seenFrame ? 'Paused' :
@@ -424,6 +425,7 @@ async function initialise() {
       peers > 0 ? 'Connected to other viewers' : 'Waiting for the first segment');
     optionalText('public-share-status', !s ? 'Press Play & join. Your browser can pass verified video segments to other viewers.' :
       video.ended ? 'Thanks for listening. Peer connections are closed.' : !playing && s.browser?.seenFrame ? 'Sharing is paused with the music. Press play to rejoin.' :
+      enabled && metrics?.uploadAllowanceRemaining === 0 ? 'Upload allowance used for this playback. Peer downloads and media-host delivery continue.' :
       enabled && peers > 0 ? `${peers} viewer${peers === 1 ? '' : 's'} connected to you. A connection counts towards delivery only when video moves.` :
       enabled ? 'Looking for other viewers. The media host keeps the music playing while peers connect.' :
       s.publicSharingFailed ? 'Playing from the media host. Peer sharing could not connect in this browser.' :
@@ -627,9 +629,12 @@ async function initialise() {
     if (!s) {
       for (const id of ['browser-fps', 'browser-time', 'browser-buffer', 'browser-stalls', 'browser-stall-time', 'browser-bytes', 'browser-requests', 'browser-errors', 'first-frame']) text(id, DASH);
       text('browser-dimensions', 'Browser video dimensions');
+      optionalText('browser-engine', DASH); delete root.dataset.playbackEngine;
       return;
     }
     const b = s.browser;
+    optionalText('browser-engine', s.playbackEngine ?? DASH);
+    root.dataset.playbackEngine = s.playbackEngine ?? '';
     if (s.sourceEof) {
       text('browser-bytes', megabytes(b.responseBytes));
       text('browser-requests', reading(b.requests, '', 0));
@@ -814,6 +819,7 @@ async function initialise() {
 
   async function attach(s, url, runtime) {
     if (!local && /\.mp4$/i.test(url.pathname)) {
+      s.playbackEngine = 'Native MP4';
       trackBrowser(s, url);
       video.crossOrigin = url.origin === location.origin ? '' : 'anonymous';
       video.src = url.href; s.mediaReady = true; controls(); await play(s);
@@ -822,8 +828,9 @@ async function initialise() {
     Hls ??= (await import(local ? './vendor/hls.min.mjs' : './vendor/hls.light.min.mjs')).default;
     if (session !== s || s.abort.signal.aborted) return;
     trackBrowser(s, url);
+    const room = !local ? s.listener?.snapshot() : null;
     const initial = local ? await readInitialLiveStart(url.href, { signal: s.abort.signal }) :
-      { startPosition: s.listener?.snapshot().ready ? s.listener.position() : s.invitedStart || -1 };
+      { startPosition: room?.ready ? s.listener.position() : s.invitedStart || -1, epochId: room?.ready ? room.epochId : null };
     if (session !== s || s.abort.signal.aborted) return;
     if (s.turnEngine !== 'off') {
       if (!runtime || !local) throw new Error('A local per-viewer relay runtime is required');
@@ -834,11 +841,20 @@ async function initialise() {
         signal: s.abort.signal, onStats: (metrics) => peerStats(s, metrics), confirmSourceEnd: error => confirmNormalSourceEnd(s, error) });
       await play(s);
     } else if (Hls.isSupported()) {
-      s.hls = new Hls({ lowLatencyMode: false, progressive: false, maxBufferLength: local ? 4 : 10, maxMaxBufferLength: local ? 6 : 14,
-        maxBufferSize: (local ? 8 : 32) * 1024 * 1024, backBufferLength: 0, enableWorker: true, startPosition: initial.startPosition });
+      s.hls = new Hls({ lowLatencyMode: false, progressive: false, maxBufferLength: local ? 4 : 20, maxMaxBufferLength: local ? 6 : 24,
+        maxBufferSize: (local ? 8 : 64) * 1024 * 1024, backBufferLength: local ? 0 : 4, enableWorker: true, startPosition: initial.startPosition });
+      s.playbackEngine = 'hls.js';
+      s.hls.on(Hls.Events.MEDIA_ATTACHED, (_, { mediaSource }) => {
+        if (session !== s) return;
+        s.playbackEngine = typeof ManagedMediaSource === 'function' && mediaSource instanceof ManagedMediaSource ?
+          'hls.js · ManagedMediaSource' : 'hls.js · MediaSource';
+      });
+      // HLS already seeks to startPosition. A second forced jump on the first
+      // playing event can discard the freshly downloaded startup fragment.
+      if (!local && initial.epochId && initial.startPosition >= 0) s.listenerAlignedEpoch = initial.epochId;
       if (!local) {
         try {
-          const { createPublicSwarm } = await import('./media-public-swarm.mjs?v=20261024-swarm-room');
+          const { createPublicSwarm } = await import('./media-public-swarm.mjs?v=20261024-buffer-continuity');
           if (session !== s || s.abort.signal.aborted) return;
           s.publicPeer = createPublicSwarm({ Hls, hls: s.hls, video, playlistUrl: url.href, quality: s.quality,
             signal: s.abort.signal, onStats: metrics => { if (session === s) publicDelivery(s, metrics); } });
@@ -865,6 +881,7 @@ async function initialise() {
       s.hls.loadSource(url.href); s.hls.attachMedia(video);
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
       s.nativeHls = true;
+      s.playbackEngine = 'Native HLS';
       video.addEventListener('loadedmetadata', () => {
         s.listenerAlignedEpoch = s.listener?.snapshot().epochId;
         followListener(s, true);

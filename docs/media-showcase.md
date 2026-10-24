@@ -22,8 +22,9 @@ signing identity, and does not count the page visitor as a listener.
 Play enables public peer rendezvous and native WebRTC data channels;
 RelaySwarm can serve already held fragments to other visitors.  Pause
 and page departure close sharing connections and release the
-media cache.  Native play rejoins; its upload allowance and original lifetime
-are retained across pause/resume. The read-only ticker remains connected
+media cache.  Native play rejoins; its cumulative upload allowance
+is retained across pause/resume. Peer networking has no wall-clock cutoff
+while listening. The read-only ticker remains connected
 after Pause. Closing the page closes its room subscriptions too.
 
 The first viewer normally receives media from the HTTPS host.  Origin
@@ -61,6 +62,14 @@ in device clocks or audio output can still create temporary offsets; this is
 not a multi-speaker audio synchronisation protocol. Full screen and playback
 details retain the same video and session. A natural recording boundary
 retains room membership, native peer connections, identity and cached media.
+
+HLS starts at the discovered room position and treats that initial seek as
+the startup alignment. The first decoded frame does not force a second jump
+past freshly downloaded media. Later clock corrections use the recovery
+checks above. Recorded public playback targets 20 seconds of forward buffer,
+caps its time target at 24 seconds and retains four seconds behind the
+playhead. Its hls.js byte target is 64 MiB, which is not a hard process-memory
+limit. The local live-server comparison keeps its original smaller buffers.
 
 There is no always-running encoder or new coordination service.  Existing
 Nostr relays carry a small signed clock/presence event every six seconds,
@@ -321,16 +330,23 @@ capacity qualification.  RelaySwarm remains experimental.
 ## Bounds and privacy
 
 The public profile allows three peers, two concurrent upload peers, at most
-4 MiB/s upload, 1 GiB of charged upload per playback session and an absolute
-15-minute sharing lifetime.  The media cache is bounded to 12 objects and
-64 MiB; one fragment may be at most 16 MiB.  The player targets a ten-second
-buffer with a fourteen-second configured ceiling and a 32 MiB media budget.
+4 MiB/s upload and 1 GiB of charged upload per playback session. Exhausting
+the upload allowance stops serving and is shown in the sharing status;
+downloads can continue. Pause and page departure close peer networking.
+The media cache is bounded to 12 objects and 64 MiB; one fragment may be at
+most 16 MiB. The player targets a twenty-second forward buffer with a
+twenty-four-second time ceiling, four seconds behind and a 64 MiB byte target.
 An appended fragment can overshoot a buffer target; decoder memory is
 separate.  There is no background download of the full 817 MB recording.
 The pinned 689 KiB piece catalogue is bounded to 1 MiB, and the browser uses
 the existing 399 KiB Rust/WASM module.  Both load only after Play.  The bundle
 receipt records the exact source, WASM digest and dependency notices; the
 website build copies that public module without compiling Rust.
+
+The current browser bundle pins RelaySwarm 0.4.2, including its peer ticket
+renewal upload fix. Playback details show the actual native/MSE engine and
+vendored library version/source. The former 15-minute adapter cutoff was
+removed; recordings and native loop connections can continue while playing.
 
 Public relays see connecting addresses and metadata.  Connected peers can
 learn one another's network addresses.  The page explains participation

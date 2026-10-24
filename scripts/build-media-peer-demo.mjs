@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const SOURCE = '9c16743974ccbffe95818938d3794e54be00b74a';
+const SOURCE = '2c2708c9e11daf8e85bc059682d3eda09a0c4ffb';
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const root = fileURLToPath(new URL('../', import.meta.url));
 
@@ -24,7 +24,8 @@ export async function buildPeerDemo(checkout) {
     }
     await symlink(join(checkout, 'node_modules'), join(scratch, 'node_modules'), 'dir');
     const { build } = await import(pathToFileURL(join(checkout, 'node_modules/esbuild/lib/main.js')).href);
-    const entry = `export { createHlsSwarm } from './src/browser/hls-swarm.mjs';
+    const entry = `export const relayswarmBuild = Object.freeze(${JSON.stringify({ version: packageJson.version, sourceCommit: SOURCE })});
+export { createHlsSwarm } from './src/browser/hls-swarm.mjs';
 export { commitmentContent, commitmentPieceSize, KIND_SEGMENT_COMMITMENT, segmentMediaContext } from './src/browser/segment-commitment.mjs';
 export { finalizeEvent, generateSecretKey, verifyEvent } from 'nostr-tools/pure';
 export { matchFilter } from 'nostr-tools/filter';\n`;
