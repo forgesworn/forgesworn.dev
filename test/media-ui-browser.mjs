@@ -78,7 +78,7 @@ try {
     };
   });
   await page.goto(options.mode === 'relay' ? operator.url : new URL('/live-media.html', origin).href, { waitUntil: 'networkidle', timeout: 20_000 });
-  receipt.versionedPlayerScript = await page.locator('script[src^="/media-demo.mjs"]').getAttribute('src') === '/media-demo.mjs?v=20261024-sound';
+  receipt.versionedPlayerScript = await page.locator('script[src^="/media-demo.mjs"]').getAttribute('src') === '/media-demo.mjs?v=20261024-player';
   assert(receipt.versionedPlayerScript);
   await page.selectOption('#demo-ingest', options.clip);
   await page.click('#demo-start');
@@ -101,6 +101,26 @@ try {
     receipt.scope = 'actual-public-mode-playback-and-cleanup; peer-transfer-not-required';
     assert(receipt.playback.selectedPairs.every(pair => pair.localType !== 'relay' && pair.remoteType !== 'relay'));
   }
+
+  const beforeFullscreen = await page.evaluate(() => ({ time: document.getElementById('media-video').currentTime,
+    src: document.getElementById('media-video').getAttribute('src'), peers: window.__acceptancePeers.length,
+    volume: document.getElementById('media-video').volume }));
+  await page.click('#demo-fullscreen');
+  await page.waitForFunction(() => document.fullscreenElement?.id === 'media-video-wrap', undefined, { timeout: 5000 });
+  assert.equal(await page.locator('#demo-fullscreen').innerText(), 'Back to stats');
+  await page.waitForFunction(before => document.getElementById('media-video').currentTime > before + 0.15,
+    beforeFullscreen.time, { timeout: 5000 });
+  await page.click('#demo-fullscreen');
+  await page.waitForFunction(() => !document.fullscreenElement, undefined, { timeout: 5000 });
+  receipt.fullscreenReturn = await page.evaluate(() => ({ time: document.getElementById('media-video').currentTime,
+    src: document.getElementById('media-video').getAttribute('src'), peers: window.__acceptancePeers.length,
+    paused: document.getElementById('media-video').paused, muted: document.getElementById('media-video').muted,
+    volume: document.getElementById('media-video').volume, focus: document.activeElement.id }));
+  assert.equal(receipt.fullscreenReturn.src, beforeFullscreen.src);
+  assert.equal(receipt.fullscreenReturn.peers, beforeFullscreen.peers);
+  assert.equal(receipt.fullscreenReturn.volume, beforeFullscreen.volume);
+  assert(receipt.fullscreenReturn.time >= beforeFullscreen.time && !receipt.fullscreenReturn.paused && !receipt.fullscreenReturn.muted);
+  assert.equal(receipt.fullscreenReturn.focus, 'demo-fullscreen');
 
   const previousConnections = await page.evaluate(() => window.__acceptancePeers.length);
   await page.evaluate(() => {

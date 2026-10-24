@@ -17,7 +17,7 @@
     "peerBytesDisplay": "1.0 MB",
     "deliveryPath": "Spry TURN",
     "decodedFrames": 12,
-    "currentTime": 0.324646,
+    "currentTime": 0.315091,
     "muted": false,
     "volume": 1,
     "paused": false,
@@ -38,16 +38,25 @@
     ],
     "activeConnections": 2
   },
+  "fullscreenReturn": {
+    "time": 0.5796,
+    "peers": 2,
+    "paused": false,
+    "muted": false,
+    "volume": 1,
+    "focus": "demo-fullscreen",
+    "mediaSourcePreserved": true
+  },
   "replay": {
     "verifiedPeerFragments": 6,
     "peerBytesDisplay": "1.0 MB",
     "deliveryPath": "Spry TURN",
-    "decodedFrames": 23,
-    "currentTime": 0.80368,
+    "decodedFrames": 14,
+    "currentTime": 0.356567,
     "muted": true,
     "volume": 0.37,
     "paused": false,
-    "audioDecodedBytes": 13097,
+    "audioDecodedBytes": 7547,
     "hiddenPlayersObserved": 2,
     "hiddenPlayersMuted": true,
     "selectedPairs": [

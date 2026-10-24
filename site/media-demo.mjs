@@ -1,3 +1,5 @@
+import { attachFullscreen } from './media-fullscreen.mjs';
+
 const element = id => document.getElementById(id);
 const video = element('media-video');
 const start = element('demo-start');
@@ -173,6 +175,7 @@ async function play() {
 }
 
 if (video && start && selector && status) {
+  attachFullscreen({ container: element('media-video-wrap'), video, button: element('demo-fullscreen'), onError: setStatus });
   video.addEventListener('playing', () => {
     if (!active?.playbackBlocked) return;
     active.playbackBlocked = false;
