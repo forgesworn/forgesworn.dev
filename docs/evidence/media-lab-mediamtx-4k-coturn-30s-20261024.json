@@ -1,0 +1,570 @@
+{
+  "schema": 1,
+  "scope": "actual production lab page; sequential native same-host relay runs",
+  "completionBoundary": "The complete selected source window was ingested. Actual decoded frames and video time are recorded separately; every frame is not asserted.",
+  "performanceBoundary": "Functional acceptance on a shared host. Timing and CPU observations do not establish a controlled performance winner.",
+  "autoplayPolicyOverride": false,
+  "audioOutputSuppressed": false,
+  "passed": true,
+  "pageErrors": 0,
+  "externalRequests": 0,
+  "checks": [
+    {
+      "engine": "mediamtx",
+      "ingest": "rtmp",
+      "relay": "coturn",
+      "clientTransport": "udp",
+      "duration": "30",
+      "completed": true,
+      "firstPlayback": {
+        "width": 3840,
+        "height": 2160,
+        "currentTime": 8.205791,
+        "decodedFrameWidth": 3840,
+        "decodedFrameHeight": 2160,
+        "audioRms": 0.12801609896673538,
+        "audioContextState": "running",
+        "decodedFrames": 26,
+        "audioDecodedBytes": 43086,
+        "muted": false,
+        "volume": 1,
+        "paused": false,
+        "selectedPairs": [
+          {
+            "localType": "relay",
+            "remoteType": "relay",
+            "relayProtocol": "udp"
+          },
+          {
+            "localType": "relay",
+            "remoteType": "relay",
+            "relayProtocol": "udp"
+          }
+        ],
+        "activePeerConnections": 2,
+        "hiddenPlayersObserved": 1,
+        "hiddenPlayersMuted": true,
+        "relaySummary": "Viewer path \u00b7 coturn UDP requested \u00b7 relay \u2192 relay (udp), relay \u2192 relay (udp) \u00b7 Verified peer bytes: 3.0 MB \u00b7 Origin bytes: 6.2 MB \u00b7 Verified peer segments: 2 \u00b7 Origin fallbacks: 4 \u00b7 Phase: peer",
+        "fpsDisplay": "26.7 fps",
+        "dimensionsDisplay": "3,840 \u00d7 2,160 video",
+        "relayCpuDisplay": "1.0%",
+        "relayMemoryDisplay": "11.2 MB"
+      },
+      "fullscreen": {
+        "enteredAndExited": true,
+        "sameElement": true,
+        "playbackAdvanced": true,
+        "volumePreserved": true,
+        "selectionPreserved": true
+      },
+      "lastPlayback": {
+        "width": 0,
+        "height": 0,
+        "currentTime": 0,
+        "decodedFrameWidth": 3840,
+        "decodedFrameHeight": 2160,
+        "audioRms": 0,
+        "audioContextState": "running",
+        "decodedFrames": 0,
+        "audioDecodedBytes": 0,
+        "muted": false,
+        "volume": 1,
+        "paused": true,
+        "selectedPairs": [],
+        "activePeerConnections": 0,
+        "hiddenPlayersObserved": 1,
+        "hiddenPlayersMuted": true,
+        "relaySummary": "Viewer path \u00b7 coturn UDP requested \u00b7 relay \u2192 relay (udp), relay \u2192 relay (udp) \u00b7 Verified peer bytes: 60.7 MB \u00b7 Origin bytes: 23.7 MB \u00b7 Verified peer segments: 41 \u00b7 Origin fallbacks: 11 \u00b7 Phase: stopped",
+        "fpsDisplay": "24.9 fps",
+        "dimensionsDisplay": "3,840 \u00d7 2,160 video",
+        "relayCpuDisplay": "0.0%",
+        "relayMemoryDisplay": "5.8 MB"
+      },
+      "sourceWindow": {
+        "durationSeconds": 30,
+        "publisherEnded": true,
+        "publisherMediaSeconds": 30.037333,
+        "publisherProgressEnded": true,
+        "publisherVideoFrames": 750,
+        "expectedVideoFrames": null,
+        "expectedProgressSeconds": 30,
+        "expectedProgressBasis": "requested-media-window",
+        "publisherCompletedWindow": true,
+        "endedReason": "ended",
+        "origin": {
+          "cpuPercent": 0,
+          "averageCpuPercent": 1.177095649468159,
+          "cpuSeconds": 0.51,
+          "rssBytes": 101924864,
+          "peakSampledRssBytes": 214040576,
+          "sampledSeconds": 41.6278830205,
+          "sampleCount": 43,
+          "uptimeSeconds": 42.800059041,
+          "running": false
+        },
+        "publisher": {
+          "cpuPercent": 0,
+          "averageCpuPercent": 0.9298916966387449,
+          "cpuSeconds": 0.27,
+          "rssBytes": 19398656,
+          "peakSampledRssBytes": 45973504,
+          "sampledSeconds": 29.035639416499997,
+          "sampleCount": 30,
+          "uptimeSeconds": 42.473557125,
+          "running": false
+        },
+        "turn": {
+          "cpuPercent": 0,
+          "averageCpuPercent": 3.002779758825991,
+          "cpuSeconds": 1.41,
+          "rssBytes": 5767168,
+          "peakSampledRssBytes": 11190272,
+          "sampledSeconds": 41.6280946455,
+          "sampleCount": 43,
+          "uptimeSeconds": 42.473657417000005,
+          "running": false
+        },
+        "http": {
+          "requests": 207,
+          "originRequests": 210,
+          "redirectsFollowed": 3,
+          "completed": 199,
+          "errors": 6,
+          "cancelled": 2,
+          "active": 0,
+          "bytes": 108448499,
+          "bytesPerSecond": 0,
+          "sampleSeconds": 0.5716380000000063,
+          "firstByteMs": {
+            "last": 0.30562499999359716,
+            "p50": 0.787625000000844,
+            "p95": 227.19104200000038,
+            "p99": 732.4574999999995,
+            "samples": 205,
+            "retained": 205
+          },
+          "responseMs": {
+            "last": 1.0108340000006137,
+            "p50": 1.1234580000018468,
+            "p95": 700.5796250000003,
+            "p99": 1505.574666999999,
+            "samples": 199,
+            "retained": 199
+          }
+        }
+      },
+      "renditions": {
+        "audio": {
+          "playlistResponses": 1,
+          "initResponses": 1,
+          "completeFragmentResponses": 2
+        },
+        "video": {
+          "playlistResponses": 1,
+          "initResponses": 1,
+          "completeFragmentResponses": 10
+        }
+      }
+    }
+  ],
+  "hostObservations": [
+    {
+      "stage": "before-source-preflight",
+      "at": "2026-10-24T02:54:24.585Z",
+      "loadAverage": [
+        9.205078125,
+        10.68896484375,
+        11.607421875
+      ],
+      "logicalCpus": 8,
+      "freeMemoryBytes": 117915648,
+      "totalMemoryBytes": 17179869184
+    },
+    {
+      "stage": "after-source-preflight",
+      "at": "2026-10-24T02:54:25.825Z",
+      "loadAverage": [
+        9.1884765625,
+        10.66064453125,
+        11.591796875
+      ],
+      "logicalCpus": 8,
+      "freeMemoryBytes": 142278656,
+      "totalMemoryBytes": 17179869184
+    },
+    {
+      "stage": "start-coturn",
+      "at": "2026-10-24T02:54:26.949Z",
+      "loadAverage": [
+        9.1884765625,
+        10.66064453125,
+        11.591796875
+      ],
+      "logicalCpus": 8,
+      "freeMemoryBytes": 157270016,
+      "totalMemoryBytes": 17179869184
+    },
+    {
+      "stage": "progress-coturn",
+      "at": "2026-10-24T02:54:52.718Z",
+      "loadAverage": [
+        12.0810546875,
+        11.20556640625,
+        11.759765625
+      ],
+      "logicalCpus": 8,
+      "freeMemoryBytes": 108363776,
+      "totalMemoryBytes": 17179869184
+    },
+    {
+      "stage": "progress-coturn",
+      "at": "2026-10-24T02:55:12.729Z",
+      "loadAverage": [
+        11.5087890625,
+        11.15380859375,
+        11.728515625
+      ],
+      "logicalCpus": 8,
+      "freeMemoryBytes": 386318336,
+      "totalMemoryBytes": 17179869184
+    },
+    {
+      "stage": "ended-coturn",
+      "at": "2026-10-24T02:55:12.742Z",
+      "loadAverage": [
+        11.5087890625,
+        11.15380859375,
+        11.728515625
+      ],
+      "logicalCpus": 8,
+      "freeMemoryBytes": 383696896,
+      "totalMemoryBytes": 17179869184
+    },
+    {
+      "stage": "after-cleanup",
+      "at": "2026-10-24T02:55:12.840Z",
+      "loadAverage": [
+        11.5087890625,
+        11.15380859375,
+        11.728515625
+      ],
+      "logicalCpus": 8,
+      "freeMemoryBytes": 627507200,
+      "totalMemoryBytes": 17179869184
+    }
+  ],
+  "source": {
+    "label": "Licensed local media",
+    "bytes": 817058874,
+    "sha256": "76d90719a756c77d1008088c58ca6b28a74eb0ef01e5337906cfb68d3e2b13aa",
+    "durationSeconds": 268.6,
+    "width": 3840,
+    "height": 2160,
+    "fps": 25,
+    "videoFrames": 6715,
+    "videoEndSeconds": 268.6,
+    "audioEndSeconds": 267.32,
+    "videoCodec": "h264",
+    "audioCodec": "aac",
+    "audioSampleRate": 48000,
+    "bitrateBps": 24335335
+  },
+  "host": {
+    "cpu": "Apple M1",
+    "architecture": "arm64",
+    "platform": "darwin",
+    "release": "23.6.0",
+    "logicalCpus": 8,
+    "loadAverage": {
+      "oneMinute": 9.1884765625,
+      "fiveMinutes": 10.66064453125,
+      "fifteenMinutes": 11.591796875
+    }
+  },
+  "profile": {
+    "hlsMode": "low-latency",
+    "segmentCount": 24,
+    "segmentDurationSeconds": 1,
+    "partDurationSeconds": 0.2,
+    "endDrainSeconds": 12,
+    "publisherCompletionToleranceSeconds": 0.25,
+    "transcode": false,
+    "recording": false,
+    "authentication": "matched static publisher credentials",
+    "sapflowHttpImpl": "hyper",
+    "cpuPercentBasis": "100% is one CPU core",
+    "byteScope": "HLS response body bytes read by the local proxy, excluding headers and metadata API requests"
+  },
+  "identities": {
+    "origins": [
+      {
+        "id": "sapflow",
+        "label": "Sapflow (default Hyper)",
+        "version": "0.1.0",
+        "binarySha256": "0ded5783f99dd51ca45e26b1557eed2440f5f964dcb05c918765cc18ee4d4dea",
+        "profile": {
+          "hlsMode": "low-latency",
+          "segmentCount": 24,
+          "segmentDurationSeconds": 1,
+          "partDurationSeconds": 0.2,
+          "endDrainSeconds": 12,
+          "publisherCompletionToleranceSeconds": 0.25,
+          "transcode": false,
+          "recording": false,
+          "authentication": "matched static publisher credentials",
+          "sapflowHttpImpl": "hyper",
+          "cpuPercentBasis": "100% is one CPU core",
+          "byteScope": "HLS response body bytes read by the local proxy, excluding headers and metadata API requests",
+          "httpImpl": "hyper",
+          "httpWorkers": null
+        },
+        "available": true
+      },
+      {
+        "id": "sapflow-own",
+        "label": "Sapflow (own HTTP, one worker)",
+        "version": "0.1.0",
+        "binarySha256": "0ded5783f99dd51ca45e26b1557eed2440f5f964dcb05c918765cc18ee4d4dea",
+        "profile": {
+          "hlsMode": "low-latency",
+          "segmentCount": 24,
+          "segmentDurationSeconds": 1,
+          "partDurationSeconds": 0.2,
+          "endDrainSeconds": 12,
+          "publisherCompletionToleranceSeconds": 0.25,
+          "transcode": false,
+          "recording": false,
+          "authentication": "matched static publisher credentials",
+          "sapflowHttpImpl": "own",
+          "cpuPercentBasis": "100% is one CPU core",
+          "byteScope": "HLS response body bytes read by the local proxy, excluding headers and metadata API requests",
+          "httpImpl": "own",
+          "httpWorkers": 1
+        },
+        "available": true
+      },
+      {
+        "id": "mediamtx",
+        "label": "MediaMTX",
+        "version": "1.21.2",
+        "binarySha256": "72f67f718cfe5f75f081db5b2f31d1664008b6b8ff8627cb2a8acf5d7e5e61be",
+        "profile": {
+          "hlsMode": "low-latency",
+          "segmentCount": 24,
+          "segmentDurationSeconds": 1,
+          "partDurationSeconds": 0.2,
+          "endDrainSeconds": 12,
+          "publisherCompletionToleranceSeconds": 0.25,
+          "transcode": false,
+          "recording": false,
+          "authentication": "matched static publisher credentials",
+          "sapflowHttpImpl": null,
+          "cpuPercentBasis": "100% is one CPU core",
+          "byteScope": "HLS response body bytes read by the local proxy, excluding headers and metadata API requests",
+          "httpImpl": "mediamtx-native",
+          "httpWorkers": null
+        },
+        "available": true
+      }
+    ],
+    "relays": [
+      {
+        "id": "coturn",
+        "label": "coturn",
+        "available": true,
+        "version": "4.18.0",
+        "binarySha256": "f5d97a104906ee38f90775630d2c1ab490d8e9e65f487623b31b8b09d317d730"
+      }
+    ]
+  },
+  "runs": [
+    {
+      "state": "ended",
+      "completion": "source-window-ended",
+      "measuredAt": "2026-10-24T02:55:10.635Z",
+      "offsetSeconds": 0,
+      "engine": "mediamtx",
+      "engineLabel": "MediaMTX",
+      "version": "1.21.2",
+      "binarySha256": "72f67f718cfe5f75f081db5b2f31d1664008b6b8ff8627cb2a8acf5d7e5e61be",
+      "transport": "rtmp",
+      "turnEngine": "coturn",
+      "turnTransport": "udp",
+      "durationSeconds": 30,
+      "publisherMediaSeconds": 30.037333,
+      "publisherProgressEnded": true,
+      "publisherCompletedWindow": true,
+      "publisherVideoFrames": 750,
+      "expectedVideoFrames": null,
+      "expectedProgressSeconds": 30,
+      "expectedProgressBasis": "requested-media-window",
+      "measurementScope": "shared-host-observation",
+      "hostLoadAtStart": {
+        "oneMinute": 9.1884765625,
+        "fiveMinutes": 10.66064453125,
+        "fifteenMinutes": 11.591796875
+      },
+      "hostLoadAtEnd": {
+        "oneMinute": 12.07568359375,
+        "fiveMinutes": 11.2578125,
+        "fifteenMinutes": 11.7685546875
+      },
+      "source": {
+        "label": "Licensed local media",
+        "sha256": "76d90719a756c77d1008088c58ca6b28a74eb0ef01e5337906cfb68d3e2b13aa",
+        "bytes": 817058874,
+        "durationSeconds": 268.6,
+        "width": 3840,
+        "height": 2160,
+        "fps": 25,
+        "bitrateBps": 24335335,
+        "audioSampleRate": 48000,
+        "videoCodec": "h264",
+        "audioCodec": "aac"
+      },
+      "host": {
+        "cpu": "Apple M1",
+        "architecture": "arm64",
+        "platform": "darwin",
+        "release": "23.6.0",
+        "logicalCpus": 8
+      },
+      "profile": {
+        "hlsMode": "low-latency",
+        "sapflowHttpImpl": null,
+        "httpImpl": "mediamtx-native",
+        "viewerDelivery": "full-segment-hls",
+        "segmentCount": 24,
+        "segmentDurationSeconds": 1,
+        "partDurationSeconds": 0.2,
+        "httpWorkers": null,
+        "endDrainSeconds": 12,
+        "publisherCompletionToleranceSeconds": 0.25,
+        "transcode": false,
+        "recording": false,
+        "viewerLowLatencyMode": false
+      },
+      "originCpuMeanPercent": 1.1234660909680212,
+      "originPeakSampledRssBytes": 214040576,
+      "originCpuSeconds": 0.51,
+      "processes": {
+        "origin": {
+          "cpuPercentLast": 0,
+          "cpuMeanPercent": 1.1234660909680212,
+          "cpuSeconds": 0.51,
+          "rssBytes": 101924864,
+          "peakSampledRssBytes": 214040576,
+          "uptimeSeconds": 42.800059041
+        },
+        "publisher": {
+          "cpuPercentLast": 0,
+          "cpuMeanPercent": 0.4756926540553116,
+          "cpuSeconds": 0.27,
+          "rssBytes": 19398656,
+          "peakSampledRssBytes": 45973504,
+          "uptimeSeconds": 42.473557125
+        },
+        "srtSender": null,
+        "turn": {
+          "cpuPercentLast": 0,
+          "cpuMeanPercent": 3.1163053458990677,
+          "cpuSeconds": 1.41,
+          "rssBytes": 5767168,
+          "peakSampledRssBytes": 11190272,
+          "uptimeSeconds": 42.473657417000005
+        }
+      },
+      "peer": {
+        "peerBytes": 60720286,
+        "originBytes": 23748905,
+        "verifiedPeerSegments": 41,
+        "originFallbacks": 11,
+        "integrityRejected": 0,
+        "holderUploadedBytes": 63642904,
+        "holderOriginBytes": 84469191,
+        "cachePeakBytes": 18138405,
+        "cacheBytes": 0,
+        "activePeerConnections": 0,
+        "phase": "source-ended",
+        "requestedProtocol": "udp",
+        "selectedPairs": [
+          {
+            "localType": "relay",
+            "remoteType": "relay",
+            "relayProtocol": "udp",
+            "bytesSent": 71865055,
+            "bytesReceived": 1860195
+          },
+          {
+            "localType": "relay",
+            "remoteType": "relay",
+            "relayProtocol": "udp",
+            "bytesSent": 1860195,
+            "bytesReceived": 71584587
+          }
+        ]
+      },
+      "browser": {
+        "firstFrameMs": 4334.700000047684,
+        "decodedFpsMean": 24.85292889166132,
+        "decodedFrames": 679,
+        "width": 3840,
+        "height": 2160,
+        "mediaWidth": 3840,
+        "mediaHeight": 2160,
+        "videoTimeSeconds": 34.323232,
+        "playbackEndObserved": false,
+        "stallCount": 2,
+        "stallSeconds": 0.18560000014305114,
+        "responseBytes": 108448499,
+        "requests": 207,
+        "playerErrors": 11,
+        "httpErrors": 6
+      },
+      "http": {
+        "requests": 207,
+        "completed": 199,
+        "originRequests": 210,
+        "redirectsFollowed": 3,
+        "errors": 6,
+        "bytes": 108448499
+      }
+    }
+  ],
+  "ownedProcessesStopped": true,
+  "components": [
+    {
+      "component": "lab origin operator",
+      "sha256": "e5d97437297bf66b25161c6b423a6a248a0b0fd726642bbc7028efdf53fb07f0"
+    },
+    {
+      "component": "native TURN operator",
+      "sha256": "cdb222f45b1b73e99e5623e5cd7ee873f0810832b70371eed89e8ce2ae310e81"
+    },
+    {
+      "component": "initial media preflight",
+      "sha256": "6730f6dfaa7492c8f0b54b97085a5d5db5ee71d86aecdd780532c71386f76ba1"
+    },
+    {
+      "component": "RelaySwarm controller",
+      "sha256": "4ecd9aee1ad70009189f86262e6c7c672e7bd737228883874bb68d4d36081193"
+    },
+    {
+      "component": "lab interface controller",
+      "sha256": "962c25a0df3a6b7cf48bfaddca5886597a0379ef571187117b769e335ecd636b"
+    },
+    {
+      "component": "lab interface document",
+      "sha256": "aff9a720fba534ccf03dd900f016a6c2e6ba13ab05b43677e90c0b8a262bed49"
+    },
+    {
+      "component": "RelaySwarm browser bundle",
+      "sha256": "d9358b8964ec72e803e88a9f43065668f0e55b841850a54c6b67eb87f99bc87e"
+    },
+    {
+      "component": "full HLS browser player",
+      "sha256": "5527dccd891e4b24c269049c5097de9277b8771d93c3e6d31dea3d9e5652df6d"
+    }
+  ],
+  "retentionNote": "Sanitised receipt from the actual production-page run. Source filenames are replaced by component names. The completed row preserves the last real playback observations before independently confirmed publisher EOF and peer teardown; the later lastPlayback sample observes the stopped element. Actual HLS and HTTP errors remain recorded. The exact downloaded production export is retained separately."
+}

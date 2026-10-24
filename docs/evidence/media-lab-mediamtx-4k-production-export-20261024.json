@@ -1,0 +1,158 @@
+{
+  "schema": 1,
+  "exportedAt": "2026-10-24T02:55:12.753Z",
+  "runs": [
+    {
+      "state": "ended",
+      "completion": "source-window-ended",
+      "measuredAt": "2026-10-24T02:55:10.635Z",
+      "offsetSeconds": 0,
+      "engine": "mediamtx",
+      "engineLabel": "MediaMTX",
+      "version": "1.21.2",
+      "binarySha256": "72f67f718cfe5f75f081db5b2f31d1664008b6b8ff8627cb2a8acf5d7e5e61be",
+      "transport": "rtmp",
+      "turnEngine": "coturn",
+      "turnTransport": "udp",
+      "durationSeconds": 30,
+      "publisherMediaSeconds": 30.037333,
+      "publisherProgressEnded": true,
+      "publisherCompletedWindow": true,
+      "publisherVideoFrames": 750,
+      "expectedVideoFrames": null,
+      "expectedProgressSeconds": 30,
+      "expectedProgressBasis": "requested-media-window",
+      "measurementScope": "shared-host-observation",
+      "hostLoadAtStart": {
+        "oneMinute": 9.1884765625,
+        "fiveMinutes": 10.66064453125,
+        "fifteenMinutes": 11.591796875
+      },
+      "hostLoadAtEnd": {
+        "oneMinute": 12.07568359375,
+        "fiveMinutes": 11.2578125,
+        "fifteenMinutes": 11.7685546875
+      },
+      "source": {
+        "label": "Licensed local media",
+        "sha256": "76d90719a756c77d1008088c58ca6b28a74eb0ef01e5337906cfb68d3e2b13aa",
+        "bytes": 817058874,
+        "durationSeconds": 268.6,
+        "width": 3840,
+        "height": 2160,
+        "fps": 25,
+        "bitrateBps": 24335335,
+        "audioSampleRate": 48000,
+        "videoCodec": "h264",
+        "audioCodec": "aac"
+      },
+      "host": {
+        "cpu": "Apple M1",
+        "architecture": "arm64",
+        "platform": "darwin",
+        "release": "23.6.0",
+        "logicalCpus": 8
+      },
+      "profile": {
+        "hlsMode": "low-latency",
+        "sapflowHttpImpl": null,
+        "httpImpl": "mediamtx-native",
+        "viewerDelivery": "full-segment-hls",
+        "segmentCount": 24,
+        "segmentDurationSeconds": 1,
+        "partDurationSeconds": 0.2,
+        "httpWorkers": null,
+        "endDrainSeconds": 12,
+        "publisherCompletionToleranceSeconds": 0.25,
+        "transcode": false,
+        "recording": false,
+        "viewerLowLatencyMode": false
+      },
+      "originCpuMeanPercent": 1.1234660909680212,
+      "originPeakSampledRssBytes": 214040576,
+      "originCpuSeconds": 0.51,
+      "processes": {
+        "origin": {
+          "cpuPercentLast": 0,
+          "cpuMeanPercent": 1.1234660909680212,
+          "cpuSeconds": 0.51,
+          "rssBytes": 101924864,
+          "peakSampledRssBytes": 214040576,
+          "uptimeSeconds": 42.800059041
+        },
+        "publisher": {
+          "cpuPercentLast": 0,
+          "cpuMeanPercent": 0.4756926540553116,
+          "cpuSeconds": 0.27,
+          "rssBytes": 19398656,
+          "peakSampledRssBytes": 45973504,
+          "uptimeSeconds": 42.473557125
+        },
+        "srtSender": null,
+        "turn": {
+          "cpuPercentLast": 0,
+          "cpuMeanPercent": 3.1163053458990677,
+          "cpuSeconds": 1.41,
+          "rssBytes": 5767168,
+          "peakSampledRssBytes": 11190272,
+          "uptimeSeconds": 42.473657417000005
+        }
+      },
+      "peer": {
+        "peerBytes": 60720286,
+        "originBytes": 23748905,
+        "verifiedPeerSegments": 41,
+        "originFallbacks": 11,
+        "integrityRejected": 0,
+        "holderUploadedBytes": 63642904,
+        "holderOriginBytes": 84469191,
+        "cachePeakBytes": 18138405,
+        "cacheBytes": 0,
+        "activePeerConnections": 0,
+        "phase": "source-ended",
+        "requestedProtocol": "udp",
+        "selectedPairs": [
+          {
+            "localType": "relay",
+            "remoteType": "relay",
+            "relayProtocol": "udp",
+            "bytesSent": 71865055,
+            "bytesReceived": 1860195
+          },
+          {
+            "localType": "relay",
+            "remoteType": "relay",
+            "relayProtocol": "udp",
+            "bytesSent": 1860195,
+            "bytesReceived": 71584587
+          }
+        ]
+      },
+      "browser": {
+        "firstFrameMs": 4334.700000047684,
+        "decodedFpsMean": 24.85292889166132,
+        "decodedFrames": 679,
+        "width": 3840,
+        "height": 2160,
+        "mediaWidth": 3840,
+        "mediaHeight": 2160,
+        "videoTimeSeconds": 34.323232,
+        "playbackEndObserved": false,
+        "stallCount": 2,
+        "stallSeconds": 0.18560000014305114,
+        "responseBytes": 108448499,
+        "requests": 207,
+        "playerErrors": 11,
+        "httpErrors": 6
+      },
+      "http": {
+        "requests": 207,
+        "completed": 199,
+        "originRequests": 210,
+        "redirectsFollowed": 3,
+        "errors": 6,
+        "bytes": 108448499
+      }
+    }
+  ]
+}
