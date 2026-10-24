@@ -88,7 +88,7 @@ test('public configuration bounds upload rate, peers and cache without a cumulat
 // Exercise the real adapter lifecycle with an injected SDK factory. Native
 // resource ownership and SDK accounting snapshots are simulated; no video/network
 // benchmark or real GiB transfer is claimed by these unit tests.
-function lifecycleFixture(t) {
+function lifecycleFixture(t, { turnCredentials } = {}) {
   let at = 0, nextTimer = 0, adapter;
   const timers = new Map(), globals = new Map(), sockets = [], connections = [], cycles = [];
   const page = new EventTarget(), abort = new AbortController();
@@ -104,7 +104,7 @@ function lifecycleFixture(t) {
     close() { if (this.readyState === 3) return; this.readyState = 3; this.dispatchEvent(new Event('close')); }
   }
   class Connection extends EventTarget {
-    constructor() { super(); this.connectionState = 'connected'; this.iceConnectionState = 'connected'; connections.push(this); }
+    constructor(config) { super(); this.configuration = structuredClone(config); this.connectionState = 'connected'; this.iceConnectionState = 'connected'; connections.push(this); }
     getStats() { return Promise.resolve(new Map()); }
     createDataChannel() { return { send() {} }; }
     close() { if (this.connectionState === 'closed') return; this.connectionState = 'closed'; this.dispatchEvent(new Event('connectionstatechange')); }
@@ -150,7 +150,9 @@ function lifecycleFixture(t) {
       },
     };
   };
-  adapter = createPublicSwarm({ Hls, hls, video, playlistUrl: '/media/dejavu-4k/index.m3u8', quality: 'full', signal: abort.signal }, { createSwarm });
+  const createTurnCredentials = () => turnCredentials ?? ({ start: async () => null, stop() {}, servers: () => [], leaseIdentity: () => null,
+    snapshot: () => ({ phase: 'unavailable', available: false, remainingMs: 0, failures: 0 }) });
+  adapter = createPublicSwarm({ Hls, hls, video, playlistUrl: '/media/dejavu-4k/index.m3u8', quality: 'full', signal: abort.signal }, { createSwarm, createTurnCredentials });
   const originLoader = hls.config.fLoader;
   return { adapter, hls, video, originLoader, sockets, connections, cycles, abort,
     pagehide: () => page.dispatchEvent(new Event('pagehide')), pendingTimers: () => timers.size,
@@ -166,6 +168,25 @@ function lifecycleFixture(t) {
       at = end;
     } };
 }
+
+test('native peer construction uses the current automatic lease and pause cancels its lifecycle', async t => {
+  let identity = 'first-viewer', starts = 0, stops = 0;
+  const fixture = lifecycleFixture(t, { turnCredentials: {
+    async start() { starts++; }, stop() { stops++; },
+    servers: () => [{ urls: ['turns:relay.invalid:5349?transport=tcp'], username: identity, credential: 'fixture-only' }],
+    leaseIdentity: () => identity,
+    snapshot: () => ({ phase: 'ready', available: true, remainingMs: 900000, failures: 0 }),
+  } });
+  await fixture.adapter.setEnabled(true);
+  assert.equal(starts, 1);
+  assert.equal(fixture.connections[0].configuration.iceServers[1].username, 'first-viewer');
+  identity = 'renewed-viewer';
+  const connection = new fixture.cycles[0].options.RTCPeerConnectionImpl({ iceServers: [] });
+  assert.equal(connection.configuration.iceServers[1].username, 'renewed-viewer');
+  connection.close();
+  fixture.adapter.setEnabled(false); assert.equal(stops, 1);
+  assert.equal(fixture.pendingTimers(), 0);
+});
 
 test('a completed empty ICE gather reports no browser route without crediting peer delivery', async t => {
   const f = lifecycleFixture(t);

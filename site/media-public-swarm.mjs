@@ -3,8 +3,9 @@
 // A receiver's ephemeral key wraps that digest for the existing live-commitment
 // verifier; this is local attestation, not a live broadcaster signing service.
 import { createHlsSwarm, commitmentContent, commitmentPieceSize, segmentMediaContext, KIND_SEGMENT_COMMITMENT, finalizeEvent,
-  generateSecretKey, relayswarmBuild } from './vendor/media-peer-demo.js?v=20261024-peer-supply';
-import { observeOriginLoader } from './media-transfer-stats.mjs?v=20261024-peer-supply';
+  generateSecretKey, relayswarmBuild } from './vendor/media-peer-demo.js?v=20261025-public-turn';
+import { observeOriginLoader } from './media-transfer-stats.mjs?v=20261025-public-turn';
+import { createPublicTurnCredentials } from './media-turn-credentials.mjs?v=20261025-public-turn';
 
 export const PUBLIC_SWARM_LIMITS = Object.freeze({
   maxPeers: 3,
@@ -104,7 +105,7 @@ async function readCatalogue(signal) {
  * setEnabled(false) restores the normal HTTP loader without replacing the
  * video, seeking, muting, or destroying its current MediaSource. */
 export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signal, onStats = () => {} },
-  { createSwarm = createHlsSwarm } = {}) {
+  { createSwarm = createHlsSwarm, createTurnCredentials = createPublicTurnCredentials } = {}) {
   if (!Hls || !hls?.config || !video) throw new Error('An existing video and HLS player are required.');
   const origin = globalThis.location?.href;
   if (!origin) throw new Error('The public swarm needs a browser.');
@@ -118,6 +119,8 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
   let lastDelivery = null, lastReason = 'off', receivedOriginBytes = 0, loadedMediaBytes = 0, lastPeerBytes = 0;
   let highWaterBytes = 0, signalErrors = 0, lastSnapshot = null, nextPeer = 1, observing = false, request = 0;
   let sentMediaBytes = 0, noLocalRoutes = 0;
+  const turn = createTurnCredentials();
+  const connectionLeases = new Map();
 
   const metrics = () => {
     const live = swarm?.metrics();
@@ -144,7 +147,7 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
       resources: { activePeerConnections: [...connections].filter(connection => connection.connectionState !== 'closed').length,
         signallingConnections: [...sockets].filter(socket => socket.readyState < 2).length,
         heldBytes: n(live?.bytes.held), heldHighWaterBytes: highWaterBytes },
-      diagnostics: { signalErrors, noLocalRoutes, dialling: n(live?.peers.dialling), dialsStarted: n(live?.peers.dialsStarted),
+      diagnostics: { signalErrors, noLocalRoutes, turn: turn.snapshot(), dialling: n(live?.peers.dialling), dialsStarted: n(live?.peers.dialsStarted),
         disabledReason: live?.disabledReason ?? null, commitmentUnavailable: n(live?.segments.commitmentUnavailable),
         signallingConnected: n(live?.relays.connected), signallingPublished: n(live?.relays.published),
         signallingPublishErrors: n(live?.relays.publishErrors), relayRejected: n(live?.relays.rejected),
@@ -169,6 +172,7 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
   const observeChannel = (channel, connection) => {
     if (observedChannels.has(channel)) return;
     observedChannels.add(channel);
+    connectionLeases.get(connection)?.channels.add(channel);
     const send = channel.send;
     channel.send = function (data) {
       const result = send.call(this, data);
@@ -223,7 +227,9 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
   };
   const disable = (reason = 'off') => {
     generation++; enabled = false; lastReason = reason;
-    clearInterval(tick); catalogueAbort?.abort();
+    clearInterval(tick); catalogueAbort?.abort(); turn.stop();
+    for (const record of connectionLeases.values()) clearTimeout(record.timer);
+    connectionLeases.clear();
     if (swarm) { fold(); swarm.stop(); swarm = undefined; }
     for (const connection of connections) { try { connection.close(); } catch {} }
     for (const socket of sockets) { try { socket.close(); } catch {} }
@@ -258,7 +264,10 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
     catalogueAbort = new AbortController();
     enabling = (async () => {
       try {
-        plan ??= validatePublicSwarmCatalogue(await readCatalogue(AbortSignal.any([lifetime.signal, catalogueAbort.signal])), { quality, playlistUrl, origin });
+        await Promise.all([
+          (async () => { plan ??= validatePublicSwarmCatalogue(await readCatalogue(AbortSignal.any([lifetime.signal, catalogueAbort.signal])), { quality, playlistUrl, origin }); })(),
+          turn.start(),
+        ]);
         if (ownGeneration !== generation || !enabled || stopped) return metrics();
         key = generateSecretKey();
         const localKey = key;
@@ -291,8 +300,22 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
         class ObservedConnection extends RTCPeerConnection {
           constructor(config) {
             if (connections.size >= PUBLIC_SWARM_LIMITS.maxPeers + 2) throw new Error('Public peer connection limit reached.');
-            super(config);
+            super({ ...config, iceServers: [...PUBLIC_SWARM_ICE.map(entry => ({ ...entry })), ...turn.servers()] });
             connections.add(this);
+            const record = { identity: turn.leaseIdentity(), channels: new Set(), timer: null };
+            connectionLeases.set(this, record);
+            const renew = () => {
+              if (!enabled || stopped || this.connectionState === 'closed' || !record.identity) return;
+              const current = turn.leaseIdentity();
+              if (current && current !== record.identity && peerObservations.get(this)?.kind === 'relay') {
+                // Retire just this expiring transport. The SDK reconnects with
+                // the latest lease; the playing HLS instance and cache survive.
+                for (const channel of record.channels) { try { channel.close(); } catch {} }
+                return;
+              }
+              record.timer = setTimeout(renew, 15000);
+            };
+            if (record.identity) record.timer = setTimeout(renew, Math.max(1000, turn.snapshot().remainingMs - 60000 + connections.size * 1000));
             let candidates = 0, complete = false;
             this.addEventListener('icecandidate', event => {
               if (event.candidate) candidates++;
@@ -304,14 +327,22 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
             peerObservations.set(this, { id: `peer-${nextPeer++}`, sentBytes: null, receivedBytes: null, mediaBytesSent: 0,
               verifiedMediaBytesReceived: 0, kind: null, trafficBasis: null, observedAtMs: null });
             this.addEventListener('datachannel', event => observeChannel(event.channel, this));
-            this.addEventListener('connectionstatechange', () => { if (this.connectionState === 'closed') { connections.delete(this); peerObservations.delete(this); } });
+            this.addEventListener('connectionstatechange', () => {
+              if (this.connectionState === 'closed') {
+                clearTimeout(connectionLeases.get(this)?.timer); connectionLeases.delete(this);
+                connections.delete(this); peerObservations.delete(this);
+              }
+            });
           }
           createDataChannel(...args) { const channel = super.createDataChannel(...args); observeChannel(channel, this); return channel; }
-          close() { super.close(); connections.delete(this); peerObservations.delete(this); }
+          close() {
+            clearTimeout(connectionLeases.get(this)?.timer); connectionLeases.delete(this);
+            super.close(); connections.delete(this); peerObservations.delete(this);
+          }
         }
         swarm = createSwarm({ mode: 'peer-first', swarmId: plan.swarmId, relays: [...PUBLIC_SWARM_RELAYS],
           streamEvent, getCommitment, serve: true, serveOnCellular: false,
-          coreWasm: new URL('./vendor/relayswarm-core.wasm?v=20261024-peer-supply', import.meta.url), multiHolder: true,
+          coreWasm: new URL('./vendor/relayswarm-core.wasm?v=20261025-public-turn', import.meta.url), multiHolder: true,
           zeroBudgetPeerRace: true, sustainablePeerWait: true,
           maxHoldersPerObject: PUBLIC_SWARM_LIMITS.maxPeers,
           iceServers: PUBLIC_SWARM_ICE.map(entry => ({ ...entry })), iceTransportPolicy: 'all',
