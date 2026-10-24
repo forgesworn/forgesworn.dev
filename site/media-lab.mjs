@@ -87,6 +87,49 @@ export function createSharedPlaybackSync(video, { now = () => performance.now(),
     },
   };
 }
+
+// hls.js 1.7.3 handles holes between ranges, but can leave a decoder frozen
+// inside one continuous range after late media arrives. Use the existing
+// observation timer for a small, bounded recovery entirely inside that range.
+export function createBufferedPlaybackRecovery(video, { now = () => performance.now(), onSeek = () => {} } = {}) {
+  let lastTime = null, movedAt = 0, bufferedAt = null, lastRecovery = -Infinity, attempts = 0;
+  let healthyAt = null, healthyTime = 0, healthyFrames = null;
+  return {
+    check(presentedFrames = null) {
+      const at = now(), time = video.currentTime;
+      if (!Number.isFinite(time)) return false;
+      if (lastTime === null || time > lastTime + 0.01 || time < lastTime - 0.25 || video.paused || video.ended) {
+        if (lastTime !== null && time < lastTime - 0.25) healthyAt = null;
+        lastTime = time; movedAt = at; bufferedAt = null;
+      }
+      if (video.paused || video.ended || video.seeking || video.error) { bufferedAt = null; healthyAt = null; return false; }
+      if (video.readyState >= 3) {
+        if (healthyAt === null) { healthyAt = at; healthyTime = time; healthyFrames = presentedFrames; }
+        // A seek changes currentTime too. Only sustained actual playback can
+        // replenish the three-attempt budget after a recovery.
+        if (at - healthyAt >= 1000 && time - healthyTime >= 0.75 &&
+            (presentedFrames === null || healthyFrames === null || presentedFrames - healthyFrames >= 10)) attempts = 0;
+        bufferedAt = null; return false;
+      }
+      healthyAt = null;
+      if (video.readyState !== 2) { bufferedAt = null; return false; }
+      let end = null;
+      const buffered = video.buffered;
+      for (let i = 0; i < buffered.length; i++) {
+        if (buffered.start(i) <= time && buffered.end(i) - time >= 1) { end = buffered.end(i); break; }
+      }
+      if (end === null) { bufferedAt = null; return false; }
+      bufferedAt ??= at;
+      if (at - movedAt < 1500 || at - bufferedAt < 750 || at - lastRecovery < 3000 || attempts >= 3) return false;
+      const target = time + 0.1 * (attempts + 1);
+      if (target >= end - 0.25) return false;
+      onSeek(at);
+      video.currentTime = target;
+      lastTime = video.currentTime; movedAt = at; bufferedAt = null; lastRecovery = at; attempts++;
+      return true;
+    },
+  };
+}
 const mean = (samples) => samples.length ? samples.reduce((a, b) => a + b, 0) / samples.length : null;
 const max = (samples) => samples.length ? Math.max(...samples) : null;
 const human = (value, fallback = DASH) => typeof value === 'string' && value.length <= 120 && !/[\r\n\\/<>]/.test(value) ? value : fallback;
@@ -630,11 +673,14 @@ async function initialise() {
       for (const id of ['browser-fps', 'browser-time', 'browser-buffer', 'browser-stalls', 'browser-stall-time', 'browser-bytes', 'browser-requests', 'browser-errors', 'first-frame']) text(id, DASH);
       text('browser-dimensions', 'Browser video dimensions');
       optionalText('browser-engine', DASH); delete root.dataset.playbackEngine;
+      optionalText('browser-recoveries', DASH); delete root.dataset.bufferedRecoveries;
       return;
     }
     const b = s.browser;
     optionalText('browser-engine', s.playbackEngine ?? DASH);
     root.dataset.playbackEngine = s.playbackEngine ?? '';
+    root.dataset.bufferedRecoveries = String(s.bufferedRecoveries ?? 0);
+    optionalText('browser-recoveries', String(s.bufferedRecoveries ?? 0));
     if (s.sourceEof) {
       text('browser-bytes', megabytes(b.responseBytes));
       text('browser-requests', reading(b.requests, '', 0));
@@ -675,8 +721,9 @@ async function initialise() {
 
   function trackBrowser(s, playlist) {
     s.playbackSync = createSharedPlaybackSync(video, { signal: s.abort.signal, onSeek: at => { s.roomSeekAt = at; } });
+    s.bufferedRecovery = createBufferedPlaybackRecovery(video, { onSeek: at => { s.roomSeekAt = at; } });
     const b = s.browser = {
-      seenFrame: false, firstFrameMs: null, decodedFrames: null, frameBaseline: observed(video.webkitDecodedFrameCount) ?? 0,
+      seenFrame: false, firstFrameMs: null, decodedFrames: null, presentedFrames: null, frameBaseline: observed(video.webkitDecodedFrameCount) ?? 0,
       lastDecoded: 0, lastDecodeAt: null, fps: null, fpsSamples: [],
       width: null, height: null, mediaWidth: null, mediaHeight: null, stallCount: 0, waitingAt: null, finishedStallSeconds: 0, stallSeconds: 0,
       responseBytes: null, requests: null, playerErrors: 0, httpErrors: null,
@@ -736,6 +783,7 @@ async function initialise() {
     if (typeof video.requestVideoFrameCallback === 'function') {
       const frame = (_now, metadata) => {
         if (session !== s || s.finishing || s.sourceEof) return;
+        b.presentedFrames = (b.presentedFrames ?? 0) + 1;
         if (observed(metadata?.width) > 0 && observed(metadata?.height) > 0) { b.mediaWidth = metadata.width; b.mediaHeight = metadata.height; }
         if (!b.seenFrame) {
           b.seenFrame = true; b.firstFrameMs = performance.now() - s.clickAt;
@@ -774,7 +822,11 @@ async function initialise() {
       s.observer = new PerformanceObserver((list) => entries(list.getEntries()));
       s.observer.observe({ type: 'resource', buffered: false });
     }
-    const tick = () => { if (session === s && !s.finishing) { followListener(s); browserReadings(s); s.browserTimer = setTimeout(tick, 400); } };
+    const tick = () => { if (session === s && !s.finishing) {
+      followListener(s);
+      if (!local && b.seenFrame && !s.sourceEof && s.bufferedRecovery.check(b.presentedFrames)) s.bufferedRecoveries = (s.bufferedRecoveries ?? 0) + 1;
+      browserReadings(s); s.browserTimer = setTimeout(tick, 400);
+    } };
     tick();
   }
 

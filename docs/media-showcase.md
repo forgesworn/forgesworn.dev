@@ -71,6 +71,17 @@ caps its time target at 24 seconds and retains four seconds behind the
 playhead. Its hls.js byte target is 64 MiB, which is not a hard process-memory
 limit. The local live-server comparison keeps its original smaller buffers.
 
+A separate decoder recovery handles a playhead frozen inside a continuous
+buffer after media arrives. After 1.5 seconds without movement and 750 ms
+with at least a second of buffered video ahead, it can advance 100, 200 then
+300 ms inside that same range, at least three seconds apart. Three failed
+attempts exhaust the recovery budget. It replenishes only after sustained
+advancing playback and presented frames where frame callbacks are available,
+not the seek's own change of time.
+Pause, seeking, end and media errors block it. The existing observation timer
+drives this check; playback details show the recovery count. This addresses
+a case outside hls.js 1.7.3's buffer-hole nudge conditions.
+
 There is no always-running encoder or new coordination service.  Existing
 Nostr relays carry a small signed clock/presence event every six seconds,
 bound to the exact room, immutable source digest and recording duration.
