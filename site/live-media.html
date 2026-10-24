@@ -70,7 +70,7 @@
         <p id="public-transfer-summary" class="transfer-summary">Totals for this playback. Peer downloads count only complete, verified video segments.</p>
         <details class="swarm-link-details"><summary>Connection details <span>Rates and reported paths</span></summary><div data-swarm-link-statistics></div></details>
         <div class="listening-invite"><button id="public-invite" class="button quiet" type="button" disabled>Invite someone to the room ↗</button><span id="public-invite-status" role="status"></span></div>
-        <details class="peer-details"><summary>What joining means</summary><p>RelaySwarm uses public Nostr relays to find viewers, then WebRTC to exchange verified media.  Connected peers can see one another's network addresses.  Sharing uses up to 4 MiB/s of upload, 1 GiB per playback session and a 64 MiB media cache. The room shares temporary listener handles and media-transfer readings so you can see its activity. Dashed links are listener reports. Pause or close the page to stop sharing. Your player keeps the origin available whenever peers can't help.</p></details>
+        <details class="peer-details"><summary>What joining means</summary><p>RelaySwarm uses public Nostr relays to find viewers, then WebRTC to exchange verified media.  Connected peers can see one another's network addresses.  Sharing continues while you listen, using up to 4 MiB/s of upload and a 64 MiB media cache. The room shares temporary listener handles and media-transfer readings so you can see its activity. Dashed links are listener reports. Pause or close the page to stop sharing. Your player keeps the origin available whenever peers can't help.</p></details>
         </div>
       </section>
       <p id="profile-note" class="context local-only">The origin and publisher have separate process readings.  Compare the same source, profile, transport and source window.</p>
@@ -122,6 +122,6 @@
   </main>
   <!-- SHOWCASE_END -->
   <footer class="site-footer"><div class="page-wrap"><div class="footer-inner"><a class="brand" href="/">Forge<span>Sworn</span></a><div class="footer-links"><a href="https://github.com/forgesworn">GitHub</a><a href="/live-media-benchmarks.html">Measured results</a><a href="https://github.com/sponsors/TheCryptoDonkey">Support the work ↗</a></div></div><p class="footer-note">Open-source media software, yours to run.  The supplied mix is licensed for this demonstration; its media rights are separate from the MIT code.  <a href="/media/dejavu-preview/NOTICE.txt">Media permission</a> · <a href="/llms.txt">For developers and LLMs</a></p></div></footer>
-  <script type="module" src="/media-lab.mjs?v=20261024-buffer-recovery"></script>
+  <script type="module" src="/media-lab.mjs?v=20261024-active-sharing"></script>
 </body>
 </html>

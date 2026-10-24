@@ -10,7 +10,6 @@ export const PUBLIC_SWARM_LIMITS = Object.freeze({
   maxPeers: 3,
   maxUploadPeers: 2,
   maxUploadBytesPerSecond: 4 * 1024 * 1024,
-  maxUploadBytesPerSession: 1024 * 1024 * 1024,
   maxHeldBytes: 64 * 1024 * 1024,
   maxHeldSegments: 12,
   maxSegmentBytes: 16 * 1024 * 1024,
@@ -100,8 +99,8 @@ async function readCatalogue(signal) {
 
 /** Add opt-in peer delivery to an existing, visible hls.js instance.
  * Neither construction nor origin-only playback opens a socket or peer.
- * Active playback has no elapsed-time cutoff; its upload allowance remains
- * cumulative across pause/resume until this page-owned adapter is stopped.
+ * Active playback has no elapsed-time or cumulative-upload cutoff; upload
+ * rate, peer count and cache remain bounded until this adapter is stopped.
  * setEnabled(false) restores the normal HTTP loader without replacing the
  * video, seeking, muting, or destroying its current MediaSource. */
 export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signal, onStats = () => {} },
@@ -118,7 +117,6 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
   let stopped = false, enabled = false, enabling = null, generation = 0, swarm, key, plan, tick, catalogueAbort;
   let lastDelivery = null, lastReason = 'off', receivedOriginBytes = 0, loadedMediaBytes = 0, lastPeerBytes = 0;
   let highWaterBytes = 0, signalErrors = 0, lastSnapshot = null, nextPeer = 1, observing = false, request = 0;
-  let uploadChargedBytes = 0, cycleUploadLimit = 0;
   let sentMediaBytes = 0;
 
   const metrics = () => {
@@ -160,7 +158,7 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
           mediaBytesSent: observation.mediaBytesSent, verifiedMediaBytesReceived: observation.verifiedMediaBytesReceived,
           observedAtMs: observation.observedAtMs };
       }) },
-      uploadAllowanceRemaining: Math.max(0, PUBLIC_SWARM_LIMITS.maxUploadBytesPerSession - uploadChargedBytes - (swarm ? cycleUploadLimit - n(live?.bytes.uploadRemaining) : 0)),
+      uploadAllowanceRemaining: null,
       limits: PUBLIC_SWARM_LIMITS,
       trust: 'site-pinned HTTPS digest catalogue; fresh receiver-local commitment',
       signalling: 'public Nostr relays; encrypted peer signals',
@@ -222,7 +220,6 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
     totals.verifiedPeerSegments += n(live.segments.peerFirstLoaded);
     totals.integrityRejected += n(live.segments.peerCorrupt) + n(live.segments.commitmentRejected);
     totals.originFallbacks += n(live.segments.originFallbacks);
-    uploadChargedBytes += Math.max(0, cycleUploadLimit - n(live.bytes.uploadRemaining));
   };
   const disable = (reason = 'off') => {
     generation++; enabled = false; lastReason = reason;
@@ -304,7 +301,6 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
           createDataChannel(...args) { const channel = super.createDataChannel(...args); observeChannel(channel, this); return channel; }
           close() { super.close(); connections.delete(this); peerObservations.delete(this); }
         }
-        cycleUploadLimit = Math.max(0, PUBLIC_SWARM_LIMITS.maxUploadBytesPerSession - uploadChargedBytes);
         swarm = createSwarm({ mode: 'peer-first', swarmId: plan.swarmId, relays: [...PUBLIC_SWARM_RELAYS],
           streamEvent, getCommitment, serve: true, serveOnCellular: false,
           coreWasm: new URL('./vendor/relayswarm-core.wasm', import.meta.url), multiHolder: true,
@@ -319,7 +315,6 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
           },
           maxPeers: PUBLIC_SWARM_LIMITS.maxPeers, maxUploadPeers: PUBLIC_SWARM_LIMITS.maxUploadPeers,
           maxUploadBytesPerSecond: PUBLIC_SWARM_LIMITS.maxUploadBytesPerSecond,
-          maxUploadBytesPerSession: cycleUploadLimit,
           maxHeldBytes: PUBLIC_SWARM_LIMITS.maxHeldBytes, maxHeldSegments: PUBLIC_SWARM_LIMITS.maxHeldSegments,
           maxSegmentBytes: PUBLIC_SWARM_LIMITS.maxSegmentBytes, maxDialsInFlight: 2, maxConcurrentRaces: 4,
           originFallbackMs: 1200, originReserveMs: 2000, maxPeerWaitMs: 2500, lateWindowMs: 4000,

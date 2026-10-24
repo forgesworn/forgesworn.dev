@@ -75,16 +75,18 @@ test('only the exact unencrypted muxed fragment receives a local commitment', ()
   }
 });
 
-test('public configuration has no TURN credentials, embedded secrets, or unlimited upload/cache policy', () => {
+test('public configuration bounds upload rate, peers and cache without a cumulative byte cutoff', () => {
   assert.ok(PUBLIC_SWARM_RELAYS.every(value => new URL(value).protocol === 'wss:'));
   assert.deepEqual(PUBLIC_SWARM_ICE, [{ urls: 'stun:stun.cloudflare.com:3478' }]);
   assert.equal(PUBLIC_SWARM_LIMITS.maxPeers, 3);
   assert.equal(PUBLIC_SWARM_LIMITS.maxHeldBytes, 64 * 1024 * 1024);
-  assert.equal(PUBLIC_SWARM_LIMITS.maxUploadBytesPerSession, 1024 * 1024 * 1024);
+  assert.equal(PUBLIC_SWARM_LIMITS.maxUploadBytesPerSecond, 4 * 1024 * 1024);
+  assert.equal(PUBLIC_SWARM_LIMITS.maxUploadPeers, 2);
+  assert.equal(Object.hasOwn(PUBLIC_SWARM_LIMITS, 'maxUploadBytesPerSession'), false);
 });
 
 // Exercise the real adapter lifecycle with an injected SDK factory. Native
-// resource ownership and SDK quota snapshots are simulated; no video/network
+// resource ownership and SDK accounting snapshots are simulated; no video/network
 // benchmark or real GiB transfer is claimed by these unit tests.
 function lifecycleFixture(t) {
   let at = 0, nextTimer = 0, adapter;
@@ -128,16 +130,16 @@ function lifecycleFixture(t) {
   install('setInterval', (fn, ms) => schedule(fn, ms, true)); install('clearInterval', id => timers.delete(id));
   const createSwarm = options => {
     const live = { mode: 'peer-first', pubkey: String(cycles.length + 1).repeat(64), core: { state: 'ready' },
-      bytes: { peerFirst: 0, uploaded: 0, uploadRemaining: options.maxUploadBytesPerSession, held: 1024 },
+      bytes: { peerFirst: 0, uploaded: 0, uploadRemaining: null, held: 1024 },
       segments: {}, peers: {}, relays: {} };
     const ownedSockets = options.relays.map(url => new options.WebSocketImpl(new URL(url).href));
     const pc = new options.RTCPeerConnectionImpl({});
     const cycle = { options, live, stopped: false,
-      charge(amount) { live.bytes.uploaded = amount; live.bytes.uploadRemaining = options.maxUploadBytesPerSession - amount; } };
+      upload(amount) { live.bytes.uploaded += amount; } };
     let originalLoader, installedLoader;
     cycles.push(cycle);
     return {
-      metrics() { return { ...live, serving: live.bytes.uploadRemaining > 0 }; },
+      metrics() { return { ...live, serving: live.bytes.uploadRemaining !== 0 }; },
       peerConnectionDetails() { return cycle.stopped ? [] : [{ connection: pc, pubkey: 'f'.repeat(64) }]; },
       attach(player) { originalLoader = player.config.fLoader; installedLoader = class extends originalLoader {}; player.config.fLoader = installedLoader; },
       stop() {
@@ -183,23 +185,27 @@ test('active peer delivery survives fifteen minutes and multi-GiB incoming total
   assert.equal(f.hls.config.fLoader, f.originLoader); assert.equal(f.video.currentTime, 123.25); assert.equal(f.video.volume, 0.4);
 });
 
-test('pause and later resume retain the cumulative upload allowance including an exhausted budget', async t => {
-  const f = lifecycleFixture(t), limit = PUBLIC_SWARM_LIMITS.maxUploadBytesPerSession;
-  await f.adapter.setEnabled(true); f.cycles[0].charge(256 * 1024 * 1024);
-  assert.equal(f.adapter.metrics().uploadAllowanceRemaining, limit - 256 * 1024 * 1024);
+test('multi-GiB uploads keep serving across pause and resume with rate and cache bounds intact', async t => {
+  const f = lifecycleFixture(t), gib = 1024 ** 3;
+  await f.adapter.setEnabled(true); f.cycles[0].upload(3 * gib);
+  assert.equal(f.adapter.metrics().acceptedUploadBytes, 3 * gib);
+  assert.equal(f.adapter.metrics().uploadAllowanceRemaining, null);
+  assert.equal(f.adapter.metrics().serving, true);
   await f.adapter.setEnabled(false); f.advance(20 * 60 * 1000);
   await f.adapter.setEnabled(true);
-  assert.equal(f.cycles[1].options.maxUploadBytesPerSession, limit - 256 * 1024 * 1024);
-  f.cycles[1].charge(128 * 1024 * 1024); await f.adapter.setEnabled(false);
+  f.cycles[1].upload(2 * gib); await f.adapter.setEnabled(false);
   await f.adapter.setEnabled(true);
-  assert.equal(f.cycles[2].options.maxUploadBytesPerSession, limit - 384 * 1024 * 1024);
-  f.cycles[2].charge(f.cycles[2].options.maxUploadBytesPerSession);
-  assert.equal(f.adapter.metrics().uploadAllowanceRemaining, 0); assert.equal(f.adapter.metrics().serving, false);
-  assert.equal(f.adapter.metrics().enabled, true, 'upload exhaustion does not impose a receive time limit');
-  await f.adapter.setEnabled(false); await f.adapter.setEnabled(true);
-  assert.equal(f.cycles[3].options.maxUploadBytesPerSession, 0, 'reconnecting cannot mint a fresh upload allowance');
-  assert.equal(f.adapter.metrics().uploadAllowanceRemaining, 0); assert.equal(f.adapter.metrics().serving, false);
+  f.cycles[2].upload(gib);
+  assert.equal(f.adapter.metrics().acceptedUploadBytes, 6 * gib, 'upload accounting remains cumulative');
+  assert.equal(f.adapter.metrics().uploadAllowanceRemaining, null);
+  assert.equal(f.adapter.metrics().serving, true);
   assert.equal(f.adapter.metrics().enabled, true);
+  for (const { options } of f.cycles) {
+    assert.equal(Object.hasOwn(options, 'maxUploadBytesPerSession'), false, 'use the SDK native no-quota mode');
+    assert.equal(options.maxUploadBytesPerSecond, 4 * 1024 * 1024);
+    assert.equal(options.maxUploadPeers, 2);
+    assert.equal(options.maxHeldBytes, 64 * 1024 * 1024);
+  }
 });
 
 test('page abort, pagehide and explicit stop immediately close peer resources and prevent re-enable', async t => {

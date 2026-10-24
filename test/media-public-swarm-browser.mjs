@@ -156,10 +156,11 @@ try {
     const off = publicSwarm.setEnabled(false);
     const resumed = publicSwarm.setEnabled(true);
     await Promise.allSettled([stopped, resume, off, resumed]);
-    return { beforeRemaining: before.uploadAllowanceRemaining, ...publicSwarm.metrics(), source: video.src, currentTime: video.currentTime };
+    return { beforeUploaded: before.acceptedUploadBytes, ...publicSwarm.metrics(), source: video.src, currentTime: video.currentTime };
   });
   assert.equal(receipt.afterRapidResume.enabled, true);
-  assert.ok(receipt.afterRapidResume.uploadAllowanceRemaining <= receipt.afterRapidResume.beforeRemaining, 'Pause/resume reset the upload allowance.');
+  assert.equal(receipt.afterRapidResume.uploadAllowanceRemaining, null, 'active sharing has no cumulative upload cutoff');
+  assert.ok(receipt.afterRapidResume.acceptedUploadBytes >= receipt.afterRapidResume.beforeUploaded, 'Pause/resume lost cumulative upload accounting.');
   await Promise.all(pages.map(page => page.evaluate(() => publicSwarm.stop())));
   receipt.stopped = await Promise.all(pages.map(page => page.evaluate(() => publicSwarm.metrics())));
   assert.ok(receipt.stopped.every(m => m.resources.activePeerConnections === 0 && m.resources.signallingConnections === 0 && m.resources.heldBytes === 0));

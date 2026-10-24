@@ -347,7 +347,7 @@ async function initialise() {
     publicRoom?.stop(); publicRoom = null;
     const pending = (async () => {
       const [{ createListenerSession }, { PUBLIC_SWARM_SOURCE_SHA256, PUBLIC_SWARM_RELAYS }] = await Promise.all([
-        import('./media-listener-session.mjs?v=20261024-buffer-continuity'), import('./media-public-swarm.mjs?v=20261024-buffer-continuity'),
+        import('./media-listener-session.mjs?v=20261024-buffer-continuity'), import('./media-public-swarm.mjs?v=20261024-active-sharing'),
       ]);
       if (request !== publicRoomRequest || pageAbort.signal.aborted) return null;
       const clock = createListenerSession({ room: `forgesworn-dejavu-listening-v1-${quality}`, source: PUBLIC_SWARM_SOURCE_SHA256,
@@ -468,7 +468,6 @@ async function initialise() {
       peers > 0 ? 'Connected to other viewers' : 'Waiting for the first segment');
     optionalText('public-share-status', !s ? 'Press Play & join. Your browser can pass verified video segments to other viewers.' :
       video.ended ? 'Thanks for listening. Peer connections are closed.' : !playing && s.browser?.seenFrame ? 'Sharing is paused with the music. Press play to rejoin.' :
-      enabled && metrics?.uploadAllowanceRemaining === 0 ? 'Upload allowance used for this playback. Peer downloads and media-host delivery continue.' :
       enabled && peers > 0 ? `${peers} viewer${peers === 1 ? '' : 's'} connected to you. A connection counts towards delivery only when video moves.` :
       enabled ? 'Looking for other viewers. The media host keeps the music playing while peers connect.' :
       s.publicSharingFailed ? 'Playing from the media host. Peer sharing could not connect in this browser.' :
@@ -906,7 +905,7 @@ async function initialise() {
       if (!local && initial.epochId && initial.startPosition >= 0) s.listenerAlignedEpoch = initial.epochId;
       if (!local) {
         try {
-          const { createPublicSwarm } = await import('./media-public-swarm.mjs?v=20261024-buffer-continuity');
+          const { createPublicSwarm } = await import('./media-public-swarm.mjs?v=20261024-active-sharing');
           if (session !== s || s.abort.signal.aborted) return;
           s.publicPeer = createPublicSwarm({ Hls, hls: s.hls, video, playlistUrl: url.href, quality: s.quality,
             signal: s.abort.signal, onStats: metrics => { if (session === s) publicDelivery(s, metrics); } });
