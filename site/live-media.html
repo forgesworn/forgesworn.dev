@@ -66,6 +66,10 @@
     .demo-topline strong{font-weight:400;color:var(--gold-light)}
     .demo-video-wrap{position:relative;background:#050508;aspect-ratio:16/9}
     #media-video{display:block;width:100%;height:100%;aspect-ratio:16/9;object-fit:contain;background:#050508}
+    .media-fullscreen-button{position:absolute;top:12px;right:12px;z-index:2;border:1px solid #ffffff50;border-radius:5px;padding:8px 12px;background:#0a0a0fdf;color:#eeece7;font-size:.74rem;cursor:pointer}
+    .media-fullscreen-button:hover{border-color:var(--gold-light);color:var(--gold-light)}
+    .demo-video-wrap:fullscreen,.demo-video-wrap:-webkit-full-screen{width:100vw;height:100vh;aspect-ratio:auto;background:#000}
+    .demo-video-wrap:fullscreen #media-video,.demo-video-wrap:-webkit-full-screen #media-video{width:100%;height:100%;aspect-ratio:auto;object-fit:contain}
     .demo-controls{display:flex;align-items:center;gap:10px;padding:18px 20px 12px;flex-wrap:wrap}
     .demo-controls .button{min-height:42px;padding:10px 15px;font-size:.79rem}
     .button-quiet{background:transparent;border-color:#48424b;color:#d6d0d9;padding-inline:13px}
@@ -162,10 +166,11 @@
 
       <section id="demo" class="demo-shell" aria-label="Interactive Sapflow and RelaySwarm video demonstration">
         <div class="demo-topline"><strong>Sapflow + RelaySwarm</strong><span class="topline-format">Generated concert · HLS replay</span></div>
-        <div class="demo-video-wrap">
-          <video id="media-video" controls playsinline muted preload="none" poster="/media/demo/poster.webp" width="1280" height="720" aria-label="Sapflow-packaged demonstration stream" aria-describedby="demo-scope">
+        <div id="media-video-wrap" class="demo-video-wrap">
+          <video id="media-video" controls playsinline preload="none" poster="/media/demo/poster.webp" width="1280" height="720" aria-label="Sapflow-packaged demonstration stream" aria-describedby="demo-scope">
             Your browser needs HTML video support to play this demonstration.
           </video>
+          <button id="demo-fullscreen" class="media-fullscreen-button" type="button" aria-pressed="false">Full screen</button>
         </div>
         <div class="demo-controls">
           <button id="demo-start" class="button" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11L13 8z"/></svg>Play the demo</button>
@@ -268,6 +273,6 @@
       <p class="footer-note">Open-source media tools.  MIT-licensed projects with their own dependency notices.</p>
     </div>
   </footer>
-  <script type="module" src="/media-demo.mjs"></script>
+  <script type="module" src="/media-demo.mjs?v=20261024-player"></script>
 </body>
 </html>
