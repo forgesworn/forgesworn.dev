@@ -3,6 +3,10 @@ const REBUFFER_MS = 1_000;
 const WINDOW_MS = 30_000;
 const PROGRESS_SECONDS = 0.05;
 
+// Cached native-first controllers still import this name. Keep their module
+// graph loadable while directing them back to the peer-capable HLS path.
+export function prefersNativeHls() { return false; }
+
 // The caller supplies eligibility: a presented frame, a visible page and an
 // active public Hls player with native HLS available. No timers or DOM listeners
 // are owned here. reset() clears observations, but never rearms a fired helper.

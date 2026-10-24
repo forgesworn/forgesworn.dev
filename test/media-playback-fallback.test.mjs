@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createNativePlaybackFallback } from '../site/media-playback-fallback.mjs';
+import { createNativePlaybackFallback, prefersNativeHls } from '../site/media-playback-fallback.mjs';
+
+test('cached native-first controllers can import their old API and retain iPhone peer playback', () => {
+  assert.equal(prefersNativeHls({ canPlayType: () => 'probably' }, { userAgent: 'iPhone', platform: 'iPhone' }), false);
+});
 
 function fixture(readyState = 4) {
   let time = 0;
