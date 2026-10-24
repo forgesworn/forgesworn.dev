@@ -71,7 +71,16 @@ caps its time target at 24 seconds and retains four seconds behind the
 playhead. Its hls.js byte target is 64 MiB, which is not a hard process-memory
 limit. The local live-server comparison keeps its original smaller buffers.
 
-When public playback has native HLS available, it can recover from a failing
+Public playback on iPhone and iPad starts with the browser's native HLS
+player before importing hls.js or constructing its peer adapter. The approved
+original 4K playlist and shared listener session remain the same. Native
+playback uses the media host and does not participate in RelaySwarm; the page
+states this and leaves native origin byte totals unavailable. This is an iOS
+playback workaround while the ManagedMediaSource path remains unqualified.
+It also covers iPad's desktop identity and iPhone's desktop-site request.
+Local server benchmarks and other public browsers retain their existing path.
+
+On other public browsers with native HLS available, playback can recover from a failing
 hls.js path without replacing the visible video or listener session. Eight
 seconds without healthy progress, three rebuffer episodes of at least one
 second within thirty seconds, or a fatal playback error after the first frame

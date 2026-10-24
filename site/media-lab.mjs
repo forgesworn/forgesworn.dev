@@ -1,6 +1,6 @@
 import { readInitialLiveStart } from './media-live-start.mjs';
 import { transferBytes } from './media-transfer-stats.mjs';
-import { createNativePlaybackFallback } from './media-playback-fallback.mjs';
+import { createNativePlaybackFallback, prefersNativeHls } from './media-playback-fallback.mjs';
 
 const DASH = '—';
 export const observed = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
@@ -474,7 +474,7 @@ async function initialise() {
       enabled ? 'Looking for other viewers. The media host keeps the music playing while peers connect.' :
       s.publicSharingFailed ? 'Playing from the media host. Peer sharing could not connect in this browser.' :
       s.nativeFallback ? 'Your browser switched to native playback to recover the stream. The media host supplies this playback; peer sharing is unavailable in this mode.' :
-      s.nativeHls ? 'Your browser is using native HLS. Peer sharing needs a browser with Media Source Extensions and WebRTC.' :
+      s.nativeHls ? 'Your browser is using its native player for this stream. This mode plays from the media host and does not share video segments.' :
       'Playing from the media host. Peer sharing is starting.');
     const loadedBytes = originBytes === null ? null : peerBytes + originBytes;
     optionalText('public-transfer-summary', s?.nativeHls ?
@@ -725,6 +725,7 @@ async function initialise() {
 
   function trackBrowser(s, playlist) {
     delete root.dataset.playbackFallback;
+    root.dataset.playbackPreference = s.nativePreferred ? 'ios-native' : '';
     s.playbackSync = createSharedPlaybackSync(video, { signal: s.abort.signal, onSeek: at => { s.roomSeekAt = at; } });
     s.bufferedRecovery = createBufferedPlaybackRecovery(video, { onSeek: at => { s.roomSeekAt = at; } });
     s.nativeFallbackPolicy = createNativePlaybackFallback(video);
@@ -932,12 +933,28 @@ async function initialise() {
     browserReadings(s);
   }
 
+  async function startNativeHls(s, url) {
+    s.nativeHls = true;
+    s.playbackEngine = 'Native HLS';
+    video.addEventListener('loadedmetadata', () => {
+      s.listenerAlignedEpoch = s.listener?.snapshot().epochId;
+      followListener(s, true);
+    }, { once: true, signal: s.abort.signal });
+    video.src = url.href; s.mediaReady = true; controls(); await play(s); publicDelivery(s);
+  }
+
   async function attach(s, url, runtime) {
     if (!local && /\.mp4$/i.test(url.pathname)) {
       s.playbackEngine = 'Native MP4';
       trackBrowser(s, url);
       video.crossOrigin = url.origin === location.origin ? '' : 'anonymous';
       video.src = url.href; s.mediaReady = true; controls(); await play(s);
+      return;
+    }
+    if (!local && prefersNativeHls(video)) {
+      s.nativePreferred = true;
+      trackBrowser(s, url);
+      await startNativeHls(s, url);
       return;
     }
     Hls ??= (await import(local ? './vendor/hls.min.mjs' : './vendor/hls.light.min.mjs')).default;
@@ -998,13 +1015,7 @@ async function initialise() {
       s.hls.on(Hls.Events.MANIFEST_PARSED, () => { if (session === s && s.hls === player) { s.mediaReady = true; controls(); void play(s); } });
       s.hls.loadSource(url.href); s.hls.attachMedia(video);
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      s.nativeHls = true;
-      s.playbackEngine = 'Native HLS';
-      video.addEventListener('loadedmetadata', () => {
-        s.listenerAlignedEpoch = s.listener?.snapshot().epochId;
-        followListener(s, true);
-      }, { once: true, signal: s.abort.signal });
-      video.src = url.href; s.mediaReady = true; controls(); await play(s); publicDelivery(s);
+      await startNativeHls(s, url);
     } else throw new Error('This browser cannot play the HLS stream');
   }
 
