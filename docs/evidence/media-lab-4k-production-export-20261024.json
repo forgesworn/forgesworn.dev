@@ -1,0 +1,312 @@
+{
+  "schema": 1,
+  "artifact": "retained-production-export-rows",
+  "retainedAt": "2026-10-24T02:43:26.993Z",
+  "retentionNote": "Run objects are unchanged from the actual production Download results export. Its original envelope timestamp was not retained.",
+  "runs": [
+    {
+      "state": "ended",
+      "completion": "source-window-ended",
+      "measuredAt": "2026-10-24T02:30:30.018Z",
+      "offsetSeconds": 0,
+      "engine": "sapflow",
+      "engineLabel": "Sapflow (default Hyper)",
+      "version": "0.1.0",
+      "binarySha256": "0ded5783f99dd51ca45e26b1557eed2440f5f964dcb05c918765cc18ee4d4dea",
+      "transport": "rtmp",
+      "turnEngine": "spry",
+      "turnTransport": "udp",
+      "durationSeconds": 268.6,
+      "publisherMediaSeconds": 267.32,
+      "publisherProgressEnded": true,
+      "publisherCompletedWindow": true,
+      "publisherVideoFrames": 6715,
+      "expectedVideoFrames": 6715,
+      "expectedProgressSeconds": 267.32,
+      "expectedProgressBasis": "mapped-aac-end-and-full-video-frame-count",
+      "measurementScope": "shared-host-observation",
+      "hostLoadAtStart": {
+        "oneMinute": 12.86279296875,
+        "fiveMinutes": 11.740234375,
+        "fifteenMinutes": 11.9736328125
+      },
+      "hostLoadAtEnd": {
+        "oneMinute": 13.86865234375,
+        "fiveMinutes": 12.90966796875,
+        "fifteenMinutes": 12.439453125
+      },
+      "source": {
+        "label": "Licensed local media",
+        "sha256": "76d90719a756c77d1008088c58ca6b28a74eb0ef01e5337906cfb68d3e2b13aa",
+        "bytes": 817058874,
+        "durationSeconds": 268.6,
+        "width": 3840,
+        "height": 2160,
+        "fps": 25,
+        "bitrateBps": 24335335,
+        "audioSampleRate": 48000,
+        "videoCodec": "h264",
+        "audioCodec": "aac"
+      },
+      "host": {
+        "cpu": "Apple M1",
+        "architecture": "arm64",
+        "platform": "darwin",
+        "release": "23.6.0",
+        "logicalCpus": 8
+      },
+      "profile": {
+        "hlsMode": "low-latency",
+        "sapflowHttpImpl": "hyper",
+        "httpImpl": "hyper",
+        "viewerDelivery": "full-segment-hls",
+        "segmentCount": 24,
+        "segmentDurationSeconds": 1,
+        "partDurationSeconds": 0.2,
+        "httpWorkers": null,
+        "endDrainSeconds": 12,
+        "publisherCompletionToleranceSeconds": 0.25,
+        "transcode": false,
+        "recording": false,
+        "viewerLowLatencyMode": false
+      },
+      "originCpuMeanPercent": 0.9085679189409915,
+      "originPeakSampledRssBytes": 70172672,
+      "originCpuSeconds": 2.55,
+      "processes": {
+        "origin": {
+          "cpuPercentLast": 0,
+          "cpuMeanPercent": 0.9085679189409915,
+          "cpuSeconds": 2.55,
+          "rssBytes": 3653632,
+          "peakSampledRssBytes": 70172672,
+          "uptimeSeconds": 280.556563541
+        },
+        "publisher": {
+          "cpuPercentLast": 0,
+          "cpuMeanPercent": 1.048970187226389,
+          "cpuSeconds": 3.03,
+          "rssBytes": 12320768,
+          "peakSampledRssBytes": 42762240,
+          "uptimeSeconds": 280.228831583
+        },
+        "srtSender": null,
+        "turn": {
+          "cpuPercentLast": null,
+          "cpuMeanPercent": 3.9120369369092742,
+          "cpuSeconds": 10.96,
+          "rssBytes": 819200,
+          "peakSampledRssBytes": 1703936,
+          "uptimeSeconds": 280.22905925
+        }
+      },
+      "peer": {
+        "peerBytes": 685070279,
+        "originBytes": 139929771,
+        "verifiedPeerSegments": 216,
+        "originFallbacks": 27,
+        "integrityRejected": 0,
+        "holderUploadedBytes": 688194554,
+        "holderOriginBytes": 825000050,
+        "cachePeakBytes": 36553227,
+        "cacheBytes": 29610122,
+        "activePeerConnections": 2,
+        "phase": "origin-fallback",
+        "requestedProtocol": "udp",
+        "selectedPairs": [
+          {
+            "localType": "relay",
+            "remoteType": "relay",
+            "relayProtocol": "udp",
+            "bytesSent": 746753301,
+            "bytesReceived": 17305895
+          },
+          {
+            "localType": "relay",
+            "remoteType": "relay",
+            "relayProtocol": "udp",
+            "bytesSent": 17305895,
+            "bytesReceived": 744218493
+          }
+        ]
+      },
+      "browser": {
+        "firstFrameMs": 2504.5999999046326,
+        "decodedFpsMean": 23.973286389048226,
+        "decodedFrames": 6685,
+        "width": 3840,
+        "height": 2160,
+        "mediaWidth": 3840,
+        "mediaHeight": 2160,
+        "videoTimeSeconds": 274.257823,
+        "playbackEndObserved": false,
+        "stallCount": 5,
+        "stallSeconds": 11.207800000429154,
+        "responseBytes": 967190675,
+        "requests": 915,
+        "playerErrors": 0,
+        "httpErrors": 2
+      },
+      "http": {
+        "requests": 913,
+        "completed": 911,
+        "originRequests": 913,
+        "redirectsFollowed": 0,
+        "errors": 0,
+        "bytes": 967190627
+      }
+    },
+    {
+      "state": "ended",
+      "completion": "source-window-ended",
+      "measuredAt": "2026-10-24T02:35:15.156Z",
+      "offsetSeconds": 0,
+      "engine": "sapflow",
+      "engineLabel": "Sapflow (default Hyper)",
+      "version": "0.1.0",
+      "binarySha256": "0ded5783f99dd51ca45e26b1557eed2440f5f964dcb05c918765cc18ee4d4dea",
+      "transport": "rtmp",
+      "turnEngine": "coturn",
+      "turnTransport": "udp",
+      "durationSeconds": 268.6,
+      "publisherMediaSeconds": 267.32,
+      "publisherProgressEnded": true,
+      "publisherCompletedWindow": true,
+      "publisherVideoFrames": 6715,
+      "expectedVideoFrames": 6715,
+      "expectedProgressSeconds": 267.32,
+      "expectedProgressBasis": "mapped-aac-end-and-full-video-frame-count",
+      "measurementScope": "shared-host-observation",
+      "hostLoadAtStart": {
+        "oneMinute": 14.919921875,
+        "fiveMinutes": 13.1435546875,
+        "fifteenMinutes": 12.5244140625
+      },
+      "hostLoadAtEnd": {
+        "oneMinute": 11.6806640625,
+        "fiveMinutes": 11.85302734375,
+        "fifteenMinutes": 12.10595703125
+      },
+      "source": {
+        "label": "Licensed local media",
+        "sha256": "76d90719a756c77d1008088c58ca6b28a74eb0ef01e5337906cfb68d3e2b13aa",
+        "bytes": 817058874,
+        "durationSeconds": 268.6,
+        "width": 3840,
+        "height": 2160,
+        "fps": 25,
+        "bitrateBps": 24335335,
+        "audioSampleRate": 48000,
+        "videoCodec": "h264",
+        "audioCodec": "aac"
+      },
+      "host": {
+        "cpu": "Apple M1",
+        "architecture": "arm64",
+        "platform": "darwin",
+        "release": "23.6.0",
+        "logicalCpus": 8
+      },
+      "profile": {
+        "hlsMode": "low-latency",
+        "sapflowHttpImpl": "hyper",
+        "httpImpl": "hyper",
+        "viewerDelivery": "full-segment-hls",
+        "segmentCount": 24,
+        "segmentDurationSeconds": 1,
+        "partDurationSeconds": 0.2,
+        "httpWorkers": null,
+        "endDrainSeconds": 12,
+        "publisherCompletionToleranceSeconds": 0.25,
+        "transcode": false,
+        "recording": false,
+        "viewerLowLatencyMode": false
+      },
+      "originCpuMeanPercent": 0.9124259853693989,
+      "originPeakSampledRssBytes": 74514432,
+      "originCpuSeconds": 2.56,
+      "processes": {
+        "origin": {
+          "cpuPercentLast": 0,
+          "cpuMeanPercent": 0.9124259853693989,
+          "cpuSeconds": 2.56,
+          "rssBytes": 5767168,
+          "peakSampledRssBytes": 74514432,
+          "uptimeSeconds": 281.555881584
+        },
+        "publisher": {
+          "cpuPercentLast": 0,
+          "cpuMeanPercent": 1.0416042567621664,
+          "cpuSeconds": 2.92,
+          "rssBytes": 14860288,
+          "peakSampledRssBytes": 42352640,
+          "uptimeSeconds": 281.04974304099994
+        },
+        "srtSender": null,
+        "turn": {
+          "cpuPercentLast": 0,
+          "cpuMeanPercent": 4.238827578884414,
+          "cpuSeconds": 12.06,
+          "rssBytes": 3014656,
+          "peakSampledRssBytes": 11436032,
+          "uptimeSeconds": 281.04986354199997
+        }
+      },
+      "peer": {
+        "peerBytes": 655923505,
+        "originBytes": 169076545,
+        "verifiedPeerSegments": 208,
+        "originFallbacks": 35,
+        "integrityRejected": 0,
+        "holderUploadedBytes": 662413946,
+        "holderOriginBytes": 825000050,
+        "cachePeakBytes": 36553227,
+        "cacheBytes": 29610122,
+        "activePeerConnections": 2,
+        "phase": "origin-fallback",
+        "requestedProtocol": "udp",
+        "selectedPairs": [
+          {
+            "localType": "relay",
+            "remoteType": "relay",
+            "relayProtocol": "udp",
+            "bytesSent": 715060188,
+            "bytesReceived": 16333999
+          },
+          {
+            "localType": "relay",
+            "remoteType": "relay",
+            "relayProtocol": "udp",
+            "bytesSent": 16333999,
+            "bytesReceived": 713836608
+          }
+        ]
+      },
+      "browser": {
+        "firstFrameMs": 2323.800000190735,
+        "decodedFpsMean": 23.905601605863293,
+        "decodedFrames": 6685,
+        "width": 3840,
+        "height": 2160,
+        "mediaWidth": 3840,
+        "mediaHeight": 2160,
+        "videoTimeSeconds": 274.251552,
+        "playbackEndObserved": false,
+        "stallCount": 4,
+        "stallSeconds": 11.655000000000001,
+        "responseBytes": 996338635,
+        "requests": 926,
+        "playerErrors": 0,
+        "httpErrors": 4
+      },
+      "http": {
+        "requests": 922,
+        "completed": 920,
+        "originRequests": 922,
+        "redirectsFollowed": 0,
+        "errors": 0,
+        "bytes": 996338539
+      }
+    }
+  ]
+}

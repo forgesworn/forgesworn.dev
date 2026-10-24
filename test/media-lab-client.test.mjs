@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { approvedMediaUrl, publicSource, completedRecord, recordedRuns, reading } from '../site/media-lab.mjs';
+import { approvedMediaUrl, publicSource, completedRecord, recordedRuns, reading, sourceRetiredError, confirmedPublisherEnd, videoDimensions } from '../site/media-lab.mjs';
 
 test('public playback accepts only this site and the explicitly configured HTTPS media origin', () => {
   const page = 'https://demo.example/media-lab.html', media = 'https://media.example';
@@ -61,4 +61,37 @@ test('exports preserve host pressure while excluding paths and arbitrary private
 test('unobserved metrics remain unavailable rather than becoming zero', () => {
   assert.equal(reading(null), '—'); assert.equal(reading(undefined), '—'); assert.equal(reading('0'), '—');
   assert.equal(reading(0), '0.0');
+});
+
+test('normal source EOF requires independently completed matching publisher state', () => {
+  const f = fixture(); f.snapshot.run.publisherEnded = true;
+  assert(confirmedPublisherEnd({ ...f.snapshot, state: 'running' }, 'one'));
+  assert(confirmedPublisherEnd(f.snapshot, 'one'));
+  assert(confirmedPublisherEnd({ state: 'idle', run: null, lastRun: f.snapshot }, 'one'));
+  assert(!confirmedPublisherEnd(f.snapshot, 'other'));
+  for (const state of ['stopped', 'error', 'stopping']) assert(!confirmedPublisherEnd({ ...f.snapshot, state }, 'one'));
+  assert(!confirmedPublisherEnd({ state: 'error', lastRun: f.snapshot }, 'one'));
+  assert(!confirmedPublisherEnd({ state: 'running', run: { id: 'other' }, lastRun: f.snapshot }, 'one'));
+  for (const key of ['publisherEnded', 'publisherCompletedWindow', 'publisherProgressEnded']) {
+    assert(!confirmedPublisherEnd({ ...f.snapshot, state: 'running', run: { ...f.snapshot.run, [key]: false } }, 'one'));
+  }
+  assert(!confirmedPublisherEnd({ ...f.snapshot, error: 'publisher_incomplete' }, 'one'));
+  f.session.sourceEof = true;
+  for (const state of ['running', 'stopped', 'error']) assert.equal(completedRecord({ ...f.snapshot, state }, f.session, f.config, f.browser), null);
+});
+
+test('only retired network resources qualify for EOF confirmation and error counts remain visible', () => {
+  assert(sourceRetiredError({ type: 'networkError', response: { code: 404 } }));
+  assert(sourceRetiredError({ type: 'networkError', networkDetails: { status: 410 } }));
+  for (const code of [0, 401, 403, 500]) assert(!sourceRetiredError({ type: 'networkError', response: { code } }));
+  assert(!sourceRetiredError({ type: 'mediaError', response: { code: 404 } }));
+  const f = fixture(); f.browser.playerErrors = 4; f.browser.httpErrors = 3;
+  const row = completedRecord(f.snapshot, f.session, f.config, f.browser);
+  assert.equal(row.browser.playerErrors, 4); assert.equal(row.browser.httpErrors, 3);
+});
+
+test('reset display dimensions preserve real media geometry without undefined values', () => {
+  assert.equal(videoDimensions({ mediaWidth: 3840, mediaHeight: 2160, width: null, height: undefined }), '3,840 × 2,160 video');
+  assert.equal(videoDimensions({ mediaWidth: 3840, mediaHeight: 2160, width: 3842, height: 2160 }), '3,840 × 2,160 video · 3,842 × 2,160 display');
+  assert.equal(videoDimensions({}), 'Browser video dimensions');
 });

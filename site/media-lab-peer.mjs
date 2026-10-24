@@ -109,7 +109,7 @@ async function selectedPairs(connections) {
   return pairs;
 }
 
-export async function startLabPeer({ Hls, video, playlistUrl, runtime, startPosition, onStats = () => {}, signal }) {
+export async function startLabPeer({ Hls, video, playlistUrl, runtime, startPosition, onStats = () => {}, confirmSourceEnd, signal }) {
   if (!Hls?.isSupported?.() || typeof globalThis.RTCPeerConnection !== 'function' || !globalThis.crypto?.subtle || !video) {
     throw new Error('Use a browser with HLS Media Source and WebRTC support.');
   }
@@ -125,13 +125,13 @@ export async function startLabPeer({ Hls, video, playlistUrl, runtime, startPosi
   const holderVideo = document.createElement('video');
   holderVideo.muted = true; holderVideo.playsInline = true; holderVideo.hidden = true;
   const started = performance.now();
-  let stopped = false, holderDropped = false, startedViewer = false, fatal = false, polling = false;
+  let stopped = false, holderDropped = false, startedViewer = false, fatal = false, polling = false, sourceEnded = false, sourceErrorPending = false, hlsErrorCount = 0;
   let pairs = [], lastDelivery = null, observedPeerLoads = 0, heldHighWaterBytes = 0, tick, cap;
   const snapshot = () => {
     const holder = swarms[0]?.metrics(), viewer = swarms[1]?.metrics();
     const heldBytes = number(holder?.bytes.held) + number(viewer?.bytes.held);
     heldHighWaterBytes = Math.max(heldHighWaterBytes, heldBytes);
-    return { phase: fatal ? 'error' : stopped ? 'stopped' : !startedViewer ? 'loading-holder'
+    return { phase: fatal ? 'error' : stopped ? 'stopped' : sourceEnded ? 'source-ended' : !startedViewer ? 'loading-holder'
       : lastDelivery === 'peer' && viewer?.peers.connected > 0 && !holderDropped ? 'peer'
       : viewer?.segments.originLoaded > 0 ? 'origin-fallback' : 'connecting',
       elapsedMs: Math.round(performance.now() - started),
@@ -147,7 +147,7 @@ export async function startLabPeer({ Hls, video, playlistUrl, runtime, startPosi
       resources: { activePeerConnections: [...connections].filter(connection => connection.connectionState !== 'closed').length,
         signallingConnections: relay.metrics().connections, heldBytes, heldHighWaterBytes,
         viewerBufferedSeconds: bufferedSeconds(video), holderBufferedSeconds: bufferedSeconds(holderVideo) },
-      diagnostics: { holderErrors: holder?.errors ?? null, viewerErrors: viewer?.errors ?? null,
+      diagnostics: { hlsErrorCount, holderErrors: holder?.errors ?? null, viewerErrors: viewer?.errors ?? null,
         peerMisses: number(viewer?.segments.peerMiss), commitmentRejected: number(viewer?.segments.commitmentRejected),
         commitmentUnavailable: number(viewer?.segments.commitmentUnavailable), eligibility: viewer?.peerEligibilityDiagnostics?.counters ?? null },
       limits: LAB_PEER_LIMITS, mseTargets: LAB_MSE_TARGETS };
@@ -170,6 +170,23 @@ export async function startLabPeer({ Hls, video, playlistUrl, runtime, startPosi
     publisherKey.fill(0); emit();
   };
   const controller = { stop, disconnectPeer, metrics: () => snapshot() };
+  const handleFatal = async detail => {
+    if (stopped || sourceEnded || sourceErrorPending) return;
+    sourceErrorPending = true;
+    let normal = false;
+    try { normal = await confirmSourceEnd?.(detail) === true; } catch {}
+    if (stopped || signal?.aborted) return;
+    if (normal) {
+      sourceEnded = true; clearInterval(tick);
+      emit(); // The caller freezes real observations before anything is paused.
+      for (const player of players) player.stopLoad();
+      for (const swarm of swarms) swarm.stop();
+      for (const connection of connections) connection.close();
+      relay.close(); holderVideo.pause(); video.pause();
+      emit(); // Keep the visible MSE frame until the backend's normal end drain.
+    } else { fatal = true; emit(); stop(); }
+    sourceErrorPending = false;
+  };
   try {
     const common = { swarmId, relays: [relay.url], WebSocketImpl: relay.WebSocketImpl, maxPeers: 1, maxUploadPeers: 1,
       maxDialsInFlight: 1, maxHeldSegments: LAB_PEER_LIMITS.maxHeldSegments / 2, maxHeldBytes: LAB_PEER_LIMITS.maxHeldBytes / 2,
@@ -201,7 +218,8 @@ export async function startLabPeer({ Hls, video, playlistUrl, runtime, startPosi
     });
     for (let index = 0; index < 2; index++) {
       players[index].on(Hls.Events.ERROR, (_event, detail) => {
-        if (detail.fatal && !(holderDropped && index === 0)) { fatal = true; stop(); }
+        hlsErrorCount++; emit();
+        if (detail.fatal && !(holderDropped && index === 0)) void handleFatal(detail);
       });
       swarms[index].attach(players[index]);
       if (swarms[index].metrics().mode === 'off') throw new Error('RelaySwarm could not start in this browser.');

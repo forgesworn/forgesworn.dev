@@ -55,6 +55,26 @@ function publicHost(host = {}) {
 
 const publicLoad = (load = {}) => Object.fromEntries(['oneMinute', 'fiveMinutes', 'fifteenMinutes'].map(key => [key, observed(load[key])]));
 
+export function sourceRetiredError(error) {
+  return error?.type === 'networkError' && [404, 410].includes(Number(error.response?.code ?? error.networkDetails?.status));
+}
+
+export function confirmedPublisherEnd(snapshot, id) {
+  let value;
+  if (['running', 'ended'].includes(snapshot?.state)) value = snapshot;
+  else if (snapshot?.state === 'idle' && !snapshot.run && snapshot.lastRun?.state === 'ended') value = snapshot.lastRun;
+  return Boolean(id && value && !value.error && value.run?.id === id && value.run.publisherEnded === true &&
+    value.run.publisherCompletedWindow === true && value.run.publisherProgressEnded === true);
+}
+
+export function videoDimensions(browser) {
+  const width = observed(browser.width), height = observed(browser.height);
+  const mediaWidth = observed(browser.mediaWidth), mediaHeight = observed(browser.mediaHeight);
+  if (mediaWidth > 0 && mediaHeight > 0) return `${mediaWidth.toLocaleString('en-GB')} × ${mediaHeight.toLocaleString('en-GB')} video${
+    width > 0 && height > 0 && (width !== mediaWidth || height !== mediaHeight) ? ` · ${width.toLocaleString('en-GB')} × ${height.toLocaleString('en-GB')} display` : ''}`;
+  return width > 0 && height > 0 ? `${width.toLocaleString('en-GB')} × ${height.toLocaleString('en-GB')} display` : 'Browser video dimensions';
+}
+
 function peerRecord(metrics) {
   if (!metrics) return null;
   return {
@@ -200,12 +220,12 @@ async function initialise() {
     return url;
   }
 
-  async function api(route, body) {
+  async function api(route, body, timeoutMs) {
     if (!local || pageAbort.signal.aborted) throw new Error('The local runner is unavailable');
     const controller = new AbortController();
     const abort = () => controller.abort();
     pageAbort.signal.addEventListener('abort', abort, { once: true });
-    const timeout = setTimeout(abort, route === '/lab/run' ? 45000 : 12000);
+    const timeout = setTimeout(abort, timeoutMs ?? (route === '/lab/run' ? 45000 : 12000));
     try {
       const reply = await fetch(route, {
         method: body === undefined ? 'GET' : 'POST', cache: 'no-store', credentials: 'same-origin',
@@ -225,7 +245,7 @@ async function initialise() {
     $('lab-run').textContent = preview ? `Play ${choices[$('lab-quality').value].label} with sound` : 'Run & play with sound ↗';
     for (const id of ['lab-engine', 'lab-transport', 'lab-duration', 'lab-relay', 'lab-turn-transport']) $(id).disabled = !config || busy || running || foreignRun;
     $('lab-turn-transport').disabled ||= $('lab-relay').value === 'off';
-    $('lab-play').disabled = !session?.mediaReady || busy;
+    $('lab-play').disabled = !session?.mediaReady || busy || Boolean(session?.sourceEof);
     $('lab-stop').disabled = !session || busy;
     $('lab-stop').textContent = local ? 'Stop run' : 'Stop preview';
     $('lab-fullscreen').disabled = !fullscreenReady || !session?.mediaReady;
@@ -342,9 +362,15 @@ async function initialise() {
       return;
     }
     const b = s.browser;
+    if (s.sourceEof) {
+      text('browser-bytes', megabytes(b.responseBytes));
+      text('browser-requests', reading(b.requests, '', 0));
+      text('browser-errors', `${reading(b.playerErrors, '', 0)} / ${reading(b.httpErrors, '', 0)}`);
+      return;
+    }
     const now = performance.now();
     const decoded = observed(video.webkitDecodedFrameCount);
-    if (decoded !== null) {
+    if (decoded !== null && (video.readyState > 0 || !b.seenFrame)) {
       if (decoded < b.frameBaseline) b.frameBaseline = 0;
       b.decodedFrames = Math.max(0, decoded - b.frameBaseline);
       if (b.seenFrame && b.lastDecodeAt !== null && now - b.lastDecodeAt >= 800) {
@@ -354,17 +380,15 @@ async function initialise() {
       }
       if (b.decodedFrames > 0 && b.lastDecodeAt === null) { b.lastDecodeAt = now; b.lastDecoded = decoded; }
     }
-    b.width = video.videoWidth || null; b.height = video.videoHeight || null;
-    b.videoTimeSeconds = video.readyState > 0 ? observed(video.currentTime) : null;
+    if (video.videoWidth > 0 && video.videoHeight > 0) { b.width = video.videoWidth; b.height = video.videoHeight; }
+    if (video.readyState > 0) b.videoTimeSeconds = observed(video.currentTime);
     b.playbackEndObserved = video.ended;
     if (!local) text('run-clock', `${clock(video.currentTime)} / ${clock(video.duration)}`);
     b.stallSeconds = b.finishedStallSeconds + (b.waitingAt === null ? 0 : (now - b.waitingAt) / 1000);
     let buffer = video.readyState > 0 ? 0 : null;
     for (let i = 0; i < video.buffered.length; i++) if (video.currentTime >= video.buffered.start(i) && video.currentTime <= video.buffered.end(i)) buffer = video.buffered.end(i) - video.currentTime;
     text('browser-fps', reading(b.fps, ' fps'));
-    text('browser-dimensions', b.mediaWidth && b.mediaHeight
-      ? `${b.mediaWidth.toLocaleString('en-GB')} × ${b.mediaHeight.toLocaleString('en-GB')} video${b.width !== b.mediaWidth || b.height !== b.mediaHeight ? ` · ${b.width?.toLocaleString('en-GB')} × ${b.height?.toLocaleString('en-GB')} display` : ''}`
-      : b.width && b.height ? `${b.width.toLocaleString('en-GB')} × ${b.height.toLocaleString('en-GB')} display` : 'Browser video dimensions');
+    text('browser-dimensions', videoDimensions(b));
     text('first-frame', reading(b.firstFrameMs, ' ms', 0));
     text('browser-time', video.readyState > 0 ? clock(video.currentTime) : DASH);
     text('browser-buffer', reading(buffer, ' s', 2));
@@ -386,14 +410,14 @@ async function initialise() {
       if (b.waitingAt !== null) { b.finishedStallSeconds += (performance.now() - b.waitingAt) / 1000; b.waitingAt = null; }
     };
     const waiting = () => {
-      if (session === s && b.seenFrame && !video.paused && !video.ended && b.waitingAt === null) { b.waitingAt = performance.now(); b.stallCount++; }
+      if (session === s && !s.sourceEof && b.seenFrame && !video.paused && !video.ended && b.waitingAt === null) { b.waitingAt = performance.now(); b.stallCount++; }
     };
     video.addEventListener('waiting', waiting, { signal: s.abort.signal });
     video.addEventListener('stalled', waiting, { signal: s.abort.signal });
     video.addEventListener('playing', endStall, { signal: s.abort.signal });
     video.addEventListener('pause', () => {
       endStall();
-      if (!s.finishing && b.seenFrame) { s.interrupted = true; status('Playback paused. This interrupted run will not enter the comparison table.'); }
+      if (!s.finishing && !s.sourceEof && b.seenFrame) { s.interrupted = true; status('Playback paused. This interrupted run will not enter the comparison table.'); }
     }, { signal: s.abort.signal });
     let lastInteraction = -Infinity;
     video.addEventListener('pointerdown', () => { lastInteraction = performance.now(); }, { signal: s.abort.signal });
@@ -404,13 +428,15 @@ async function initialise() {
     }, { signal: s.abort.signal });
     video.addEventListener('error', () => {
       if (session !== s || s.finishing) return;
-      b.playerErrors++; s.playbackFailed = true;
+      b.playerErrors++;
+      if (s.sourceEof && video.error?.code === 2) return;
+      s.playbackFailed = true;
       status(local ? 'Playback could not continue. Stop the run, check the local runner and try again.' : 'The selected source could not be decoded. Try the preview or check the media-host response.', true);
     }, { signal: s.abort.signal });
     if (typeof video.requestVideoFrameCallback === 'function') {
       const frame = (_now, metadata) => {
-        if (session !== s || s.finishing) return;
-        b.mediaWidth = observed(metadata?.width); b.mediaHeight = observed(metadata?.height);
+        if (session !== s || s.finishing || s.sourceEof) return;
+        if (observed(metadata?.width) > 0 && observed(metadata?.height) > 0) { b.mediaWidth = metadata.width; b.mediaHeight = metadata.height; }
         if (!b.seenFrame) {
           b.seenFrame = true; b.firstFrameMs = performance.now() - s.clickAt;
           b.lastDecodeAt = performance.now(); b.lastDecoded = observed(video.webkitDecodedFrameCount) ?? 0;
@@ -448,6 +474,10 @@ async function initialise() {
 
   function peerStats(s, metrics) {
     if (session !== s) return;
+    const errors = observed(metrics?.diagnostics?.hlsErrorCount) ?? 0;
+    s.browser.playerErrors += Math.max(0, errors - (s.peerHlsErrors ?? 0));
+    s.peerHlsErrors = errors;
+    if (metrics.phase === 'error') { browserReadings(s); s.playbackFailed = true; }
     s.peerMetrics = peerRecord(metrics);
     const viewer = metrics?.viewer;
     const transport = metrics?.transport;
@@ -457,8 +487,22 @@ async function initialise() {
     $('relay-summary').hidden = false;
   }
 
+  async function confirmNormalSourceEnd(s, error) {
+    if (!local || session !== s || s.abort.signal.aborted || s.finishing || s.interrupted || s.playbackFailed || !sourceRetiredError(error)) return false;
+    if (s.sourceEof) return true;
+    let snapshot;
+    try { snapshot = await api('/lab/stats', undefined, 2000); } catch { return false; }
+    if (session !== s || s.abort.signal.aborted || s.finishing || s.interrupted || s.playbackFailed || !confirmedPublisherEnd(snapshot, s.id)) return false;
+    browserReadings(s);
+    if (s.observer) s.resourceEntries(s.observer.takeRecords());
+    s.sourceEof = true;
+    controls();
+    status('The source window has ended. Keeping its final playback observations while the runner finishes.');
+    return true;
+  }
+
   async function play(s = session) {
-    if (!s || session !== s || !s.mediaReady) return;
+    if (!s || session !== s || !s.mediaReady || s.sourceEof) return;
     video.muted = false;
     if (video.volume === 0) video.volume = 1;
     try { await video.play(); if (session === s) status('Playing with sound. Server and browser observations update separately.'); }
@@ -483,7 +527,7 @@ async function initialise() {
       if (session !== s || s.abort.signal.aborted) return;
       s.mediaReady = true; controls();
       s.peer = await startLabPeer({ Hls, video, playlistUrl: url.href, runtime, startPosition: initial.startPosition,
-        signal: s.abort.signal, onStats: (metrics) => peerStats(s, metrics) });
+        signal: s.abort.signal, onStats: (metrics) => peerStats(s, metrics), confirmSourceEnd: error => confirmNormalSourceEnd(s, error) });
       await play(s);
     } else if (Hls.isSupported()) {
       s.hls = new Hls({ lowLatencyMode: false, maxBufferLength: 4, maxMaxBufferLength: 6,
@@ -491,7 +535,14 @@ async function initialise() {
       s.hls.on(Hls.Events.ERROR, (_, data) => {
         if (session !== s || s.finishing) return;
         s.browser.playerErrors++;
-        if (data.fatal) { s.playbackFailed = true; status(local ? 'The player could not continue. Stop this run and check the local runner.' : 'The selected source could not continue. Stop playback and try the preview.', true); }
+        if (data.fatal && !s.directErrorPending) {
+          s.directErrorPending = true;
+          void confirmNormalSourceEnd(s, data).then(normal => {
+            if (session !== s || s.finishing || s.abort.signal.aborted) return;
+            if (normal) { s.hls.stopLoad(); video.pause(); }
+            else { s.playbackFailed = true; status(local ? 'The player could not continue. Stop this run and check the local runner.' : 'The selected source could not continue. Stop playback and try the preview.', true); }
+          }).finally(() => { s.directErrorPending = false; });
+        }
       });
       s.hls.on(Hls.Events.MANIFEST_PARSED, () => { if (session === s) { s.mediaReady = true; controls(); void play(s); } });
       s.hls.loadSource(url.href); s.hls.attachMedia(video);
