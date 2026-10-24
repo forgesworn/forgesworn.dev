@@ -3,17 +3,6 @@ const REBUFFER_MS = 1_000;
 const WINDOW_MS = 30_000;
 const PROGRESS_SECONDS = 0.05;
 
-// Prefer native playback on iOS until its ManagedMediaSource path is reliable.
-// This bypasses the peer fragment loader; other browsers keep their Hls path.
-export function prefersNativeHls(video, browser = globalThis.navigator) {
-  if (typeof video?.canPlayType !== 'function' || !video.canPlayType('application/vnd.apple.mpegurl')) return false;
-  const userAgent = typeof browser?.userAgent === 'string' ? browser.userAgent : '';
-  const platform = typeof browser?.platform === 'string' ? browser.platform : '';
-  const ios = /\b(?:iPhone|iPad|iPod)\b/i;
-  return ios.test(userAgent) || ios.test(platform) ||
-    (platform === 'MacIntel' && typeof browser.maxTouchPoints === 'number' && browser.maxTouchPoints > 1);
-}
-
 // The caller supplies eligibility: a presented frame, a visible page and an
 // active public Hls player with native HLS available. No timers or DOM listeners
 // are owned here. reset() clears observations, but never rearms a fired helper.

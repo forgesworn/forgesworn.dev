@@ -1,56 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createNativePlaybackFallback, prefersNativeHls } from '../site/media-playback-fallback.mjs';
-
-const nativeVideo = { canPlayType(type) { assert.equal(type, 'application/vnd.apple.mpegurl'); return 'probably'; } };
-const iphone = { userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1', platform: 'iPhone', maxTouchPoints: 5 };
-
-test('an iPhone Safari user agent prefers native HLS when supported', () => {
-  assert.equal(prefersNativeHls(nativeVideo, iphone), true);
-});
-
-test('iPad and iPod mobile user agents also prefer native HLS', () => {
-  for (const device of ['iPad', 'iPod']) {
-    assert.equal(prefersNativeHls(nativeVideo, { userAgent: `Mozilla/5.0 (${device}; CPU OS 17_6 like Mac OS X) AppleWebKit/605.1.15 Version/17.6 Mobile/15E148 Safari/604.1` }), true);
-  }
-});
-
-test('an iPad desktop user agent is recognised through its touch-capable MacIntel platform', () => {
-  const ipad = { userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15', platform: 'MacIntel', maxTouchPoints: 5 };
-  assert.equal(prefersNativeHls(nativeVideo, ipad), true);
-  assert.equal(prefersNativeHls(nativeVideo, { ...ipad, maxTouchPoints: 1 }), false);
-});
-
-test('Request Desktop Website can still be recognised through an iOS platform', () => {
-  const userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15';
-  for (const platform of ['iPhone', 'iPad', 'iPod']) {
-    assert.equal(prefersNativeHls(nativeVideo, { userAgent, platform, maxTouchPoints: 1 }), true);
-  }
-});
-
-test('an iOS identity cannot select native HLS without native playback capability', () => {
-  assert.equal(prefersNativeHls({ canPlayType: () => '' }, iphone), false);
-  assert.equal(prefersNativeHls({}, iphone), false);
-  assert.equal(prefersNativeHls(null, iphone), false);
-});
-
-test('desktop Safari and Chrome retain their existing playback path', () => {
-  const desktop = { platform: 'MacIntel', maxTouchPoints: 0 };
-  for (const userAgent of [
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Safari/605.1.15',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
-  ]) assert.equal(prefersNativeHls(nativeVideo, { ...desktop, userAgent }), false);
-});
-
-test('a touch-capable Android browser does not select the iOS native path', () => {
-  assert.equal(prefersNativeHls(nativeVideo, { userAgent: 'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36', platform: 'Linux armv8l', maxTouchPoints: 5 }), false);
-});
-
-test('missing navigator identity does not imply an iOS preference', () => {
-  assert.equal(prefersNativeHls(nativeVideo, null), false);
-  assert.equal(prefersNativeHls(nativeVideo, {}), false);
-  assert.equal(prefersNativeHls(nativeVideo), false);
-});
+import { createNativePlaybackFallback } from '../site/media-playback-fallback.mjs';
 
 function fixture(readyState = 4) {
   let time = 0;

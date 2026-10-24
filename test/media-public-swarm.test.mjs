@@ -129,6 +129,7 @@ function lifecycleFixture(t) {
   install('setTimeout', (fn, ms) => schedule(fn, ms)); install('clearTimeout', id => timers.delete(id));
   install('setInterval', (fn, ms) => schedule(fn, ms, true)); install('clearInterval', id => timers.delete(id));
   const createSwarm = options => {
+    assert.equal(options.sustainablePeerWait, true, 'peer waits must allow the playback buffer to replenish');
     const live = { mode: 'peer-first', pubkey: String(cycles.length + 1).repeat(64), core: { state: 'ready' },
       bytes: { peerFirst: 0, uploaded: 0, uploadRemaining: null, held: 1024 },
       segments: {}, peers: {}, relays: {} };
@@ -165,6 +166,22 @@ function lifecycleFixture(t) {
       at = end;
     } };
 }
+
+test('a completed empty ICE gather reports no browser route without crediting peer delivery', async t => {
+  const f = lifecycleFixture(t);
+  await f.adapter.setEnabled(true);
+  const pc = f.connections[0]; pc.connectionState = 'new';
+  const candidate = value => { const event = new Event('icecandidate'); Object.defineProperty(event, 'candidate', { value }); return event; };
+  pc.dispatchEvent(candidate(null)); pc.dispatchEvent(candidate(null));
+  assert.equal(f.adapter.metrics().diagnostics.noLocalRoutes, 1);
+  assert.equal(f.adapter.metrics().connectedPeers, 0);
+  assert.equal(f.adapter.metrics().peerBytes, 0);
+  await f.adapter.setEnabled(false); await f.adapter.setEnabled(true);
+  f.connections[1].dispatchEvent(candidate({ type: 'host', protocol: 'udp' }));
+  f.connections[1].dispatchEvent(candidate(null));
+  assert.equal(f.adapter.metrics().diagnostics.noLocalRoutes, 1, 'a real candidate is not an empty gather');
+  assert.equal(f.adapter.metrics().connectedPeers, 1);
+});
 
 test('active peer delivery survives fifteen minutes and multi-GiB incoming totals until explicit pause', async t => {
   const f = lifecycleFixture(t);
