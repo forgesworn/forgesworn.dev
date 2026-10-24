@@ -12,7 +12,9 @@ async function until(check, ms = 3500) { const end = Date.now() + ms; while (Dat
 function alive(pid) { try { process.kill(pid, 0); return true; } catch (error) { if (error.code === 'ESRCH') return false; throw error; } }
 const data = Buffer.alloc(32768, 90);
 
-async function fixture(t, { stalled = false, stubborn = false, publisherStalls = false, publisherEarlyExit = false, srtSenderDrainFailure = false, srtPublisherRecordDelayMs = 0 } = {}) {
+async function fixture(t, { stalled = false, stubborn = false, publisherStalls = false, publisherEarlyExit = false, srtSenderDrainFailure = false, srtPublisherRecordDelayMs = 0,
+  sourceVideoSeconds = 20, sourceAudioSeconds = sourceVideoSeconds, sourceVideoFrames = sourceVideoSeconds * 25,
+  publisherProgressSeconds = null, publisherPriorProgressSeconds = null, publisherVideoFrames = null, publisherProgressEnd = true } = {}) {
   const root = await mkdtemp(path.join(os.tmpdir(), 'forgesworn-lab-test-')), bin = path.join(root, 'bin'), site = path.join(root, 'site');
   await mkdir(bin); await mkdir(site);
   const pidFile = path.join(root, 'pids.jsonl'), requestFile = path.join(root, 'requests.jsonl');
@@ -23,14 +25,14 @@ async function fixture(t, { stalled = false, stubborn = false, publisherStalls =
 const fs=require('node:fs'),http=require('node:http'),net=require('node:net'),dgram=require('node:dgram'),path=require('node:path'),{spawn}=require('node:child_process');
 const kind=path.basename(process.argv[1]),args=process.argv.slice(2);
 if(args.includes('--version')){console.log(kind+' 1.2.3');process.exit(0);}
-if(kind==='ffprobe'){console.log(JSON.stringify({format:{duration:20,bit_rate:'24300000',tags:{private:'MUST_NOT_ESCAPE'}},streams:[{codec_type:'video',codec_name:'h264',width:3840,height:2160,avg_frame_rate:'25/1'},{codec_type:'audio',codec_name:'aac',sample_rate:'48000'}]}));process.exit(0);}
+if(kind==='ffprobe'){console.log(JSON.stringify({format:{start_time:'0',duration:${Math.max(sourceVideoSeconds, sourceAudioSeconds)},bit_rate:'24300000',tags:{private:'MUST_NOT_ESCAPE'}},streams:[{codec_type:'video',codec_name:'h264',width:3840,height:2160,avg_frame_rate:'25/1',start_time:'0',duration:${sourceVideoSeconds},nb_frames:${JSON.stringify(sourceVideoFrames)}},{codec_type:'audio',codec_name:'aac',sample_rate:'48000',start_time:'0',duration:${sourceAudioSeconds}}]}));process.exit(0);}
 let config,port,rtmp,srt;
 if(kind==='sapflow'){port=+process.env.SAPFLOW_HTTP_ADDR.split(':')[1];rtmp=+process.env.SAPFLOW_RTMP_ADDR.split(':')[1];srt=+process.env.SAPFLOW_SRT_ADDR.split(':')[1];config={impl:process.env.SAPFLOW_HTTP_IMPL,threads:process.env.SAPFLOW_HTTP_THREADS,segments:process.env.SAPFLOW_SEGMENT_COUNT,pass:process.env.SAPFLOW_PUBLISH_PASS,callback:process.env.SAPFLOW_CALLBACK_URL};}
 if(kind==='mediamtx'){config=JSON.parse(fs.readFileSync(args[0]));port=+config.hlsAddress.split(':')[1];rtmp=+config.rtmpAddress.split(':')[1];srt=+config.srtAddress.split(':')[1];}
 const recordStart=()=>fs.appendFileSync(${JSON.stringify(pidFile)},JSON.stringify({kind,pid:process.pid,group:process.pid,args,config,cwd:process.cwd()})+'\\n');
 if(kind==='ffmpeg'&&args.at(-1)==='-'&&${srtPublisherRecordDelayMs}>0)setTimeout(recordStart,${srtPublisherRecordDelayMs});else recordStart();
 console.error('MUST_NOT_ESCAPE',${JSON.stringify(root)},process.env.SAPFLOW_PUBLISH_PASS||'');
-if(kind==='ffmpeg'){if(args.at(-1)!=='-'&&!/^live[/]event-[a-z0-9-]+$/.test(new URL(args.at(-1)).pathname.slice(1))){console.error('invalid public Sapflow stream path');process.exit(64);}const seconds=+args[args.indexOf('-t')+1];let tick;if(args.at(-1)==='-')tick=setInterval(()=>process.stdout.write(Buffer.alloc(1316)),20);if(${publisherStalls}){setInterval(()=>{},1000);return;}const sentSeconds=${publisherEarlyExit}?0.1:seconds;setTimeout(()=>{clearInterval(tick);process.stderr.write('out_time_us='+Math.round(sentSeconds*1e6)+'\\nprogress=end\\n',()=>process.exit(0));},sentSeconds*1000);return;}
+if(kind==='ffmpeg'){if(args.at(-1)!=='-'&&!/^live[/]event-[a-z0-9-]+$/.test(new URL(args.at(-1)).pathname.slice(1))){console.error('invalid public Sapflow stream path');process.exit(64);}const seconds=+args[args.indexOf('-t')+1];let tick;if(args.at(-1)==='-')tick=setInterval(()=>process.stdout.write(Buffer.alloc(1316)),20);if(${publisherStalls}){setInterval(()=>{},1000);return;}const sentSeconds=${publisherEarlyExit}?0.1:seconds;setTimeout(()=>{clearInterval(tick);const prior=${JSON.stringify(publisherPriorProgressSeconds)},clock=${JSON.stringify(publisherProgressSeconds)}??sentSeconds,frames=${JSON.stringify(publisherVideoFrames)}??Math.round(sentSeconds*25);process.stderr.write((prior===null?'':'out_time_us='+Math.round(prior*1e6)+'\\nprogress=continue\\n')+'frame='+frames+'\\nout_time_us='+Math.round(clock*1e6)+'\\nprogress='+(${publisherProgressEnd}?'end':'continue')+'\\n',()=>process.exit(0));},sentSeconds*1000);return;}
 if(kind==='srt-live-transmit'){if(!/^live[/]event-[a-z0-9-]+$/.test(new URL(args.at(-1)).searchParams.get('streamid').split(':')[1]))process.exit(64);process.stdin.resume();process.stdin.on('end',()=>setTimeout(()=>process.exit(${srtSenderDrainFailure}?65:0),150));return;}
 if(${stubborn}){process.on('SIGTERM',()=>{});const c=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'ignore'});fs.appendFileSync(${JSON.stringify(pidFile)},JSON.stringify({kind:'descendant',pid:c.pid,group:process.pid})+'\\n');}
 if(${stalled}){setInterval(()=>{},1000);return;}
@@ -207,6 +209,29 @@ test('a clean early publisher exit is incomplete, not a completed source window'
   if (started.status === 200) assert.equal(final.run.id, started.data.runId);
   assert.equal(final.error, 'publisher_incomplete'); assert.equal(final.run.publisherEnded, true); assert.equal(final.run.publisherCompletedWindow, false); assert.equal(final.run.publisherMediaSeconds, 0.1);
   for (const row of await f.records()) assert.ok(!alive(row.pid));
+});
+
+test('full-window completion independently checks video frames, mapped AAC and terminal progress', { timeout: 20000 }, async t => {
+  for (const scenario of [
+    { name: 'all video frames with a shorter AAC clock', options: { publisherPriorProgressSeconds: 1 }, state: 'ended', expectedClock: 0.5, expectedFrames: 25 },
+    { name: 'one missing video frame', options: { publisherVideoFrames: 24 }, state: 'error', expectedClock: 0.5, expectedFrames: 25 },
+    { name: 'missing terminal progress', options: { publisherProgressEnd: false }, state: 'error', expectedClock: 0.5, expectedFrames: 25 },
+    { name: 'longer AAC remains required', options: { sourceAudioSeconds: 2, publisherProgressSeconds: 1 }, state: 'error', expectedClock: 2, expectedFrames: 25 },
+    { name: 'unknown video total retains the original time gate', options: { sourceVideoFrames: null }, state: 'error', expectedClock: 1, expectedFrames: null },
+  ]) await t.test(scenario.name, { timeout: 8000 }, async subtest => {
+    const options = { sourceVideoSeconds: 1, sourceAudioSeconds: 0.5, publisherProgressSeconds: 0.5, publisherVideoFrames: 25, ...scenario.options };
+    const f = await fixture(subtest, options), lab = await startMediaLab(f.options); subtest.after(() => lab.stop()); const base = new URL(lab.url).origin;
+    const started = await run(base, 'sapflow', 'rtmp', { durationSeconds: Math.max(options.sourceVideoSeconds, options.sourceAudioSeconds) }); assert.equal(started.status, 200);
+    await until(async () => (await request(base, '/lab/stats')).data.lastRun?.state === scenario.state, 6000);
+    const final = (await request(base, '/lab/stats')).data.lastRun;
+    assert.equal(final.run.id, started.data.runId); assert.equal(final.run.expectedVideoFrames, scenario.expectedFrames);
+    assert.equal(final.run.publisherVideoFrames, options.publisherVideoFrames); assert.equal(final.run.expectedProgressSeconds, scenario.expectedClock);
+    assert.equal(final.run.publisherMediaSeconds, options.publisherProgressSeconds); assert.equal(final.run.publisherEnded, true);
+    assert.equal(final.run.publisherProgressEnded, options.publisherProgressEnd !== false);
+    assert.equal(final.run.publisherCompletedWindow, scenario.state === 'ended');
+    assert.equal(final.error, scenario.state === 'ended' ? null : 'publisher_incomplete');
+    for (const row of await f.records()) assert.ok(!alive(row.pid));
+  });
 });
 
 test('hard deadline without publisher EOF is an error, never a completed observation', { timeout: 8000 }, async t => {

@@ -187,7 +187,17 @@ try {
     assert.equal((await nativeState()).activePeerConnections, 0);
     const snapshot = snapshots.find(value => value.run.turnEngine === relay);
     assert(snapshot && snapshot.state === 'ended' && snapshot.run.publisherEnded);
+    assert.equal(snapshot.run.publisherProgressEnded, true);
+    assert.equal(snapshot.run.publisherCompletedWindow, true);
+    if (options.duration === 'full') {
+      assert(snapshot.run.expectedVideoFrames > 0);
+      assert.equal(snapshot.run.publisherVideoFrames, snapshot.run.expectedVideoFrames);
+    }
     check.sourceWindow = { durationSeconds: snapshot.run.durationSeconds, publisherEnded: snapshot.run.publisherEnded,
+      publisherMediaSeconds: snapshot.run.publisherMediaSeconds, publisherProgressEnded: snapshot.run.publisherProgressEnded,
+      publisherVideoFrames: snapshot.run.publisherVideoFrames, expectedVideoFrames: snapshot.run.expectedVideoFrames,
+      expectedProgressSeconds: snapshot.run.expectedProgressSeconds, expectedProgressBasis: snapshot.run.expectedProgressBasis,
+      publisherCompletedWindow: snapshot.run.publisherCompletedWindow,
       endedReason: snapshot.run.endedReason, origin: snapshot.processes.origin, publisher: snapshot.processes.publisher,
       turn: snapshot.processes.turn, http: snapshot.http };
     check.completed = true;
@@ -219,6 +229,12 @@ try {
   receipt.failureType = error.name; process.exitCode = 1;
   try { receipt.failurePlayback = await nativeState(); } catch {}
   receipt.backendFailureCode = lastStats?.error ?? lastStats?.lastRun?.error ?? null;
+  const failed = lastStats?.lastRun?.run ?? lastStats?.run;
+  if (failed) receipt.failedSourceWindow = { durationSeconds: failed.durationSeconds, publisherEnded: failed.publisherEnded,
+    publisherMediaSeconds: failed.publisherMediaSeconds, publisherProgressEnded: failed.publisherProgressEnded,
+    publisherVideoFrames: failed.publisherVideoFrames, expectedVideoFrames: failed.expectedVideoFrames,
+    expectedProgressSeconds: failed.expectedProgressSeconds, expectedProgressBasis: failed.expectedProgressBasis,
+    publisherCompletedWindow: failed.publisherCompletedWindow, endedReason: failed.endedReason };
   observeHost('failure');
 } finally {
   try { await browser?.close(); } finally {

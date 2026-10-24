@@ -13,6 +13,7 @@ test('public playback accepts only this site and the explicitly configured HTTPS
 
 const fixture = () => ({
   snapshot: { state: 'ended', run: { id: 'one', durationSeconds: 30, publisherMediaSeconds: 30.01,
+    publisherVideoFrames: 750, expectedVideoFrames: 750, expectedProgressSeconds: 30, expectedProgressBasis: 'bounded-window-time',
     publisherCompletedWindow: true, publisherProgressEnded: true,
     hostLoadAtStart: { oneMinute: 24, fiveMinutes: 20, fifteenMinutes: 19, privateToken: 'secret' } },
     host: { loadAverage: { oneMinute: 30, fiveMinutes: 22, fifteenMinutes: 20 } },
@@ -44,6 +45,8 @@ test('exports preserve host pressure while excluding paths and arbitrary private
   assert.equal(row.hostLoadAtEnd.oneMinute, 30);
   assert.equal(row.measurementScope, 'shared-host-observation');
   assert.equal(row.publisherMediaSeconds, 30.01);
+  assert.equal(row.publisherVideoFrames, 750); assert.equal(row.expectedVideoFrames, 750);
+  assert.equal(row.expectedProgressSeconds, 30); assert.equal(row.expectedProgressBasis, 'bounded-window-time');
   assert.equal(row.browser.width, 3842); assert.equal(row.browser.mediaWidth, 3840);
   assert.equal(row.http.requests, 3); assert.equal(row.http.originRequests, 5); assert.equal(row.http.redirectsFollowed, 2);
   assert.equal(row.profile.publisherCompletionToleranceSeconds, 0.25);
@@ -51,6 +54,7 @@ test('exports preserve host pressure while excluding paths and arbitrary private
   const receipt = { schema: 1, runs: [row, { ...row, publisherCompletedWindow: false }, { ...row, browser: { decodedFrames: 0 } }, { ...row, browser: { decodedFrames: '600' } }] };
   assert.equal(recordedRuns(receipt).length, 1);
   assert.equal(recordedRuns(receipt)[0].hostLoadAtEnd.oneMinute, 30);
+  assert.equal(recordedRuns(receipt)[0].publisherVideoFrames, 750);
   assert.deepEqual(publicSource({ label: '/private/source.mp4' }).label, 'Licensed source');
 });
 

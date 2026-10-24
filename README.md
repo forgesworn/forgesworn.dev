@@ -71,7 +71,7 @@ Both pages are generated output (gitignored) and are rebuilt in CI on deploy.
 
 ## Licence
 
-MIT for the code. See [LICENCE](LICENCE).  Owner-licensed demonstration media
+MIT for the code. See [LICENSE](LICENSE).  Owner-licensed demonstration media
 has its own permission notice and is not relicensed under MIT.
 
 ## Media comparison

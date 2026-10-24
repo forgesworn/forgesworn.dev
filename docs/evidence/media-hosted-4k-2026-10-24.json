@@ -1,0 +1,110 @@
+{
+  "schema": 1,
+  "measuredAt": "2026-10-24T02:17:19.591Z",
+  "scope": "Owner-licensed static broadcast hosting; native process qualification is separate",
+  "source": {
+    "label": "Deja Vu Ambient Sunrise Mix",
+    "sha256": "76d90719a756c77d1008088c58ca6b28a74eb0ef01e5337906cfb68d3e2b13aa",
+    "bytes": 817058874,
+    "width": 3840,
+    "height": 2160,
+    "fps": 25,
+    "durationSeconds": 268.6,
+    "bitrateBps": 24335335,
+    "videoCodec": "h264",
+    "audioCodec": "aac",
+    "audioSampleRate": 48000
+  },
+  "permission": {
+    "title": "Deja Vu Ambient Sunrise Mix",
+    "permission": "owner-authorised-public-demo"
+  },
+  "fullRecording": {
+    "playlist": "https://v4v.com/forgesworn-media-demo/dejavu-4k-v1/index.m3u8",
+    "manifest": "https://v4v.com/forgesworn-media-demo/dejavu-4k-v1/manifest.json",
+    "packaging": {
+      "implementation": "FFmpeg static HLS packet copy",
+      "transcode": false,
+      "liveOrigin": false,
+      "videoTracks": 1,
+      "audioTracks": 1,
+      "targetSegmentSeconds": 2,
+      "playlist": "index.m3u8",
+      "validation": "Independent ffprobe parsed the HLS video/audio tracks, dimensions and duration; browser playback is qualified separately."
+    },
+    "mediaBytes": 817057825,
+    "uploadedMediaFilesVerified": 136,
+    "anonymousReadback": {
+      "schema": 1,
+      "checkedAt": "2026-10-24T01:20:25.201Z",
+      "sourceSha256": "76d90719a756c77d1008088c58ca6b28a74eb0ef01e5337906cfb68d3e2b13aa",
+      "mediaBytes": 817057825,
+      "files": [
+        {
+          "file": "index.m3u8",
+          "bytes": 4857,
+          "sha256": "d22ce2404aa40427aea82995a070d5f543c3607969d70fdc43d46513ecd972cd",
+          "status": 200,
+          "cors": true,
+          "timing": true,
+          "elapsedMs": 261.713042
+        },
+        {
+          "file": "init.mp4",
+          "bytes": 1374,
+          "sha256": "c074561d71e346f054efa492748cb137ef5d79e8f04317fa3a14eaa69fa7a915",
+          "status": 200,
+          "cors": true,
+          "timing": true,
+          "elapsedMs": 257.52887499999997
+        },
+        {
+          "file": "segment-0000.m4s",
+          "bytes": 6471966,
+          "sha256": "1fb7e0a52d16aa191380d65c5a898763b36d741abd2b1162f55c90a5bad55a45",
+          "status": 200,
+          "cors": true,
+          "timing": true,
+          "elapsedMs": 669.133875
+        },
+        {
+          "file": "segment-0067.m4s",
+          "bytes": 5839185,
+          "sha256": "80c823952d7ce37bb3ad9e4d062904e7938ecc908f8b5f4c8707ce6be7eeb2f8",
+          "status": 200,
+          "cors": true,
+          "timing": true,
+          "elapsedMs": 984.2562500000001
+        },
+        {
+          "file": "segment-0133.m4s",
+          "bytes": 5937604,
+          "sha256": "6aebffe1467130147960e28c778cbd7fa8f9f70f6ed01821201726e360c30820",
+          "status": 200,
+          "cors": true,
+          "timing": true,
+          "elapsedMs": 564.9575420000001
+        }
+      ],
+      "passed": true,
+      "range": {
+        "status": 206,
+        "bytes": 1024,
+        "contentRange": "bytes 0-1023/6471966"
+      },
+      "preflightStatus": 204,
+      "writeRejectedStatus": 405
+    }
+  },
+  "player": {
+    "url": "https://v4v.com/forgesworn-media-demo/player-v1/",
+    "publicOnly": true,
+    "sourceManifestSha256": "54deee25fed52ffaff8b0dee28edc66fb5606d8465e2f29201a13544aaf7f357",
+    "filesVerified": 55,
+    "totalBytes": 12752554,
+    "indexStatus": 200
+  },
+  "serviceScope": "Dedicated static files on an existing HTTPS host; no new native origin, TURN service or public execution API",
+  "browserEvidence": "media-lab-public-browser-2026-10-24.json",
+  "scopeBoundary": "Hosting and brief browser playback are verified; this receipt does not assert complete-file or stall-free browser playback or a native performance winner."
+}

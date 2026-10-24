@@ -168,11 +168,21 @@ is not proof that every frame of the recording was displayed.
 `ended` means the source or configured run window finished.  `stopped` means
 a manual Stop or a switch interrupted it.  `error` means a process or readiness
 check failed, the publisher exited before its intended media window, or the
-hard deadline expired before successful publisher completion.  FFmpeg's actual
-`out_time_us` progress must reach the intended media duration within a recorded
-250 ms tolerance, as well as exit successfully; wall time or exit code alone
-does not establish completion.  Stats expose `publisherMediaSeconds` and
-`publisherCompletedWindow` alongside the raw `publisherEnded` flag.
+hard deadline expired before successful publisher completion.  Successful exit
+and terminal `progress=end` are both required.  For a complete video from offset
+zero with an independently probed frame total, the copied video count must
+match exactly.  Its progress clock must also reach the mapped AAC endpoint,
+clipped only by the requested duration, within the recorded 250 ms tolerance.
+This handles FFmpeg progress ending at shorter audio while all video frames
+were copied.  Longer audio retains its longer endpoint; this is not a minimum
+of track durations.  Other windows retain the original requested-duration
+clock check.  Wall time or exit code alone does not establish completion.
+
+Stats retain `publisherVideoFrames`, `expectedVideoFrames`,
+`expectedProgressSeconds` and `expectedProgressBasis`, alongside the final
+reported `publisherMediaSeconds`, `publisherProgressEnded`,
+`publisherCompletedWindow` and raw `publisherEnded` flag.  Copied frames are
+FFmpeg output counts; they are separate from browser decoded-frame evidence.
 An unexpected SRT sender failure also invalidates the run during the tail
 drain, even when FFmpeg has already completed its intended media window.
 Final counters retain the matching run ID.  A browser must also

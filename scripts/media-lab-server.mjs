@@ -128,8 +128,13 @@ async function sourceInfo(input, ffprobe) {
   const duration = Number(probe.format?.duration ?? video?.duration);
   if (video?.codec_name !== 'h264' || audio?.codec_name !== 'aac' || !Number.isFinite(duration) || duration < 1 || duration > 86400) throw failure('h264_aac_source_required');
   const [n, d] = String(video.avg_frame_rate || '0/1').split('/').map(Number);
+  const formatStart = Number(probe.format?.start_time), videoStart = Number(video.start_time), audioStart = Number(audio.start_time);
+  const videoDuration = Number(video.duration), audioDuration = Number(audio.duration), frames = Number(video.nb_frames);
+  const endpoint = (start, length) => [formatStart, start, length].every(Number.isFinite) && length > 0 ? Math.max(0, start + length - formatStart) : null;
   return { label: 'Licensed local media', bytes: info.size, sha256: await sha256(input), durationSeconds: duration,
     width: Number(video.width) || 0, height: Number(video.height) || 0, fps: d > 0 ? n / d : 0,
+    videoFrames: Number.isSafeInteger(frames) && frames > 0 ? frames : null,
+    videoEndSeconds: endpoint(videoStart, videoDuration), audioEndSeconds: endpoint(audioStart, audioDuration),
     videoCodec: 'h264', audioCodec: 'aac', audioSampleRate: Number(audio.sample_rate) || 0, bitrateBps: Number(probe.format?.bit_rate) || 0 };
 }
 async function listen(server, port = 0) {
@@ -163,7 +168,9 @@ function spawnOwned(command, args, options, kind) {
     const lines = progressPending.split('\n'); progressPending = lines.pop();
     for (const line of lines) {
       const match = /^out_time_us=(\d+)\r?$/.exec(line);
-      if (match && Number.isSafeInteger(Number(match[1]))) record.mediaSeconds = Math.max(record.mediaSeconds || 0, Number(match[1]) / 1e6);
+      if (match && Number.isSafeInteger(Number(match[1]))) record.mediaSeconds = Number(match[1]) / 1e6;
+      const frames = /^frame=(\d+)\r?$/.exec(line);
+      if (frames && Number.isSafeInteger(Number(frames[1]))) record.videoFrames = Number(frames[1]);
       if (line.trim() === 'progress=end') record.progressEnded = true;
     }
   });
@@ -222,6 +229,8 @@ function runSnapshot(run, state) {
     playlistUrl: run.playlistUrl, offsetSeconds: run.offsetSeconds, durationSeconds: run.durationSeconds,
     uptimeSeconds: (now - run.created) / 1000, remainingSeconds: Math.max(0, (run.deadline - now) / 1000), publisherEnded: run.publisherEnded,
     publisherMediaSeconds: run.records.publisher?.mediaSeconds ?? null, publisherProgressEnded: run.records.publisher?.progressEnded ?? false, publisherCompletedWindow: run.publisherCompletedWindow,
+    publisherVideoFrames: run.records.publisher?.videoFrames ?? null, expectedVideoFrames: run.expectedVideoFrames,
+    expectedProgressSeconds: run.expectedProgressSeconds, expectedProgressBasis: run.expectedProgressBasis,
     readyAfterSeconds: run.readyAfterSeconds ?? null, endedReason: run.endedReason ?? null, hostLoadAtStart: run.hostLoadAtStart, profile: profileFor(run.engine) },
     processes: { origin: processSnapshot(run.records.origin), publisher: processSnapshot(run.records.publisher), srtSender: processSnapshot(run.records.srtSender), turn: processSnapshot(run.records.turn) },
     http: { requests: http.requests, originRequests: http.originRequests, redirectsFollowed: http.redirectsFollowed, completed: http.completed, errors: http.errors, cancelled: http.cancelled, active: http.active,
@@ -309,8 +318,15 @@ export async function startMediaLab({ input, sapflow, mediamtx, spry, coturn, po
     if (ticket !== generation || closing) throw failure('run_cancelled', 409);
     const id = randomBytes(12).toString('hex'), now = performance.now();
     const duration = Math.min(body.durationSeconds ?? source.durationSeconds - body.offsetSeconds, source.durationSeconds - body.offsetSeconds, maxRunSeconds);
+    const expectedVideoFrames = body.offsetSeconds === 0 && source.videoEndSeconds !== null && duration + 1e-6 >= source.videoEndSeconds ? source.videoFrames : null;
+    // A full copied video has an independent exact frame total. FFmpeg's mux
+    // progress can finish at the shorter AAC endpoint, rather than video PTS.
+    // Keep the audio endpoint (clipped only by -t), never the shorter of tracks.
+    const audioClock = expectedVideoFrames !== null && source.audioEndSeconds !== null && source.audioEndSeconds > 0;
     const run = { id, engine: body.engine, transport: body.transport, turnEngine: body.turnEngine, turnTransport: body.turnTransport,
       offsetSeconds: body.offsetSeconds, durationSeconds: duration, playlistUrl: `/media/lab/hls/${id}/index.m3u8`,
+      expectedVideoFrames, expectedProgressSeconds: audioClock ? Math.min(duration, source.audioEndSeconds) : duration,
+      expectedProgressBasis: audioClock ? 'mapped-aac-end-and-full-video-frame-count' : 'requested-media-window',
       redactions: [input, path.basename(input), ...Object.values(binaries), ...Object.values(tools)],
       created: now, hostLoadAtStart: hostLoad(), deadline: now + Math.min(maxRunSeconds, duration + 20) * 1000, publisherEnded: false, publisherCompletedWindow: false,
       records: {}, requests: new Set(), hashes: new Map(), abort: new AbortController(), http: freshHttp(), byteSample: { at: now, bytes: 0 },
@@ -362,7 +378,9 @@ export async function startMediaLab({ input, sapflow, mediamtx, spry, coturn, po
       run.records.publisher.completion.then(result => {
         if (run.abort.signal.aborted) return;
         run.publisherEnded = result.code === 0;
-        run.publisherCompletedWindow = run.publisherEnded && run.records.publisher.progressEnded === true && (run.records.publisher.mediaSeconds ?? -1) >= duration - PROFILE.publisherCompletionToleranceSeconds;
+        run.publisherCompletedWindow = run.publisherEnded && run.records.publisher.progressEnded === true
+          && (run.expectedVideoFrames === null || run.records.publisher.videoFrames === run.expectedVideoFrames)
+          && (run.records.publisher.mediaSeconds ?? -1) >= run.expectedProgressSeconds - PROFILE.publisherCompletionToleranceSeconds;
         if (result.code !== 0) { run.error = 'publisher_exited'; void stopRun(run, 'publisher_exited').catch(() => {}); }
         else if (!run.publisherCompletedWindow) { run.error = 'publisher_incomplete'; void stopRun(run, 'publisher_incomplete').catch(() => {}); }
         else run.endDrain = setTimeout(() => void stopRun(run, 'ended').catch(() => {}), Math.min(PROFILE.endDrainSeconds * 1000, Math.max(1, run.deadline - performance.now())));
