@@ -111,6 +111,9 @@ These values never affect verification, scheduling or local byte totals.
 ## What the picture shows
 
 The graph shows the media host, this browser and fresh room participants.
+Short node names keep the picture clear. Transfer rates, connection details,
+totals and the peer contribution meter sit below it. The layout gives larger
+rooms more vertical space instead of shrinking labels on a phone.
 Labels use the same sorted temporary room identities in every browser;
 internal native connection IDs retain their own traffic history. Hollow
 participants have no locally measured connection. Pending dials and losing
@@ -148,6 +151,34 @@ loaded video supplied by verified peers over a rolling ten-second window.
 With no recent accepted video it says it is waiting for traffic. It is a
 contribution measure, not a claim about Wi-Fi signal, spare capacity or the
 health of every connection in the room.
+
+### Following the music
+
+The broad rings around **Broadcast** follow bass attacks and energy in the
+licensed soundtrack, sampled against the video's actual playback position.
+They are decorative musical motion. The smaller points on connections still
+represent measured video contributions.
+
+The 16 KB rhythm file contains 40 ms energy samples and detected bass onsets
+from the original recording and the exact public preview. FFmpeg decodes the
+audio once during packaging. The browser reads this small score at up to
+30 visual updates per second while the graph is in view. The native media
+element continues to own sound, seeking and full screen. No microphone or
+audio context is needed.
+
+The pulse stops during pause, buffering or seeking, when the graph is off
+screen, when the page is hidden, and for reduced motion. It returns at the
+current media position after playback or visibility resumes. A missing score
+leaves the musical rings still and does not change playback or peer delivery.
+
+Regenerate the score with the licensed original and the committed preview:
+
+```sh
+node scripts/package-media-rhythm.mjs \
+  --input /path/to/licensed.mp4 \
+  --preview site/media/dejavu-preview/rtmp/index.m3u8 \
+  --out site/media/dejavu-rhythm.json
+```
 
 The counters distinguish:
 
