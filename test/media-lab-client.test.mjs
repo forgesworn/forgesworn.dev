@@ -1,6 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { approvedMediaUrl, publicSource, completedRecord, recordedRuns, reading, sourceRetiredError, confirmedPublisherEnd, videoDimensions, invitedPlaybackStart } from '../site/media-lab.mjs';
+import { approvedMediaUrl, publicSource, completedRecord, recordedRuns, reading, sourceRetiredError, confirmedPublisherEnd, videoDimensions, invitedPlaybackStart, sharedPositionDifference } from '../site/media-lab.mjs';
+
+test('shared playback compares the nearest position across recording loops', () => {
+  assert(Math.abs(sharedPositionDifference(268.5, 0.1, 268.6) - 0.2) < 1e-9);
+  assert(Math.abs(sharedPositionDifference(0.1, 268.5, 268.6) + 0.2) < 1e-9);
+  assert(Math.abs(sharedPositionDifference(100, 100.1, 268.6) - 0.1) < 1e-9);
+  assert.equal(sharedPositionDifference(8, 8, 30), 0);
+  assert.equal(sharedPositionDifference(NaN, 1, 30), null);
+  assert.equal(sharedPositionDifference(1, 1, 0), null);
+});
 
 test('a listening invitation advances only a matching, recent, bounded media position', () => {
   const now = 1_800_000_000_000;

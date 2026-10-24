@@ -1,0 +1,133 @@
+{
+  "schema": 1,
+  "at": "2026-10-24T12:58:41.142Z",
+  "scope": "Three independent browser contexts on one Mac; native WebRTC, real public preview media and a bounded local signed Nostr relay. This does not qualify physical speakers, device clock skew, public-NAT performance or authoritative global audience counts.",
+  "passed": true,
+  "quality": "preview",
+  "hiddenPlayers": 0,
+  "readOnlyObservers": {
+    "count": 3,
+    "publishedPresence": 0,
+    "startedMedia": false,
+    "createdPeers": false,
+    "confirmedRoomCount": 0
+  },
+  "playFanoutMs": [
+    {
+      "listeners": 1,
+      "afterPublisherReadyMs": 17
+    },
+    {
+      "listeners": 2,
+      "afterPublisherReadyMs": 29
+    },
+    {
+      "listeners": 3,
+      "afterPublisherReadyMs": 28
+    }
+  ],
+  "pauseFanoutMs": 100,
+  "clock": {
+    "maxSpreadSeconds": 0.20785200000000015,
+    "p95SpreadSeconds": 0.16109999999999997
+  },
+  "recordingBoundary": {
+    "listeners": 3,
+    "sharedEpochRetained": true,
+    "nativePeerConnectionsRetained": true
+  },
+  "topology": {
+    "remoteEdgesIndependentlyChecked": 3,
+    "rateMagnitudeComparisons": 22,
+    "originFeedsShown": true,
+    "localVsReportedSeparated": true,
+    "strength": "local verified media share over the last 10 seconds"
+  },
+  "publicRelays": {
+    "scope": "Isolated random room on the three actual public Nostr relays; protocol only, no media or browser",
+    "passed": true,
+    "observerReadyMs": 1750,
+    "connectedRelays": 2,
+    "joinCount": 1,
+    "pauseCount": 0
+  },
+  "focusedTests": {
+    "observerTelemetry": 27,
+    "playerCatalogueAccounting": 16,
+    "buildCommitmentAdapters": 27,
+    "sdkConnectionLifecycle": 5,
+    "graphTopologyAndTraffic": 12
+  },
+  "sdk": {
+    "sourceCommit": "9c16743974ccbffe95818938d3794e54be00b74a",
+    "pr": "https://github.com/forgesworn/relayswarm/pull/25",
+    "bundleBytes": 198471,
+    "wasmBytes": 411298,
+    "rustBuild": false
+  },
+  "candidateSources": [
+    {
+      "path": "index.html",
+      "sha256": "4f5408b04d76c93bc3d147ca2af66eeaf2c71d98d162330f4b829588b817fd7d"
+    },
+    {
+      "path": "media-lab.mjs",
+      "sha256": "2836850a5825fdb0e9512715f6704863141fadd387536ea74c602a1bb2123841"
+    },
+    {
+      "path": "media-public-swarm.mjs",
+      "sha256": "699fffe58af13e8aa06f9b37e5b8f3cb5ede7eb8eb764e57e561db7c6ff160ec"
+    },
+    {
+      "path": "media-listener-session.mjs",
+      "sha256": "1c0307a66f1e85c3bddccbdd489a69f75db175ee65ce003db5bc3b54dc882f2f"
+    },
+    {
+      "path": "media-swarm-visual.mjs",
+      "sha256": "5836220812f26303b83d7e298502245e981f7af33b5ea6b79bb20250785c098d"
+    },
+    {
+      "path": "vendor/media-peer-demo.js",
+      "sha256": "bd22e8b7c4a8151f1b9f6872a4dcbb08b7dc55c4de40086afb4f5eb27c1e52b1"
+    }
+  ],
+  "finalSourceHashes": [
+    {
+      "path": "site/media-lab.mjs",
+      "sha256": "2836850a5825fdb0e9512715f6704863141fadd387536ea74c602a1bb2123841"
+    },
+    {
+      "path": "site/media-listener-session.mjs",
+      "sha256": "1c0307a66f1e85c3bddccbdd489a69f75db175ee65ce003db5bc3b54dc882f2f"
+    },
+    {
+      "path": "site/media-public-swarm.mjs",
+      "sha256": "699fffe58af13e8aa06f9b37e5b8f3cb5ede7eb8eb764e57e561db7c6ff160ec"
+    },
+    {
+      "path": "site/media-swarm-visual.mjs",
+      "sha256": "d54369e119c21b7fa1979c2e780d08fcf9d6607033a2dd7b7081be31c75f49fe"
+    },
+    {
+      "path": "site/vendor/media-peer-demo.js",
+      "sha256": "bd22e8b7c4a8151f1b9f6872a4dcbb08b7dc55c4de40086afb4f5eb27c1e52b1"
+    }
+  ],
+  "changesAfterMediaCandidate": [
+    "The graph invitation also applies to a known empty room when its local player is paused. A separate DOM rendering check covers this final presentation change.",
+    "A quiet font style was added for the secondary local connection count."
+  ],
+  "cleanup": {
+    "browserClosed": true,
+    "openContexts": 0,
+    "relayClients": 0
+  },
+  "pageErrors": 0,
+  "rejectedRelayEvents": 0,
+  "graphDomPassed": true,
+  "pulsePostAnalysis": {
+    "scope": "All saved real-browser samples; no new media run",
+    "simultaneousUnequalBatches": 263,
+    "orderingViolations": 0
+  }
+}
