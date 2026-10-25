@@ -43,21 +43,30 @@ const fixtures = {
       fixture.trace.push({kind:'prepareMetadata'});
       const recording=await real.prepareRecordedSource(options);fixture.prepared.push(recording);return recording;
     }
-    export function createRecordedLive(options){const view=real.createRecordedLive(options);if(view)fixture.views.push(view);return view;}
+    export function createRecordedLive(options){const view=real.createRecordedLive(options);if(view){
+      fixture.trace.push({kind:'recordedView',priorPlaylist:typeof fixture.players.at(-1)?.config.pLoader==='function'});
+      fixture.views.push(view);
+    }return view;}
     export function createPublicSwarm(options){
       if(options.recordedLive){
         // Validate the real adapter's private prepared-recording brand and
         // epoch/context contract; stop before enabling any network identity.
         const checked=real.createPublicSwarm(options);checked.stop();fixture.brandedAdapters++;
       }
-      const peer={options,enabled:false,stopped:false,setEnabled:async value=>{peer.enabled=value},metrics:()=>null,
+      const peer={options,enabled:false,stopped:false,request:0,setEnabled:async value=>{
+        const request=++peer.request;
+        if(value&&fixture.holdPeerEnable)await new Promise(resolve=>fixture.peerWaiters.push(resolve));
+        if(peer.stopped||request!==peer.request)return;
+        if(value&&fixture.rejectPeerEnable)throw new Error('Fixture peer preparation failed');
+        peer.enabled=value;if(value)fixture.trace.push({kind:'peerReady',peer:fixture.peers.indexOf(peer)});
+      },metrics:()=>null,
         stop(){peer.stopped=true;peer.enabled=false}};fixture.peers.push(peer);return peer;}`,
 };
 const types = { '.html':'text/html','.mjs':'text/javascript','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml' };
 let browser;
 const checks=[];
 async function open({held=false,heldVisual=false,heldRoomCode=false,heldMetadata=false,engine='mse',reject=false,
-  recorded=false,quality='full'}={}) {
+  recorded=false,quality='full',holdPeerEnable=false}={}) {
   const context=await browser.newContext(),page=await context.newPage(),errors=[],mediaRequests=[];
   page.setDefaultTimeout(8000);
   let release;const gate=new Promise(resolve=>{release=resolve});if(!held)release();
@@ -77,14 +86,15 @@ async function open({held=false,heldVisual=false,heldRoomCode=false,heldMetadata
     try{return await route.fulfill({contentType:types[extname(path)]??'application/octet-stream',body:await readFile(path)})}
     catch{return route.fulfill({status:404,body:''})}
   });
-  await page.addInitScript(({engine,reject,recorded,quality})=>{
+  await page.addInitScript(({engine,reject,recorded,quality,holdPeerEnable})=>{
     const state=window.fixture={engine,reject,players:[],peers:[],trace:[],readyState:1,currentTime:0,ranges:[],paused:true,seeking:false,source:'',
       recorded,views:[],prepared:[],brandedAdapters:0,nativeCapable:false,epochId:'1'.repeat(64),startedAt:Date.now()-50_000,
       sourceDuration:quality==='preview'?29.96:267.32,duration:quality==='preview'?29.96:267.32,wallOffset:0,
-      holdJoin:true,joinWaiters:[],playWaiters:[],inTap:false,trusted:false};
+      holdJoin:true,joinWaiters:[],playWaiters:[],inTap:false,trusted:false,holdPeerEnable,peerWaiters:[],metadataHandlers:[]};
     const wallNow=Date.now;Date.now=()=>wallNow()+state.wallOffset;
     const add = EventTarget.prototype.addEventListener;
     EventTarget.prototype.addEventListener = function (type, callback, options) {
+      if(type==='loadedmetadata'&&this.id==='lab-video')state.metadataHandlers.push(callback);
       if (type !== 'click' || this.id !== 'public-play') return add.call(this, type, callback, options);
       return add.call(this, type, function (event) {
         state.inTap = true; state.trusted = event.isTrusted;
@@ -93,13 +103,14 @@ async function open({held=false,heldVisual=false,heldRoomCode=false,heldMetadata
       }, options);
     };
     state.releaseRoom=()=>{state.holdJoin=false;for(const resolve of state.joinWaiters.splice(0))resolve()};
+    state.releasePeer=()=>{state.holdPeerEnable=false;for(const resolve of state.peerWaiters.splice(0))resolve()};
     state.finishPlay=()=>{state.readyState=4;state.ranges=[[0,100]];for(const {resolve}of state.playWaiters.splice(0))resolve();document.getElementById('lab-video').dispatchEvent(new Event('playing'))};
     state.presentFrame=()=>{state.frameCallback?.(performance.now(),{width:3840,height:2160})};
     HTMLVideoElement.prototype.requestVideoFrameCallback=function(callback){state.frameCallback=callback;return 1};
     HTMLVideoElement.prototype.cancelVideoFrameCallback=function(){state.frameCallback=null};
     Object.defineProperties(HTMLMediaElement.prototype,{
       readyState:{get:()=>state.readyState},duration:{get:()=>state.duration},paused:{get:()=>state.paused},seeking:{get:()=>state.seeking},
-      currentTime:{get:()=>state.currentTime,set:value=>{state.currentTime=value}},
+      currentTime:{get:()=>state.currentTime,set:value=>{state.currentTime=value;state.trace.push({kind:'seek',position:value})}},
       src:{get:()=>state.source,set(value){state.source=value;if(!value.startsWith('blob:'))state.duration=state.sourceDuration;state.trace.push({kind:'src',value,crossOrigin:this.crossOrigin})}},
       buffered:{get:()=>({length:state.ranges.length,start:i=>state.ranges[i][0],end:i=>state.ranges[i][1]})},
     });
@@ -110,7 +121,7 @@ async function open({held=false,heldVisual=false,heldRoomCode=false,heldMetadata
       state.paused=false;this.dispatchEvent(new Event('play'));return new Promise((resolve,reject)=>state.playWaiters.push({resolve,reject}));};
     HTMLMediaElement.prototype.pause=function(){state.paused=true;this.dispatchEvent(new Event('pause'));for(const {reject}of state.playWaiters.splice(0))reject(new DOMException('Paused','AbortError'))};
     HTMLMediaElement.prototype.load=function(){state.trace.push({kind:'load'})};
-  },{engine,reject,recorded,quality});
+  },{engine,reject,recorded,quality,holdPeerEnable});
   await page.goto(origin+'/?q='+quality,{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>fixture.requested);
   if(!held)await page.waitForFunction(()=>!document.getElementById('public-play').disabled);
   return {page,context,errors,mediaRequests,release,releaseVisual,releaseRoomCode,releaseMetadata};
@@ -134,6 +145,204 @@ async function gestureOrder(page,native=false){
 }
 try {
   browser=await chromium.launch({headless:true});
+  const installing=await open({holdPeerEnable:true});
+  await installing.page.locator('#public-play').click();await gestureOrder(installing.page);
+  await installing.page.evaluate(()=>fixture.releaseRoom());
+  await installing.page.waitForFunction(()=>fixture.peerWaiters.length>0);
+  assert.equal(await installing.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='source').length),0,
+    'full 4K cannot begin its first fragment before the peer loader is installed');
+  assert.equal(await installing.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='play').length),1);
+  await installing.page.evaluate(()=>fixture.releasePeer());
+  await installing.page.waitForFunction(()=>fixture.trace.some(x=>x.kind==='source'));
+  const installTrace=await installing.page.evaluate(()=>fixture.trace);
+  assert(installTrace.findIndex(x=>x.kind==='peerReady')<installTrace.findIndex(x=>x.kind==='source'));
+  assert.equal(installTrace.filter(x=>x.kind==='play').length,1,'loader readiness never repeats the trusted playback request');
+  await close(installing);checks.push('first full 4K fragment waits for loader installation after same-gesture play');
+
+  const freshMetadata=await open({recorded:true});
+  await freshMetadata.page.locator('#public-play').click();await freshMetadata.page.evaluate(()=>fixture.releaseRoom());
+  await freshMetadata.page.waitForFunction(()=>fixture.trace.some(x=>x.kind==='startLoad'));
+  const initialMetadata=await freshMetadata.page.evaluate(()=>{
+    const initial=fixture.currentTime;
+    // The manifest chose a valid position, then the first fragment took 2.2s.
+    // Metadata is available before any presented frame, just as in the real
+    // trace where the next warm fragment was already cached or in flight.
+    fixture.wallOffset+=2200;fixture.readyState=1;fixture.ranges=[[0,2]];
+    const target=fixture.views[0].mediaTimeAt(Date.now());
+    document.getElementById('lab-video').dispatchEvent(new Event('loadedmetadata'));
+    return {initial,target,current:fixture.currentTime,plays:fixture.trace.filter(x=>x.kind==='play').length,
+      sources:fixture.trace.filter(x=>x.kind==='source').length,attaches:fixture.trace.filter(x=>x.kind==='attach').length,
+      players:fixture.players.length,peers:fixture.peers.length,seeks:fixture.trace.filter(x=>x.kind==='seek').length,
+      rate:document.getElementById('lab-video').playbackRate};
+  });
+  assert(initialMetadata.target-initialMetadata.initial>=2.15);
+  assert(Math.abs(initialMetadata.current-initialMetadata.target)<0.01,
+    'initial full recorded HLS metadata aligns to the fresh room time before the first frame');
+  assert.deepEqual([initialMetadata.plays,initialMetadata.sources,initialMetadata.attaches,initialMetadata.players,initialMetadata.peers],
+    [1,1,1,1,1],'fresh metadata alignment preserves the original pending play, source, player and peer');
+  assert.equal(initialMetadata.rate,1);assert.equal(initialMetadata.seeks,1);
+  await freshMetadata.page.evaluate(()=>{fixture.wallOffset+=2000;document.getElementById('lab-video').dispatchEvent(new Event('loadedmetadata'))});
+  assert.equal(await freshMetadata.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='seek').length),1,
+    'duplicate metadata never chases the moving room clock');
+  await close(freshMetadata);checks.push('initial full recorded metadata refreshes the pre-download position once without another play, source or attachment');
+
+  const seekingMetadata=await open({recorded:true});
+  await seekingMetadata.page.locator('#public-play').click();await seekingMetadata.page.evaluate(()=>fixture.releaseRoom());
+  await seekingMetadata.page.waitForFunction(()=>fixture.trace.some(x=>x.kind==='startLoad'));
+  await seekingMetadata.page.evaluate(()=>{
+    fixture.wallOffset+=2200;fixture.readyState=1;fixture.ranges=[[0,4]];fixture.seeking=true;
+    const video=document.getElementById('lab-video');video.dispatchEvent(new Event('seeking'));
+    video.dispatchEvent(new Event('loadedmetadata'));
+  });
+  assert.equal(await seekingMetadata.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='seek').length),0,
+    'an existing HLS seek owns the element until it settles');
+  await seekingMetadata.page.evaluate(()=>{
+    fixture.seeking=false;fixture.readyState=4;document.getElementById('lab-video').dispatchEvent(new Event('seeked'));
+  });
+  await seekingMetadata.page.waitForFunction(()=>fixture.trace.filter(x=>x.kind==='seek').length===1);
+  const coalescedMetadata=await seekingMetadata.page.evaluate(()=>({current:fixture.currentTime,
+    target:fixture.views[0].mediaTimeAt(Date.now()),plays:fixture.trace.filter(x=>x.kind==='play').length}));
+  assert(Math.abs(coalescedMetadata.current-coalescedMetadata.target)<0.5);
+  assert.equal(coalescedMetadata.plays,1);await close(seekingMetadata);
+  checks.push('initial metadata coalesces with an existing HLS seek and then uses the fresh clock once');
+
+  const presentedMetadata=await open({recorded:true});
+  await presentedMetadata.page.locator('#public-play').click();await presentedMetadata.page.evaluate(()=>fixture.releaseRoom());
+  await presentedMetadata.page.waitForFunction(()=>fixture.trace.some(x=>x.kind==='startLoad'));
+  await presentedMetadata.page.evaluate(()=>{
+    fixture.wallOffset+=2200;fixture.readyState=1;fixture.ranges=[[0,4]];fixture.seeking=true;
+    const video=document.getElementById('lab-video');video.dispatchEvent(new Event('seeking'));
+    video.dispatchEvent(new Event('loadedmetadata'));
+    fixture.finishPlay();fixture.seeking=false;fixture.presentFrame();
+    video.dispatchEvent(new Event('seeked'));
+    delete document.getElementById('main').dataset.sharedDrift;
+  });
+  // Wait for the real controller's observation tick. An immediate assertion
+  // would miss a forced correction leaked into its ordinary sync checks.
+  await presentedMetadata.page.waitForFunction(()=>document.getElementById('main').dataset.sharedDrift!==undefined);
+  assert.equal(await presentedMetadata.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='seek').length),0,
+    'first presentation cancels deferred initial alignment before any later ordinary follow tick');
+  assert.equal(await presentedMetadata.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='play').length),1);
+  await close(presentedMetadata);checks.push('a frame arriving before deferred seek completion prevents an audible queued initial correction');
+
+  for(const guard of ['paused','pagehide','first-frame','changed-epoch']) {
+    const run=await open({recorded:true});
+    await run.page.locator('#public-play').click();await run.page.evaluate(()=>fixture.releaseRoom());
+    await run.page.waitForFunction(()=>fixture.trace.some(x=>x.kind==='startLoad'));
+    const guarded=await run.page.evaluate(guard=>{
+      const video=document.getElementById('lab-video');
+      if(guard==='paused')video.pause();
+      else if(guard==='pagehide')window.dispatchEvent(new PageTransitionEvent('pagehide'));
+      else if(guard==='first-frame'){fixture.finishPlay();fixture.presentFrame()}
+      else fixture.epochId='2'.repeat(64);
+      const before=fixture.trace.filter(x=>x.kind==='seek').length;
+      fixture.wallOffset+=2200;fixture.readyState=1;fixture.ranges=[[0,2]];
+      video.dispatchEvent(new Event('loadedmetadata'));
+      return {before,after:fixture.trace.filter(x=>x.kind==='seek').length};
+    },guard);
+    assert.equal(guarded.after,guarded.before,`${guard} fences a late initial metadata seek`);
+    await close(run);
+  }
+  checks.push('paused, departed, already-presented and changed-epoch sessions reject late initial metadata alignment');
+
+  const replacedMetadata=await open({recorded:true});
+  await replacedMetadata.page.locator('#public-play').click();await replacedMetadata.page.evaluate(()=>fixture.releaseRoom());
+  await replacedMetadata.page.waitForFunction(()=>fixture.metadataHandlers.length===1);
+  await replacedMetadata.page.evaluate(()=>fixture.replaceEpoch());
+  await replacedMetadata.page.waitForFunction(()=>fixture.players.length===2&&fixture.metadataHandlers.length===2);
+  const staleMetadata=await replacedMetadata.page.evaluate(()=>{
+    fixture.wallOffset+=2200;fixture.readyState=1;fixture.ranges=[[0,2]];
+    const video=document.getElementById('lab-video'),before=fixture.trace.filter(x=>x.kind==='seek').length;
+    // The old callback is still a listener on the same visible element until
+    // metadata arrives. It must not reinterpret the replacement's timeline.
+    fixture.metadataHandlers[0].call(video,new Event('loadedmetadata'));
+    const old=fixture.trace.filter(x=>x.kind==='seek').length;
+    video.dispatchEvent(new Event('loadedmetadata'));
+    return {before,old,after:fixture.trace.filter(x=>x.kind==='seek').length,current:fixture.currentTime,
+      target:fixture.views[1].mediaTimeAt(Date.now()),players:fixture.players.length};
+  });
+  assert.equal(staleMetadata.old,staleMetadata.before,'the replaced player cannot seek the current visible element');
+  assert.equal(staleMetadata.after,staleMetadata.before,'pipeline replacement keeps its existing owned-transition alignment contract');
+  assert.equal(staleMetadata.players,2);
+  await close(replacedMetadata);checks.push('old-player metadata is inert after an acknowledged epoch replacement');
+
+  const previewMetadata=await open({recorded:true,quality:'preview'});
+  await previewMetadata.page.locator('#public-play').click();await previewMetadata.page.evaluate(()=>fixture.releaseRoom());
+  await previewMetadata.page.waitForFunction(()=>fixture.trace.some(x=>x.kind==='startLoad'));
+  assert.equal(await previewMetadata.page.evaluate(()=>fixture.metadataHandlers.length),0,
+    'preview does not install the full 4K metadata alignment listener');
+  await close(previewMetadata);checks.push('preview retains its existing initial metadata behaviour');
+
+  const pausedInstall=await open({recorded:true,holdPeerEnable:true});
+  await pausedInstall.page.locator('#public-play').click();await pausedInstall.page.evaluate(()=>fixture.releaseRoom());
+  await pausedInstall.page.waitForFunction(()=>fixture.peerWaiters.length===1&&fixture.views.length===1);
+  await pausedInstall.page.evaluate(()=>document.getElementById('lab-video').pause());
+  assert.equal(await pausedInstall.page.evaluate(()=>fixture.peers[0].enabled),false);
+  assert.equal(await pausedInstall.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='source').length),0);
+  await pausedInstall.page.evaluate(()=>{fixture.paused=false;document.getElementById('lab-video').dispatchEvent(new Event('play'))});
+  await pausedInstall.page.waitForFunction(()=>fixture.peers[0].stopped);
+  assert.equal(await pausedInstall.page.evaluate(()=>fixture.players.length),1,'resume preserves the source-less HLS instance');
+  assert.equal(await pausedInstall.page.evaluate(()=>fixture.players[0].destroyed===true),false);
+  assert.equal(await pausedInstall.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='attach').length),1);
+  assert.equal(await pausedInstall.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='source').length),0);
+  await pausedInstall.page.evaluate(()=>fixture.releasePeer());
+  await pausedInstall.page.waitForFunction(()=>fixture.trace.filter(x=>x.kind==='source').length===1);
+  const pausedSetup=await pausedInstall.page.evaluate(()=>({players:fixture.players.length,views:fixture.views.length,
+    peers:fixture.peers.length,ready:fixture.trace.filter(x=>x.kind==='peerReady').map(x=>x.peer),
+    priorPlaylists:fixture.trace.filter(x=>x.kind==='recordedView').map(x=>x.priorPlaylist),
+    plays:fixture.trace.filter(x=>x.kind==='play').length,attaches:fixture.trace.filter(x=>x.kind==='attach').length,
+    oldViewStopped:(()=>{try{fixture.views[0].windowAt(Date.now());return false}catch{return true}})()}));
+  assert.deepEqual(pausedSetup,{players:1,views:2,peers:2,ready:[1],priorPlaylists:[false,false],plays:1,attaches:1,oldViewStopped:true});
+  await close(pausedInstall);checks.push('pause and native resume during peer enable retire old setup without replacing empty MSE or repeating script play');
+
+  const departedInstall=await open({recorded:true,holdPeerEnable:true});
+  await departedInstall.page.locator('#public-play').click();await departedInstall.page.evaluate(()=>fixture.releaseRoom());
+  await departedInstall.page.waitForFunction(()=>fixture.peerWaiters.length===1);
+  await departedInstall.page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pagehide')));
+  await departedInstall.page.evaluate(()=>fixture.releasePeer());await departedInstall.page.waitForTimeout(100);
+  assert.equal(await departedInstall.page.evaluate(()=>fixture.players[0].destroyed&&fixture.peers[0].stopped),true);
+  assert.equal(await departedInstall.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='source').length),0);
+  assert.equal(await departedInstall.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='peerReady').length),0,'late enable cannot create a departed peer identity');
+  assert.equal(await departedInstall.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='play').length),1);
+  await close(departedInstall);checks.push('pagehide before peer enable completion leaves no late source or peer readiness');
+
+  const changedInstall=await open({recorded:true,holdPeerEnable:true});
+  await changedInstall.page.locator('#public-play').click();await changedInstall.page.evaluate(()=>fixture.releaseRoom());
+  await changedInstall.page.waitForFunction(()=>fixture.peerWaiters.length===1&&fixture.views.length===1);
+  await changedInstall.page.evaluate(()=>fixture.replaceEpoch());
+  await changedInstall.page.waitForFunction(()=>fixture.peers[0].stopped);
+  assert.equal(await changedInstall.page.evaluate(()=>fixture.players.length),1);
+  assert.equal(await changedInstall.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='source').length),0);
+  await changedInstall.page.evaluate(()=>fixture.releasePeer());
+  await changedInstall.page.waitForFunction(()=>fixture.peers.length===2&&fixture.trace.filter(x=>x.kind==='source').length===1);
+  const changedSetup=await changedInstall.page.evaluate(()=>({players:fixture.players.length,plays:fixture.trace.filter(x=>x.kind==='play').length,
+    attaches:fixture.trace.filter(x=>x.kind==='attach').length,originalAlive:!fixture.players[0].destroyed,
+    oldStopped:fixture.peers[0].stopped,ready:fixture.trace.filter(x=>x.kind==='peerReady').map(x=>x.peer),
+    epoch:fixture.peers[1].options.recordedLive.epochId,
+    priorPlaylists:fixture.trace.filter(x=>x.kind==='recordedView').map(x=>x.priorPlaylist),
+    oldViewStopped:(()=>{try{fixture.views[0].windowAt(Date.now());return false}catch{return true}})()}));
+  assert.deepEqual(changedSetup,{players:1,plays:1,attaches:1,originalAlive:true,oldStopped:true,ready:[1],epoch:'2'.repeat(64),priorPlaylists:[false,false],oldViewStopped:true});
+  await changedInstall.page.evaluate(()=>fixture.peers[0].options.onStats({peerBytes:999999}));
+  assert.equal(await changedInstall.page.locator('#main').getAttribute('data-playback-mode'),'recorded-live');
+  await close(changedInstall);checks.push('epoch change before first source replaces only view and cohort, restores pLoader and retains the trusted pending play');
+
+  const previewInstall=await open({quality:'preview',holdPeerEnable:true});
+  await previewInstall.page.locator('#public-play').click();await previewInstall.page.evaluate(()=>fixture.releaseRoom());
+  await previewInstall.page.waitForFunction(()=>fixture.peerWaiters.length===1&&fixture.trace.some(x=>x.kind==='source'));
+  assert.equal(await previewInstall.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='peerReady').length),0,'preview keeps its existing non-blocking peer setup');
+  await close(previewInstall);checks.push('preview source keeps its existing asynchronous peer preparation');
+
+  const failedInstall=await open({holdPeerEnable:true});
+  await failedInstall.page.evaluate(()=>{fixture.rejectPeerEnable=true});
+  await failedInstall.page.locator('#public-play').click();await failedInstall.page.evaluate(()=>fixture.releaseRoom());
+  await failedInstall.page.waitForFunction(()=>fixture.peerWaiters.length===1);
+  await failedInstall.page.evaluate(()=>fixture.releasePeer());
+  await failedInstall.page.waitForFunction(()=>fixture.trace.some(x=>x.kind==='source'));
+  assert.equal(await failedInstall.page.evaluate(()=>fixture.players.length),1);
+  assert.equal(await failedInstall.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='play').length),1);
+  assert.equal(await failedInstall.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='peerReady').length),0);
+  await close(failedInstall);checks.push('failed full peer preparation preserves HTTP fallback on the same authorised player');
+
   const first=await open({held:true});
   assert.equal(await first.page.locator('#public-play').isDisabled(),true);
   assert.equal(await first.page.locator('#public-play').innerText(),'Preparing player…');

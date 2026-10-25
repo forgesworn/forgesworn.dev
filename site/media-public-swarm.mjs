@@ -3,10 +3,10 @@
 // A receiver's ephemeral key wraps that digest for the existing live-commitment
 // verifier; this is local attestation, not a live broadcaster signing service.
 import { createHlsSwarm, commitmentContent, commitmentPieceSize, segmentMediaContext, KIND_SEGMENT_COMMITMENT, finalizeEvent,
-  generateSecretKey, relayswarmBuild } from './vendor/media-peer-demo.js?v=20261025-native-cors';
-import { observeOriginLoader } from './media-transfer-stats.mjs?v=20261025-native-cors';
-import { createPublicTurnCredentials } from './media-turn-credentials.mjs?v=20261025-native-cors';
-import { parseRecordedManifest, createRecordedLive } from './media-recorded-live.mjs?v=20261025-native-cors';
+  generateSecretKey, relayswarmBuild } from './vendor/media-peer-demo.js?v=20261025-warm-ahead';
+import { observeOriginLoader } from './media-transfer-stats.mjs?v=20261025-warm-ahead';
+import { createPublicTurnCredentials } from './media-turn-credentials.mjs?v=20261025-warm-ahead';
+import { parseRecordedManifest, createRecordedLive } from './media-recorded-live.mjs?v=20261025-warm-ahead';
 export { createRecordedLive };
 
 export const PUBLIC_SWARM_LIMITS = Object.freeze({
@@ -244,6 +244,7 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
       peerShare: loadedMediaBytes > 0 ? Math.min(1, peerBytes / loadedMediaBytes) : 0,
       core: live?.core ? { state: live.core.state, decided: live.core.decided, multiHolder: live.core.multiHolder,
         transferWorker: live.core.transferWorker } : null,
+      warmAhead: live?.warmAhead ?? null,
       resources: { activePeerConnections: [...connections].filter(connection => connection.connectionState !== 'closed').length,
         signallingConnections: [...sockets].filter(socket => socket.readyState < 2).length,
         heldBytes: n(live?.bytes.held), heldHighWaterBytes: highWaterBytes },
@@ -460,9 +461,10 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
         }
         swarm = createSwarm({ mode: 'peer-first', swarmId: plan.swarmId, relays: [...PUBLIC_SWARM_RELAYS],
           streamEvent, getCommitment, serve: true, serveOnCellular: false,
-          coreWasm: new URL('./vendor/relayswarm-core.wasm?v=20261025-native-cors', import.meta.url), multiHolder: true,
-          transferWorkerUrl: new URL('./vendor/relayswarm-transfer-worker.js?v=20261025-native-cors', import.meta.url),
+          coreWasm: new URL('./vendor/relayswarm-core.wasm?v=20261025-warm-ahead', import.meta.url), multiHolder: true,
+          transferWorkerUrl: new URL('./vendor/relayswarm-transfer-worker.js?v=20261025-warm-ahead', import.meta.url),
           zeroBudgetPeerRace: true, lateHaveRace: true, sustainablePeerWait: true,
+          warmAhead: quality === 'full',
           maxHoldersPerObject: PUBLIC_SWARM_LIMITS.maxPeers,
           iceServers: PUBLIC_SWARM_ICE.map(entry => ({ ...entry })), iceTransportPolicy: 'all',
           WebSocketImpl: ObservedSocket, RTCPeerConnectionImpl: ObservedConnection,

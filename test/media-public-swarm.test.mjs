@@ -411,6 +411,7 @@ test('recorded mode signs actual global sequence and discontinuity against the u
     f.useRecorded({ recording, epochId: 'a'.repeat(64) }, quality);
     await f.adapter.setEnabled(true);
     const options = f.cycles[0].options;
+    assert.equal(options.warmAhead, quality === 'full', 'bounded loading ahead is enabled for full 4K only');
     assert.match(options.swarmId, /^forgesworn-recorded-live-v2-[a-f0-9]{64}$/);
     assert(options.swarmId.length <= 128);
     assert.equal(f.fetches.length, 2, 'enabling reuses prepared metadata instead of fetching media');

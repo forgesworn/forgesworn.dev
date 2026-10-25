@@ -1,8 +1,8 @@
 import { readInitialLiveStart } from './media-live-start.mjs';
-import { createSourceResponseStats, publicSourceResource, transferBytes } from './media-transfer-stats.mjs?v=20261025-native-cors';
-import { createNativePlaybackFallback } from './media-playback-fallback.mjs?v=20261025-native-cors';
-import { createPlaybackPrime } from './media-playback-prime.mjs?v=20261025-native-cors';
-import { createPlaybackReport } from './media-playback-report.mjs?v=20261025-native-cors';
+import { createSourceResponseStats, publicSourceResource, transferBytes } from './media-transfer-stats.mjs?v=20261025-warm-ahead';
+import { createNativePlaybackFallback } from './media-playback-fallback.mjs?v=20261025-warm-ahead';
+import { createPlaybackPrime } from './media-playback-prime.mjs?v=20261025-warm-ahead';
+import { createPlaybackReport } from './media-playback-report.mjs?v=20261025-warm-ahead';
 
 const DASH = '—';
 export const observed = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
@@ -421,7 +421,7 @@ async function initialise() {
     publicRoom?.stop(); publicRoom = null;
     const pending = (async () => {
       const [{ createListenerSession }, { PUBLIC_SWARM_SOURCE_SHA256, PUBLIC_SWARM_RELAYS }] = await Promise.all([
-        import('./media-listener-session.mjs?v=20261025-native-cors'), import('./media-public-swarm.mjs?v=20261025-native-cors'),
+        import('./media-listener-session.mjs?v=20261025-warm-ahead'), import('./media-public-swarm.mjs?v=20261025-warm-ahead'),
       ]);
       if (request !== publicRoomRequest || pageAbort.signal.aborted) return null;
       const clock = createListenerSession({ room: `forgesworn-dejavu-listening-v${quality === 'full' ? 2 : 1}-${quality}`, source: PUBLIC_SWARM_SOURCE_SHA256,
@@ -1240,6 +1240,7 @@ async function initialise() {
       maxBufferLength: local ? 4 : 20, maxMaxBufferLength: local ? 6 : 24,
       maxBufferSize: (local ? 8 : 64) * 1024 * 1024, backBufferLength: local ? 0 : 4,
       enableWorker: true, startPosition });
+    let initialMetadataArmed = false;
     s.playbackEngine = 'hls.js';
     player.on(Hls.Events.MEDIA_ATTACHED, (_, { mediaSource }) => {
       if (session !== s || s.hls !== player) return;
@@ -1276,6 +1277,32 @@ async function initialise() {
       const room = s.listener?.snapshot();
       const position = room?.ready ? roomMediaTime(s) ?? -1 : s.invitedStart || -1;
       if (room?.ready && position >= 0) s.listenerAlignedEpoch = room.epochId;
+      if (!initialMetadataArmed && s.quality === 'full' && s.recordedView && !s.browser.seenFrame &&
+          room?.ready && room.epochId === s.recordedEpochId) {
+        initialMetadataArmed = true;
+        const epoch = room.epochId, version = s.playbackVersion ?? 0;
+        // The first fragment can take seconds after manifest parsing. Refresh
+        // that one initial position before a frame is shown, on the original
+        // pending play and pipeline, instead of paying a later clock catch-up.
+        const ownsInitialAlignment = () => {
+          const currentRoom = s.listener?.snapshot();
+          return session === s && s.hls === player && !s.finishing && !s.playbackFailed && !s.abort.signal.aborted &&
+            !s.switchingPlayback && version === (s.playbackVersion ?? 0) && s.playbackWanted !== false && !video.paused &&
+            !s.browser.seenFrame && s.recordedView && s.recordedEpochId === epoch && currentRoom?.ready && currentRoom.epochId === epoch;
+        };
+        const alignInitialMetadata = () => {
+          if (!ownsInitialAlignment() || video.seeking) return;
+          s.listenerAlignedEpoch = epoch;
+          followListener(s, true);
+        };
+        video.addEventListener('loadedmetadata', () => {
+          if (!ownsInitialAlignment()) return;
+          // Do not put this pre-frame request into sync's persistent force
+          // queue: a frame could appear before its next observation tick.
+          if (video.seeking) video.addEventListener('seeked', alignInitialMetadata, { once: true, signal: s.abort.signal });
+          else alignInitialMetadata();
+        }, { once: true, signal: s.abort.signal });
+      }
       s.roomSeekAt = performance.now();
       player.startLoad(position);
       controls();
@@ -1285,8 +1312,20 @@ async function initialise() {
 
   function stopRecordedView(s) {
     const view = s.recordedView;
+    const playlist = s.recordedPlaylist;
+    s.recordedPlaylist = null;
     s.recordedView = null; s.recordedEpochId = null; s.recordedLoadStopped = false;
     try { view?.stop(); } catch {}
+    if (playlist && playlist.player.config.pLoader === playlist.loader) {
+      Object.assign(playlist.player.config, playlist.previous);
+    }
+  }
+
+  function stopUnloadedPublicSetup(s) {
+    const peer = s.publicPeer;
+    s.publicPeer = null;
+    stopRecordedView(s);
+    try { peer?.stop(); } catch {}
   }
 
   function replaceRecordedPipeline(s) {
@@ -1332,12 +1371,19 @@ async function initialise() {
     const needsSetup = () => !s.publicSourceLoaded || Boolean(s.recordedView &&
       (s.recordedLoadStopped || s.recordedEpochId !== s.listener?.snapshot().epochId));
     if (!current()) return;
+    if (!s.publicSourceLoaded && s.recordedView && (s.recordedLoadStopped ||
+        s.listener?.snapshot().ready && s.recordedEpochId !== s.listener.snapshot().epochId)) {
+      // Before the first source, discard stale setup without replacing the
+      // empty media source that owns the original tap's pending play request.
+      stopUnloadedPublicSetup(s);
+    }
     if (s.publicSourceSetup) {
       await s.publicSourceSetup;
       if (current() && needsSetup()) return completePublicStartup(s);
       return;
     }
     let version = s.playbackVersion ?? 0;
+    let restartSetup = false;
     const owns = () => current() && version === (s.playbackVersion ?? 0);
     const pending = (async () => {
       await joinListener(s, !s.recordedView && Boolean(s.publicSourceLoaded));
@@ -1353,15 +1399,18 @@ async function initialise() {
         }
         return;
       }
-      if (s.recordedView) {
+      if (!s.publicSourceLoaded && (s.recordedView || s.publicPeer)) {
+        stopUnloadedPublicSetup(s);
+      } else if (s.recordedView) {
         if (!room?.ready) return;
         replaceRecordedPipeline(s);
         version = s.playbackVersion ?? 0;
       }
       const player = s.hls;
       if (player) {
+        let peer, setupEpoch;
         try {
-          const { createPublicSwarm, prepareRecordedSource, createRecordedLive } = await import('./media-public-swarm.mjs?v=20261025-native-cors');
+          const { createPublicSwarm, prepareRecordedSource, createRecordedLive } = await import('./media-public-swarm.mjs?v=20261025-warm-ahead');
           if (!owns() || s.hls !== player) return;
           // These two exports share the exact helper module/recording brand.
           // Preparing metadata fetches no video and happens only after joining.
@@ -1379,7 +1428,11 @@ async function initialise() {
               passthroughUrls: [s.publicUrl.href] });
             if (view) {
               const ParentLoader = player.config.pLoader ?? player.config.loader;
-              player.config.pLoader = view.createPlaylistLoader(ParentLoader);
+              const loader = view.createPlaylistLoader(ParentLoader);
+              const previous = Object.fromEntries(['pLoader', 'liveDurationInfinity', 'liveSyncDuration',
+                'liveMaxLatencyDuration', 'maxLiveSyncPlaybackRate'].map(name => [name, player.config[name]]));
+              s.recordedPlaylist = { player, loader, previous };
+              player.config.pLoader = loader;
               // The app owns shared-clock following, at the original 1x tempo.
               // Do not let hls.js introduce a competing max-latency seek/rate.
               Object.assign(player.config, { liveDurationInfinity: true, liveSyncDuration: 24,
@@ -1387,7 +1440,7 @@ async function initialise() {
               s.recording = recording; s.recordedView = view; s.recordedEpochId = latestRoom.epochId;
             }
           }
-          let peer;
+          setupEpoch = latestRoom?.ready ? latestRoom.epochId : null;
           peer = createPublicSwarm({ Hls, hls: player, video, playlistUrl: s.publicUrl.href, quality: s.quality,
             turnConfiguration: { endpoint: root.dataset.turnCredentialEndpoint ?? null, turnUrl: root.dataset.turnUrl ?? null },
             ...(s.recordedView ? { recordedLive: { recording: s.recording, epochId: s.recordedEpochId } } : {}),
@@ -1395,12 +1448,23 @@ async function initialise() {
               if (peer && session === s && s.publicPeer === peer && !s.nativeHls && !s.finishing) publicDelivery(s, metrics);
             } });
           s.publicPeer = peer;
-          shareWhilePlaying(s, true);
+          if (s.quality === 'full') {
+            // setEnabled installs the fragment loader after async preparation.
+            // The original tap already requested play on this same media source.
+            await peer.setEnabled(true);
+            if (!owns() || s.hls !== player || s.publicPeer !== peer) return;
+            s.publicSharingFailed = false;
+          } else shareWhilePlaying(s, true);
         } catch {
-          if (!owns() || s.hls !== player) return;
+          if (!owns() || s.hls !== player || peer && s.publicPeer !== peer) return;
           s.publicSharingFailed = true; publicDelivery(s);
         }
-        if (!owns() || s.hls !== player) return;
+        if (!owns() || s.hls !== player || peer && s.publicPeer !== peer) return;
+        const latestRoom = s.listener?.snapshot();
+        if (setupEpoch && (!latestRoom?.ready || latestRoom.epochId !== setupEpoch)) {
+          stopUnloadedPublicSetup(s); restartSetup = true;
+          return;
+        }
         s.publicSourceLoaded = true;
         player.loadSource(s.publicUrl.href);
         publicDelivery(s);
@@ -1413,6 +1477,7 @@ async function initialise() {
     s.publicSourceSetup = pending;
     try { await pending; }
     finally { if (s.publicSourceSetup === pending) s.publicSourceSetup = null; }
+    if (restartSetup && current() && needsSetup()) return completePublicStartup(s);
   }
 
   function publicStartupFailed(s) {
@@ -1641,7 +1706,7 @@ async function initialise() {
     }, { signal: pageAbort.signal });
     controls();
     try {
-      const { createSwarmVisual } = await import('./media-swarm-visual.mjs?v=20261025-native-cors');
+      const { createSwarmVisual } = await import('./media-swarm-visual.mjs?v=20261025-warm-ahead');
       if (!pageAbort.signal.aborted && $('public-swarm-map')) {
         swarmVisual = createSwarmVisual($('public-swarm-map'));
         publicDelivery(session);
