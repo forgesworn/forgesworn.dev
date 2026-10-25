@@ -70,16 +70,22 @@ not a multi-speaker audio synchronisation protocol. Full screen and playback
 details retain the same video and session. A natural recording boundary
 retains room membership, native peer connections, identity and cached media.
 
-HLS loads at the discovered room position, then primes the existing paused
-player until the fresh room position has three seconds of continuous media
-ahead. It aligns once before playing, rather than correcting startup delay
-with an audible seek after the music begins. On a recording loop the same
-HLS instance loads from zero before choosing the new room position; room and
-peer identities remain intact. Near the end it prepares zero and waits for
-the room to wrap. After twelve seconds a safely buffered current position
-can start away from live; if a managed source needs playback demand, a
-one-shot bootstrap prevents an indefinite paused wait. Later clock corrections
-use the recovery checks above. Loop priming time remains in the measured wait
+Before Play, the page prepares the HLS module without creating a player or
+requesting video. The first tap attaches the selected media source and calls
+the same video's `play()` before waiting for room discovery or peer setup.
+The pending playback request supplies demand to ManagedMediaSource while the
+approved stream starts at the freshly discovered room position. Initial
+playback does not wait for the former paused three-second prime. This preserves
+the tap's playback request; it does not establish startup headroom or guarantee
+cold-cache continuity.
+
+On a recording loop, the same HLS instance still primes three seconds of
+continuous media before choosing the new room position; room and peer
+identities remain intact. Near the end it prepares zero and waits for the
+room to wrap. After twelve seconds a safely buffered current position can
+start away from live; a one-shot bootstrap prevents an indefinite paused wait
+when a managed source needs playback demand. Later clock corrections use
+the recovery checks above. Loop priming time remains in the measured wait
 count and duration. Recorded public playback targets 20 seconds of forward buffer,
 caps its time target at 24 seconds and retains four seconds behind the
 playhead. Its hls.js byte target is 64 MiB, which is not a hard process-memory
@@ -294,6 +300,7 @@ the new network/cache and coverage readings are separate live diagnostics.
 export a separate `forgesworn-playback-report` JSON file. It retains at most
 240 observations, sampled at most once per second through the existing player
 tick: actual frame counters and dimensions, buffering, stalls, visibility,
+the last Play rejection's fixed error code (without its message),
 room offset, verified peer and upload counters, library version and anonymous
 selected route types. Missing readings remain `null`. It excludes addresses,
 SDP, peer identities, credentials and source URLs or filesystem paths. Nothing

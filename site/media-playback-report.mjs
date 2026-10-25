@@ -53,6 +53,7 @@ function sample(input, elapsedMs) {
     position, duration: number(value(input, 'duration')),
     readyState: choice(value(input, 'readyState'), [0, 1, 2, 3, 4]),
     paused: boolean(value(input, 'paused')), seeking: boolean(value(input, 'seeking')), ended: boolean(value(input, 'ended')),
+    lastPlayError: choice(value(input, 'lastPlayError'), ['NotAllowedError', 'AbortError', 'NotSupportedError', 'InvalidStateError', 'SecurityError', 'Error']),
     visibility: choice(value(input, 'visibility'), ['visible', 'hidden', 'prerender']),
     quality: choice(value(input, 'quality'), ['full', 'preview']),
     engine: choice(value(input, 'engine'), ['hls.js', 'hls.js · ManagedMediaSource', 'hls.js · MediaSource', 'Native HLS', 'Native MP4']),
