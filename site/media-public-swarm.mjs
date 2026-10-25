@@ -354,7 +354,7 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
           streamEvent, getCommitment, serve: true, serveOnCellular: false,
           coreWasm: new URL('./vendor/relayswarm-core.wasm?v=20261025-transfer-worker', import.meta.url), multiHolder: true,
           transferWorkerUrl: new URL('./vendor/relayswarm-transfer-worker.js?v=20261025-transfer-worker', import.meta.url),
-          zeroBudgetPeerRace: true, sustainablePeerWait: true,
+          zeroBudgetPeerRace: true, lateHaveRace: true, sustainablePeerWait: true,
           maxHoldersPerObject: PUBLIC_SWARM_LIMITS.maxPeers,
           iceServers: PUBLIC_SWARM_ICE.map(entry => ({ ...entry })), iceTransportPolicy: 'all',
           WebSocketImpl: ObservedSocket, RTCPeerConnectionImpl: ObservedConnection,

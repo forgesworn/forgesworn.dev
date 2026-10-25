@@ -361,10 +361,14 @@ accepted segment.  Performance receipts must include playback progress and
 stalls alongside useful peer bytes; an open connection alone proves no
 contribution.
 
-The demo also opts into `zeroBudgetPeerRace`.  When there is no safe time to
-wait before starting HTTP, the normal request starts immediately.  Only a
-peer that already advertised the exact cached object may race it through the
-Rust piece planner's explicit peer-only mode. It has no internal HTTP source;
+The demo also opts into `zeroBudgetPeerRace` and `lateHaveRace`. When there is
+no safe time to wait before starting HTTP, the normal request starts
+immediately. A native connection already accepted at load entry may race it
+after advertising the exact cached object, including an object that becomes
+available while HTTP runs. This uses the original 2.5-second window, with no
+extension or added HTTP request. One holder set is frozen when the peer arm
+starts; a new or replaced connection cannot join that load. The
+Rust piece planner uses its explicit peer-only mode. It has no internal HTTP source;
 the ordinary HTTP loader runs independently. A verified calibration piece
 unlocks further bounded ranges, while unassigned pieces remain bounded pending
 work. The first complete accepted source wins; the losing
@@ -376,8 +380,8 @@ playback.
 
 Each peer request stays within four pieces and 512 KiB, retaining the upload
 burst and rate bounds even when the complete fragment exceeds the burst.
-Only the initial matching holder connections that still advertise the object
-can participate. At the peer floor, remaining peer work is cancelled while
+Only the accepted load-entry connections that advertise the object when the
+peer arm starts can participate. At the peer floor, remaining peer work is cancelled while
 the independent HTTP loader continues. Older modules without the explicit
 mode safely decline that arm. The buffered mixed mode keeps its HTTP ranges.
 
@@ -410,10 +414,11 @@ an exact `/media/` identity without moving or altering the recording.  The
 source recording and signing keys do not enter the repository.
 
 Rendezvous uses the explicitly listed public Nostr relays and encrypted peer
-signals. STUN supplies direct candidate discovery. When playback starts, the
-browser also requests an expiring Spry TLS credential from its configured,
-independently operated public Spry instance. Direct connections remain eligible; a relay supplies a
-route when the browser cannot use direct UDP. The static site contains no
+signals. STUN supplies direct candidate discovery. The public Spry credential
+endpoint remains unconfigured during operator deployment. Once a validated
+endpoint is configured, playback also requests an expiring TLS credential
+from that independently operated public instance. Direct connections remain
+eligible; a relay supplies a route when the browser cannot use direct UDP. The static site contains no
 relay password or operator root secret. The separate native comparator can
 exercise Spry and coturn. RelaySwarm remains experimental; public credential
 delivery alone does not qualify sustained 4K playback or physical phones.
