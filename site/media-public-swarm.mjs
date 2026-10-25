@@ -18,22 +18,23 @@ export const PUBLIC_SWARM_LIMITS = Object.freeze({
   maxSegmentBytes: 16 * 1024 * 1024,
   maxCatalogueBytes: 1024 * 1024,
 });
-export const PUBLIC_SWARM_CATALOGUE_SHA256 = 'fe69bf7b88279f796956a021db96b3fc99f12705c1d5f18a2f6fbe9f488b3073';
+export const PUBLIC_SWARM_CATALOGUE_SHA256 = '2b4da6df26ff5e503282e999f7066fa8b61fafdfd3f42051184dde874260a5af';
 export const PUBLIC_SWARM_RELAYS = Object.freeze(['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net']);
 export const PUBLIC_SWARM_ICE = Object.freeze([{ urls: 'stun:stun.cloudflare.com:3478' }]);
 const SOURCE_SHA256 = '76d90719a756c77d1008088c58ca6b28a74eb0ef01e5337906cfb68d3e2b13aa';
 export { SOURCE_SHA256 as PUBLIC_SWARM_SOURCE_SHA256 };
 const FULL_PLAYLIST = '/media/dejavu-4k/index.m3u8';
 const FULL_MEDIA_BASE = 'https://v4v.com/forgesworn-media-demo/dejavu-4k-v1/';
+const FULL_TAIL_PATH = 'segment-0133-audioend-v2.m4s';
 const PREVIEW_PLAYLIST = '/media/dejavu-preview/rtmp/index.m3u8';
 const HEX = /^[a-f0-9]{64}$/;
 const CANDIDATE_TYPES = new Set(['host', 'srflx', 'prflx', 'relay']);
 const RELAY_PROTOCOLS = new Set(['udp', 'tcp', 'tls']);
 const RECORDED_MANIFESTS = Object.freeze({
-  full: Object.freeze({ sha256: 'd680b83954d81749737ce0ae9174b579c48ae6265a188768cfda9bb1511f400b',
-    init: FULL_MEDIA_BASE + 'init.mp4' }),
+  full: Object.freeze({ sha256: 'ad78fc006bc131da3dcbf10656d4b8023e3fde71cbe5dba7a39a1f3af7ae238c',
+    durationUs: 267_320_000, init: FULL_MEDIA_BASE + 'init.mp4' }),
   preview: Object.freeze({ sha256: '3dcafff28b09ace0ce218d242eef4681e4c0f69f0bd222aa797eddda3f2ea5a5',
-    init: '/media/dejavu-preview/rtmp/init.mp4' }),
+    durationUs: 29_960_000, init: '/media/dejavu-preview/rtmp/init.mp4' }),
 });
 const preparedRecordings = new WeakSet(), recordingMetadata = new WeakMap(), recordedSources = new Map();
 const MAX_RECORDED_MANIFEST_BYTES = 65_536;
@@ -44,11 +45,11 @@ const encoded = value => new TextEncoder().encode(value);
 
 export function validatePublicSwarmCatalogue(catalogue, { quality, playlistUrl, origin }) {
   const expectedPath = quality === 'full' ? FULL_PLAYLIST : quality === 'preview' ? PREVIEW_PLAYLIST : null;
-  if (!expectedPath || catalogue?.schema !== 2 || catalogue.sourceSha256 !== SOURCE_SHA256 || catalogue.licensed !== true) throw new Error('Unrecognised public media catalogue.');
+  if (!expectedPath || catalogue?.schema !== 3 || catalogue.sourceSha256 !== SOURCE_SHA256 || catalogue.licensed !== true) throw new Error('Unrecognised public media catalogue.');
   const expected = new URL(expectedPath, origin);
   const playlist = new URL(playlistUrl, origin);
   const descriptor = catalogue.qualities?.[quality];
-  const expectedSwarm = `forgesworn-dejavu-${quality === 'full' ? '4k' : '1080'}-pieces-v2-76d90719a756c77d`;
+  const expectedSwarm = quality === 'full' ? 'forgesworn-dejavu-4k-pieces-v3-76d90719a756c77d' : 'forgesworn-dejavu-1080-pieces-v2-76d90719a756c77d';
   const mediaPlaylist = quality === 'full' ? FULL_PLAYLIST : '/media/dejavu-preview/rtmp/stream.m3u8';
   const mediaBase = quality === 'full' ? FULL_MEDIA_BASE : '/media/dejavu-preview/rtmp/';
   const count = quality === 'full' ? 134 : 30;
@@ -58,7 +59,7 @@ export function validatePublicSwarmCatalogue(catalogue, { quality, playlistUrl, 
   const segments = new Map();
   for (let index = 0; index < descriptor.segments.length; index++) {
     const entry = descriptor.segments[index];
-    const path = quality === 'full' ? `segment-${String(index).padStart(4, '0')}.m4s` : `segment-${String(index).padStart(3, '0')}.mp4`;
+    const path = quality === 'full' ? index === 133 ? FULL_TAIL_PATH : `segment-${String(index).padStart(4, '0')}.m4s` : `segment-${String(index).padStart(3, '0')}.mp4`;
     if (entry?.path !== path || entry.sn !== index || entry.cc !== 0 || !HEX.test(entry.sha256) ||
         !Number.isSafeInteger(entry.size) || entry.size < 1 || entry.size > PUBLIC_SWARM_LIMITS.maxSegmentBytes ||
         entry.pieceSize !== commitmentPieceSize(entry.size) || !Array.isArray(entry.pieces) ||
@@ -88,7 +89,7 @@ async function readCatalogue(signal) {
   const timer = setTimeout(() => timeout.abort(), 5000);
   const requestSignal = signal ? AbortSignal.any([signal, timeout.signal]) : timeout.signal;
   try {
-    const response = await fetch(new URL('./media/dejavu-swarm/catalogue-v2.json', import.meta.url),
+    const response = await fetch(new URL('./media/dejavu-swarm/catalogue-v3.json', import.meta.url),
       { signal: requestSignal, credentials: 'same-origin', cache: 'force-cache', redirect: 'error' });
     if (!response.ok || !response.body || Number(response.headers.get('content-length')) > PUBLIC_SWARM_LIMITS.maxCatalogueBytes) throw new Error('Public media catalogue unavailable.');
     const reader = response.body.getReader(), chunks = [];
@@ -114,7 +115,10 @@ async function readRecordedManifest(url, signal) {
   const timeout = new AbortController(), timer = setTimeout(() => timeout.abort(), 5000);
   const requestSignal = signal ? AbortSignal.any([signal, timeout.signal]) : timeout.signal;
   try {
-    const response = await fetch(url, { signal: requestSignal, credentials: 'same-origin', cache: 'force-cache', redirect: 'error' });
+    // This canonical playlist URL can acquire a newly reviewed immutable tail.
+    // Refresh it once before trusting the pinned digest; successful metadata is
+    // reused in memory without another request for the rest of this page.
+    const response = await fetch(url, { signal: requestSignal, credentials: 'same-origin', cache: 'reload', redirect: 'error' });
     if (!response.ok || !response.body || Number(response.headers.get('content-length')) > MAX_RECORDED_MANIFEST_BYTES) {
       await response.body?.cancel().catch(() => {}); return null;
     }
@@ -156,7 +160,7 @@ export async function prepareRecordedSource({ quality, playlistUrl, signal } = {
     const sourceUrls = [...plan.segments.keys()];
     const recording = await parseRecordedManifest({ text, playlistUrl: plan.mediaPlaylist, expectedSha256: descriptor.sha256,
       allowedUrls: [...sourceUrls, initUrl], signal });
-    if (!recording || signal?.aborted || recording.initUrl !== initUrl || recording.segments.length !== plan.segments.size ||
+    if (!recording || signal?.aborted || recording.initUrl !== initUrl || recording.durationUs !== descriptor.durationUs || recording.segments.length !== plan.segments.size ||
         recording.segments.some((segment, index) => segment.url !== sourceUrls[index])) return null;
     preparedRecordings.add(recording);
     recordingMetadata.set(recording, { quality, plan });
@@ -367,8 +371,8 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
         await Promise.all([
           (async () => {
             if (recording) {
-              plan ??= { ...prepared.plan, swarmId: 'forgesworn-recorded-live-v1-' +
-                await digest(encoded(`forgesworn-recorded-live-v1\n${SOURCE_SHA256}\n${quality}\n${epochId}`)) };
+              plan ??= { ...prepared.plan, swarmId: 'forgesworn-recorded-live-v2-' +
+                await digest(encoded(`forgesworn-recorded-live-v2\n${SOURCE_SHA256}\n${quality}\n${epochId}\n${recording.manifestSha256}\n${recording.durationUs}`)) };
             } else plan ??= validatePublicSwarmCatalogue(await readCatalogue(AbortSignal.any([lifetime.signal, catalogueAbort.signal])), { quality, playlistUrl, origin });
           })(),
           turn.start(),

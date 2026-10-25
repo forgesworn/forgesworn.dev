@@ -23,7 +23,8 @@ const fixtures = {
     stopLoad() { fixture.trace.push({kind:'stopLoad',player:fixture.players.indexOf(this)}); }
     destroy() { this.destroyed=true; this.video?.pause(); }
   }`,
-  '/media-listener-session.mjs': `export function createListenerSession({onChange}) {
+  '/media-listener-session.mjs': `export function createListenerSession({onChange,room,duration}) {
+    fixture.roomConfig={room,duration};
     const position=()=>fixture.recorded?((Date.now()-fixture.startedAt)/1000)%fixture.sourceDuration:50;
     let joined=false,generation=0; const snapshot=()=>({ready:joined,observed:true,connectedRelays:1,joined,
       listeners:joined?1:0,epochId:fixture.epochId,position:position(),startedAt:fixture.startedAt});
@@ -70,7 +71,7 @@ async function open({held=false,heldVisual=false,heldRoomCode=false,heldMetadata
     if(url.pathname==='/vendor/hls.light.min.mjs'){await page.evaluate(()=>{fixture.requested=true});await gate;}
     if(url.pathname==='/media-swarm-visual.mjs')await visualGate;
     if(url.pathname==='/media-listener-session.mjs')await roomCodeGate;
-    if(url.pathname==='/media/dejavu-swarm/catalogue-v2.json')await metadataGate;
+    if(url.pathname==='/media/dejavu-swarm/catalogue-v3.json')await metadataGate;
     if(fixtures[url.pathname])return route.fulfill({contentType:'text/javascript',body:fixtures[url.pathname]});
     const path=resolve(root,'.'+(url.pathname==='/'?'/index.html':url.pathname==='/__actual-public-swarm.mjs'?'/media-public-swarm.mjs':url.pathname));if(!path.startsWith(root+sep))return route.abort();
     try{return await route.fulfill({contentType:types[extname(path)]??'application/octet-stream',body:await readFile(path)})}
@@ -79,7 +80,7 @@ async function open({held=false,heldVisual=false,heldRoomCode=false,heldMetadata
   await page.addInitScript(({engine,reject,recorded,quality})=>{
     const state=window.fixture={engine,reject,players:[],peers:[],trace:[],readyState:1,currentTime:0,ranges:[],paused:true,seeking:false,source:'',
       recorded,views:[],prepared:[],brandedAdapters:0,nativeCapable:false,epochId:'1'.repeat(64),startedAt:Date.now()-50_000,
-      sourceDuration:quality==='preview'?29.96:268.6,duration:quality==='preview'?29.96:268.6,wallOffset:0,
+      sourceDuration:quality==='preview'?29.96:267.32,duration:quality==='preview'?29.96:267.32,wallOffset:0,
       holdJoin:true,joinWaiters:[],playWaiters:[],inTap:false,trusted:false};
     const wallNow=Date.now;Date.now=()=>wallNow()+state.wallOffset;
     const add = EventTarget.prototype.addEventListener;
@@ -268,13 +269,16 @@ try {
         expectedPhase:((Date.now()-fixture.startedAt)/1000)%fixture.sourceDuration,
         infinite:fixture.duration===Infinity,rate:player.config.maxLiveSyncPlaybackRate,maxLatency:player.config.liveMaxLatencyDuration===Infinity,
         playlist:view.recording.playlistUrl,outer:fixture.trace.find(x=>x.kind==='source').url,
-        epoch:fixture.peers[0].options.recordedLive.epochId,oneVideo:document.querySelectorAll('video').length};
+        epoch:fixture.peers[0].options.recordedLive.epochId,oneVideo:document.querySelectorAll('video').length,
+        room:fixture.roomConfig,recordingDuration:view.durationSeconds};
     });
     assert.equal(installed.branded,1,'the real adapter accepts the real prepared-recording WeakSet brand');
     assert.equal(installed.viewCount,1);assert.equal(installed.loader,'function');assert.equal(installed.infinite,true);
     assert.equal(installed.rate,1);assert.equal(installed.maxLatency,true);assert.equal(installed.oneVideo,1);
     assert(Math.abs(installed.position-installed.fresh)<0.25);assert(Math.abs(installed.phase-installed.expectedPhase)<0.25);
     assert.equal(installed.epoch,'1'.repeat(64));
+    assert.deepEqual(installed.room,{room:`forgesworn-dejavu-listening-v${quality==='full'?2:1}-${quality}`,duration:quality==='full'?267.32:29.96});
+    assert.equal(installed.recordingDuration,installed.room.duration,'the pinned programme and shared room use exactly the same duration');
     assert.equal(installed.playlist,origin+(quality==='full'?'/media/dejavu-4k/index.m3u8':'/media/dejavu-preview/rtmp/stream.m3u8'));
     assert.equal(installed.outer,origin+(quality==='full'?'/media/dejavu-4k/index.m3u8':'/media/dejavu-preview/rtmp/index.m3u8'),'preview keeps its original master source');
     await run.page.evaluate(()=>{fixture.finishPlay();fixture.presentFrame()});

@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "measuredAt": "2026-10-25",
+  "scope": "Recorded-loop correction; separate from sustained cold-cache 4K, cross-NAT and physical iPhone acceptance",
+  "source": {
+    "sha256": "76d90719a756c77d1008088c58ca6b28a74eb0ef01e5337906cfb68d3e2b13aa",
+    "videoSeconds": 268.6,
+    "audioSeconds": 267.32,
+    "originalFinalAudioEnd": 267.341333,
+    "originalNextCycleStart": 268.6,
+    "originalAudioCoverageGapSeconds": 1.258667
+  },
+  "derivative": {
+    "durationSeconds": 267.32,
+    "videoReencoded": false,
+    "audioReencoded": false,
+    "removedSilentTailVideoFrames": 32,
+    "preservedFinalAudioPackets": 34,
+    "unchangedInit": true,
+    "unchangedFirstFragments": 133,
+    "finalFragment": {
+      "name": "segment-0133-audioend-v2.m4s",
+      "bytes": 2238344,
+      "sha256": "335270e1369142eaba9faf9964588db74f0219a8b703ac7b2ce643b5c994422d"
+    },
+    "catalogueSha256": "2b4da6df26ff5e503282e999f7066fa8b61fafdfd3f42051184dde874260a5af",
+    "manifestSha256": "ad78fc006bc131da3dcbf10656d4b8023e3fde71cbe5dba7a39a1f3af7ae238c"
+  },
+  "isolatedBoundary": {
+    "passed": true,
+    "seconds": 26,
+    "oneVisiblePlayer": true,
+    "trustedPlayActions": 1,
+    "presentedFrames": 664,
+    "droppedFrames": 0,
+    "postFrameWaits": 0,
+    "seeks": 0,
+    "pausedOrEndedEvents": 0,
+    "decodedAudioBytes": 988842,
+    "sourceBoundary": "Locally cached, hash-verified 4K fragments; native AAC path without an inserted AudioContext. This isolates media timestamps and does not measure WAN, integrated peer performance or physical audio."
+  },
+  "earlierPreview": {
+    "passed": true,
+    "seconds": 90.273,
+    "visitors": 2,
+    "programmeWrapsEach": 3,
+    "postFrameWaits": 0,
+    "droppedFrames": 0,
+    "tailUsefulPeerShares": [
+      0.44993708324802417,
+      0.47484819807412754
+    ],
+    "boundary": "Two fresh browser contexts on one Mac, real public signalling, native WebRTC, decoded media; browser cache bypassed."
+  },
+  "earlierUncorrectedFull4K": {
+    "passed": false,
+    "seconds": 300.107,
+    "stalls": [
+      7,
+      11
+    ],
+    "stalledSeconds": [
+      2.03,
+      8.29
+    ],
+    "droppedFrames": [
+      21,
+      48
+    ],
+    "boundary": "Before the corrected tail. Includes source starvation, late mixed-transfer fallback, room corrections and the confirmed audio-end gap. These results remain failures."
+  },
+  "publicTailReadback": {
+    "passed": true,
+    "status": 200,
+    "sha256": "335270e1369142eaba9faf9964588db74f0219a8b703ac7b2ce643b5c994422d",
+    "corsOrigin": "https://forgesworn.dev"
+  },
+  "remaining": [
+    "Sustained cold-cache 4K continuity and useful peer delivery",
+    "Physical iPhone replay plus twenty seconds after the boundary",
+    "Independent-operator public TURN configuration"
+  ],
+  "fixturesLeftRunning": false
+}

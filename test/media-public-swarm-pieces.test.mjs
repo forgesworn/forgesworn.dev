@@ -154,6 +154,6 @@ test('the generated public catalogue preserves the licensed identity, exact whol
     const directory = new URL('../site/media/dejavu-preview/rtmp/', import.meta.url);
     assert.deepEqual(await hashSegmentPieces(fileURLToPath(directory), entry), entry);
   }
-  const playlist = await readFile(new URL('../site/media/dejavu-4k/index.m3u8', import.meta.url), 'utf8');
+  const playlist = await readFile(new URL('../site/media/dejavu-4k/index-v1.m3u8', import.meta.url), 'utf8');
   assert.equal(digest(playlist.replaceAll(FULL_MEDIA_BASE, '')), FULL_PLAYLIST_SHA256);
 });

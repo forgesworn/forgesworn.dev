@@ -6,8 +6,10 @@ import { createPublicSwarm, validatePublicSwarmCatalogue, catalogueSegment, PUBL
   PUBLIC_SWARM_LIMITS, PUBLIC_SWARM_RELAYS, PUBLIC_SWARM_ICE, prepareRecordedSource, createRecordedLive } from '../site/media-public-swarm.mjs';
 import { verifyEvent } from '../site/vendor/media-peer-demo.js';
 
-const bytes = await readFile(new URL('../site/media/dejavu-swarm/catalogue-v2.json', import.meta.url));
+const bytes = await readFile(new URL('../site/media/dejavu-swarm/catalogue-v3.json', import.meta.url));
 const catalogue = JSON.parse(bytes);
+const previousBytes = await readFile(new URL('../site/media/dejavu-swarm/catalogue-v2.json', import.meta.url));
+const previousCatalogue = JSON.parse(previousBytes);
 const libraryBuild = JSON.parse(await readFile(new URL('../site/vendor/media-peer-demo.build.json', import.meta.url)));
 const preview = { quality: 'preview', playlistUrl: '/media/dejavu-preview/rtmp/index.m3u8', origin: 'https://forgesworn.dev/' };
 const full = { quality: 'full', playlistUrl: '/media/dejavu-4k/index.m3u8', origin: 'https://forgesworn.dev/' };
@@ -30,6 +32,27 @@ test('public VOD digest catalogue is pinned to reviewed source and matches every
   const original = JSON.parse(await readFile(new URL('../site/media/dejavu-preview/playback.json', import.meta.url)));
   assert.equal(catalogue.sourceSha256, original.source.sha256);
   assert.equal(validatePublicSwarmCatalogue(catalogue, full).segments.size, 134);
+});
+
+test('the new catalogue changes only the approved full tail while retaining the previous immutable catalogue', () => {
+  assert.equal(createHash('sha256').update(previousBytes).digest('hex'), 'fe69bf7b88279f796956a021db96b3fc99f12705c1d5f18a2f6fbe9f488b3073');
+  assert.equal(catalogue.schema, 3);
+  assert.equal(catalogue.derivedFromCatalogueSha256, createHash('sha256').update(previousBytes).digest('hex'));
+  assert.deepEqual(catalogue.qualities.preview, previousCatalogue.qualities.preview);
+  assert.deepEqual(catalogue.qualities.full.segments.slice(0, 133), previousCatalogue.qualities.full.segments.slice(0, 133));
+  assert.equal(catalogue.qualities.full.swarmId, 'forgesworn-dejavu-4k-pieces-v3-76d90719a756c77d');
+  const tail = catalogue.qualities.full.segments[133];
+  assert.equal(tail.path, 'segment-0133-audioend-v2.m4s'); assert.equal(tail.sn, 133); assert.equal(tail.cc, 0);
+  assert.equal(tail.size, 2238344); assert.equal(tail.sha256, '335270e1369142eaba9faf9964588db74f0219a8b703ac7b2ce643b5c994422d');
+  assert.equal(tail.pieceSize, 65536); assert.equal(tail.pieces.length, Math.ceil(tail.size / tail.pieceSize));
+  assert.throws(() => validatePublicSwarmCatalogue(previousCatalogue, full));
+  const plan = validatePublicSwarmCatalogue(catalogue, full), url = new URL('segment-0133.m4s', plan.segments.values().next().value.url).href;
+  assert.equal(catalogueSegment(plan, { url, frag: { sn: 133, cc: 0, level: 0, type: 'main', baseurl: plan.mediaPlaylist } }), null);
+  for (const index of [0, 132, 133]) {
+    const changed = structuredClone(catalogue);
+    changed.qualities.full.segments[index].path = index === 133 ? 'segment-0133.m4s' : 'segment-0133-audioend-v2.m4s';
+    assert.throws(() => validatePublicSwarmCatalogue(changed, full));
+  }
 });
 
 test('catalogue refuses altered media identity, traversal, duplicate sequence, oversized media and unlicensed source', () => {
@@ -132,7 +155,7 @@ function lifecycleFixture(t, { turnCredentials, origin = 'https://forgesworn.dev
     fetches.push({ url: String(url), options });
     if (fetchResponse) return fetchResponse(url, options);
     const path = new URL(url).pathname;
-    const body = path.endsWith('/media/dejavu-swarm/catalogue-v2.json') ? bytes :
+    const body = path.endsWith('/media/dejavu-swarm/catalogue-v3.json') ? bytes :
       path === full.playlistUrl ? recordedManifests.full :
       path === '/media/dejavu-preview/rtmp/stream.m3u8' ? recordedManifests.preview : null;
     assert(body, 'Only verified catalogue and canonical playlist metadata may be fetched');
@@ -291,7 +314,11 @@ test('recorded preparation verifies immutable metadata only and reuses a complet
     assert(recording); assert(Object.isFrozen(recording)); assert(Object.isFrozen(recording.segments));
     assert(recording.segments.every(Object.isFrozen));
     assert.equal(recording.segments.length, quality === 'full' ? 134 : 30);
-    assert.equal(recording.durationSeconds, quality === 'full' ? 268.6 : 29.96);
+    assert.equal(recording.durationSeconds, quality === 'full' ? 267.32 : 29.96);
+    if (quality === 'full') {
+      assert.equal(recording.segments[133].durationUs, 720000);
+      assert.equal(new URL(recording.segments[133].url).pathname.split('/').at(-1), 'segment-0133-audioend-v2.m4s');
+    }
     assert.equal(new URL(recording.playlistUrl).pathname, quality === 'full' ? full.playlistUrl : '/media/dejavu-preview/rtmp/stream.m3u8');
     assert.equal(createHash('sha256').update(recordedManifests[quality]).digest('hex'), recording.manifestSha256);
     const timeline = createRecordedLive({ recording, epochMs: 0, now: () => 1000 });
@@ -299,6 +326,8 @@ test('recorded preparation verifies immutable metadata only and reuses a complet
     assert.equal(f.fetches.length, 2, 'one catalogue plus one canonical media playlist; no init/segment body');
     assert(f.fetches.every(({ url }) => /\.(?:json|m3u8)$/.test(new URL(url).pathname)));
     assert(f.fetches.every(({ options }) => options.redirect === 'error' && options.credentials === 'same-origin'));
+    assert.equal(f.fetches[0].options.cache, 'force-cache', 'the versioned catalogue remains immutable');
+    assert.equal(f.fetches[1].options.cache, 'reload', 'the canonical playlist bypasses a previously stored old manifest');
     assert.equal(f.sockets.length, 0); assert.equal(f.connections.length, 0); assert.equal(f.pendingTimers(), 0);
     assert.equal(f.adapter.metrics().loadedMediaBytes, 0); assert.equal(f.adapter.metrics().peerBytes, 0);
     assert.equal(await f.prepare(quality), recording);
@@ -312,7 +341,7 @@ test('unverified, oversized and aborted recorded metadata cannot acquire a prepa
   for (const failure of ['catalogue', 'manifest', 'header-size', 'body-size', 'abort']) await t.test(failure, async t => {
     let f, cancelled = false;
     f = lifecycleFixture(t, { origin: `https://bad-${failure}.invalid/`, fetchResponse: async (url, options) => {
-      if (new URL(url).pathname.endsWith('/media/dejavu-swarm/catalogue-v2.json')) {
+      if (new URL(url).pathname.endsWith('/media/dejavu-swarm/catalogue-v3.json')) {
         const body = Buffer.from(bytes); if (failure === 'catalogue') body[body.length - 3] ^= 1;
         return new Response(body);
       }
@@ -344,7 +373,7 @@ test('recorded mode signs actual global sequence and discontinuity against the u
     f.useRecorded({ recording, epochId: 'a'.repeat(64) }, quality);
     await f.adapter.setEnabled(true);
     const options = f.cycles[0].options;
-    assert.match(options.swarmId, /^forgesworn-recorded-live-v1-[a-f0-9]{64}$/);
+    assert.match(options.swarmId, /^forgesworn-recorded-live-v2-[a-f0-9]{64}$/);
     assert(options.swarmId.length <= 128);
     assert.equal(f.fetches.length, 2, 'enabling reuses prepared metadata instead of fetching media');
     for (const sn of [0, count - 1, count, count * 2 + 1]) {
@@ -419,8 +448,8 @@ test('recorded cohorts bind source, quality and immutable epoch while retired ge
   const f = lifecycleFixture(t), recording = await f.prepare(), epochA = 'a'.repeat(64), epochB = 'b'.repeat(64);
   const input = { recording, epochId: epochA };
   f.useRecorded(input); input.epochId = epochB; await f.adapter.setEnabled(true);
-  const first = f.cycles[0].options, expected = 'forgesworn-recorded-live-v1-' + createHash('sha256')
-    .update(`forgesworn-recorded-live-v1\n${catalogue.sourceSha256}\nfull\n${epochA}`).digest('hex');
+  const first = f.cycles[0].options, expected = 'forgesworn-recorded-live-v2-' + createHash('sha256')
+    .update(`forgesworn-recorded-live-v2\n${catalogue.sourceSha256}\nfull\n${epochA}\n${recording.manifestSha256}\n${recording.durationUs}`).digest('hex');
   assert.equal(first.swarmId, expected, 'mutating the caller cannot change an already-created adapter');
   f.useRecorded({ recording, epochId: epochB }); await f.adapter.setEnabled(true);
   assert.notEqual(f.cycles[1].options.swarmId, first.swarmId);

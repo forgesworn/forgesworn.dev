@@ -430,7 +430,27 @@ sample aspect ratio produces a natural HTML display width of 3842.  The
 optional 1080p excerpt was captured from actual Sapflow publishing.
 The public film is not a continuously running Sapflow origin.
 
-`site/media/dejavu-swarm/catalogue-v2.json` records the exact sequence, size,
+The original file has 268.6 seconds of video and 267.32 seconds of audio.
+The looping programme retains every audio packet and removes only the final
+32 video frames after the soundtrack ends. Its duration is 267.32 seconds.
+The init and first 133 fragments remain byte-identical. The final fragment
+uses the new immutable name `segment-0133-audioend-v2.m4s`; its 18 video
+packets and all 34 audio packets are copied without re-encoding. Merely
+shortening EXTINF leaves the actual video timestamps unchanged and does not
+repair the gap. The old final fragment and catalogue remain available.
+
+`node scripts/package-public-swarm-audioend.mjs --full-dir DIR` reproduces
+the reviewed metadata from the 267.32-second packet-copy package. It verifies
+the init, all 133 unchanged fragments and the exact new tail before writing
+catalogue v3 and the public manifest. The original piece packager now writes
+`index-v1.m3u8`, preserving the corrected public index.
+
+The [recorded-loop receipt](evidence/recorded-loop-20261025.json) separates
+the successful isolated 4K boundary check from the earlier failed 300-second
+cold-cache run. The boundary check does not establish sustained WAN playback
+or physical iPhone acceptance.
+
+`site/media/dejavu-swarm/catalogue-v3.json` records the exact sequence, size,
 whole-object SHA-256 and canonical piece hashes of every approved fragment.
 The adapter pins that
 catalogue's SHA-256 in source and independently checks its identity, origin,
@@ -441,7 +461,9 @@ claims cannot choose the expected hash.  This is receiver-local attestation,
 not an independent broadcaster signing a live feed.  No publisher secret is
 embedded in the website, and the library verifier is unmodified.
 
-The shared swarm identity is fixed for each immutable quality.  Regenerate
+The VOD swarm identity is fixed for each immutable quality. Continuous
+recorded cohorts also bind the room epoch, manifest digest and programme
+duration, so incompatible timelines cannot share commitments. Regenerate
 the catalogue and bump its version and swarm IDs if media is repackaged.
 `scripts/package-public-swarm-pieces.mjs` verifies every full-media body against
 the original pinned hashes before deriving pieces, and checks every local
@@ -557,7 +579,8 @@ node test/media-public-swarm-browser.mjs --public-relays --quality full \
 node test/media-showcase-visitors.mjs --site site --quality preview \
   --output .local/visible-visitors.json
 node test/media-showcase-visitors.mjs --site site --quality full \
-  --observe-seconds 45 --min-peer-bytes 10000000 --min-peer-share 0.1 \
+  --observe-seconds 300 --min-peer-bytes 10000000 --min-peer-share 0.1 \
+  --expected-playback-mode recorded-live \
   --output .local/4k-peer-contribution.json
 node test/media-swarm-visual-browser.mjs .local/graph-observation-regression.json
 node test/media-shared-topology-browser.mjs --site site \

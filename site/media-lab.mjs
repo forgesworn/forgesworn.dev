@@ -424,7 +424,7 @@ async function initialise() {
         import('./media-listener-session.mjs?v=20261025-continuous'), import('./media-public-swarm.mjs?v=20261025-continuous'),
       ]);
       if (request !== publicRoomRequest || pageAbort.signal.aborted) return null;
-      const clock = createListenerSession({ room: `forgesworn-dejavu-listening-v1-${quality}`, source: PUBLIC_SWARM_SOURCE_SHA256,
+      const clock = createListenerSession({ room: `forgesworn-dejavu-listening-v${quality === 'full' ? 2 : 1}-${quality}`, source: PUBLIC_SWARM_SOURCE_SHA256,
         duration: choices[quality].durationSeconds, relays: [...PUBLIC_SWARM_RELAYS], signal: pageAbort.signal,
         getTelemetry() {
           const s = session;
