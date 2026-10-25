@@ -39,6 +39,15 @@ test('skipped ticks do not invoke native observation work', () => {
   assert.equal(reads, 2);
 });
 
+test('play rejection diagnostics retain only fixed error names and never messages or arbitrary values', () => {
+  const p = fixture();
+  p.report.record({ lastPlayError: 'NotAllowedError', playErrorMessage: 'credential-secret' });
+  p.at(1200); p.report.record({ lastPlayError: 'https://private.invalid/credential-secret' });
+  p.at(2400); p.report.record({ lastPlayError: null });
+  assert.deepEqual(p.report.snapshot().samples.map(row => row.lastPlayError), ['NotAllowedError', null, null]);
+  assert.doesNotMatch(JSON.stringify(p.report.snapshot()), /secret|private[.]invalid|playErrorMessage/);
+});
+
 test('partial source classification cannot present known subset bytes as complete network totals', () => {
   for (const coverage of ['partial', 'unavailable', undefined]) {
     const p = fixture(); p.report.record({ sourceTimingCoverage: coverage, sourceNetworkBodyBytes: 0, sourceCacheBodyBytes: 6000 });

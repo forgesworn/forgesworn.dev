@@ -38,6 +38,13 @@ const receipt = { schema: 2, measuredAt: new Date().toISOString(), passed: false
   nativeMedia: [], mediaRequests: [], droppedMediaRequestRecords: 0, staticMediaResponses: [], cleanup: {} };
 let browser, stage = 'setup';
 const pages = [], mediaHttp = [], cdps = [];
+const performanceSessions = new WeakMap();
+const PERFORMANCE_FIELDS = new Set(['Timestamp', 'TaskDuration', 'TaskOtherDuration', 'ScriptDuration', 'LayoutDuration',
+  'RecalcStyleDuration', 'ThreadTime', 'ProcessTime', 'JSHeapUsedSize', 'JSHeapTotalSize', 'Nodes', 'Documents', 'Frames',
+  'LayoutCount', 'RecalcStyleCount']);
+const REQUEST_PRIORITIES = new Set(['VeryLow', 'Low', 'Medium', 'High', 'VeryHigh']);
+const BODY_CHUNK_LIMIT = 64, PRIORITY_CHANGE_LIMIT = 16, LONG_TASK_LIMIT = 128;
+const priority = value => REQUEST_PRIORITIES.has(value) ? value : null;
 const isMedia = value => {
   const resource = new URL(value);
   return /\.(?:m3u8|mp4|m4s)$/.test(resource.pathname) &&
@@ -131,9 +138,33 @@ function instrumentController(source) {
   return source;
 }
 
+async function performanceSnapshot(page) {
+  const session = performanceSessions.get(page);
+  if (!session || session.state !== 'ready') return { state: session?.state ?? 'unavailable', metrics: null };
+  // One bounded request per existing sample. A delayed CDP reply is retained
+  // as pending, rather than queueing more diagnostic work behind it.
+  if (session.pending) return { state: 'pending', requestedAt: session.pending.requestedAt, metrics: null };
+  const requestedAt = Date.now(), pending = { requestedAt };
+  session.pending = pending;
+  const request = session.cdp.send('Performance.getMetrics').then(result => {
+    if (!Array.isArray(result.metrics)) throw new Error('Missing diagnostic metrics');
+    const metrics = Object.fromEntries(result.metrics.filter(row => PERFORMANCE_FIELDS.has(row.name) && Number.isFinite(row.value))
+      .map(row => [row.name, row.value]));
+    return { state: 'ready', requestedAt, receivedAt: Date.now(), metrics,
+      missingMetrics: [...PERFORMANCE_FIELDS].filter(name => !Object.hasOwn(metrics, name)) };
+  }).catch(() => ({ state: 'unavailable', requestedAt, receivedAt: Date.now(), metrics: null }))
+    .finally(() => { if (session.pending === pending) session.pending = null; });
+  let deadline;
+  try {
+    return await Promise.race([request, new Promise(resolve => { deadline = setTimeout(() =>
+      resolve({ state: 'timeout', requestedAt, receivedAt: Date.now(), metrics: null }), 1000); })]);
+  } finally { clearTimeout(deadline); }
+}
+
 async function snapshot(page) {
-  return page.evaluate(async () => {
+  const pending = page.evaluate(async () => {
     const qa = window.__visitorQa;
+    qa.flushLongTasks?.();
     const connections = await Promise.all(qa.peers.map(async (peer, nativeId) => {
       const record = { nativeId, owned: qa.ownedPeers.includes(peer), state: peer.connectionState };
       if (record.state === 'closed') return record;
@@ -192,6 +223,7 @@ async function snapshot(page) {
         peerCounts: Object.fromEntries(Object.entries(raw.peers).filter(([, value]) => typeof value === 'number')),
         eligibility: raw.peerEligibilityDiagnostics, requests: raw.peerRequestDiagnostics, refusals: raw.uploadRefusalDiagnostics,
         transport: raw.transportDiagnostics, errors: { total: raw.errors?.total, byStage: raw.errors?.byStage } } : undefined,
+      passiveDiagnostics: qa.wantDiagnostics ? { longTasks: { ...qa.longTasks, recent: qa.longTasks.recent.slice() } } : undefined,
       graph: { peerBytes: Number(map.dataset.peerBytes), uploadedBytes: Number(map.dataset.uploadedBytes),
         observedPeers: Number(map.dataset.observedPeers), connectedPeers: Number(map.dataset.connectedPeers),
         roomMembers: Number(map.dataset.roomMembers), unmappedConnections: Number(map.dataset.unmappedConnections),
@@ -211,6 +243,10 @@ async function snapshot(page) {
         passiveOpenSockets: qa.sockets.filter(socket => !qa.ownedSockets.includes(socket) && socket.readyState < 2).length },
     };
   });
+  if (options.diagnostics !== 'true') return pending;
+  const [result, performance] = await Promise.all([pending, performanceSnapshot(page)]);
+  result.passiveDiagnostics.performance = performance;
+  return result;
 }
 
 function assertGraph(player) {
@@ -294,6 +330,14 @@ function deliveryTail(samples, windowMs = 60_000) {
 function tailSummary() { return deliveryTail(receipt.samples); }
 
 try {
+  if (options.diagnostics === 'true') receipt.passiveDiagnosticBoundary = {
+    performanceMetrics: [...PERFORMANCE_FIELDS], metricUnits: 'CDP duration/time counters are cumulative seconds; heap sizes are bytes; counts retain CDP units.',
+    cadence: 'One Performance.getMetrics query alongside each existing snapshot; 1s operation deadline; at most one outstanding query per page. No new polling timer.',
+    longTasks: { limit: LONG_TASK_LIMIT, fields: ['startTime', 'durationMs'], timeBase: 'Page performance.timeOrigin + startTime (ms); support and drop state are explicit.' },
+    bodyChunks: { limitPerRequest: BODY_CHUNK_LIMIT, fields: ['at', 'bytes', 'encodedBytes'], timeBase: 'Request wall time + CDP monotonic timestamp delta (ms).' },
+    priorityChanges: { limitPerRequest: PRIORITY_CHANGE_LIMIT, values: [...REQUEST_PRIORITIES] },
+    inferenceLimit: 'Correlation only: missing metrics do not establish idle CPU; long tasks do not identify the cause of a network slowdown.',
+  };
   receipt.staticRangeSelfChecks = assertStaticResource();
   receipt.observerModuleSelfChecks = assertObservedModules();
   receipt.harnessSha256 = createHash('sha256').update(await readFile(new URL(import.meta.url))).digest('hex');
@@ -341,6 +385,11 @@ try {
     const nativeMedia = { properties: {}, errors: [] }; receipt.nativeMedia.push(nativeMedia);
     const cdp = await context.newCDPSession(page); cdps.push(cdp);
     await cdp.send('Network.enable'); await cdp.send('Media.enable');
+    if (options.diagnostics === 'true') {
+      const performance = { cdp, state: 'unavailable', pending: null };
+      performanceSessions.set(page, performance);
+      try { await cdp.send('Performance.enable'); performance.state = 'ready'; } catch {}
+    }
     cdp.on('Media.playerPropertiesChanged', event => {
       for (const property of event.properties) if (/^(?:kAudioTracks|kAudioDecoderName|audio_decoder|kVideoDecoderName|kResolution)$/.test(property.name))
         nativeMedia.properties[property.name] = property.value;
@@ -354,9 +403,18 @@ try {
       const record = { id: event.requestId, url: event.request.url, method: event.request.method, range,
         startedAt: event.wallTime * 1000, timestamp: event.timestamp, status: null, protocol: null,
         responseAt: null, firstBodyAt: null, lastBodyAt: null, endedAt: null, bodyBytes: 0, encodedDataBytes: 0,
-        completedEncodedTransferBytes: null, completed: false, error: null };
+        completedEncodedTransferBytes: null, completed: false, error: null,
+        ...(options.diagnostics === 'true' ? { initialPriority: priority(event.request.initialPriority),
+          priority: priority(event.request.initialPriority), priorityChanges: [], droppedPriorityChanges: 0,
+          bodyChunks: [], bodyChunkCount: 0, droppedBodyChunks: 0 } : {}) };
       requests.push(record); requestRecords.set(event.requestId, record);
     } });
+    if (options.diagnostics === 'true') cdp.on('Network.resourceChangedPriority', event => {
+      const record = requestRecords.get(event.requestId); if (!record) return;
+      record.priority = priority(event.newPriority);
+      if (record.priorityChanges.length === PRIORITY_CHANGE_LIMIT) { record.priorityChanges.shift(); record.droppedPriorityChanges++; }
+      record.priorityChanges.push({ at: at(event, record), priority: record.priority });
+    });
     cdp.on('Network.responseReceived', event => {
       const record = requestRecords.get(event.requestId); if (!record) return;
       record.status = event.response.status; record.protocol = event.response.protocol;
@@ -370,6 +428,11 @@ try {
       const record = requestRecords.get(event.requestId); if (!record) return;
       record.firstBodyAt ??= at(event, record); record.lastBodyAt = at(event, record);
       record.bodyBytes += event.dataLength; record.encodedDataBytes += event.encodedDataLength;
+      if (options.diagnostics === 'true') {
+        record.bodyChunkCount++;
+        if (record.bodyChunks.length === BODY_CHUNK_LIMIT) { record.bodyChunks.shift(); record.droppedBodyChunks++; }
+        record.bodyChunks.push({ at: at(event, record), bytes: event.dataLength, encodedBytes: event.encodedDataLength });
+      }
     });
     cdp.on('Network.loadingFinished', event => {
       if (requestIds.has(event.requestId)) { http.completed++; http.encodedTransferBytes += event.encodedDataLength; requestIds.delete(event.requestId); }
@@ -383,8 +446,32 @@ try {
       record.endedAt = at(event, record); record.durationMs = record.endedAt - record.startedAt;
       record.error = event.errorText; record.cancelled = event.canceled ?? false; requestRecords.delete(event.requestId);
     });
-    await page.addInitScript(wantDiagnostics => {
+    await page.addInitScript(({ wantDiagnostics, longTaskLimit }) => {
       const qa = window.__visitorQa = { peers: [], ownedPeers: [], sockets: [], ownedSockets: [], workers: [], events: [], hlsErrors: [], presentedFrames: 0, codedFrame: null, wantDiagnostics };
+      if (wantDiagnostics) {
+        const supported = typeof PerformanceObserver === 'function' && PerformanceObserver.supportedEntryTypes?.includes('longtask') === true;
+        const tasks = qa.longTasks = { state: supported ? 'unavailable' : 'unsupported', timeOrigin: performance.timeOrigin,
+          count: supported ? 0 : null, totalDurationMs: supported ? 0 : null, maxDurationMs: supported ? 0 : null,
+          recent: [], droppedRecent: 0, observerDroppedMaxReport: null };
+        if (supported) {
+          let observer;
+          const accept = (entries, dropped) => {
+            if (Number.isSafeInteger(dropped) && dropped >= 0) tasks.observerDroppedMaxReport = Math.max(tasks.observerDroppedMaxReport ?? 0, dropped);
+            for (const entry of entries) {
+              if (!Number.isFinite(entry.startTime) || !Number.isFinite(entry.duration) || entry.duration < 0) continue;
+              tasks.count++; tasks.totalDurationMs += entry.duration; tasks.maxDurationMs = Math.max(tasks.maxDurationMs, entry.duration);
+              if (tasks.recent.length === longTaskLimit) { tasks.recent.shift(); tasks.droppedRecent++; }
+              tasks.recent.push({ startTime: entry.startTime, durationMs: entry.duration });
+            }
+          };
+          try {
+            observer = new PerformanceObserver((list, _observer, options) => accept(list.getEntries(), options?.droppedEntriesCount));
+            observer.observe({ type: 'longtask', buffered: true }); tasks.state = 'observing';
+            qa.flushLongTasks = () => accept(observer.takeRecords());
+            window.addEventListener('pagehide', () => { qa.flushLongTasks(); observer.disconnect(); tasks.state = 'stopped'; }, { once: true });
+          } catch { observer?.disconnect(); tasks.state = 'unavailable'; tasks.count = tasks.totalDurationMs = tasks.maxDurationMs = null; }
+        }
+      }
       qa.captureHlsError = data => {
         const video = document.getElementById('lab-video'), buffered = [];
         for (let i = 0; i < Math.min(4, video.buffered.length); i++) buffered.push([video.buffered.start(i), video.buffered.end(i)]);
@@ -446,7 +533,7 @@ try {
         };
         video.requestVideoFrameCallback(frame);
       }, { once: true });
-    }, options.diagnostics === 'true');
+    }, { wantDiagnostics: options.diagnostics === 'true', longTaskLimit: LONG_TASK_LIMIT });
     page.on('request', request => { if (new URL(request.url()).port === '7443') receipt.deadTurnEndpointRequests++; });
     page.on('pageerror', error => receipt.pageErrors.push({ visitor: index, message: String(error) }));
     page.on('websocket', socket => {

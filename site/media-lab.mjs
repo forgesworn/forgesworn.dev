@@ -1,8 +1,8 @@
 import { readInitialLiveStart } from './media-live-start.mjs';
-import { createSourceResponseStats, publicSourceResource, transferBytes } from './media-transfer-stats.mjs?v=20261025-iphone-recovery';
-import { createNativePlaybackFallback } from './media-playback-fallback.mjs?v=20261025-iphone-recovery';
-import { createPlaybackPrime } from './media-playback-prime.mjs?v=20261025-iphone-recovery';
-import { createPlaybackReport } from './media-playback-report.mjs?v=20261025-iphone-recovery';
+import { createSourceResponseStats, publicSourceResource, transferBytes } from './media-transfer-stats.mjs?v=20261025-first-tap';
+import { createNativePlaybackFallback } from './media-playback-fallback.mjs?v=20261025-first-tap';
+import { createPlaybackPrime } from './media-playback-prime.mjs?v=20261025-first-tap';
+import { createPlaybackReport } from './media-playback-report.mjs?v=20261025-first-tap';
 
 const DASH = '—';
 export const observed = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
@@ -353,12 +353,22 @@ async function initialise() {
   let polling = null;
   let foreignRun = false;
   let Hls;
+  let publicEngineState = local ? 'ready' : 'loading';
   let fullscreenReady = false;
   let detachFullscreen;
   let swarmVisual;
   let publicRoom = null, publicRoomQuality = null, publicRoomLoading = null, publicRoomRequest = 0;
   let invitationUsed = false;
   const publicPlay = $('public-play');
+  window.addEventListener('pagehide', () => {
+    clearTimeout(polling); pageAbort.abort();
+    detachFullscreen?.();
+    swarmVisual?.destroy();
+    if (session) {
+      if (local && session.id) navigator.sendBeacon?.('/lab/stop', new Blob([JSON.stringify({ runId: session.id })], { type: 'application/json' }));
+      dispose(session); session = null;
+    }
+  }, { once: true });
   if (!local) video.controls = false;
   const optionalText = (id, value) => { const node = $(id); if (node && node.textContent !== value) node.textContent = value; };
 
@@ -386,7 +396,7 @@ async function initialise() {
       s.followLive === false ? 'Away from the live stream' :
       state.role === 'starter' ? 'You started the stream · live' : 'Shared stream · live');
     if ($('public-live-edge')) $('public-live-edge').hidden = !joined || s.followLive !== false;
-    if (publicPlay && !busy && !s?.priming && !s?.browser?.seenFrame) {
+    if (publicPlay && publicEngineState !== 'loading' && !busy && !s?.startupPending && !s?.priming && !s?.browser?.seenFrame) {
       const label = publicPlay.querySelector('[data-play-label]');
       if (label) label.textContent = known && !state.listeners ? 'Start the room' : 'Play & join';
     }
@@ -400,7 +410,7 @@ async function initialise() {
     publicRoom?.stop(); publicRoom = null;
     const pending = (async () => {
       const [{ createListenerSession }, { PUBLIC_SWARM_SOURCE_SHA256, PUBLIC_SWARM_RELAYS }] = await Promise.all([
-        import('./media-listener-session.mjs?v=20261025-iphone-recovery'), import('./media-public-swarm.mjs?v=20261025-iphone-recovery'),
+        import('./media-listener-session.mjs?v=20261025-first-tap'), import('./media-public-swarm.mjs?v=20261025-first-tap'),
       ]);
       if (request !== publicRoomRequest || pageAbort.signal.aborted) return null;
       const clock = createListenerSession({ room: `forgesworn-dejavu-listening-v1-${quality}`, source: PUBLIC_SWARM_SOURCE_SHA256,
@@ -442,7 +452,7 @@ async function initialise() {
   }
 
   function followListener(s, force = false) {
-    if (local || session !== s || s.finishing || s.switchingPlayback || s.priming || !s.listenerWanted || !s.listener?.snapshot().ready ||
+    if (local || session !== s || s.finishing || s.playbackFailed || s.switchingPlayback || s.priming || !s.listenerWanted || !s.listener?.snapshot().ready ||
         !s.mediaReady || video.readyState < 1 || !Number.isFinite(video.duration)) return;
     if (!force && s.followLive === false) return;
     const target = s.listener.position();
@@ -636,6 +646,22 @@ async function initialise() {
       } catch { /* An unconfigured or unapproved source stays unavailable. */ }
     }
   }
+  if (!local) {
+    for (const option of $('lab-quality').options) option.disabled = !choices[option.value];
+    const requested = new URLSearchParams(location.search).get('q');
+    $('lab-quality').value = ['full', 'preview'].includes(requested) && choices[requested] ? requested : choices.full ? 'full' : 'preview';
+    // Prepare code only. There is no player, media request or peer identity
+    // until the listener's Play gesture creates the actual playback pipeline.
+    void import('./vendor/hls.light.min.mjs').then(module => {
+      if (pageAbort.signal.aborted) return;
+      Hls = module.default; publicEngineState = 'ready'; controls();
+    }).catch(() => {
+      if (pageAbort.signal.aborted) return;
+      publicEngineState = video.canPlayType('application/vnd.apple.mpegurl') ? 'native' : 'unavailable';
+      controls();
+      if (publicEngineState === 'unavailable') status('The player could not be prepared. Reload this page to try again.', true);
+    });
+  }
   const status = (message, error = false) => { text('lab-status', message); $('lab-status').classList.toggle('error', error); };
 
   function sameSiteUrl(value) {
@@ -679,13 +705,14 @@ async function initialise() {
     if (!local && publicPlay) {
       const ready = Boolean(session?.mediaReady);
       const finished = video.ended || session?.playbackFailed;
-      const loading = busy && !ready || Boolean(session?.priming);
-      publicPlay.disabled = loading;
+      const preparing = publicEngineState === 'loading';
+      const loading = preparing || busy && !ready || Boolean(session?.startupPending || session?.priming);
+      publicPlay.disabled = loading || publicEngineState === 'unavailable';
       publicPlay.hidden = Boolean(session?.browser?.seenFrame) && !finished;
       publicPlay.setAttribute('aria-label', loading ? 'Loading the mix' : finished ? 'Replay the mix and join the swarm' : ready ? 'Play the mix and join the swarm' : 'Play the mix and join the swarm');
       const label = publicPlay.querySelector('[data-play-label]');
-      if (label) label.textContent = loading ? 'Loading the mix…' : finished ? 'Play again' : 'Play & join';
-      video.controls = ready;
+      if (label) label.textContent = preparing ? 'Preparing player…' : loading ? 'Loading the mix…' : finished ? 'Play again' : 'Play & join';
+      video.controls = ready && !session?.playbackFailed;
       listenerStatus(session);
     }
     $('lab-clear').disabled = !runs.length;
@@ -870,6 +897,7 @@ async function initialise() {
         hasPresentedFrame: b.seenFrame, firstFrameMs: b.firstFrameMs, decodedFrames: b.decodedFrames,
         presentedFrames: b.presentedFrames, totalVideoFrames: quality?.totalVideoFrames, droppedVideoFrames: quality?.droppedVideoFrames,
         buffered, playbackRate: video.playbackRate, priming: Boolean(s.priming), primingReason: root.dataset.playbackPrime,
+        lastPlayError: root.dataset.playbackPlayError ?? null,
         following: room?.ready ? s.followLive !== false : null,
         sharedDriftSeconds: drift,
         waiting: b.waitingAt !== null, stallCount: b.stallCount, stallSeconds: b.stallSeconds, playerErrors: b.playerErrors,
@@ -923,7 +951,14 @@ async function initialise() {
     video.addEventListener('stalled', waiting, { signal: s.abort.signal });
     video.addEventListener('playing', endStall, { signal: s.abort.signal });
     if (!local) {
+      video.addEventListener('play', () => {
+        if (session !== s || s.finishing || s.playbackFailed || video.paused) return;
+        s.playbackWanted = true; s.startupPending = !b.seenFrame; controls();
+        if (s.publicPrepared) void completePublicStartup(s).catch(() => publicStartupFailed(s));
+      }, { signal: s.abort.signal });
       video.addEventListener('playing', () => {
+        if (session !== s || s.finishing || s.playbackFailed || video.paused) return;
+        if (b.seenFrame) s.startupPending = false;
         s.switchingPlayback = false;
         controls();
         status(`${s.quality === 'full' ? '4K' : '1080p'} mix playing. Pause to leave, or use the native controls for volume and full screen.`);
@@ -950,7 +985,12 @@ async function initialise() {
       // A natural boundary pauses the media element before ended. Keep room
       // membership and peer delivery through the shared recording's next loop.
       if (!local && video.ended && s.listenerWanted && s.listener?.snapshot().ready) return;
+      if (!local) {
+        s.playbackWanted = false; s.startupPending = false;
+        s.playbackVersion = (s.playbackVersion ?? 0) + 1;
+      }
       if (!local && !s.finishing) { leaveListener(s); shareWhilePlaying(s, false); }
+      if (!local) controls();
       if (!s.finishing && !s.sourceEof && b.seenFrame) {
         if (local) { s.interrupted = true; status('Playback paused. This interrupted run will not enter the comparison table.'); }
         else { status('Paused. Press play on the video to keep listening and rejoin.'); publicDelivery(s); }
@@ -976,6 +1016,7 @@ async function initialise() {
       s.switchingPlayback = false;
       b.playerErrors++;
       if (s.sourceEof && video.error?.code === 2) return;
+      if (!local && !b.seenFrame) { publicStartupFailed(s); return; }
       if (!local && s.hls && b.seenFrame && video.canPlayType('application/vnd.apple.mpegurl')) {
         switchPublicToNative(s, 'decode-error'); return;
       }
@@ -993,6 +1034,7 @@ async function initialise() {
         const playableFrame = !video.paused && !video.seeking && video.readyState >= 3;
         if (!b.seenFrame && playableFrame) {
           b.seenFrame = true; b.firstFrameMs = performance.now() - s.clickAt;
+          s.startupPending = false;
           b.lastDecodeAt = performance.now(); b.lastDecoded = observed(video.webkitDecodedFrameCount) ?? 0;
           $('video-empty').hidden = true;
           controls();
@@ -1003,7 +1045,9 @@ async function initialise() {
       s.frameCallback = video.requestVideoFrameCallback(frame);
     } else {
       video.addEventListener('timeupdate', () => {
-        if (!video.paused && !video.seeking && video.readyState >= 3 && video.videoWidth > 0 && video.currentTime > 0) { b.seenFrame = true; $('video-empty').hidden = true; }
+        if (!video.paused && !video.seeking && video.readyState >= 3 && video.videoWidth > 0 && video.currentTime > 0) {
+          b.seenFrame = true; s.startupPending = false; $('video-empty').hidden = true; controls();
+        }
       }, { signal: s.abort.signal });
     }
     if (typeof PerformanceObserver === 'function' && PerformanceObserver.supportedEntryTypes?.includes('resource')) {
@@ -1075,13 +1119,17 @@ async function initialise() {
   }
 
   async function play(s = session) {
-    if (!s || session !== s || !s.mediaReady || s.sourceEof || s.priming) return;
+    if (!s || session !== s || !s.mediaReady || s.sourceEof || s.priming || s.playbackFailed || !local && s.playbackWanted === false) return;
     const playbackVersion = s.playbackVersion ?? 0;
     if (local) { video.muted = false; if (video.volume === 0) video.volume = 1; }
     try { await video.play(); if (session === s && local) status('Playing with sound. Server and browser observations update separately.'); }
-    catch { if (session === s && !s.finishing && !s.abort.signal.aborted && playbackVersion === (s.playbackVersion ?? 0)) {
+    catch (error) { if (session === s && !s.finishing && !s.abort.signal.aborted && playbackVersion === (s.playbackVersion ?? 0)) {
       s.switchingPlayback = false;
-      if (!local) { leaveListener(s); shareWhilePlaying(s, false); }
+      if (!local) {
+        s.playbackWanted = false; s.startupPending = false;
+        root.dataset.playbackPlayError = ['NotAllowedError', 'AbortError', 'NotSupportedError', 'InvalidStateError', 'SecurityError'].includes(error?.name) ? error.name : 'Error';
+        leaveListener(s); shareWhilePlaying(s, false);
+      }
       status('The mix is ready. Press play to start listening.'); controls();
     } }
   }
@@ -1122,86 +1170,162 @@ async function initialise() {
     browserReadings(s);
   }
 
-  async function startNativeHls(s, url) {
+  function prepareNativeHls(s, url) {
     s.nativeHls = true;
     s.playbackEngine = 'Native HLS';
     video.addEventListener('loadedmetadata', () => {
       s.listenerAlignedEpoch = s.listener?.snapshot().epochId;
       followListener(s, true);
     }, { once: true, signal: s.abort.signal });
-    video.src = url.href; s.mediaReady = true; controls(); await play(s); publicDelivery(s);
+    video.src = url.href; s.mediaReady = true;
+  }
+
+  async function startNativeHls(s, url) {
+    prepareNativeHls(s, url); controls(); await play(s); publicDelivery(s);
+  }
+
+  function createHlsPlayer(s, startPosition = -1) {
+    const player = s.hls = new Hls({ lowLatencyMode: false, progressive: false, autoStartLoad: local,
+      maxBufferLength: local ? 4 : 20, maxMaxBufferLength: local ? 6 : 24,
+      maxBufferSize: (local ? 8 : 64) * 1024 * 1024, backBufferLength: local ? 0 : 4,
+      enableWorker: true, startPosition });
+    s.playbackEngine = 'hls.js';
+    player.on(Hls.Events.MEDIA_ATTACHED, (_, { mediaSource }) => {
+      if (session !== s || s.hls !== player) return;
+      s.playbackEngine = typeof ManagedMediaSource === 'function' && mediaSource instanceof ManagedMediaSource ?
+        'hls.js · ManagedMediaSource' : 'hls.js · MediaSource';
+    });
+    s.hls.on(Hls.Events.ERROR, (_, data) => {
+      if (session !== s || s.finishing || s.hls !== player) return;
+      s.browser.playerErrors++;
+      if (data.fatal && !local && !s.browser.seenFrame) { publicStartupFailed(s); return; }
+      if (data.fatal && !local && s.browser.seenFrame && video.canPlayType('application/vnd.apple.mpegurl')) {
+        switchPublicToNative(s, 'player-error'); return;
+      }
+      if (data.fatal && !s.directErrorPending) {
+        s.directErrorPending = true;
+        void confirmNormalSourceEnd(s, data).then(normal => {
+          if (session !== s || s.finishing || s.abort.signal.aborted || s.hls !== player) return;
+          if (normal) { s.hls.stopLoad(); video.pause(); }
+          else {
+            s.playbackFailed = true;
+            if (!local) { leaveListener(s); shareWhilePlaying(s, false); }
+            status(local ? 'The player could not continue. Stop this run and check the local runner.' : 'The selected source could not continue. Stop playback and try the preview.', true);
+          }
+        }).finally(() => { s.directErrorPending = false; });
+      }
+    });
+    player.on(Hls.Events.MANIFEST_PARSED, () => {
+      if (session !== s || s.hls !== player || s.finishing || s.abort.signal.aborted) return;
+      if (local) { s.mediaReady = true; controls(); void play(s); return; }
+      // The tap already requested playback on this attached media source.
+      // Start the real stream at the fresh room position without another play
+      // call or a second media attachment that would cancel that request.
+      const room = s.listener?.snapshot();
+      const position = room?.ready ? s.listener.position() : s.invitedStart || -1;
+      if (room?.ready && position >= 0) s.listenerAlignedEpoch = room.epochId;
+      player.startLoad(position);
+      controls();
+    });
+    return player;
+  }
+
+  function preparePublicPlayback(s, url) {
+    s.publicPrepared = true; s.publicUrl = url;
+    s.playbackWanted = true; s.startupPending = true;
+    trackBrowser(s, url);
+    video.preload = 'auto';
+    if (/\.mp4$/i.test(url.pathname)) {
+      s.playbackEngine = 'Native MP4';
+      video.crossOrigin = url.origin === location.origin ? '' : 'anonymous';
+      video.src = url.href;
+    } else if (Hls?.isSupported()) {
+      // attachMedia synchronously assigns the genuine MSE/MMS source and
+      // calls load(). The first tap's play() must follow that load(), before
+      // room discovery or peer setup has yielded the gesture's event turn.
+      createHlsPlayer(s).attachMedia(video);
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      prepareNativeHls(s, url);
+    } else throw new Error('This browser cannot play the HLS stream');
+    s.mediaReady = true;
+    controls();
+  }
+
+  async function completePublicStartup(s) {
+    const current = () => session === s && !s.finishing && !s.playbackFailed && !s.abort.signal.aborted && s.playbackWanted !== false;
+    if (!current()) return;
+    if (s.publicSourceSetup) {
+      await s.publicSourceSetup;
+      if (current() && !s.publicSourceLoaded) return completePublicStartup(s);
+      return;
+    }
+    const pending = (async () => {
+      await joinListener(s, Boolean(s.publicSourceLoaded));
+      if (!current() || !s.listenerWanted) return;
+      if (s.publicSourceLoaded) return;
+      const player = s.hls;
+      if (player) {
+        try {
+          const { createPublicSwarm } = await import('./media-public-swarm.mjs?v=20261025-first-tap');
+          if (!current() || s.hls !== player) return;
+          s.publicPeer = createPublicSwarm({ Hls, hls: player, video, playlistUrl: s.publicUrl.href, quality: s.quality,
+            signal: s.abort.signal, onStats: metrics => { if (session === s && !s.nativeHls && !s.finishing) publicDelivery(s, metrics); } });
+          shareWhilePlaying(s, true);
+        } catch { s.publicSharingFailed = true; publicDelivery(s); }
+        if (!current() || s.hls !== player) return;
+        s.publicSourceLoaded = true;
+        player.loadSource(s.publicUrl.href);
+      } else {
+        s.publicSourceLoaded = true;
+        s.listenerAlignedEpoch = s.listener?.snapshot().epochId;
+        followListener(s, true);
+      }
+    })();
+    s.publicSourceSetup = pending;
+    try { await pending; }
+    finally { if (s.publicSourceSetup === pending) s.publicSourceSetup = null; }
+  }
+
+  function publicStartupFailed(s) {
+    if (session !== s || s.finishing || s.abort.signal.aborted) return;
+    s.startupPending = false; s.playbackWanted = false; s.playbackFailed = true;
+    s.playbackVersion = (s.playbackVersion ?? 0) + 1;
+    leaveListener(s); shareWhilePlaying(s, false); video.pause();
+    status('This source could not be played. Try the preview or open the reproduction guide.', true);
+    controls();
+  }
+
+  function requestPublicPlayback(s) {
+    if (session !== s || s.finishing || s.playbackFailed || s.abort.signal.aborted) return Promise.resolve();
+    s.playbackWanted = true; s.startupPending = !s.browser?.seenFrame;
+    delete root.dataset.playbackPlayError;
+    controls();
+    // Do not await anything before this call. It is the listener's real play
+    // request on the selected source, not an empty-video autoplay unlock.
+    void play(s);
+    const pending = completePublicStartup(s);
+    void pending.catch(() => publicStartupFailed(s));
+    return pending;
   }
 
   async function attach(s, url, runtime) {
-    if (!local && /\.mp4$/i.test(url.pathname)) {
-      s.playbackEngine = 'Native MP4';
-      trackBrowser(s, url);
-      video.crossOrigin = url.origin === location.origin ? '' : 'anonymous';
-      video.src = url.href; s.mediaReady = true; controls(); await play(s);
-      return;
-    }
-    Hls ??= (await import(local ? './vendor/hls.min.mjs' : './vendor/hls.light.min.mjs')).default;
+    // The loopback runner retains its existing server-first startup contract.
+    Hls ??= (await import('./vendor/hls.min.mjs')).default;
     if (session !== s || s.abort.signal.aborted) return;
     trackBrowser(s, url);
-    const room = !local ? s.listener?.snapshot() : null;
-    const initial = local ? await readInitialLiveStart(url.href, { signal: s.abort.signal }) :
-      { startPosition: room?.ready ? s.listener.position() : s.invitedStart || -1, epochId: room?.ready ? room.epochId : null };
+    const initial = await readInitialLiveStart(url.href, { signal: s.abort.signal });
     if (session !== s || s.abort.signal.aborted) return;
     if (s.turnEngine !== 'off') {
-      if (!runtime || !local) throw new Error('A local per-viewer relay runtime is required');
+      if (!runtime) throw new Error('A local per-viewer relay runtime is required');
       const { startLabPeer } = await import('./media-lab-peer.mjs');
       if (session !== s || s.abort.signal.aborted) return;
       s.mediaReady = true; controls();
       s.peer = await startLabPeer({ Hls, video, playlistUrl: url.href, runtime, startPosition: initial.startPosition,
-        signal: s.abort.signal, onStats: (metrics) => peerStats(s, metrics), confirmSourceEnd: error => confirmNormalSourceEnd(s, error) });
+        signal: s.abort.signal, onStats: metrics => peerStats(s, metrics), confirmSourceEnd: error => confirmNormalSourceEnd(s, error) });
       await play(s);
     } else if (Hls.isSupported()) {
-      if (!local) video.preload = 'auto';
-      const player = s.hls = new Hls({ lowLatencyMode: false, progressive: false, maxBufferLength: local ? 4 : 20, maxMaxBufferLength: local ? 6 : 24,
-        maxBufferSize: (local ? 8 : 64) * 1024 * 1024, backBufferLength: local ? 0 : 4, enableWorker: true, startPosition: initial.startPosition });
-      s.playbackEngine = 'hls.js';
-      s.hls.on(Hls.Events.MEDIA_ATTACHED, (_, { mediaSource }) => {
-        if (session !== s || s.hls !== player) return;
-        s.playbackEngine = typeof ManagedMediaSource === 'function' && mediaSource instanceof ManagedMediaSource ?
-          'hls.js · ManagedMediaSource' : 'hls.js · MediaSource';
-      });
-      // HLS already seeks to startPosition. A second forced jump on the first
-      // playing event can discard the freshly downloaded startup fragment.
-      if (!local && initial.epochId && initial.startPosition >= 0) s.listenerAlignedEpoch = initial.epochId;
-      if (!local) {
-        try {
-          const { createPublicSwarm } = await import('./media-public-swarm.mjs?v=20261025-iphone-recovery');
-          if (session !== s || s.abort.signal.aborted || s.hls !== player) return;
-          s.publicPeer = createPublicSwarm({ Hls, hls: s.hls, video, playlistUrl: url.href, quality: s.quality,
-            signal: s.abort.signal, onStats: metrics => { if (session === s && !s.nativeHls && !s.finishing) publicDelivery(s, metrics); } });
-          shareWhilePlaying(s, true);
-        } catch { s.publicSharingFailed = true; publicDelivery(s); }
-      }
-      s.hls.on(Hls.Events.ERROR, (_, data) => {
-        if (session !== s || s.finishing || s.hls !== player) return;
-        s.browser.playerErrors++;
-        if (data.fatal && !local && s.browser.seenFrame && video.canPlayType('application/vnd.apple.mpegurl')) {
-          switchPublicToNative(s, 'player-error'); return;
-        }
-        if (data.fatal && !s.directErrorPending) {
-          s.directErrorPending = true;
-          void confirmNormalSourceEnd(s, data).then(normal => {
-            if (session !== s || s.finishing || s.abort.signal.aborted || s.hls !== player) return;
-            if (normal) { s.hls.stopLoad(); video.pause(); }
-            else {
-              s.playbackFailed = true;
-              if (!local) { leaveListener(s); shareWhilePlaying(s, false); }
-              status(local ? 'The player could not continue. Stop this run and check the local runner.' : 'The selected source could not continue. Stop playback and try the preview.', true);
-            }
-          }).finally(() => { s.directErrorPending = false; });
-        }
-      });
-      s.hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        if (session !== s || s.hls !== player) return;
-        if (!local) primePlayback(s);
-        else { s.mediaReady = true; controls(); void play(s); }
-      });
-      s.hls.loadSource(url.href); s.hls.attachMedia(video);
+      const player = createHlsPlayer(s, initial.startPosition);
+      player.loadSource(url.href); player.attachMedia(video);
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
       await startNativeHls(s, url);
     } else throw new Error('This browser cannot play the HLS stream');
@@ -1272,7 +1396,7 @@ async function initialise() {
   }
 
   async function start() {
-    if (busy || session || foreignRun) return;
+    if (busy || session || foreignRun || !local && ['loading', 'unavailable'].includes(publicEngineState)) return;
     const clickAt = performance.now();
     busy = true; controls();
     $('video-empty').hidden = false;
@@ -1286,9 +1410,8 @@ async function initialise() {
           invitedStart: invitationUsed ? 0 : invitedPlaybackStart(location.search, Date.now(), choice.durationSeconds, choice.id) };
         invitationUsed = true;
         text('player-label', `${choice.label} · licensed source`);
-        await joinListener(session, false);
-        if (!session || session.finishing || session.abort.signal.aborted) return;
-        await attach(session, choice.url);
+        preparePublicPlayback(session, choice.url);
+        void requestPublicPlayback(session);
         return;
       }
       const engine = $('lab-engine').value;
@@ -1343,7 +1466,8 @@ async function initialise() {
   $('lab-play').addEventListener('click', () => {
     if (!local && session && session.quality !== $('lab-quality').value) {
       dispose(session); session = null; void start();
-    } else void play();
+    } else if (local) void play();
+    else if (session) void requestPublicPlayback(session);
   });
   $('lab-stop').addEventListener('click', () => { void stop(); });
   $('lab-engine').addEventListener('change', showEngineVersion);
@@ -1354,7 +1478,7 @@ async function initialise() {
       if (!session) { void start(); return; }
       if (session.playbackFailed) { dispose(session); session = null; void start(); return; }
       if (video.ended) video.currentTime = 0;
-      void play();
+      void requestPublicPlayback(session);
     });
     $('lab-quality').addEventListener('change', () => {
       if (!session) { void ensureListenerRoom($('lab-quality').value).catch(() => listenerStatus(null)); return; }
@@ -1379,13 +1503,15 @@ async function initialise() {
     $('public-live-edge')?.addEventListener('click', () => {
       if (!session) return;
       session.followLive = true;
-      void joinListener(session).then(() => { if (session) { followListener(session, true); void play(session); } });
+      const s = session;
+      void requestPublicPlayback(s).then(() => { if (session === s) followListener(s, true); }).catch(() => {});
     });
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden && session && !video.paused && session.followLive !== false) followListener(session);
     }, { signal: pageAbort.signal });
+    controls();
     try {
-      const { createSwarmVisual } = await import('./media-swarm-visual.mjs?v=20261025-iphone-recovery');
+      const { createSwarmVisual } = await import('./media-swarm-visual.mjs?v=20261025-first-tap');
       if (!pageAbort.signal.aborted && $('public-swarm-map')) {
         swarmVisual = createSwarmVisual($('public-swarm-map'));
         publicDelivery(session);
@@ -1397,6 +1523,7 @@ async function initialise() {
       }
     } catch { /* Playback and counters remain available without the diagram. */ }
   }
+  if (pageAbort.signal.aborted) return;
   $('lab-clear').addEventListener('click', () => { runs.length = 0; renderTable(); });
   $('public-save-report')?.addEventListener('click', () => {
     const file = playbackReportFile();
@@ -1427,15 +1554,7 @@ async function initialise() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   });
   document.addEventListener('visibilitychange', () => { if (document.hidden && session?.id) session.interrupted = true; });
-  window.addEventListener('pagehide', () => {
-    clearTimeout(polling); pageAbort.abort();
-    detachFullscreen?.();
-    swarmVisual?.destroy();
-    if (session) {
-      if (local && session.id) navigator.sendBeacon?.('/lab/stop', new Blob([JSON.stringify({ runId: session.id })], { type: 'application/json' }));
-      dispose(session); session = null;
-    }
-  }, { once: true });
+
 
   try { if (local) {
     const { attachFullscreen } = await import('./media-fullscreen.mjs');
@@ -1449,6 +1568,7 @@ async function initialise() {
     }
   } } catch { /* Playback remains available if this browser cannot offer the fullscreen helper. */ }
 
+  controls();
   if (root.dataset.resultsUrl) {
     try {
       const url = sameSiteUrl(root.dataset.resultsUrl);
@@ -1519,9 +1639,6 @@ async function initialise() {
     if (Object.keys(choices).length) {
       $('lab-quality-field').hidden = false;
       $('lab-quality-note').hidden = false;
-      for (const option of $('lab-quality').options) option.disabled = !choices[option.value];
-      const requested = new URLSearchParams(location.search).get('q');
-      $('lab-quality').value = ['full', 'preview'].includes(requested) && choices[requested] ? requested : choices.full ? 'full' : 'preview';
       qualityDetails();
       void ensureListenerRoom($('lab-quality').value).catch(() => listenerStatus(session));
     }

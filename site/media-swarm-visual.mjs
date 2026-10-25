@@ -1,6 +1,6 @@
 // A bounded picture of local video measurements and fresh listener reports.
 // Reported links stay visually distinct from transfers observed in this browser.
-import { transferBytes as bytes } from './media-transfer-stats.mjs?v=20261025-iphone-recovery';
+import { transferBytes as bytes } from './media-transfer-stats.mjs?v=20261025-first-tap';
 const NS = 'http://www.w3.org/2000/svg';
 export const MAX_VISUAL_PEERS = 10;
 export const TRAFFIC_WINDOW_MS = 10_000;
