@@ -51,7 +51,7 @@ test('corrupt, oversized or mismatched rhythm data cannot drive the pulse', () =
   }
 });
 
-function environment(t, response = () => new Response(JSON.stringify(asset))) {
+function environment(t, response = () => new Response(JSON.stringify(asset)), options = {}) {
   const saved = new Map(['requestAnimationFrame', 'cancelAnimationFrame', 'matchMedia', 'IntersectionObserver'].map(key => [key, globalThis[key]]));
   const frames = new Map(), reduced = Object.assign(new EventTarget(), { matches: false }); let next = 0, intersection;
   globalThis.requestAnimationFrame = callback => { frames.set(++next, callback); return next; };
@@ -67,7 +67,7 @@ function environment(t, response = () => new Response(JSON.stringify(asset))) {
     paused: true, ended: false, seeking: false, readyState: 4 });
   const container = { dataset: {} }, values = [], abort = new AbortController(); let requests = 0;
   const pulse = createMusicPulse({ video, container, signal: abort.signal, onPulse: value => values.push(value),
-    fetchImpl: async () => { requests++; return response(); } });
+    fetchImpl: async () => { requests++; return response(); }, ...options });
   t.after(() => {
     pulse.destroy();
     for (const [key, value] of saved) if (value === undefined) delete globalThis[key]; else globalThis[key] = value;
@@ -106,6 +106,21 @@ test('a frozen playhead stops pulse motion until media resumes, even without a w
   assert.deepEqual(e.values.at(-1), { energy: 0, beat: 0 });
   e.video.currentTime += 0.1; e.video.dispatchEvent(new Event('timeupdate')); e.paint(1500);
   assert(e.values.at(-1).energy > 0); assert.equal(e.frames.size, 1);
+});
+
+test('programme phase samples the right music while only the real media clock can sustain animation', async t => {
+  const timeline = decodeRhythm(asset).full;
+  let programme = timeline.beats[12][0];
+  const e = environment(t, undefined, { getTime: () => programme });
+  e.video.currentTime = 600;
+  e.visible(true); e.play(); await e.loaded(); e.paint(1000);
+  assert.deepEqual(e.values.at(-1), sampleMusicPulse(timeline, programme));
+  programme += 0.08; e.video.currentTime += 0.08; e.paint(1080);
+  assert.deepEqual(e.values.at(-1), sampleMusicPulse(timeline, programme));
+  programme += 1; e.paint(1400);
+  assert.equal(e.container.dataset.musicPulseState, 'waiting', 'a changing room phase cannot animate a frozen decoder');
+  assert.deepEqual(e.values.at(-1), { energy: 0, beat: 0 });
+  assert.equal(e.video.currentTime, 600.08, 'phase sampling never seeks the visible player');
 });
 
 test('rhythm loading failure leaves the player alone and does not create a retry or animation loop', async t => {

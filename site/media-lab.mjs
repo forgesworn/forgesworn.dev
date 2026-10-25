@@ -1,8 +1,8 @@
 import { readInitialLiveStart } from './media-live-start.mjs';
-import { createSourceResponseStats, publicSourceResource, transferBytes } from './media-transfer-stats.mjs?v=20261025-first-tap';
-import { createNativePlaybackFallback } from './media-playback-fallback.mjs?v=20261025-first-tap';
-import { createPlaybackPrime } from './media-playback-prime.mjs?v=20261025-first-tap';
-import { createPlaybackReport } from './media-playback-report.mjs?v=20261025-first-tap';
+import { createSourceResponseStats, publicSourceResource, transferBytes } from './media-transfer-stats.mjs?v=20261025-continuous';
+import { createNativePlaybackFallback } from './media-playback-fallback.mjs?v=20261025-continuous';
+import { createPlaybackPrime } from './media-playback-prime.mjs?v=20261025-continuous';
+import { createPlaybackReport } from './media-playback-report.mjs?v=20261025-continuous';
 
 const DASH = '—';
 export const observed = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
@@ -47,7 +47,7 @@ export function sharedPositionDifference(current, target, duration) {
 }
 // A wall clock advances while a decoder buffers. Repeatedly seeking to catch
 // it can keep a slower player buffering indefinitely, especially on iPhone.
-export function createSharedPlaybackSync(video, { now = () => performance.now(), signal, onSeek = () => {} } = {}) {
+export function createSharedPlaybackSync(video, { now = () => performance.now(), signal, onSeek = () => {}, linear = () => false } = {}) {
   let stableAt = null, driftAt = null, driftDirection = 0, lastSeekAt = -Infinity, nextCheckAt = 0, pendingAlignment = false;
   let recovery = null, recentSeekCostMs = 0;
   const page = video.ownerDocument;
@@ -95,9 +95,9 @@ export function createSharedPlaybackSync(video, { now = () => performance.now(),
   };
   return {
     align(target, duration, force = false) {
-      const difference = sharedPositionDifference(video.currentTime, target, duration);
+      const difference = linear() ? target - video.currentTime : sharedPositionDifference(video.currentTime, target, duration);
       const result = { difference, corrected: false };
-      if (difference === null) return result;
+      if (difference === null || !Number.isFinite(difference)) return { difference: null, corrected: false };
       pendingAlignment ||= force;
       force = pendingAlignment;
       const at = now();
@@ -371,6 +371,17 @@ async function initialise() {
   }, { once: true });
   if (!local) video.controls = false;
   const optionalText = (id, value) => { const node = $(id); if (node && node.textContent !== value) node.textContent = value; };
+  function recordingPosition(s, time = video.currentTime) {
+    if (!s) return null;
+    try { return observed(s?.recordedView ? s.recordedView.recordingPosition(time) : time); }
+    catch { return null; }
+  }
+  const recordingDuration = s => observed(s?.recording?.durationSeconds) ?? observed(s?.durationSeconds);
+  const playbackMode = s => local ? 'live-server' : s?.recordedView ? 'recorded-live' : 'recorded-vod';
+  function roomMediaTime(s) {
+    try { return observed(s.recordedView ? s.recordedView.mediaTimeAt(Date.now()) : s.listener.position()); }
+    catch { return null; }
+  }
 
   function listenerStatus(s) {
     if (local) return;
@@ -410,7 +421,7 @@ async function initialise() {
     publicRoom?.stop(); publicRoom = null;
     const pending = (async () => {
       const [{ createListenerSession }, { PUBLIC_SWARM_SOURCE_SHA256, PUBLIC_SWARM_RELAYS }] = await Promise.all([
-        import('./media-listener-session.mjs?v=20261025-first-tap'), import('./media-public-swarm.mjs?v=20261025-first-tap'),
+        import('./media-listener-session.mjs?v=20261025-continuous'), import('./media-public-swarm.mjs?v=20261025-continuous'),
       ]);
       if (request !== publicRoomRequest || pageAbort.signal.aborted) return null;
       const clock = createListenerSession({ room: `forgesworn-dejavu-listening-v1-${quality}`, source: PUBLIC_SWARM_SOURCE_SHA256,
@@ -419,9 +430,11 @@ async function initialise() {
           const s = session;
           const metrics = s?.quality === quality && s.listenerWanted ? s.publicPeer?.metrics() : null;
           if (!metrics?.viewerId) return null;
+          const position = recordingPosition(s);
+          if (position === null) return null;
           return { peerId: metrics.viewerId, sampledAt: Date.now(),
-            positionMs: Math.min(Math.round(video.currentTime * 1000), Math.round(s.durationSeconds * 1000) - 1),
-            following: s.followLive !== false && !s.priming, originBytes: metrics.originBytes, peerBytes: metrics.peerBytes,
+            positionMs: Math.min(Math.round(position * 1000), Math.round(s.durationSeconds * 1000) - 1),
+            following: s.followLive !== false && !s.priming && !s.switchingPlayback, originBytes: metrics.originBytes, peerBytes: metrics.peerBytes,
             uploadedBytes: metrics.uploadedBytes,
             connections: metrics.topology.connections.slice(0, 3).map(peer => ({
               peerId: peer.peerId, sentBytes: peer.mediaBytesSent, receivedBytes: peer.verifiedMediaBytesReceived,
@@ -435,8 +448,12 @@ async function initialise() {
             s.listenerState = state;
             if (previous && state.ready && state.epochId !== previous) {
               s.followLive = true;
-              if (s.mediaReady) s.listenerAlignedEpoch = state.epochId;
-              followListener(s, true);
+              if (s.recordedView) {
+                void completePublicStartup(s).catch(() => publicStartupFailed(s));
+              } else if (s.publicSourceLoaded) {
+                if (s.mediaReady) s.listenerAlignedEpoch = state.epochId;
+                followListener(s, true);
+              }
             }
           }
           publicDelivery(s);
@@ -453,11 +470,12 @@ async function initialise() {
 
   function followListener(s, force = false) {
     if (local || session !== s || s.finishing || s.playbackFailed || s.switchingPlayback || s.priming || !s.listenerWanted || !s.listener?.snapshot().ready ||
-        !s.mediaReady || video.readyState < 1 || !Number.isFinite(video.duration)) return;
+        !s.mediaReady || video.readyState < 1 || !s.recordedView && !Number.isFinite(video.duration)) return;
     if (!force && s.followLive === false) return;
-    const target = s.listener.position();
+    if (s.recordedView && s.recordedEpochId !== s.listener.snapshot().epochId) return;
+    const target = roomMediaTime(s);
     const duration = s.durationSeconds;
-    if (!Number.isFinite(target) || !(duration > 0)) return;
+    if (target === null || !(duration > 0)) return;
     const { difference } = s.playbackSync.align(target, duration, force);
     if (difference === null) return;
     root.dataset.sharedDrift = String(difference);
@@ -513,6 +531,9 @@ async function initialise() {
 
   function publicDelivery(s, metrics = s?.publicPeer?.metrics() ?? s?.fallbackPeerMetrics) {
     if (local) return;
+    root.dataset.playbackMode = playbackMode(s);
+    root.dataset.recordingPosition = String(recordingPosition(s) ?? '');
+    root.dataset.recordingDuration = String(recordingDuration(s) ?? '');
     const peerBytes = observed(metrics?.peerBytes) ?? 0;
     const uploaded = observed(metrics?.uploadedBytes) ?? 0;
     const peers = observed(metrics?.connectedPeers) ?? 0;
@@ -689,6 +710,7 @@ async function initialise() {
   }
 
   function controls() {
+    root.dataset.playbackMode = playbackMode(session);
     const running = Boolean(session);
     const preview = !local && Boolean(choices[$('lab-quality').value]);
     const engineAvailable = config?.engines?.some((entry) => entry.id === $('lab-engine').value && entry.available);
@@ -861,14 +883,15 @@ async function initialise() {
     if (video.videoWidth > 0 && video.videoHeight > 0) { b.width = video.videoWidth; b.height = video.videoHeight; }
     if (video.readyState > 0) b.videoTimeSeconds = observed(video.currentTime);
     b.playbackEndObserved = video.ended;
-    if (!local) text('run-clock', `${clock(video.currentTime)} / ${clock(video.duration)}`);
+    const programmePosition = recordingPosition(s), programmeDuration = recordingDuration(s);
+    if (!local) text('run-clock', `${clock(programmePosition)} / ${clock(programmeDuration)}`);
     b.stallSeconds = b.finishedStallSeconds + (b.waitingAt === null ? 0 : (now - b.waitingAt) / 1000);
     let buffer = video.readyState > 0 ? 0 : null;
     for (let i = 0; i < video.buffered.length; i++) if (video.currentTime >= video.buffered.start(i) && video.currentTime <= video.buffered.end(i)) buffer = video.buffered.end(i) - video.currentTime;
     text('browser-fps', reading(b.fps, ' fps'));
     text('browser-dimensions', videoDimensions(b));
     text('first-frame', reading(b.firstFrameMs, ' ms', 0));
-    text('browser-time', video.readyState > 0 ? clock(video.currentTime) : DASH);
+    text('browser-time', video.readyState > 0 ? clock(programmePosition) : DASH);
     text('browser-buffer', reading(buffer, ' s', 2));
     text('browser-stalls', reading(b.stallCount, '', 0));
     text('browser-stall-time', reading(b.stallSeconds, ' s', 2));
@@ -887,10 +910,12 @@ async function initialise() {
       try { buffered = Array.from({ length: video.buffered.length }, (_, i) => [video.buffered.start(i), video.buffered.end(i)]); } catch {}
       try { quality = video.getVideoPlaybackQuality?.(); } catch {}
       const room = s.listener?.snapshot();
-      const drift = room?.ready && video.readyState > 0 ?
-        sharedPositionDifference(video.currentTime, s.listener.position(), s.durationSeconds) : null;
+      const target = room?.ready ? roomMediaTime(s) : null;
+      const drift = target !== null && video.readyState > 0 ? s.recordedView ? target - video.currentTime :
+        sharedPositionDifference(video.currentTime, target, s.durationSeconds) : null;
       return {
         position: video.currentTime, duration: video.duration, readyState: video.readyState,
+        playbackMode: playbackMode(s), recordingPosition: recordingPosition(s), recordingDuration: recordingDuration(s),
         paused: video.paused, seeking: video.seeking, ended: video.ended, visibility: document.visibilityState,
         quality: s.quality, engine: s.playbackEngine, library: metrics?.library,
         width: video.videoWidth, height: video.videoHeight, presentedWidth: b.mediaWidth, presentedHeight: b.mediaHeight,
@@ -929,7 +954,8 @@ async function initialise() {
 
   function trackBrowser(s, playlist) {
     delete root.dataset.playbackFallback;
-    s.playbackSync = createSharedPlaybackSync(video, { signal: s.abort.signal, onSeek: at => { s.roomSeekAt = at; } });
+    s.playbackSync = createSharedPlaybackSync(video, { signal: s.abort.signal, linear: () => Boolean(s.recordedView),
+      onSeek: at => { s.roomSeekAt = at; } });
     s.bufferedRecovery = createBufferedPlaybackRecovery(video, { onSeek: at => { s.roomSeekAt = at; } });
     s.nativeFallbackPolicy = createNativePlaybackFallback(video);
     s.playlistUrl = playlist.href;
@@ -965,9 +991,17 @@ async function initialise() {
         s.switchingPlayback = false;
         controls();
         status(`${s.quality === 'full' ? '4K' : '1080p'} mix playing. Pause to leave, or use the native controls for volume and full screen.`);
-        void joinListener(s).then(() => { if (session === s && !video.paused && !s.finishing) shareWhilePlaying(s, true); });
+        void joinListener(s, !s.recordedView).then(() => { if (session === s && !video.paused && !s.finishing) shareWhilePlaying(s, true); });
       }, { signal: s.abort.signal });
       video.addEventListener('ended', () => {
+        if (session !== s || s.finishing || s.switchingPlayback) return;
+        // A continuous playlist has no recording EOF. Do not reset its raw
+        // timeline or run the VOD replay-prime path if the engine ends early.
+        if (s.recordedView) {
+          if (video.canPlayType('application/vnd.apple.mpegurl')) switchPublicToNative(s, 'unexpected-end');
+          else publicStartupFailed(s);
+          return;
+        }
         if (s.listenerWanted && s.listener?.snapshot().ready && !s.finishing) {
           s.followLive = true;
           if (s.hls) primePlayback(s, true);
@@ -981,7 +1015,7 @@ async function initialise() {
       endStall();
       s.nativeFallbackPolicy.reset();
       if (s.switchingPlayback) {
-        if ((s.userInteractionAt ?? -Infinity) <= s.nativeTransitionStartedAt) return;
+        if ((s.userInteractionAt ?? -Infinity) <= s.playbackTransitionStartedAt) return;
         s.switchingPlayback = false;
         s.nativeAutoplayCancelled = true;
       }
@@ -991,6 +1025,7 @@ async function initialise() {
       if (!local) {
         s.playbackWanted = false; s.startupPending = false;
         s.playbackVersion = (s.playbackVersion ?? 0) + 1;
+        if (s.recordedView && s.hls) { s.hls.stopLoad(); s.recordedLoadStopped = true; }
       }
       if (!local && !s.finishing) { leaveListener(s); shareWhilePlaying(s, false); }
       if (!local) controls();
@@ -1084,7 +1119,7 @@ async function initialise() {
       checkPlaybackPrime(s);
       followListener(s);
       const nativeCapable = !local && Boolean(video.canPlayType('application/vnd.apple.mpegurl'));
-      const nativeEligible = nativeCapable && Boolean(s.hls) && !s.nativeHls && !s.sourceEof && b.seenFrame && !document.hidden;
+      const nativeEligible = nativeCapable && Boolean(s.hls) && !s.nativeHls && !s.switchingPlayback && !s.sourceEof && b.seenFrame && !document.hidden;
       if (s.nativeFallbackPolicy.check(nativeEligible)) switchPublicToNative(s);
       if (!local && !nativeCapable && s.hls && b.seenFrame && !s.sourceEof && s.bufferedRecovery.check(b.presentedFrames)) s.bufferedRecoveries = (s.bufferedRecoveries ?? 0) + 1;
       browserReadings(s); recordPlaybackReport(s); s.browserTimer = setTimeout(tick, 400);
@@ -1139,11 +1174,13 @@ async function initialise() {
 
   function switchPublicToNative(s, reason = 'stalls') {
     if (local || session !== s || s.finishing || s.nativeHls || !s.hls || s.abort.signal.aborted) return;
-    const position = video.currentTime;
+    // Capture the programme phase while the immutable timeline still exists.
+    // Raw continuous media time may already be many recordings long.
+    const position = recordingPosition(s);
     const previous = s.publicPeer?.metrics();
     s.playbackVersion = (s.playbackVersion ?? 0) + 1;
     s.switchingPlayback = true;
-    s.nativeTransitionStartedAt = performance.now();
+    s.playbackTransitionStartedAt = performance.now();
     s.nativeFallback = true;
     s.nativeHls = true;
     root.dataset.playbackFallback = reason;
@@ -1157,6 +1194,7 @@ async function initialise() {
     const peer = s.publicPeer; s.publicPeer = null;
     try { peer?.stop(); } catch {}
     const hls = s.hls; s.hls = null;
+    stopRecordedView(s);
     try { hls.destroy(); } catch {}
     s.publicSharingFailed = false;
     s.playbackEngine = 'Native HLS';
@@ -1166,7 +1204,7 @@ async function initialise() {
         s.roomSeekAt = performance.now();
         video.currentTime = Math.min(position, Math.max(0, video.duration - 0.1));
       }
-      if (!s.nativeAutoplayCancelled) void play(s);
+      if (s.playbackWanted !== false) void play(s);
     }, { once: true, signal: s.abort.signal });
     video.src = s.playlistUrl;
     status('Switching to your browser’s native player to recover playback.');
@@ -1221,16 +1259,41 @@ async function initialise() {
     player.on(Hls.Events.MANIFEST_PARSED, () => {
       if (session !== s || s.hls !== player || s.finishing || s.abort.signal.aborted) return;
       if (local) { s.mediaReady = true; controls(); void play(s); return; }
+      if (s.playbackWanted === false) return;
       // The tap already requested playback on this attached media source.
       // Start the real stream at the fresh room position without another play
       // call or a second media attachment that would cancel that request.
       const room = s.listener?.snapshot();
-      const position = room?.ready ? s.listener.position() : s.invitedStart || -1;
+      const position = room?.ready ? roomMediaTime(s) ?? -1 : s.invitedStart || -1;
       if (room?.ready && position >= 0) s.listenerAlignedEpoch = room.epochId;
+      s.roomSeekAt = performance.now();
       player.startLoad(position);
       controls();
     });
     return player;
+  }
+
+  function stopRecordedView(s) {
+    const view = s.recordedView;
+    s.recordedView = null; s.recordedEpochId = null; s.recordedLoadStopped = false;
+    try { view?.stop(); } catch {}
+  }
+
+  function replaceRecordedPipeline(s) {
+    // A different room epoch is a different raw media origin. Old SourceBuffer
+    // timestamps cannot be reinterpreted by merely replacing the playlist.
+    s.switchingPlayback = true; s.playbackTransitionStartedAt = performance.now();
+    s.playbackVersion = (s.playbackVersion ?? 0) + 1;
+    const peer = s.publicPeer, player = s.hls;
+    s.publicPeer = null; s.hls = null; s.publicSourceLoaded = false;
+    stopRecordedView(s);
+    try { peer?.stop(); } catch {}
+    try { player?.destroy(); } catch {}
+    s.peerHlsErrors = 0; s.directErrorPending = false;
+    createHlsPlayer(s).attachMedia(video);
+    // This is the same authorised visible element. A browser can still reject
+    // the new demand; play() retains its normal honest, same-player retry UI.
+    if (s.playbackWanted !== false) void play(s);
   }
 
   function preparePublicPlayback(s, url) {
@@ -1256,28 +1319,77 @@ async function initialise() {
 
   async function completePublicStartup(s) {
     const current = () => session === s && !s.finishing && !s.playbackFailed && !s.abort.signal.aborted && s.playbackWanted !== false;
+    const needsSetup = () => !s.publicSourceLoaded || Boolean(s.recordedView &&
+      (s.recordedLoadStopped || s.recordedEpochId !== s.listener?.snapshot().epochId));
     if (!current()) return;
     if (s.publicSourceSetup) {
       await s.publicSourceSetup;
-      if (current() && !s.publicSourceLoaded) return completePublicStartup(s);
+      if (current() && needsSetup()) return completePublicStartup(s);
       return;
     }
+    let version = s.playbackVersion ?? 0;
+    const owns = () => current() && version === (s.playbackVersion ?? 0);
     const pending = (async () => {
-      await joinListener(s, Boolean(s.publicSourceLoaded));
-      if (!current() || !s.listenerWanted) return;
-      if (s.publicSourceLoaded) return;
+      await joinListener(s, !s.recordedView && Boolean(s.publicSourceLoaded));
+      if (!owns() || !s.listenerWanted) return;
+      const room = s.listener?.snapshot();
+      if (s.publicSourceLoaded && (!s.recordedView || s.recordedEpochId === room?.epochId)) {
+        if (s.recordedView && s.recordedLoadStopped && room?.ready) {
+          s.recordedLoadStopped = false;
+          s.roomSeekAt = performance.now();
+          s.hls.startLoad(roomMediaTime(s) ?? -1);
+          s.listenerAlignedEpoch = room.epochId;
+          followListener(s, true);
+        }
+        return;
+      }
+      if (s.recordedView) {
+        if (!room?.ready) return;
+        replaceRecordedPipeline(s);
+        version = s.playbackVersion ?? 0;
+      }
       const player = s.hls;
       if (player) {
         try {
-          const { createPublicSwarm } = await import('./media-public-swarm.mjs?v=20261025-first-tap');
-          if (!current() || s.hls !== player) return;
-          s.publicPeer = createPublicSwarm({ Hls, hls: player, video, playlistUrl: s.publicUrl.href, quality: s.quality,
-            signal: s.abort.signal, onStats: metrics => { if (session === s && !s.nativeHls && !s.finishing) publicDelivery(s, metrics); } });
+          const { createPublicSwarm, prepareRecordedSource, createRecordedLive } = await import('./media-public-swarm.mjs?v=20261025-continuous');
+          if (!owns() || s.hls !== player) return;
+          // These two exports share the exact helper module/recording brand.
+          // Preparing metadata fetches no video and happens only after joining.
+          const recording = s.listener?.snapshot().ready ? await prepareRecordedSource({
+            quality: s.quality, playlistUrl: s.publicUrl.href, signal: s.abort.signal,
+          }).catch(() => null) : null;
+          if (!owns() || s.hls !== player) return;
+          const latestRoom = s.listener?.snapshot();
+          if (recording && latestRoom?.ready && /^[a-f0-9]{64}$/.test(latestRoom.epochId) &&
+              Math.abs(recording.durationSeconds - s.durationSeconds) < 0.05) {
+            const view = createRecordedLive({ recording, epochMs: latestRoom.startedAt, signal: s.abort.signal,
+              passthroughUrls: [s.publicUrl.href] });
+            if (view) {
+              const ParentLoader = player.config.pLoader ?? player.config.loader;
+              player.config.pLoader = view.createPlaylistLoader(ParentLoader);
+              // The app owns shared-clock following, at the original 1x tempo.
+              // Do not let hls.js introduce a competing max-latency seek/rate.
+              Object.assign(player.config, { liveDurationInfinity: true, liveSyncDuration: 24,
+                liveMaxLatencyDuration: Infinity, maxLiveSyncPlaybackRate: 1 });
+              s.recording = recording; s.recordedView = view; s.recordedEpochId = latestRoom.epochId;
+            }
+          }
+          let peer;
+          peer = createPublicSwarm({ Hls, hls: player, video, playlistUrl: s.publicUrl.href, quality: s.quality,
+            ...(s.recordedView ? { recordedLive: { recording: s.recording, epochId: s.recordedEpochId } } : {}),
+            signal: s.abort.signal, onStats: metrics => {
+              if (peer && session === s && s.publicPeer === peer && !s.nativeHls && !s.finishing) publicDelivery(s, metrics);
+            } });
+          s.publicPeer = peer;
           shareWhilePlaying(s, true);
-        } catch { s.publicSharingFailed = true; publicDelivery(s); }
-        if (!current() || s.hls !== player) return;
+        } catch {
+          if (!owns() || s.hls !== player) return;
+          s.publicSharingFailed = true; publicDelivery(s);
+        }
+        if (!owns() || s.hls !== player) return;
         s.publicSourceLoaded = true;
         player.loadSource(s.publicUrl.href);
+        publicDelivery(s);
       } else {
         s.publicSourceLoaded = true;
         s.listenerAlignedEpoch = s.listener?.snapshot().epochId;
@@ -1344,6 +1456,7 @@ async function initialise() {
     try { if (s.listener === publicRoom) s.listener.leave(); else s.listener?.stop(); } catch {}
     try { Promise.resolve(s.peer?.stop()).catch(() => {}); } catch {}
     try { s.publicPeer?.stop(); } catch {}
+    stopRecordedView(s);
     try { s.hls?.destroy(); } catch {}
     video.pause(); video.removeAttribute('src'); video.load();
     video.removeAttribute('crossorigin');
@@ -1514,13 +1627,14 @@ async function initialise() {
     }, { signal: pageAbort.signal });
     controls();
     try {
-      const { createSwarmVisual } = await import('./media-swarm-visual.mjs?v=20261025-first-tap');
+      const { createSwarmVisual } = await import('./media-swarm-visual.mjs?v=20261025-continuous');
       if (!pageAbort.signal.aborted && $('public-swarm-map')) {
         swarmVisual = createSwarmVisual($('public-swarm-map'));
         publicDelivery(session);
         try {
           const { createMusicPulse } = await import('./media-music-pulse.mjs?v=20261024-swarm-calm');
           if (!pageAbort.signal.aborted) createMusicPulse({ video, container: $('public-swarm-map'), signal: pageAbort.signal,
+            getTime: () => recordingPosition(session),
             getQuality: () => session?.quality ?? $('lab-quality').value, onPulse: value => swarmVisual?.setAudioPulse?.(value) });
         } catch { /* Playback and measured transfers remain available without the decorative pulse. */ }
       }

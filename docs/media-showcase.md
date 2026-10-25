@@ -47,8 +47,9 @@ that clock; the person who started it can leave without ending it for the
 others.  The recording loops while the room remains occupied.  Pause leaves
 the room and stops peer sharing; Play discovers the current room again and
 returns to its live position.  Native seeking can move away from live, with
-**Back to live** to return. Following playback checks the circular clock
-offset through the existing browser observation timer. Automatic correction
+**Back to live** to return. Continuous recorded playback compares the raw
+player timeline with its fixed room-clock mapping; VOD fallback retains the
+circular clock comparison. Both use the existing browser observation timer. Automatic correction
 allows 750 ms of decoder offset plus the last observed seek interruption,
 measured through sustained advancing video time. Safari's `seeked` and
 `playing` events alone do not end recovery. Automatic correction needs
@@ -56,8 +57,8 @@ five seconds of stable playback and
 an offset in the same direction for at least three seconds, and requires
 both positions in one continuous buffer with two seconds of headroom.
 Corrections are spaced at least 15 seconds apart. Waiting, seeking or
-pausing restarts the recovery period. Joining, **Back to live** and recording
-loops can align immediately; returning from full screen uses the recovery
+pausing restarts the recovery period. Joining and **Back to live** can align
+immediately; returning from full screen uses the recovery
 checks. For example, a 500 ms seek makes the ordinary allowance 1.25 seconds;
 removing 770 ms of offset must not itself cause another half-second interruption.
 Pausing or hiding the page cancels an unfinished measurement so time away
@@ -74,19 +75,33 @@ Before Play, the page prepares the HLS module without creating a player or
 requesting video. The first tap attaches the selected media source and calls
 the same video's `play()` before waiting for room discovery or peer setup.
 The pending playback request supplies demand to ManagedMediaSource while the
-approved stream starts at the freshly discovered room position. Initial
+approved stream starts at the freshly discovered room position. Metadata
+preparation happens after that tap. Initial
 playback does not wait for the former paused three-second prime. This preserves
 the tap's playback request; it does not establish startup headroom or guarantee
 cold-cache continuity.
 
-On a recording loop, the same HLS instance still primes three seconds of
-continuous media before choosing the new room position; room and peer
-identities remain intact. Near the end it prepares zero and waits for the
-room to wrap. After twelve seconds a safely buffered current position can
-start away from live; a one-shot bootstrap prevents an indefinite paused wait
-when a managed source needs playback demand. Later clock corrections use
-the recovery checks above. Loop priming time remains in the measured wait
-count and duration. Recorded public playback targets 20 seconds of forward buffer,
+The supported recordings use a bounded client-generated live playlist. The
+canonical VOD manifest is verified against its pinned digest before its
+durations and exact media URLs are used. A sliding window includes 24 seconds
+ahead and four seconds behind the room clock, with a discontinuity and repeated
+initialisation map at each programme wrap. There is no ENDLIST in this view.
+The existing player can load the next head before the tail finishes; normal
+wraps do not end, reset to zero, re-prime, replace a peer identity or force a
+catch-up seek. No additional player or streaming service is created.
+
+Each session has a fixed player-time origin derived from its first selected
+fragment. A global media sequence number is not a player timestamp. Shared
+clock following uses this explicit mapping; displayed programme time, listener
+telemetry and the musical pulse use the corresponding recording phase. Playback
+remains at 1x. A genuinely new room epoch replaces the media pipeline on the
+same visible video; same-epoch pause/resume retains the mapping.
+
+Unrecognised metadata and native HLS retain the original VOD path. That path
+can prime three seconds on replay, with its bounded current-position release
+and playback-demand bootstrap. Those fallback waits remain measured; the
+continuous-playlist mechanism does not establish a zero-stall acceptance pass.
+Recorded public playback targets 20 seconds of forward buffer,
 caps its time target at 24 seconds and retains four seconds behind the
 playhead. Its hls.js byte target is 64 MiB, which is not a hard process-memory
 limit. The local live-server comparison keeps its original smaller buffers.
@@ -307,6 +322,12 @@ SDP, peer identities, credentials and source URLs or filesystem paths. Nothing
 is uploaded by the page; sharing requires the viewer's action. Exporting does
 not pause playback. The report is a diagnostic observation, not by itself a
 controlled comparison or proof of a cold browser cache.
+
+Reports keep raw media position and buffer ranges. Continuous media duration
+can be infinite and is therefore exported as `null`; `playbackMode`,
+`recordingPosition` and `recordingDuration` separately describe the programme
+phase. Folding raw player time modulo the recording duration would lose the
+session's initial timeline offset.
 
 Playback waits include real underflow and seek interruptions. A network
 `stalled` event alone does not increment the playback counter while the media

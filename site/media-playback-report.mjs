@@ -43,6 +43,9 @@ function connections(input) {
 
 function sample(input, elapsedMs) {
   const position = number(value(input, 'position')), buffered = ranges(value(input, 'buffered'));
+  const sourceDuration = number(value(input, 'recordingDuration'));
+  const recordingDuration = sourceDuration > 0 ? sourceDuration : null;
+  const sourcePosition = number(value(input, 'recordingPosition'));
   const sourceTimingCoverage = choice(value(input, 'sourceTimingCoverage'), ['complete', 'partial', 'unavailable']);
   let bufferedSeconds = buffered === null || position === null ? null : 0;
   if (buffered && position !== null) for (const [start, end] of buffered) {
@@ -51,6 +54,9 @@ function sample(input, elapsedMs) {
   return {
     elapsedMs,
     position, duration: number(value(input, 'duration')),
+    playbackMode: choice(value(input, 'playbackMode'), ['recorded-live', 'recorded-vod', 'live-server']),
+    recordingDuration,
+    recordingPosition: recordingDuration !== null && sourcePosition !== null && sourcePosition < recordingDuration ? sourcePosition : null,
     readyState: choice(value(input, 'readyState'), [0, 1, 2, 3, 4]),
     paused: boolean(value(input, 'paused')), seeking: boolean(value(input, 'seeking')), ended: boolean(value(input, 'ended')),
     lastPlayError: choice(value(input, 'lastPlayError'), ['NotAllowedError', 'AbortError', 'NotSupportedError', 'InvalidStateError', 'SecurityError', 'Error']),
