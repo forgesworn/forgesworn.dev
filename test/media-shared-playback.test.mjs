@@ -3,14 +3,14 @@ import assert from 'node:assert/strict';
 import { createSharedPlaybackSync } from '../site/media-lab.mjs';
 import { createPlaybackPrime } from '../site/media-playback-prime.mjs';
 
-function player() {
+function player({ linear = () => false } = {}) {
   const page = Object.assign(new EventTarget(), { hidden: false });
   const video = Object.assign(new EventTarget(), { currentTime: 20, duration: 268.6,
     readyState: 4, paused: false, ended: false, seeking: false, ownerDocument: page });
   let at = 0, playbackAt = 0, ranges = [[0, 268.6]];
   video.buffered = { get length() { return ranges.length; }, start: i => ranges[i][0], end: i => ranges[i][1] };
   const seeks = [], abort = new AbortController();
-  const sync = createSharedPlaybackSync(video, { now: () => at, signal: abort.signal,
+  const sync = createSharedPlaybackSync(video, { now: () => at, signal: abort.signal, linear,
     onSeek: when => seeks.push({ when, from: video.currentTime }) });
   return { video, sync, seeks, abort, page,
     at(value) { at = playbackAt = value; }, time() { return at; }, ranges(value) { ranges = value; },
@@ -23,6 +23,30 @@ function player() {
       }
     } };
 }
+
+test('a continuous recording uses raw linear time even when it is an entire programme behind', () => {
+  const p = player({ linear: () => true });
+  p.video.duration = Infinity; p.video.currentTime = 280;
+  p.ranges([[270, 590]]);
+  const target = 280 + 268.6;
+  assert.equal(p.sync.align(target, 268.6).difference, 268.6, 'an entire cycle of raw drift is not wrapped to zero');
+  assert.equal(p.sync.align(target, 268.6, true).corrected, true);
+  assert.equal(p.video.currentTime, target, 'the continuous target is not clamped to the recording length');
+  assert.equal(p.video.playbackRate, undefined);
+  assert.equal(p.sync.align(NaN, Infinity, true).corrected, false);
+  p.abort.abort();
+});
+
+test('a continuous recording keeps buffer/stability gates and can return to circular native VOD', () => {
+  let linear = true;
+  const p = player({ linear: () => linear });
+  p.video.duration = Infinity; p.video.currentTime = 300; p.ranges([[290, 302]]);
+  p.follow(30_000, 268.6);
+  assert.equal(p.seeks.length, 0, 'linear correction cannot jump beyond the buffered window');
+  linear = false; p.video.duration = 268.6; p.video.currentTime = 268.5;
+  assert(Math.abs(p.sync.align(0.1, 268.6).difference - 0.2) < 1e-8, 'native fallback restores programme-phase comparison');
+  p.abort.abort();
+});
 
 test('current-buffer replay release can safely join the fresh room later at unchanged tempo', () => {
   const p = player(); let at = 0;

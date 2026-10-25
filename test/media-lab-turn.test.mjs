@@ -82,8 +82,11 @@ test('cancellation kills a stalled native process group and removes private cotu
   const f = await fixture(t, { stall: true, stubborn: true }), cancellation = new AbortController();
   const starting = startLabTurnOperator({ engine: 'coturn', coturn: f.binary, signal: cancellation.signal, stopGraceMs: 100 });
   const rejected = assert.rejects(starting, /cancelled/);
-  await eventually(async () => { try { await readFile(f.record); return true; } catch { return false; } });
-  const record = JSON.parse((await readFile(f.record, 'utf8')).trim());
+  let record;
+  await eventually(async () => {
+    try { record = JSON.parse((await readFile(f.record, 'utf8')).trim()); return true; }
+    catch (error) { if (error.code === 'ENOENT' || error instanceof SyntaxError) return false; throw error; }
+  });
   cancellation.abort(); await rejected;
   await eventually(() => !alive(record.pid) && !alive(record.descendant));
   await assert.rejects(stat(record.configuration), { code: 'ENOENT' });

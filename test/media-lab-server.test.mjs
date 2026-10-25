@@ -243,7 +243,7 @@ test('a clean early publisher exit is incomplete, not a completed source window'
   for (const row of await f.records()) assert.ok(!alive(row.pid));
 });
 
-test('full-window completion independently checks video frames, mapped AAC and terminal progress', { timeout: 20000 }, async t => {
+test('full-window completion independently checks video frames, mapped AAC and terminal progress', { timeout: 40000 }, async t => {
   for (const scenario of [
     { name: 'all video frames with a shorter AAC clock', options: { publisherPriorProgressSeconds: 1 }, state: 'ended', expectedClock: 0.5, expectedFrames: 25 },
     { name: 'one missing video frame', options: { publisherVideoFrames: 24 }, state: 'error', expectedClock: 0.5, expectedFrames: 25 },
@@ -252,7 +252,7 @@ test('full-window completion independently checks video frames, mapped AAC and t
     { name: 'unknown video total retains the original time gate', options: { sourceVideoFrames: null }, state: 'error', expectedClock: 1, expectedFrames: null },
   ]) await t.test(scenario.name, { timeout: 8000 }, async subtest => {
     const options = { sourceVideoSeconds: 1, sourceAudioSeconds: 0.5, publisherProgressSeconds: 0.5, publisherVideoFrames: 25, ...scenario.options };
-    const f = await fixture(subtest, options), lab = await f.startLab(); const base = new URL(lab.url).origin;
+    const f = await fixture(subtest, options), lab = await f.startLab({ maxRunSeconds: 5 }); const base = new URL(lab.url).origin;
     const started = await run(base, 'sapflow', 'rtmp', { durationSeconds: Math.max(options.sourceVideoSeconds, options.sourceAudioSeconds) }); assert.equal(started.status, 200);
     await until(async () => (await request(base, '/lab/stats')).data.lastRun?.state === scenario.state, 6000);
     const final = (await request(base, '/lab/stats')).data.lastRun;

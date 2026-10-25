@@ -10,11 +10,13 @@ import { chromium } from 'playwright';
 const options = { url: 'https://forgesworn.dev/', quality: 'preview' };
 for (let index = 2; index < process.argv.length; index += 2) {
   const name = { '--url': 'url', '--quality': 'quality', '--site': 'site', '--output': 'output', '--screenshots': 'screenshots',
-    '--observe-seconds': 'observeSeconds', '--min-peer-bytes': 'minPeerBytes', '--min-peer-share': 'minPeerShare', '--diagnostics': 'diagnostics' }[process.argv[index]];
-  assert(name && process.argv[index + 1], 'Use --output PRIVATE.json [--site site] [--quality preview|full] [--observe-seconds 0..360]');
+    '--observe-seconds': 'observeSeconds', '--min-peer-bytes': 'minPeerBytes', '--min-peer-share': 'minPeerShare', '--diagnostics': 'diagnostics',
+    '--expected-playback-mode': 'expectedPlaybackMode' }[process.argv[index]];
+  assert(name && process.argv[index + 1], 'Use --output PRIVATE.json [--site site] [--quality preview|full] [--observe-seconds 0..360] [--expected-playback-mode recorded-live]');
   options[name] = ['site', 'output', 'screenshots'].includes(name) ? resolve(process.argv[index + 1]) : process.argv[index + 1];
 }
 assert(options.output && ['preview', 'full'].includes(options.quality));
+assert(options.expectedPlaybackMode === undefined || options.expectedPlaybackMode === 'recorded-live', 'The optional expected playback mode is recorded-live.');
 for (const [key, maximum] of [['observeSeconds', 360], ['minPeerBytes', 1024 ** 3], ['minPeerShare', 1]]) {
   options[key] = Number(options[key] ?? 0);
   assert(Number.isFinite(options[key]) && options[key] >= 0 && options[key] <= maximum);
@@ -33,6 +35,8 @@ const receipt = { schema: 2, measuredAt: new Date().toISOString(), passed: false
   cacheBoundary: 'Playwright request routing disables the browser HTTP cache throughout this run, including remote media. This is persistent cache bypass, stronger than only a cold first visit.',
   trafficBoundary: 'Headline and graph bytes are verified media or submitted media, not RTC protocol bytes. CDP HTTP body bytes include partial aborted responses; completed encoded-transfer bytes exclude those partial responses and are not total wire traffic.',
   audioBoundary: 'The unmodified page audio route is used. Native CDP audio-decoder properties plus unmuted advancing playback are recorded; no AudioContext or analyser is inserted.',
+  startupTimingBoundary: 'Passive trusted public-play click, playing-event and presented video-frame callback timestamps share the page performance clock. Frame presentation time is the native composition timestamp, not a physical display, sustained headroom or audible-sound measurement.',
+  expectedPlaybackMode: options.expectedPlaybackMode ?? null,
   privateDiagnosticExposure: options.diagnostics === 'true',
   pageErrors: [], localApiRequests: 0, deadTurnEndpointRequests: 0, sockets: [], sources: [], players: [], samples: [],
   nativeMedia: [], mediaRequests: [], droppedMediaRequestRecords: 0, staticMediaResponses: [], cleanup: {} };
@@ -177,6 +181,8 @@ async function snapshot(page) {
     }));
     const video = document.getElementById('lab-video'), map = document.getElementById('public-swarm-map');
     const root = document.getElementById('main'), raw = qa.wantDiagnostics ? qa.swarm?.metrics() : null, adapter = qa.adapter?.metrics();
+    const timing = qa.startupTiming, tapAt = timing.trustedPlayClicks[0]?.eventAtMs;
+    const afterTap = at => Number.isFinite(tapAt) && Number.isFinite(at) && at >= tapAt ? at - tapAt : null;
     const observedNumber = value => value === '' || value === undefined || value === null ? null : Number.isFinite(Number(value)) ? Number(value) : null;
     const bytes = id => observedNumber(document.getElementById(id)?.dataset.bytes);
     const reading = id => observedNumber(/^[\d.]+/.exec(document.getElementById(id)?.textContent ?? '')?.[0]);
@@ -207,6 +213,11 @@ async function snapshot(page) {
       visibleOriginBytes: document.getElementById('public-origin-bytes')?.textContent,
       originBytes: bytes('public-origin-bytes'), peerBytes: bytes('public-peer-bytes'), uploadedBytes: bytes('public-upload-bytes'),
       playbackEngine: root.dataset.playbackEngine ?? null, playbackFallback: root.dataset.playbackFallback ?? null,
+      playbackMode: root.dataset.playbackMode ?? null,
+      startupTiming: { ...timing, trustedPlayClicks: timing.trustedPlayClicks.map(click => ({ ...click })),
+        tapToFirstPlayingMs: afterTap(timing.firstPlayingAtMs),
+        tapToFirstPresentedFrameMs: afterTap(timing.firstPresentedFrameAtMs),
+        tapToFirstPresentationMs: afterTap(timing.firstPresentationAtMs) },
       core: { state: root.dataset.peerEngine, multiHolderDelivered: observedNumber(root.dataset.multiHolderDelivered),
         loadedMediaBytes: observedNumber(root.dataset.loadedMediaBytes), originTransferredBytes: observedNumber(root.dataset.originTransferredBytes),
         cacheHighWaterBytes: Number(root.dataset.cacheHighWaterBytes), worker: adapter?.core?.transferWorker ?? null },
@@ -448,6 +459,19 @@ try {
     });
     await page.addInitScript(({ wantDiagnostics, longTaskLimit }) => {
       const qa = window.__visitorQa = { peers: [], ownedPeers: [], sockets: [], ownedSockets: [], workers: [], events: [], hlsErrors: [], presentedFrames: 0, codedFrame: null, wantDiagnostics };
+      const timing = qa.startupTiming = { timeOriginMs: performance.timeOrigin, trustedPlayClickCount: 0, droppedTrustedPlayClicks: 0,
+        trustedPlayClicks: [], firstPlayingAtMs: null, firstPlayingObservedAtMs: null,
+        firstPresentedFrameAtMs: null, firstPresentationAtMs: null, firstExpectedDisplayAtMs: null,
+        firstPresentedFrameMediaTime: null, firstPresentedFrameReadyState: null, firstPresentedFrameUnpaused: null,
+        firstPresentedFrameSeeking: null };
+      document.addEventListener('click', event => {
+        const button = document.getElementById('public-play');
+        if (!event.isTrusted || !button || !event.composedPath().includes(button) || !Number.isFinite(event.timeStamp)) return;
+        timing.trustedPlayClickCount++;
+        if (timing.trustedPlayClicks.length < 8) timing.trustedPlayClicks.push({ eventAtMs: event.timeStamp,
+          observedAtMs: performance.now(), trusted: true });
+        else timing.droppedTrustedPlayClicks++;
+      }, { capture: true, passive: true });
       if (wantDiagnostics) {
         const supported = typeof PerformanceObserver === 'function' && PerformanceObserver.supportedEntryTypes?.includes('longtask') === true;
         const tasks = qa.longTasks = { state: supported ? 'unavailable' : 'unsupported', timeOrigin: performance.timeOrigin,
@@ -519,16 +543,29 @@ try {
         const video = document.getElementById('lab-video');
         if (!video) return;
         for (const type of ['loadedmetadata', 'playing', 'waiting', 'stalled', 'seeking', 'seeked', 'pause', 'ended', 'error'])
-          video.addEventListener(type, () => {
+          video.addEventListener(type, event => {
+            if (type === 'playing' && timing.trustedPlayClicks.length && timing.firstPlayingAtMs === null &&
+                !video.paused && video.readyState >= 3 && Number.isFinite(event.timeStamp)) {
+              timing.firstPlayingAtMs = event.timeStamp; timing.firstPlayingObservedAtMs = performance.now();
+            }
             const buffered = [];
             for (let i = 0; i < video.buffered.length; i++) buffered.push([video.buffered.start(i), video.buffered.end(i)]);
             qa.events.push({ type, at: Date.now(), time: video.currentTime, paused: video.paused, seeking: video.seeking,
               readyState: video.readyState, buffered, errorCode: video.error?.code ?? null });
             if (qa.events.length > 600) qa.events.shift();
           });
-        const frame = (_now, metadata) => {
+        const frame = (now, metadata) => {
           qa.presentedFrames++;
           qa.codedFrame = { width: metadata.width, height: metadata.height, mediaTime: metadata.mediaTime };
+          if (timing.trustedPlayClicks.length && timing.firstPresentedFrameAtMs === null &&
+              !video.paused && !video.seeking && video.readyState >= 2 && metadata.width > 0 && metadata.height > 0 &&
+              Number.isFinite(now) && Number.isFinite(metadata.mediaTime)) {
+            timing.firstPresentedFrameAtMs = now;
+            timing.firstPresentationAtMs = Number.isFinite(metadata.presentationTime) ? metadata.presentationTime : null;
+            timing.firstExpectedDisplayAtMs = Number.isFinite(metadata.expectedDisplayTime) ? metadata.expectedDisplayTime : null;
+            timing.firstPresentedFrameMediaTime = metadata.mediaTime; timing.firstPresentedFrameReadyState = video.readyState;
+            timing.firstPresentedFrameUnpaused = !video.paused; timing.firstPresentedFrameSeeking = video.seeking;
+          }
           video.requestVideoFrameCallback(frame);
         };
         video.requestVideoFrameCallback(frame);
@@ -603,6 +640,8 @@ try {
     assert(player.originBytes > 0 && !player.visibleOriginBytes.startsWith('0 '));
     assert(player.native.connections.some(peer => peer.bytesSent > 0 || peer.bytesReceived > 0));
     assert.equal(player.quality, options.quality);
+    if (options.expectedPlaybackMode !== undefined) assert.equal(player.playbackMode, options.expectedPlaybackMode,
+      'The explicitly requested playback mode was not active.');
     assert.equal(player.height, options.quality === 'preview' ? 1080 : 2160);
     if (options.quality === 'full') assert.deepEqual([player.codedFrame.width, player.codedFrame.height], [3840, 2160]);
   }

@@ -191,7 +191,9 @@ async function main(args) {
     previewDir: options.previewDir ?? resolve(root, 'site/media/dejavu-preview/rtmp'),
     sourceCatalogueBytes: await boundedFile(resolve(root, 'site/media/dejavu-swarm/catalogue-v1.json'), 64 * 1024) });
   await atomicWrite(options.catalogueOutput ?? resolve(root, 'site/media/dejavu-swarm/catalogue-v2.json'), result.catalogueBytes);
-  await atomicWrite(options.playlistOutput ?? resolve(root, 'site/media/dejavu-4k/index.m3u8'), result.playlistBytes);
+  // Preserve the original package separately; the public index now uses the
+  // reviewed audio-end derivative built by package-public-swarm-audioend.mjs.
+  await atomicWrite(options.playlistOutput ?? resolve(root, 'site/media/dejavu-4k/index-v1.m3u8'), result.playlistBytes);
   console.log(JSON.stringify({ schema: 2, catalogueBytes: result.catalogueBytes.length, catalogueSha256: hash(result.catalogueBytes),
     playlistBytes: result.playlistBytes.length, playlistSha256: hash(result.playlistBytes),
     fullSegments: result.catalogue.qualities.full.segments.length, previewSegments: result.catalogue.qualities.preview.segments.length,

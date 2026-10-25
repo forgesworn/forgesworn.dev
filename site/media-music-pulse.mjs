@@ -58,7 +58,8 @@ async function loadRhythm(fetchImpl, signal) {
   return decodeRhythm(JSON.parse(new TextDecoder().decode(bytes)));
 }
 
-export function createMusicPulse({ video, container, onPulse, getQuality = () => 'full', signal, fetchImpl = globalThis.fetch }) {
+export function createMusicPulse({ video, container, onPulse, getQuality = () => 'full', getTime = () => video.currentTime,
+  signal, fetchImpl = globalThis.fetch }) {
   const page = video.ownerDocument, lifetime = new AbortController();
   const reduced = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)');
   let inView = typeof IntersectionObserver !== 'function', suspended = false, dead = false, failed = false;
@@ -81,7 +82,9 @@ export function createMusicPulse({ video, container, onPulse, getQuality = () =>
       // Do not animate a frozen playhead if a browser omits waiting. Its next
       // timeupdate or playing event restarts observation when media advances.
       if (now - advancedAt > 250) { frozenTime = video.currentTime; clear('waiting'); return; }
-      onPulse(sampleMusicPulse(timelines[getQuality()], video.currentTime));
+      // Programme phase can differ from a continuous media timeline. Motion
+      // still requires the real video clock to advance above.
+      onPulse(sampleMusicPulse(timelines[getQuality()], getTime()));
       state('live'); lastPaint = now;
     }
     frame = requestAnimationFrame(tick);

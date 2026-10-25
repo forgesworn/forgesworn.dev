@@ -48,6 +48,21 @@ test('play rejection diagnostics retain only fixed error names and never message
   assert.doesNotMatch(JSON.stringify(p.report.snapshot()), /secret|private[.]invalid|playErrorMessage/);
 });
 
+test('a continuous recording retains raw media time and independently bounded programme phase', () => {
+  const p = fixture();
+  p.report.record({ position: 701.75, duration: Infinity, buffered: [[699, 721]],
+    playbackMode: 'recorded-live', recordingPosition: 12.55, recordingDuration: 268.6 });
+  p.at(1200); p.report.record({ playbackMode: 'https://private.invalid', recordingPosition: 268.6, recordingDuration: 268.6 });
+  p.at(2400); p.report.record({ recordingPosition: 0, recordingDuration: 0 });
+  const [first, boundary, invalid] = p.report.snapshot().samples;
+  assert.equal(first.position, 701.75); assert.equal(first.duration, null);
+  assert.equal(first.bufferedSeconds, 19.25); assert.equal(first.playbackMode, 'recorded-live');
+  assert.equal(first.recordingPosition, 12.55); assert.equal(first.recordingDuration, 268.6);
+  assert.equal(boundary.recordingPosition, null); assert.equal(boundary.playbackMode, null);
+  assert.equal(invalid.recordingPosition, null); assert.equal(invalid.recordingDuration, null);
+  assert.doesNotMatch(JSON.stringify(p.report.snapshot()), /private[.]invalid/);
+});
+
 test('partial source classification cannot present known subset bytes as complete network totals', () => {
   for (const coverage of ['partial', 'unavailable', undefined]) {
     const p = fixture(); p.report.record({ sourceTimingCoverage: coverage, sourceNetworkBodyBytes: 0, sourceCacheBodyBytes: 6000 });

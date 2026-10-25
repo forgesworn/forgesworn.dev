@@ -3,13 +3,20 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { createPublicSwarm, validatePublicSwarmCatalogue, catalogueSegment, PUBLIC_SWARM_CATALOGUE_SHA256,
-  PUBLIC_SWARM_LIMITS, PUBLIC_SWARM_RELAYS, PUBLIC_SWARM_ICE } from '../site/media-public-swarm.mjs';
+  PUBLIC_SWARM_LIMITS, PUBLIC_SWARM_RELAYS, PUBLIC_SWARM_ICE, prepareRecordedSource, createRecordedLive } from '../site/media-public-swarm.mjs';
+import { verifyEvent } from '../site/vendor/media-peer-demo.js';
 
-const bytes = await readFile(new URL('../site/media/dejavu-swarm/catalogue-v2.json', import.meta.url));
+const bytes = await readFile(new URL('../site/media/dejavu-swarm/catalogue-v3.json', import.meta.url));
 const catalogue = JSON.parse(bytes);
+const previousBytes = await readFile(new URL('../site/media/dejavu-swarm/catalogue-v2.json', import.meta.url));
+const previousCatalogue = JSON.parse(previousBytes);
 const libraryBuild = JSON.parse(await readFile(new URL('../site/vendor/media-peer-demo.build.json', import.meta.url)));
 const preview = { quality: 'preview', playlistUrl: '/media/dejavu-preview/rtmp/index.m3u8', origin: 'https://forgesworn.dev/' };
 const full = { quality: 'full', playlistUrl: '/media/dejavu-4k/index.m3u8', origin: 'https://forgesworn.dev/' };
+const recordedManifests = {
+  full: await readFile(new URL('../site/media/dejavu-4k/index.m3u8', import.meta.url)),
+  preview: await readFile(new URL('../site/media/dejavu-preview/rtmp/stream.m3u8', import.meta.url)),
+};
 
 test('public VOD digest catalogue is pinned to reviewed source and matches every shipped preview segment', async () => {
   assert.equal(createHash('sha256').update(bytes).digest('hex'), PUBLIC_SWARM_CATALOGUE_SHA256);
@@ -25,6 +32,27 @@ test('public VOD digest catalogue is pinned to reviewed source and matches every
   const original = JSON.parse(await readFile(new URL('../site/media/dejavu-preview/playback.json', import.meta.url)));
   assert.equal(catalogue.sourceSha256, original.source.sha256);
   assert.equal(validatePublicSwarmCatalogue(catalogue, full).segments.size, 134);
+});
+
+test('the new catalogue changes only the approved full tail while retaining the previous immutable catalogue', () => {
+  assert.equal(createHash('sha256').update(previousBytes).digest('hex'), 'fe69bf7b88279f796956a021db96b3fc99f12705c1d5f18a2f6fbe9f488b3073');
+  assert.equal(catalogue.schema, 3);
+  assert.equal(catalogue.derivedFromCatalogueSha256, createHash('sha256').update(previousBytes).digest('hex'));
+  assert.deepEqual(catalogue.qualities.preview, previousCatalogue.qualities.preview);
+  assert.deepEqual(catalogue.qualities.full.segments.slice(0, 133), previousCatalogue.qualities.full.segments.slice(0, 133));
+  assert.equal(catalogue.qualities.full.swarmId, 'forgesworn-dejavu-4k-pieces-v3-76d90719a756c77d');
+  const tail = catalogue.qualities.full.segments[133];
+  assert.equal(tail.path, 'segment-0133-audioend-v2.m4s'); assert.equal(tail.sn, 133); assert.equal(tail.cc, 0);
+  assert.equal(tail.size, 2238344); assert.equal(tail.sha256, '335270e1369142eaba9faf9964588db74f0219a8b703ac7b2ce643b5c994422d');
+  assert.equal(tail.pieceSize, 65536); assert.equal(tail.pieces.length, Math.ceil(tail.size / tail.pieceSize));
+  assert.throws(() => validatePublicSwarmCatalogue(previousCatalogue, full));
+  const plan = validatePublicSwarmCatalogue(catalogue, full), url = new URL('segment-0133.m4s', plan.segments.values().next().value.url).href;
+  assert.equal(catalogueSegment(plan, { url, frag: { sn: 133, cc: 0, level: 0, type: 'main', baseurl: plan.mediaPlaylist } }), null);
+  for (const index of [0, 132, 133]) {
+    const changed = structuredClone(catalogue);
+    changed.qualities.full.segments[index].path = index === 133 ? 'segment-0133.m4s' : 'segment-0133-audioend-v2.m4s';
+    assert.throws(() => validatePublicSwarmCatalogue(changed, full));
+  }
 });
 
 test('catalogue refuses altered media identity, traversal, duplicate sequence, oversized media and unlicensed source', () => {
@@ -88,10 +116,10 @@ test('public configuration bounds upload rate, peers and cache without a cumulat
 // Exercise the real adapter lifecycle with an injected SDK factory. Native
 // resource ownership and SDK accounting snapshots are simulated; no video/network
 // benchmark or real GiB transfer is claimed by these unit tests.
-function lifecycleFixture(t, { turnCredentials } = {}) {
+function lifecycleFixture(t, { turnCredentials, origin = 'https://forgesworn.dev/live-media.html', fetchResponse } = {}) {
   let at = 0, nextTimer = 0, adapter;
   const timers = new Map(), globals = new Map(), sockets = [], connections = [], cycles = [];
-  const page = new EventTarget(), abort = new AbortController();
+  const page = new EventTarget(), abort = new AbortController(), fetches = [];
   const install = (name, value) => {
     globals.set(name, Object.getOwnPropertyDescriptor(globalThis, name));
     Object.defineProperty(globalThis, name, { value, writable: true, configurable: true });
@@ -121,9 +149,18 @@ function lifecycleFixture(t, { turnCredentials } = {}) {
       if (descriptor) Object.defineProperty(globalThis, name, descriptor); else delete globalThis[name];
     }
   });
-  install('location', { href: 'https://forgesworn.dev/live-media.html' });
+  install('location', { href: origin });
   install('performance', { now: () => at });
-  install('fetch', async () => new Response(bytes, { headers: { 'content-length': String(bytes.length) } }));
+  install('fetch', async (url, options) => {
+    fetches.push({ url: String(url), options });
+    if (fetchResponse) return fetchResponse(url, options);
+    const path = new URL(url).pathname;
+    const body = path.endsWith('/media/dejavu-swarm/catalogue-v3.json') ? bytes :
+      path === full.playlistUrl ? recordedManifests.full :
+      path === '/media/dejavu-preview/rtmp/stream.m3u8' ? recordedManifests.preview : null;
+    assert(body, 'Only verified catalogue and canonical playlist metadata may be fetched');
+    return new Response(body, { headers: { 'content-length': String(body.length) } });
+  });
   install('WebSocket', Socket); install('RTCPeerConnection', Connection);
   install('addEventListener', page.addEventListener.bind(page)); install('removeEventListener', page.removeEventListener.bind(page));
   install('setTimeout', (fn, ms) => schedule(fn, ms)); install('clearTimeout', id => timers.delete(id));
@@ -158,9 +195,15 @@ function lifecycleFixture(t, { turnCredentials } = {}) {
   };
   const createTurnCredentials = () => turnCredentials ?? ({ start: async () => null, stop() {}, servers: () => [], leaseIdentity: () => null,
     snapshot: () => ({ phase: 'unavailable', available: false, remainingMs: 0, failures: 0 }) });
-  adapter = createPublicSwarm({ Hls, hls, video, playlistUrl: '/media/dejavu-4k/index.m3u8', quality: 'full', signal: abort.signal }, { createSwarm, createTurnCredentials });
+  const createAdapter = (recordedLive, quality = 'full') => createPublicSwarm({ Hls, hls, video,
+    playlistUrl: quality === 'full' ? full.playlistUrl : preview.playlistUrl,
+    quality, signal: abort.signal, ...(recordedLive === undefined ? {} : { recordedLive }) }, { createSwarm, createTurnCredentials });
+  adapter = createAdapter();
   const originLoader = hls.config.fLoader;
-  return { adapter, hls, video, originLoader, sockets, connections, cycles, abort,
+  return { get adapter() { return adapter; }, hls, video, originLoader, sockets, connections, cycles, abort, fetches,
+    prepare: (quality = 'full', signal = abort.signal) => prepareRecordedSource({ quality,
+      playlistUrl: quality === 'full' ? full.playlistUrl : preview.playlistUrl, signal }),
+    useRecorded(value, quality = 'full') { adapter.stop(); adapter = createAdapter(value, quality); return adapter; },
     pagehide: () => page.dispatchEvent(new Event('pagehide')), pendingTimers: () => timers.size,
     advance(ms) {
       const end = at + ms;
@@ -262,4 +305,172 @@ test('page abort, pagehide and explicit stop immediately close peer resources an
     assert.equal(f.adapter.metrics().resources.heldBytes, 0); assert.equal(f.pendingTimers(), 0);
     await assert.rejects(f.adapter.setEnabled(true), /stopped/);
   });
+});
+
+test('recorded preparation verifies immutable metadata only and reuses a completed verdict', async t => {
+  for (const quality of ['full', 'preview']) await t.test(quality, async t => {
+    const f = lifecycleFixture(t, { origin: `https://metadata-${quality}.invalid/live-media.html` });
+    const recording = await f.prepare(quality);
+    assert(recording); assert(Object.isFrozen(recording)); assert(Object.isFrozen(recording.segments));
+    assert(recording.segments.every(Object.isFrozen));
+    assert.equal(recording.segments.length, quality === 'full' ? 134 : 30);
+    assert.equal(recording.durationSeconds, quality === 'full' ? 267.32 : 29.96);
+    if (quality === 'full') {
+      assert.equal(recording.segments[133].durationUs, 720000);
+      assert.equal(new URL(recording.segments[133].url).pathname.split('/').at(-1), 'segment-0133-audioend-v2.m4s');
+    }
+    assert.equal(new URL(recording.playlistUrl).pathname, quality === 'full' ? full.playlistUrl : '/media/dejavu-preview/rtmp/stream.m3u8');
+    assert.equal(createHash('sha256').update(recordedManifests[quality]).digest('hex'), recording.manifestSha256);
+    const timeline = createRecordedLive({ recording, epochMs: 0, now: () => 1000 });
+    assert(timeline, 'preparation and the exported timeline factory share the private helper brand'); timeline.stop();
+    assert.equal(f.fetches.length, 2, 'one catalogue plus one canonical media playlist; no init/segment body');
+    assert(f.fetches.every(({ url }) => /\.(?:json|m3u8)$/.test(new URL(url).pathname)));
+    assert(f.fetches.every(({ options }) => options.redirect === 'error' && options.credentials === 'same-origin'));
+    assert.equal(f.fetches[0].options.cache, 'force-cache', 'the versioned catalogue remains immutable');
+    assert.equal(f.fetches[1].options.cache, 'reload', 'the canonical playlist bypasses a previously stored old manifest');
+    assert.equal(f.sockets.length, 0); assert.equal(f.connections.length, 0); assert.equal(f.pendingTimers(), 0);
+    assert.equal(f.adapter.metrics().loadedMediaBytes, 0); assert.equal(f.adapter.metrics().peerBytes, 0);
+    assert.equal(await f.prepare(quality), recording);
+    assert.equal(f.fetches.length, 2, 'only verified immutable metadata is cached');
+    const abort = new AbortController(); abort.abort();
+    assert.equal(await f.prepare(quality, abort.signal), null, 'cancellation wins even for cached metadata');
+  });
+});
+
+test('unverified, oversized and aborted recorded metadata cannot acquire a prepared brand', async t => {
+  for (const failure of ['catalogue', 'manifest', 'header-size', 'body-size', 'abort']) await t.test(failure, async t => {
+    let f, cancelled = false;
+    f = lifecycleFixture(t, { origin: `https://bad-${failure}.invalid/`, fetchResponse: async (url, options) => {
+      if (new URL(url).pathname.endsWith('/media/dejavu-swarm/catalogue-v3.json')) {
+        const body = Buffer.from(bytes); if (failure === 'catalogue') body[body.length - 3] ^= 1;
+        return new Response(body);
+      }
+      if (failure === 'header-size') return new Response(new ReadableStream({ cancel() { cancelled = true; } }),
+        { headers: { 'content-length': '65537' } });
+      if (failure === 'abort') return new Response(new ReadableStream({ start(controller) {
+        options.signal.addEventListener('abort', () => controller.error(new DOMException('Cancelled fixture', 'AbortError')), { once: true });
+        queueMicrotask(() => f.abort.abort());
+      } }));
+      const body = failure === 'body-size' ? new Uint8Array(65537) : Buffer.from(recordedManifests.full);
+      if (failure === 'manifest') body[body.length - 3] ^= 1;
+      return new Response(body);
+    } });
+    assert.equal(await f.prepare(), null, failure);
+    if (failure === 'header-size') assert.equal(cancelled, true, 'the refused body is cancelled before downloading it');
+    assert.equal(f.pendingTimers(), 0); assert.equal(f.connections.length, 0); assert.equal(f.sockets.length, 0);
+  });
+});
+
+function recordedContext(recording, sn) {
+  const entry = recording.segments[sn % recording.segments.length];
+  return { url: entry.url, frag: { url: entry.url, sn, cc: Math.floor(sn / recording.segments.length),
+    level: 0, type: 'main', duration: entry.durationUs / 1_000_000, baseurl: recording.playlistUrl } };
+}
+
+test('recorded mode signs actual global sequence and discontinuity against the unchanged canonical hashes', async t => {
+  for (const quality of ['full', 'preview']) await t.test(quality, async t => {
+    const f = lifecycleFixture(t), recording = await f.prepare(quality), count = recording.segments.length;
+    f.useRecorded({ recording, epochId: 'a'.repeat(64) }, quality);
+    await f.adapter.setEnabled(true);
+    const options = f.cycles[0].options;
+    assert.match(options.swarmId, /^forgesworn-recorded-live-v2-[a-f0-9]{64}$/);
+    assert(options.swarmId.length <= 128);
+    assert.equal(f.fetches.length, 2, 'enabling reuses prepared metadata instead of fetching media');
+    for (const sn of [0, count - 1, count, count * 2 + 1]) {
+      const context = recordedContext(recording, sn), event = await options.getCommitment(context);
+      assert(event); assert.equal(verifyEvent(structuredClone(event)), true);
+      const value = JSON.parse(event.content), original = catalogue.qualities[quality].segments[sn % count];
+      assert.equal(value.sequence, sn); assert.equal(value.discontinuity, Math.floor(sn / count));
+      assert.equal(value.sha256, original.sha256); assert.equal(value.size, original.size);
+      assert.equal(value.pieceSize, original.pieceSize); assert.deepEqual(value.pieces, original.pieces);
+      assert.equal(value.key, createHash('sha256').update(`${options.swarmId}\n${new URL(context.url).pathname}`).digest('hex'));
+      assert.equal(value.playlist, new URL(recording.playlistUrl).pathname); assert.equal(value.rendition, value.playlist);
+      assert.equal(value.mediaType, 'main'); assert.equal(value.encryption, null); assert.equal(value.part, null);
+      assert(value.expiresAt > Date.now() / 1000 && value.expiresAt <= Date.now() / 1000 + 120);
+    }
+  });
+});
+
+test('recorded mapping refuses wrong URI, duration, global identity and unsupported media contexts', async t => {
+  const f = lifecycleFixture(t), recording = await f.prepare();
+  f.useRecorded({ recording, epochId: 'a'.repeat(64) }); await f.adapter.setEnabled(true);
+  const getCommitment = f.cycles[0].options.getCommitment;
+  const valid = recordedContext(recording, recording.segments.length);
+  for (const change of [
+    value => { value.frag.sn = 'initSegment'; }, value => { value.frag.sn = -1; },
+    value => { value.frag.sn = Number.MAX_SAFE_INTEGER + 1; }, value => { value.frag.sn = 134.5; },
+    value => { value.frag.sn++; }, value => { value.frag.cc = 0; }, value => { value.frag.cc++; },
+    value => { value.url += '?epoch=other'; }, value => { value.url = 'https://other.invalid/segment-0000.m4s'; },
+    value => { value.frag.url = recording.segments[1].url; },
+    value => { value.frag.baseurl += '?epoch=other'; },
+    value => { value.frag.baseurl = 'https://other.invalid/media/dejavu-4k/index.m3u8'; },
+    value => { value.frag.duration += 0.000001; }, value => { value.frag.duration += 0.024; },
+    value => { value.frag.level = 1; }, value => { value.frag.type = 'audio'; },
+    value => { value.part = { index: 0 }; }, value => { value.rangeStart = 1; }, value => { value.rangeEnd = 100; },
+    value => { value.frag.byteRangeStartOffset = 1; }, value => { value.frag.byteRangeEndOffset = 100; },
+    value => { value.frag.decryptdata = { method: 'AES-128' }; },
+  ]) {
+    const altered = structuredClone(valid); change(altered);
+    assert.equal(await getCommitment(altered), null, 'unsupported contexts remain ordinary HTTP');
+  }
+  assert.equal(await getCommitment(valid) !== null, true);
+  const pending = getCommitment(valid); await f.adapter.setEnabled(false);
+  assert.equal(await pending, null, 'an in-flight digest cannot sign for a cancelled generation');
+  assert.equal(await getCommitment(valid), null);
+});
+
+test('a pending digest signs one coherent recorded identity even when HLS mutates its context', async t => {
+  const f = lifecycleFixture(t), recording = await f.prepare();
+  f.useRecorded({ recording, epochId: 'a'.repeat(64) }); await f.adapter.setEnabled(true);
+  const options = f.cycles[0].options, context = recordedContext(recording, 134);
+  const original = structuredClone(context), digest = crypto.subtle.digest.bind(crypto.subtle);
+  let release;
+  t.mock.method(crypto.subtle, 'digest', (...args) => new Promise((resolve, reject) => {
+    release = () => digest(...args).then(resolve, reject);
+  }));
+  const pending = options.getCommitment(context);
+  assert.equal(typeof release, 'function', 'the real key digest is held at the async boundary');
+  context.url = recording.segments[1].url;
+  Object.assign(context.frag, { sn: 269, cc: 2, url: context.url, baseurl: 'https://other.invalid/other.m3u8',
+    type: 'audio', duration: 1, decryptdata: { method: 'AES-128' } });
+  release();
+  const event = await pending;
+  assert(event); assert.equal(verifyEvent(structuredClone(event)), true);
+  const value = JSON.parse(event.content), canonical = catalogue.qualities.full.segments[0];
+  assert.equal(value.sequence, original.frag.sn); assert.equal(value.discontinuity, original.frag.cc);
+  assert.equal(value.playlist, new URL(original.frag.baseurl).pathname);
+  assert.equal(value.rendition, value.playlist); assert.equal(value.mediaType, 'main'); assert.equal(value.encryption, null);
+  assert.equal(value.sha256, canonical.sha256); assert.deepEqual(value.pieces, canonical.pieces);
+  assert.equal(value.key, createHash('sha256').update(`${options.swarmId}\n${new URL(original.url).pathname}`).digest('hex'));
+});
+
+test('recorded cohorts bind source, quality and immutable epoch while retired generations cannot sign', async t => {
+  const f = lifecycleFixture(t), recording = await f.prepare(), epochA = 'a'.repeat(64), epochB = 'b'.repeat(64);
+  const input = { recording, epochId: epochA };
+  f.useRecorded(input); input.epochId = epochB; await f.adapter.setEnabled(true);
+  const first = f.cycles[0].options, expected = 'forgesworn-recorded-live-v2-' + createHash('sha256')
+    .update(`forgesworn-recorded-live-v2\n${catalogue.sourceSha256}\nfull\n${epochA}\n${recording.manifestSha256}\n${recording.durationUs}`).digest('hex');
+  assert.equal(first.swarmId, expected, 'mutating the caller cannot change an already-created adapter');
+  f.useRecorded({ recording, epochId: epochB }); await f.adapter.setEnabled(true);
+  assert.notEqual(f.cycles[1].options.swarmId, first.swarmId);
+  assert.equal(await first.getCommitment(recordedContext(recording, 134)), null, 'a replaced epoch cannot keep signing');
+  f.useRecorded({ recording, epochId: epochA }); await f.adapter.setEnabled(true);
+  assert.equal(f.cycles[2].options.swarmId, first.swarmId, 'same source/quality/epoch converges independently of viewer keys');
+  f.adapter.stop(); assert.equal(await f.cycles[2].options.getCommitment(recordedContext(recording, 134)), null);
+});
+
+test('hand-forged recordings and malformed opt-ins cannot widen the default VOD mapping', async t => {
+  const f = lifecycleFixture(t), recording = await f.prepare();
+  for (const value of [null, { recording: structuredClone(recording), epochId: 'a'.repeat(64) },
+    { recording: { ...recording, manifestSha256: 'a'.repeat(64) }, epochId: 'a'.repeat(64) },
+    { recording, epochId: '' }, { recording, epochId: 'A'.repeat(64) },
+    { recording, epochId: 'a'.repeat(63) }, { recording, epochId: {}, extra: true }]) {
+    assert.throws(() => f.useRecorded(value), /recorded timeline/);
+  }
+  assert.throws(() => f.useRecorded({ recording, epochId: 'a'.repeat(64) }, 'preview'), /recorded timeline/);
+  f.useRecorded(undefined); await f.adapter.setEnabled(true);
+  const options = f.cycles[0].options;
+  assert.equal(options.swarmId, catalogue.qualities.full.swarmId);
+  assert.equal(await options.getCommitment(recordedContext(recording, 134)), null, 'VOD does not acquire modulo acceptance');
+  assert.equal(await options.getCommitment(recordedContext(recording, 0)) !== null, true);
 });

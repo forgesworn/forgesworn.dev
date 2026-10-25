@@ -3,9 +3,11 @@
 // A receiver's ephemeral key wraps that digest for the existing live-commitment
 // verifier; this is local attestation, not a live broadcaster signing service.
 import { createHlsSwarm, commitmentContent, commitmentPieceSize, segmentMediaContext, KIND_SEGMENT_COMMITMENT, finalizeEvent,
-  generateSecretKey, relayswarmBuild } from './vendor/media-peer-demo.js?v=20261025-first-tap';
-import { observeOriginLoader } from './media-transfer-stats.mjs?v=20261025-first-tap';
-import { createPublicTurnCredentials } from './media-turn-credentials.mjs?v=20261025-first-tap';
+  generateSecretKey, relayswarmBuild } from './vendor/media-peer-demo.js?v=20261025-continuous';
+import { observeOriginLoader } from './media-transfer-stats.mjs?v=20261025-continuous';
+import { createPublicTurnCredentials } from './media-turn-credentials.mjs?v=20261025-continuous';
+import { parseRecordedManifest, createRecordedLive } from './media-recorded-live.mjs?v=20261025-continuous';
+export { createRecordedLive };
 
 export const PUBLIC_SWARM_LIMITS = Object.freeze({
   maxPeers: 3,
@@ -16,17 +18,26 @@ export const PUBLIC_SWARM_LIMITS = Object.freeze({
   maxSegmentBytes: 16 * 1024 * 1024,
   maxCatalogueBytes: 1024 * 1024,
 });
-export const PUBLIC_SWARM_CATALOGUE_SHA256 = 'fe69bf7b88279f796956a021db96b3fc99f12705c1d5f18a2f6fbe9f488b3073';
+export const PUBLIC_SWARM_CATALOGUE_SHA256 = '2b4da6df26ff5e503282e999f7066fa8b61fafdfd3f42051184dde874260a5af';
 export const PUBLIC_SWARM_RELAYS = Object.freeze(['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net']);
 export const PUBLIC_SWARM_ICE = Object.freeze([{ urls: 'stun:stun.cloudflare.com:3478' }]);
 const SOURCE_SHA256 = '76d90719a756c77d1008088c58ca6b28a74eb0ef01e5337906cfb68d3e2b13aa';
 export { SOURCE_SHA256 as PUBLIC_SWARM_SOURCE_SHA256 };
 const FULL_PLAYLIST = '/media/dejavu-4k/index.m3u8';
 const FULL_MEDIA_BASE = 'https://v4v.com/forgesworn-media-demo/dejavu-4k-v1/';
+const FULL_TAIL_PATH = 'segment-0133-audioend-v2.m4s';
 const PREVIEW_PLAYLIST = '/media/dejavu-preview/rtmp/index.m3u8';
 const HEX = /^[a-f0-9]{64}$/;
 const CANDIDATE_TYPES = new Set(['host', 'srflx', 'prflx', 'relay']);
 const RELAY_PROTOCOLS = new Set(['udp', 'tcp', 'tls']);
+const RECORDED_MANIFESTS = Object.freeze({
+  full: Object.freeze({ sha256: 'ad78fc006bc131da3dcbf10656d4b8023e3fde71cbe5dba7a39a1f3af7ae238c',
+    durationUs: 267_320_000, init: FULL_MEDIA_BASE + 'init.mp4' }),
+  preview: Object.freeze({ sha256: '3dcafff28b09ace0ce218d242eef4681e4c0f69f0bd222aa797eddda3f2ea5a5',
+    durationUs: 29_960_000, init: '/media/dejavu-preview/rtmp/init.mp4' }),
+});
+const preparedRecordings = new WeakSet(), recordingMetadata = new WeakMap(), recordedSources = new Map();
+const MAX_RECORDED_MANIFEST_BYTES = 65_536;
 const n = value => Number.isFinite(value) && value >= 0 ? value : 0;
 const hex = bytes => Array.from(bytes, value => value.toString(16).padStart(2, '0')).join('');
 const digest = async value => hex(new Uint8Array(await crypto.subtle.digest('SHA-256', value)));
@@ -34,11 +45,11 @@ const encoded = value => new TextEncoder().encode(value);
 
 export function validatePublicSwarmCatalogue(catalogue, { quality, playlistUrl, origin }) {
   const expectedPath = quality === 'full' ? FULL_PLAYLIST : quality === 'preview' ? PREVIEW_PLAYLIST : null;
-  if (!expectedPath || catalogue?.schema !== 2 || catalogue.sourceSha256 !== SOURCE_SHA256 || catalogue.licensed !== true) throw new Error('Unrecognised public media catalogue.');
+  if (!expectedPath || catalogue?.schema !== 3 || catalogue.sourceSha256 !== SOURCE_SHA256 || catalogue.licensed !== true) throw new Error('Unrecognised public media catalogue.');
   const expected = new URL(expectedPath, origin);
   const playlist = new URL(playlistUrl, origin);
   const descriptor = catalogue.qualities?.[quality];
-  const expectedSwarm = `forgesworn-dejavu-${quality === 'full' ? '4k' : '1080'}-pieces-v2-76d90719a756c77d`;
+  const expectedSwarm = quality === 'full' ? 'forgesworn-dejavu-4k-pieces-v3-76d90719a756c77d' : 'forgesworn-dejavu-1080-pieces-v2-76d90719a756c77d';
   const mediaPlaylist = quality === 'full' ? FULL_PLAYLIST : '/media/dejavu-preview/rtmp/stream.m3u8';
   const mediaBase = quality === 'full' ? FULL_MEDIA_BASE : '/media/dejavu-preview/rtmp/';
   const count = quality === 'full' ? 134 : 30;
@@ -48,7 +59,7 @@ export function validatePublicSwarmCatalogue(catalogue, { quality, playlistUrl, 
   const segments = new Map();
   for (let index = 0; index < descriptor.segments.length; index++) {
     const entry = descriptor.segments[index];
-    const path = quality === 'full' ? `segment-${String(index).padStart(4, '0')}.m4s` : `segment-${String(index).padStart(3, '0')}.mp4`;
+    const path = quality === 'full' ? index === 133 ? FULL_TAIL_PATH : `segment-${String(index).padStart(4, '0')}.m4s` : `segment-${String(index).padStart(3, '0')}.mp4`;
     if (entry?.path !== path || entry.sn !== index || entry.cc !== 0 || !HEX.test(entry.sha256) ||
         !Number.isSafeInteger(entry.size) || entry.size < 1 || entry.size > PUBLIC_SWARM_LIMITS.maxSegmentBytes ||
         entry.pieceSize !== commitmentPieceSize(entry.size) || !Array.isArray(entry.pieces) ||
@@ -78,7 +89,7 @@ async function readCatalogue(signal) {
   const timer = setTimeout(() => timeout.abort(), 5000);
   const requestSignal = signal ? AbortSignal.any([signal, timeout.signal]) : timeout.signal;
   try {
-    const response = await fetch(new URL('./media/dejavu-swarm/catalogue-v2.json', import.meta.url),
+    const response = await fetch(new URL('./media/dejavu-swarm/catalogue-v3.json', import.meta.url),
       { signal: requestSignal, credentials: 'same-origin', cache: 'force-cache', redirect: 'error' });
     if (!response.ok || !response.body || Number(response.headers.get('content-length')) > PUBLIC_SWARM_LIMITS.maxCatalogueBytes) throw new Error('Public media catalogue unavailable.');
     const reader = response.body.getReader(), chunks = [];
@@ -100,19 +111,103 @@ async function readCatalogue(signal) {
   } finally { clearTimeout(timer); }
 }
 
+async function readRecordedManifest(url, signal) {
+  const timeout = new AbortController(), timer = setTimeout(() => timeout.abort(), 5000);
+  const requestSignal = signal ? AbortSignal.any([signal, timeout.signal]) : timeout.signal;
+  try {
+    // This canonical playlist URL can acquire a newly reviewed immutable tail.
+    // Refresh it once before trusting the pinned digest; successful metadata is
+    // reused in memory without another request for the rest of this page.
+    const response = await fetch(url, { signal: requestSignal, credentials: 'same-origin', cache: 'reload', redirect: 'error' });
+    if (!response.ok || !response.body || Number(response.headers.get('content-length')) > MAX_RECORDED_MANIFEST_BYTES) {
+      await response.body?.cancel().catch(() => {}); return null;
+    }
+    const reader = response.body.getReader(), chunks = [];
+    let length = 0;
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        length += value.byteLength;
+        if (length > MAX_RECORDED_MANIFEST_BYTES) return null;
+        chunks.push(value);
+      }
+    } finally { await reader.cancel().catch(() => {}); }
+    if (requestSignal.aborted) return null;
+    const bytes = new Uint8Array(length);
+    let offset = 0;
+    for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } finally { clearTimeout(timer); }
+}
+
+/** Metadata-only opt-in, called after Play. No media body or peer is prefetched.
+ * The controller owns epoch authority and uses this module's createRecordedLive
+ * re-export so the helper's private recording brand stays in one instance. */
+export async function prepareRecordedSource({ quality, playlistUrl, signal } = {}) {
+  try {
+    if (signal?.aborted || !['full', 'preview'].includes(quality) || !globalThis.location?.href) return null;
+    const origin = globalThis.location.href;
+    const expected = new URL(quality === 'full' ? FULL_PLAYLIST : PREVIEW_PLAYLIST, origin);
+    if (new URL(playlistUrl, origin).href !== expected.href) return null;
+    const cacheKey = `${quality}\n${expected.href}`;
+    if (recordedSources.has(cacheKey)) return recordedSources.get(cacheKey);
+    const plan = validatePublicSwarmCatalogue(await readCatalogue(signal), { quality, playlistUrl, origin });
+    if (signal?.aborted) return null;
+    const descriptor = RECORDED_MANIFESTS[quality], initUrl = new URL(descriptor.init, origin).href;
+    const text = await readRecordedManifest(plan.mediaPlaylist, signal);
+    if (text === null || signal?.aborted) return null;
+    const sourceUrls = [...plan.segments.keys()];
+    const recording = await parseRecordedManifest({ text, playlistUrl: plan.mediaPlaylist, expectedSha256: descriptor.sha256,
+      allowedUrls: [...sourceUrls, initUrl], signal });
+    if (!recording || signal?.aborted || recording.initUrl !== initUrl || recording.durationUs !== descriptor.durationUs || recording.segments.length !== plan.segments.size ||
+        recording.segments.some((segment, index) => segment.url !== sourceUrls[index])) return null;
+    preparedRecordings.add(recording);
+    recordingMetadata.set(recording, { quality, plan });
+    if (recordedSources.size >= 2) recordedSources.delete(recordedSources.keys().next().value);
+    recordedSources.set(cacheKey, recording);
+    return recording;
+  } catch { return null; }
+}
+
+function recordedCatalogueSegment(recording, plan, context) {
+  const frag = context?.frag;
+  if (!frag || !Number.isSafeInteger(frag.sn) || frag.sn < 0 || !Number.isSafeInteger(frag.cc) || frag.cc < 0 ||
+      frag.level !== 0 || frag.type !== 'main' || context.part ||
+      context.rangeStart !== undefined && context.rangeStart !== 0 || context.rangeEnd ||
+      frag.byteRangeStartOffset !== undefined && frag.byteRangeStartOffset !== 0 || frag.byteRangeEndOffset ||
+      frag.decryptdata?.method && frag.decryptdata.method !== 'NONE' || !Number.isFinite(frag.duration)) return null;
+  const canonical = recording.segments[frag.sn % recording.segments.length];
+  if (frag.cc !== Math.floor(frag.sn / recording.segments.length) || Math.round(frag.duration * 1_000_000) !== canonical.durationUs) return null;
+  try {
+    const url = new URL(context.url || frag.url, plan.playlist).href;
+    if (url !== canonical.url || frag.url && new URL(frag.url, plan.playlist).href !== url ||
+        new URL(frag.baseurl || frag.base?.url).href !== plan.mediaPlaylist) return null;
+    return plan.segments.get(url) ?? null;
+  } catch { return null; }
+}
+
 /** Add opt-in peer delivery to an existing, visible hls.js instance.
  * Neither construction nor origin-only playback opens a socket or peer.
  * Active playback has no elapsed-time or cumulative-upload cutoff; upload
  * rate, peer count and cache remain bounded until this adapter is stopped.
  * setEnabled(false) restores the normal HTTP loader without replacing the
  * video, seeking, muting, or destroying its current MediaSource. */
-export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signal, onStats = () => {} },
+export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signal, onStats = () => {}, recordedLive },
   { createSwarm = createHlsSwarm, createTurnCredentials = createPublicTurnCredentials } = {}) {
   if (!Hls || !hls?.config || !video) throw new Error('An existing video and HLS player are required.');
   const origin = globalThis.location?.href;
   if (!origin) throw new Error('The public swarm needs a browser.');
   const expected = new URL(quality === 'full' ? FULL_PLAYLIST : quality === 'preview' ? PREVIEW_PLAYLIST : '/invalid', origin);
   if (!['full', 'preview'].includes(quality) || new URL(playlistUrl, origin).href !== expected.href) throw new Error('Unrecognised public film source.');
+  const prepared = recordedLive && recordingMetadata.get(recordedLive.recording);
+  if (recordedLive !== undefined && (!recordedLive || typeof recordedLive !== 'object' ||
+      !preparedRecordings.has(recordedLive.recording) || !prepared || prepared.quality !== quality ||
+      prepared.plan.playlist !== expected.href || typeof recordedLive.epochId !== 'string' || !HEX.test(recordedLive.epochId) ||
+      Object.keys(recordedLive).some(key => !['recording', 'epochId'].includes(key)))) throw new Error('Unrecognised recorded timeline.');
+  // Freeze this adapter's authority. A new room epoch requires a new adapter;
+  // mutating the caller's options cannot retarget an already active cohort.
+  const recording = recordedLive?.recording, epochId = recordedLive?.epochId;
   const lifetime = new AbortController();
   const sockets = new Set(), connections = new Set(), peerObservations = new Map();
   const totals = { peerBytes: 0, uploadedBytes: 0, verifiedPeerSegments: 0, integrityRejected: 0, originFallbacks: 0 };
@@ -274,7 +369,12 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
     enabling = (async () => {
       try {
         await Promise.all([
-          (async () => { plan ??= validatePublicSwarmCatalogue(await readCatalogue(AbortSignal.any([lifetime.signal, catalogueAbort.signal])), { quality, playlistUrl, origin }); })(),
+          (async () => {
+            if (recording) {
+              plan ??= { ...prepared.plan, swarmId: 'forgesworn-recorded-live-v2-' +
+                await digest(encoded(`forgesworn-recorded-live-v2\n${SOURCE_SHA256}\n${quality}\n${epochId}\n${recording.manifestSha256}\n${recording.durationUs}`)) };
+            } else plan ??= validatePublicSwarmCatalogue(await readCatalogue(AbortSignal.any([lifetime.signal, catalogueAbort.signal])), { quality, playlistUrl, origin });
+          })(),
           turn.start(),
         ]);
         if (ownGeneration !== generation || !enabled || stopped) return metrics();
@@ -285,16 +385,22 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
           content: 'Receiver-local authorisation of the site-pinned licensed Deja Vu digest catalogue.' }, localKey);
         const getCommitment = async context => {
           if (!enabled || stopped || ownGeneration !== generation) return null;
-          const segment = catalogueSegment(plan, context);
+          const segment = recording ? recordedCatalogueSegment(recording, plan, context) : catalogueSegment(plan, context);
           if (!segment) return null;
+          // HLS may reuse its mutable fragment while the key digest yields.
+          // Capture the validated identity before signing that immutable object.
+          const mediaContext = segmentMediaContext(context);
+          const sequence = recording ? context.frag.sn : segment.sn;
+          const discontinuity = recording ? context.frag.cc : segment.cc;
           const fragmentKey = await digest(encoded(`${plan.swarmId}\n${new URL(segment.url).pathname}`));
           if (!enabled || stopped || ownGeneration !== generation) return null;
           const seconds = Math.floor(Date.now() / 1000);
           return finalizeEvent({ kind: KIND_SEGMENT_COMMITMENT, created_at: seconds,
             tags: [['x', plan.swarmId], ['e', streamEvent.id]],
             content: commitmentContent({ v: 3, streamEventId: streamEvent.id, swarmId: plan.swarmId,
-              key: fragmentKey, ...segmentMediaContext(context), rendition: new URL(plan.mediaPlaylist).pathname,
-              sequence: segment.sn, discontinuity: segment.cc, part: null, sha256: segment.sha256, size: segment.size,
+              key: fragmentKey, ...mediaContext, rendition: new URL(plan.mediaPlaylist).pathname,
+              sequence, discontinuity,
+              part: null, sha256: segment.sha256, size: segment.size,
               pieceSize: segment.pieceSize, pieces: segment.pieces, expiresAt: seconds + 120 }) }, localKey);
         };
         class ObservedSocket extends WebSocket {
@@ -352,8 +458,8 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
         }
         swarm = createSwarm({ mode: 'peer-first', swarmId: plan.swarmId, relays: [...PUBLIC_SWARM_RELAYS],
           streamEvent, getCommitment, serve: true, serveOnCellular: false,
-          coreWasm: new URL('./vendor/relayswarm-core.wasm?v=20261025-first-tap', import.meta.url), multiHolder: true,
-          transferWorkerUrl: new URL('./vendor/relayswarm-transfer-worker.js?v=20261025-first-tap', import.meta.url),
+          coreWasm: new URL('./vendor/relayswarm-core.wasm?v=20261025-continuous', import.meta.url), multiHolder: true,
+          transferWorkerUrl: new URL('./vendor/relayswarm-transfer-worker.js?v=20261025-continuous', import.meta.url),
           zeroBudgetPeerRace: true, lateHaveRace: true, sustainablePeerWait: true,
           maxHoldersPerObject: PUBLIC_SWARM_LIMITS.maxPeers,
           iceServers: PUBLIC_SWARM_ICE.map(entry => ({ ...entry })), iceTransportPolicy: 'all',
