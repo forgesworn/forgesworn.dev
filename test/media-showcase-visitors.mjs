@@ -35,7 +35,7 @@ const receipt = { schema: 2, measuredAt: new Date().toISOString(), passed: false
   audioBoundary: 'The unmodified page audio route is used. Native CDP audio-decoder properties plus unmuted advancing playback are recorded; no AudioContext or analyser is inserted.',
   privateDiagnosticExposure: options.diagnostics === 'true',
   pageErrors: [], localApiRequests: 0, deadTurnEndpointRequests: 0, sockets: [], sources: [], players: [], samples: [],
-  nativeMedia: [], cleanup: {} };
+  nativeMedia: [], mediaRequests: [], droppedMediaRequestRecords: 0, staticMediaResponses: [], cleanup: {} };
 let browser, stage = 'setup';
 const pages = [], mediaHttp = [], cdps = [];
 const isMedia = value => {
@@ -44,9 +44,65 @@ const isMedia = value => {
     (resource.origin === 'https://v4v.com' && resource.pathname.startsWith('/forgesworn-media-demo/dejavu-4k-v1/') ||
       resource.origin === url.origin && /^\/media\/(?:dejavu-4k\/|dejavu-preview\/rtmp\/)/.test(resource.pathname));
 };
-const meetsContribution = (player, index) => player.peerBytes >= Math.max(1, options.minPeerBytes) &&
+const meetsContribution = (player, index) => Number.isFinite(player.core.loadedMediaBytes) && player.core.loadedMediaBytes > 0 &&
+  player.peerBytes >= Math.max(1, options.minPeerBytes) &&
   player.peerBytes / Math.max(1, player.core.loadedMediaBytes) >= options.minPeerShare &&
   (options.minPeerShare === 0 || mediaHttp[index].bodyBytes < player.core.loadedMediaBytes);
+
+// Same bounded single-range behaviour as the local demo server. HEAD ignores
+// Range; GET supports closed, open-ended and suffix ranges without changing data.
+function staticResource(body, range, method = 'GET') {
+  const headers = { 'accept-ranges': 'bytes', 'content-length': String(body.length) };
+  if (method === 'HEAD') return { status: 200, headers, body: Buffer.alloc(0) };
+  if (!range) return { status: 200, headers, body };
+  const match = /^bytes=(\d*)-(\d*)$/.exec(range);
+  const unsatisfied = () => ({ status: 416, headers: { ...headers, 'content-length': '0',
+    'content-range': 'bytes */' + body.length }, body: Buffer.alloc(0) });
+  if (!match || (!match[1] && !match[2]) || body.length === 0) return unsatisfied();
+  const first = match[1] ? Number(match[1]) : null, last = match[2] ? Number(match[2]) : null;
+  if (first !== null && !Number.isSafeInteger(first) || last !== null && !Number.isSafeInteger(last)) return unsatisfied();
+  const start = first === null ? Math.max(0, body.length - last) : first;
+  const end = first !== null && last !== null ? Math.min(body.length - 1, last) : body.length - 1;
+  if (start > end || start >= body.length || start < 0) return unsatisfied();
+  return { status: 206, headers: { ...headers, 'content-length': String(end - start + 1),
+    'content-range': 'bytes ' + start + '-' + end + '/' + body.length }, body: body.subarray(start, end + 1) };
+}
+
+function assertStaticResource() {
+  const body = Buffer.from('#EXTM3U\n');
+  for (const [range, expected] of [['bytes=0-', body], ['bytes=1-', body.subarray(1)],
+    ['bytes=-2', body.subarray(-2)], ['bytes=0-999', body], ['bytes=0-0', body.subarray(0, 1)]]) {
+    const reply = staticResource(body, range);
+    assert.equal(reply.status, 206); assert.deepEqual(reply.body, expected);
+    assert.equal(Number(reply.headers['content-length']), expected.length);
+  }
+  for (const range of ['bytes=-', 'bytes=-0', 'bytes=8-', 'bytes=2-1', 'bytes=0-9007199254740992', 'bytes=0-1,3-4'])
+    assert.equal(staticResource(body, range).status, 416);
+  const head = staticResource(body, 'bytes=0-', 'HEAD');
+  assert.equal(head.status, 200); assert.equal(head.body.length, 0);
+  assert.equal(Number(head.headers['content-length']), body.length);
+  assert.equal(staticResource(Buffer.alloc(0), 'bytes=0-').status, 416);
+  return { passed: true, closedOpenSuffixClampAndHead: true };
+}
+
+function observedModule(resource, diagnostics) {
+  const target = new URL(resource);
+  return target.origin === 'https://forgesworn.dev' && (target.pathname === '/media-public-swarm.mjs' ||
+    diagnostics && target.pathname === '/media-lab.mjs');
+}
+
+function assertObservedModules() {
+  for (const query of ['', '?v=fixture']) {
+    assert(observedModule('https://forgesworn.dev/media-public-swarm.mjs' + query, false));
+    assert(observedModule('https://forgesworn.dev/media-public-swarm.mjs' + query, true));
+    assert(observedModule('https://forgesworn.dev/media-lab.mjs' + query, true));
+    assert.equal(observedModule('https://forgesworn.dev/media-lab.mjs' + query, false), false);
+  }
+  for (const other of ['https://example.org/media-lab.mjs', 'https://forgesworn.dev/media-lab.mjs.map',
+    'https://forgesworn.dev/vendor/media-peer-demo.js', 'https://forgesworn.dev/media/dejavu-4k/index.m3u8'])
+    assert.equal(observedModule(other, true), false);
+  return { passed: true, nonDiagnostic: ['media-public-swarm.mjs'], diagnostic: ['media-public-swarm.mjs', 'media-lab.mjs'] };
+}
 
 function instrumentAdapter(source) {
   const substitutions = [
@@ -58,6 +114,18 @@ function instrumentAdapter(source) {
   ];
   for (const [before, after] of substitutions) {
     assert.equal(source.split(before).length, 2, 'The observation anchor must match exactly once: ' + before);
+    source = source.replace(before, after);
+  }
+  return source;
+}
+
+function instrumentController(source) {
+  for (const [before, after] of [
+    ["s.playbackEngine = 'hls.js';", "s.playbackEngine = 'hls.js'; window.__visitorQa.hls = player;"],
+    ['s.hls.on(Hls.Events.ERROR, (_, data) => {',
+      's.hls.on(Hls.Events.ERROR, (_, data) => { window.__visitorQa.captureHlsError(data);'],
+  ]) {
+    assert.equal(source.split(before).length, 2, 'The Hls observation anchor must match exactly once: ' + before);
     source = source.replace(before, after);
   }
   return source;
@@ -107,16 +175,19 @@ async function snapshot(page) {
       visibleUploadedBytes: document.getElementById('public-upload-bytes').textContent,
       visibleOriginBytes: document.getElementById('public-origin-bytes')?.textContent,
       originBytes: bytes('public-origin-bytes'), peerBytes: bytes('public-peer-bytes'), uploadedBytes: bytes('public-upload-bytes'),
-      core: { state: root.dataset.peerEngine, multiHolderDelivered: Number(root.dataset.multiHolderDelivered),
-        loadedMediaBytes: Number(root.dataset.loadedMediaBytes), originTransferredBytes: Number(root.dataset.originTransferredBytes),
+      playbackEngine: root.dataset.playbackEngine ?? null, playbackFallback: root.dataset.playbackFallback ?? null,
+      core: { state: root.dataset.peerEngine, multiHolderDelivered: observedNumber(root.dataset.multiHolderDelivered),
+        loadedMediaBytes: observedNumber(root.dataset.loadedMediaBytes), originTransferredBytes: observedNumber(root.dataset.originTransferredBytes),
         cacheHighWaterBytes: Number(root.dataset.cacheHighWaterBytes), worker: adapter?.core?.transferWorker ?? null },
       stallCount: reading('browser-stalls'), stalledSeconds: reading('browser-stall-time'),
       sourceNetworkBodyBytes: observedNumber(root.dataset.sourceNetworkBytes), sourceCacheBodyBytes: observedNumber(root.dataset.sourceCacheBytes),
       visiblePeers: document.getElementById('public-peers').textContent,
       room: { listeners: Number(root.dataset.sharedListeners ?? 0), epoch: root.dataset.sharedEpoch ?? null,
         state: root.dataset.sharedSession ?? null, position: observedNumber(root.dataset.sharedPosition) },
-      viewerId: adapter?.viewerId ?? null, topology, adapterResources: adapter?.resources ?? null,
+      library: adapter?.library ?? null, viewerId: adapter?.viewerId ?? null, topology, adapterResources: adapter?.resources ?? null,
       workerEvidence: qa.workers.map(record => ({ ...record, posts: { ...record.posts } })),
+      hlsErrors: qa.hlsErrors.slice(), hls: qa.hls ? { loadingEnabled: qa.hls.loadingEnabled,
+        mediaAttached: qa.hls.media === video, currentLevel: qa.hls.currentLevel, bandwidthEstimate: qa.hls.bandwidthEstimate } : null,
       diagnostics: raw ? { segments: raw.segments, bytes: raw.bytes, core: raw.core,
         peerCounts: Object.fromEntries(Object.entries(raw.peers).filter(([, value]) => typeof value === 'number')),
         eligibility: raw.peerEligibilityDiagnostics, requests: raw.peerRequestDiagnostics, refusals: raw.uploadRefusalDiagnostics,
@@ -171,31 +242,60 @@ function assertGraph(player) {
     Array.from({ length: player.graph.roomMembers }, (_, index) => index + 1));
 }
 
-function tailSummary() {
-  if (receipt.samples.length < 2) return null;
-  const end = receipt.samples.at(-1), target = Math.max(0, end.elapsedMs - 60_000);
-  const begin = receipt.samples.find(sample => sample.elapsedMs >= target) ?? receipt.samples[0];
+function deliveryTail(samples, windowMs = 60_000) {
+  if (samples.length < 2) return null;
+  const end = samples.at(-1), target = Math.max(0, end.elapsedMs - windowMs);
+  const begin = samples.find(sample => sample.elapsedMs >= target) ?? samples[0];
+  const selected = samples.filter(sample => sample.elapsedMs >= begin.elapsedMs);
+  const delta = (after, before) => Number.isFinite(after) && Number.isFinite(before) && after >= before ? after - before : null;
   return { fromElapsedMs: begin.elapsedMs, toElapsedMs: end.elapsedMs, seconds: (end.elapsedMs - begin.elapsedMs) / 1000,
     visitors: end.players.map((player, index) => {
-      const first = begin.players[index], peerBytes = player.peerBytes - first.peerBytes;
-      const acceptedBytes = player.core.loadedMediaBytes - first.core.loadedMediaBytes;
+      const first = begin.players[index], epochs = [];
+      for (const sample of selected) {
+        const current = sample.players[index], previous = epochs.at(-1)?.last.players[index];
+        const engine = current.playbackEngine || (current.core.state === 'ready' ? 'hls' : 'unavailable');
+        const reason = !previous ? 'window-start' : engine !== epochs.at(-1).engine ? 'engine-change' :
+          Number.isFinite(current.core.loadedMediaBytes) !== Number.isFinite(previous.core.loadedMediaBytes) ? 'counter-availability-change' :
+            Number.isFinite(current.core.loadedMediaBytes) && current.core.loadedMediaBytes < previous.core.loadedMediaBytes ? 'accepted-counter-reset' :
+              current.peerBytes < previous.peerBytes || current.uploadedBytes < previous.uploadedBytes ||
+                current.droppedFrames < previous.droppedFrames ? 'media-counter-reset' : null;
+        if (reason) epochs.push({ engine, reason, first: sample, last: sample }); else epochs.at(-1).last = sample;
+      }
+      const segments = epochs.map(epoch => {
+        const a = epoch.first.players[index], b = epoch.last.players[index];
+        const acceptedBytes = delta(b.core.loadedMediaBytes, a.core.loadedMediaBytes), peerBytes = delta(b.peerBytes, a.peerBytes);
+        const httpBodyBytes = epoch.last.mediaHttp[index].bodyBytes - epoch.first.mediaHttp[index].bodyBytes;
+        return { engine: epoch.engine, reason: epoch.reason, fromElapsedMs: epoch.first.elapsedMs, toElapsedMs: epoch.last.elapsedMs,
+          seconds: (epoch.last.elapsedMs - epoch.first.elapsedMs) / 1000, acceptedBytes, peerBytes,
+          logicalSourceBytes: delta(b.originBytes, a.originBytes), httpBodyBytes,
+          usefulPeerShare: acceptedBytes > 0 && peerBytes !== null ? peerBytes / acceptedBytes : null,
+          httpBodyBelowAccepted: acceptedBytes > 0 ? httpBodyBytes < acceptedBytes : null };
+      });
+      const discontinuity = epochs.length > 1 || !Number.isFinite(first.core.loadedMediaBytes) || !Number.isFinite(player.core.loadedMediaBytes);
+      const peerBytes = delta(player.peerBytes, first.peerBytes);
+      const acceptedBytes = discontinuity ? null : delta(player.core.loadedMediaBytes, first.core.loadedMediaBytes);
       const httpBodyBytes = end.mediaHttp[index].bodyBytes - begin.mediaHttp[index].bodyBytes;
-      const window = receipt.samples.filter(sample => sample.elapsedMs >= begin.elapsedMs).map(sample => sample.players[index]);
-      return { visitor: index, peerBytes, acceptedBytes, logicalSourceBytes: player.originBytes - first.originBytes,
+      const window = selected.map(sample => sample.players[index]);
+      return { visitor: index, discontinuity, epochs: segments, peerBytes, acceptedBytes,
+        logicalSourceBytes: discontinuity ? null : delta(player.originBytes, first.originBytes),
         usefulPeerShare: acceptedBytes > 0 ? peerBytes / acceptedBytes : null,
-        submittedUploadBytes: player.uploadedBytes - first.uploadedBytes, httpBodyBytes,
-        httpBodyBelowAccepted: httpBodyBytes < acceptedBytes,
+        submittedUploadBytes: delta(player.uploadedBytes, first.uploadedBytes), httpBodyBytes,
+        httpBodyBelowAccepted: acceptedBytes > 0 ? httpBodyBytes < acceptedBytes : null,
         completedEncodedTransferBytes: end.mediaHttp[index].encodedTransferBytes - begin.mediaHttp[index].encodedTransferBytes,
-        newStalls: player.stallCount === null || first.stallCount === null ? null : player.stallCount - first.stallCount,
-        addedStalledSeconds: player.stalledSeconds === null || first.stalledSeconds === null ? null : player.stalledSeconds - first.stalledSeconds,
-        droppedFrames: player.droppedFrames - first.droppedFrames,
+        newStalls: delta(player.stallCount, first.stallCount),
+        addedStalledSeconds: delta(player.stalledSeconds, first.stalledSeconds),
+        droppedFrames: delta(player.droppedFrames, first.droppedFrames),
         minimumBufferSeconds: Math.min(...window.map(sample => sample.bufferSeconds)),
         frozenOrSeekingSamples: window.filter(sample => sample.seeking || sample.readyState < 3).length,
         startTime: first.currentTime, endTime: player.currentTime };
     }) };
 }
 
+function tailSummary() { return deliveryTail(receipt.samples); }
+
 try {
+  receipt.staticRangeSelfChecks = assertStaticResource();
+  receipt.observerModuleSelfChecks = assertObservedModules();
   receipt.harnessSha256 = createHash('sha256').update(await readFile(new URL(import.meta.url))).digest('hex');
   if (options.site) for (const file of [url.pathname === '/' ? 'index.html' : url.pathname.slice(1), 'media-lab.mjs',
     'media-public-swarm.mjs', 'media-swarm-visual.mjs', 'media-transfer-stats.mjs', 'media-showcase.css',
@@ -223,19 +323,21 @@ try {
         delete headers['content-length']; delete headers['content-encoding']; delete headers['transfer-encoding'];
       }
       if (path === '/media-public-swarm.mjs') body = Buffer.from(instrumentAdapter(body.toString()));
-      const range = route.request().headers().range;
-      if (options.site && range) {
-        const match = /^bytes=(\d+)-(\d+)$/.exec(range), start = Number(match?.[1]), end = Number(match?.[2]);
-        if (!match || start > end || end >= body.length) return route.fulfill({ status: 416, headers: { 'content-range': 'bytes */' + body.length }, body: '' });
-        return route.fulfill({ status: 206, contentType, headers: { 'content-range': 'bytes ' + start + '-' + end + '/' + body.length,
-          'accept-ranges': 'bytes' }, body: body.subarray(start, end + 1) });
+      if (path === '/media-lab.mjs' && options.diagnostics === 'true') body = Buffer.from(instrumentController(body.toString()));
+      if (options.site) {
+        const reply = staticResource(body, route.request().headers().range, route.request().method());
+        if (isMedia(route.request().url()) && receipt.staticMediaResponses.length < 512)
+          receipt.staticMediaResponses.push({ visitor: index, at: Date.now(), path, method: route.request().method(),
+            range: route.request().headers().range ?? null, status: reply.status, bodyBytes: reply.body.length, headers: reply.headers });
+        return route.fulfill({ ...reply, contentType });
       }
       return route.fulfill({ status, headers, contentType, body });
     };
-    await context.route(options.site ? url.origin + '/**' : url.origin + '/media-public-swarm.mjs*', routeAsset);
+    await context.route(options.site ? url.origin + '/**' : resource => observedModule(resource, options.diagnostics === 'true'), routeAsset);
     const page = await context.newPage(); pages.push(page);
     const http = { requests: 0, completed: 0, failed: 0, bodyBytes: 0, encodedTransferBytes: 0 };
-    const requestIds = new Set(); mediaHttp.push(http);
+    const requestIds = new Set(), requestRecords = new Map(); mediaHttp.push(http);
+    const requests = []; receipt.mediaRequests.push(requests);
     const nativeMedia = { properties: {}, errors: [] }; receipt.nativeMedia.push(nativeMedia);
     const cdp = await context.newCDPSession(page); cdps.push(cdp);
     await cdp.send('Network.enable'); await cdp.send('Media.enable');
@@ -244,12 +346,56 @@ try {
         nativeMedia.properties[property.name] = property.value;
     });
     cdp.on('Media.playerErrorsRaised', event => { if (nativeMedia.errors.length < 30) nativeMedia.errors.push(...event.errors); });
-    cdp.on('Network.requestWillBeSent', event => { if (isMedia(event.request.url)) { requestIds.add(event.requestId); http.requests++; } });
-    cdp.on('Network.dataReceived', event => { if (requestIds.has(event.requestId)) http.bodyBytes += event.dataLength; });
-    cdp.on('Network.loadingFinished', event => { if (requestIds.has(event.requestId)) { http.completed++; http.encodedTransferBytes += event.encodedDataLength; requestIds.delete(event.requestId); } });
-    cdp.on('Network.loadingFailed', event => { if (requestIds.has(event.requestId)) { http.failed++; requestIds.delete(event.requestId); } });
+    const at = (event, record) => record.startedAt + (event.timestamp - record.timestamp) * 1000;
+    cdp.on('Network.requestWillBeSent', event => { if (isMedia(event.request.url)) {
+      requestIds.add(event.requestId); http.requests++;
+      if (requests.length >= 512) { receipt.droppedMediaRequestRecords++; return; }
+      const range = Object.entries(event.request.headers).find(([key]) => key.toLowerCase() === 'range')?.[1] ?? null;
+      const record = { id: event.requestId, url: event.request.url, method: event.request.method, range,
+        startedAt: event.wallTime * 1000, timestamp: event.timestamp, status: null, protocol: null,
+        responseAt: null, firstBodyAt: null, lastBodyAt: null, endedAt: null, bodyBytes: 0, encodedDataBytes: 0,
+        completedEncodedTransferBytes: null, completed: false, error: null };
+      requests.push(record); requestRecords.set(event.requestId, record);
+    } });
+    cdp.on('Network.responseReceived', event => {
+      const record = requestRecords.get(event.requestId); if (!record) return;
+      record.status = event.response.status; record.protocol = event.response.protocol;
+      record.responseAt = at(event, record); record.ttfbMs = record.responseAt - record.startedAt;
+      record.fromDiskCache = event.response.fromDiskCache ?? false; record.fromServiceWorker = event.response.fromServiceWorker ?? false;
+      record.headers = Object.fromEntries(Object.entries(event.response.headers).filter(([key]) =>
+        /^(?:content-length|content-type|content-encoding|content-range|accept-ranges|cache-control|age|cf-cache-status|retry-after|timing-allow-origin)$/i.test(key)));
+    });
+    cdp.on('Network.dataReceived', event => {
+      if (requestIds.has(event.requestId)) http.bodyBytes += event.dataLength;
+      const record = requestRecords.get(event.requestId); if (!record) return;
+      record.firstBodyAt ??= at(event, record); record.lastBodyAt = at(event, record);
+      record.bodyBytes += event.dataLength; record.encodedDataBytes += event.encodedDataLength;
+    });
+    cdp.on('Network.loadingFinished', event => {
+      if (requestIds.has(event.requestId)) { http.completed++; http.encodedTransferBytes += event.encodedDataLength; requestIds.delete(event.requestId); }
+      const record = requestRecords.get(event.requestId); if (!record) return;
+      record.completed = true; record.endedAt = at(event, record); record.durationMs = record.endedAt - record.startedAt;
+      record.completedEncodedTransferBytes = event.encodedDataLength; requestRecords.delete(event.requestId);
+    });
+    cdp.on('Network.loadingFailed', event => {
+      if (requestIds.has(event.requestId)) { http.failed++; requestIds.delete(event.requestId); }
+      const record = requestRecords.get(event.requestId); if (!record) return;
+      record.endedAt = at(event, record); record.durationMs = record.endedAt - record.startedAt;
+      record.error = event.errorText; record.cancelled = event.canceled ?? false; requestRecords.delete(event.requestId);
+    });
     await page.addInitScript(wantDiagnostics => {
-      const qa = window.__visitorQa = { peers: [], ownedPeers: [], sockets: [], ownedSockets: [], workers: [], events: [], presentedFrames: 0, codedFrame: null, wantDiagnostics };
+      const qa = window.__visitorQa = { peers: [], ownedPeers: [], sockets: [], ownedSockets: [], workers: [], events: [], hlsErrors: [], presentedFrames: 0, codedFrame: null, wantDiagnostics };
+      qa.captureHlsError = data => {
+        const video = document.getElementById('lab-video'), buffered = [];
+        for (let i = 0; i < Math.min(4, video.buffered.length); i++) buffered.push([video.buffered.start(i), video.buffered.end(i)]);
+        qa.hlsErrors.push({ at: Date.now(), type: data.type, details: data.details, fatal: data.fatal,
+          message: String(data.error?.message ?? data.reason ?? '').slice(0, 1000), time: video.currentTime, readyState: video.readyState, buffered,
+          response: data.response ? { url: data.response.url ?? null, code: data.response.code ?? null } : null,
+          fragment: data.frag ? { url: data.frag.url, sn: data.frag.sn, start: data.frag.start, duration: data.frag.duration, level: data.frag.level } : null,
+          retryCount: data.errorAction?.retryCount ?? data.retryCount ?? null,
+          retryAction: data.errorAction ? { action: data.errorAction.action, flags: data.errorAction.flags } : null });
+        if (qa.hlsErrors.length > 128) qa.hlsErrors.shift();
+      };
       const NativePeer = RTCPeerConnection, NativeSocket = WebSocket, NativeWorker = Worker;
       window.RTCPeerConnection = class extends NativePeer { constructor(...args) { super(...args); qa.peers.push(this); } };
       window.WebSocket = class extends NativeSocket { constructor(...args) { super(...args); qa.sockets.push(this); } };
