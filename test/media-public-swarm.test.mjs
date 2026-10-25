@@ -171,6 +171,7 @@ function lifecycleFixture(t, { turnCredentials, turnConfiguration, turnFactory, 
     assert.equal(options.zeroBudgetPeerRace, true);
     assert.equal(options.lateHaveRace, true, 'an existing peer may finish the requested segment while HTTP is running');
     assert.equal(options.maxPeerWaitMs, 2500, 'late availability must use the original bounded race window');
+    assert.equal(options.lateWindowMs, 4000, 'a new peer must fit the existing late window');
     const workerUrl = new URL(options.transferWorkerUrl);
     assert.equal(workerUrl.origin, new URL(import.meta.url).origin);
     assert.equal(workerUrl.pathname, new URL('../site/vendor/relayswarm-transfer-worker.js', import.meta.url).pathname);
@@ -295,12 +296,15 @@ test('active peer delivery survives fifteen minutes and multi-GiB incoming total
   const f = lifecycleFixture(t);
   assert.equal(f.adapter.metrics().uploadPacing, null);
   assert.equal(f.adapter.metrics().peerAdmission, null);
+  assert.equal(f.adapter.metrics().latePeerRace, null);
   await f.adapter.setEnabled(true);
   assert.equal(f.adapter.metrics().uploadPacing, null, 'older SDK snapshots remain unknown instead of reporting zero queue activity');
   assert.equal(f.adapter.metrics().peerAdmission, null);
+  assert.equal(f.adapter.metrics().latePeerRace, null, 'an older SDK cannot claim a new-peer race happened');
   const uploadPacing = { enabled: true, queued: 1, reservedBytes: 98304, waited: 1, granted: 0 };
   const peerAdmission = { claimedLinks: 1, waiting: 1, claims: 2, waited: 1 };
-  Object.assign(f.cycles[0].live, { uploadPacing, peerAdmission });
+  const latePeerRace = { started: 1, delivered: 0 };
+  Object.assign(f.cycles[0].live, { uploadPacing, peerAdmission, latePeerRace });
   const identity = f.adapter.metrics().viewerId;
   for (let segment = 0; segment < 700; segment++) f.hls.loaded(4 * 1024 * 1024);
   f.advance(16 * 60 * 1000);
@@ -310,6 +314,7 @@ test('active peer delivery survives fifteen minutes and multi-GiB incoming total
   assert.equal(live.viewerId, identity); assert.equal(live.loadedMediaBytes, 700 * 4 * 1024 * 1024);
   assert.deepEqual(live.uploadPacing, uploadPacing, 'the current SDK supplies its bounded queue accounting');
   assert.deepEqual(live.peerAdmission, peerAdmission);
+  assert.deepEqual(live.latePeerRace, latePeerRace);
   assert.equal(live.resources.signallingConnections, 3); assert.equal(live.resources.activePeerConnections, 1);
   await f.adapter.setEnabled(true); assert.equal(f.cycles.length, 1, 'a later active enable does not replace the current peers');
   await f.adapter.setEnabled(false);
@@ -318,6 +323,7 @@ test('active peer delivery survives fifteen minutes and multi-GiB incoming total
   assert.equal(f.adapter.metrics().resources.heldBytes, 0); assert.equal(f.pendingTimers(), 0);
   assert.equal(f.adapter.metrics().uploadPacing, null, 'retired SDK queue counters are not presented as a live queue');
   assert.equal(f.adapter.metrics().peerAdmission, null);
+  assert.equal(f.adapter.metrics().latePeerRace, null);
   assert.equal(f.hls.config.fLoader, f.originLoader); assert.equal(f.video.currentTime, 123.25); assert.equal(f.video.volume, 0.4);
 });
 
@@ -424,6 +430,7 @@ test('recorded mode signs actual global sequence and discontinuity against the u
     const options = f.cycles[0].options;
     assert.equal(options.warmAhead, quality === 'full', 'bounded loading ahead is enabled for full 4K only');
     assert.equal(options.uploadPacing, quality === 'full', 'bounded upload admission is enabled for full 4K only');
+    assert.equal(options.latePeerRace, quality === 'full', 'a newly available peer may race only for the full 4K player');
     assert.equal(options.maxUploadBytesPerSecond, 4 * 1024 * 1024, 'pacing does not increase the existing upload rate');
     assert.match(options.swarmId, /^forgesworn-recorded-live-v2-[a-f0-9]{64}$/);
     assert(options.swarmId.length <= 128);

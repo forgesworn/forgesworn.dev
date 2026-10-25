@@ -271,6 +271,7 @@ async function snapshot(page) {
       controller: qa.wantDiagnostics ? qa.controllerState?.() ?? null : undefined,
       diagnostics: raw ? { segments: raw.segments, bytes: raw.bytes, core: raw.core, warmAhead: raw.warmAhead ?? null,
         uploadPacing: raw.uploadPacing ?? null, peerAdmission: raw.peerAdmission ?? null,
+        latePeerRace: raw.latePeerRace ?? null,
         sharedPlayback,
         peerCounts: Object.fromEntries(Object.entries(raw.peers).filter(([, value]) => typeof value === 'number')),
         eligibility: raw.peerEligibilityDiagnostics, requests: raw.peerRequestDiagnostics, refusals: raw.uploadRefusalDiagnostics,
