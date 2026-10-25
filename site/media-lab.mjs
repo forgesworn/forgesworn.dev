@@ -1,8 +1,8 @@
 import { readInitialLiveStart } from './media-live-start.mjs';
-import { createSourceResponseStats, publicSourceResource, transferBytes } from './media-transfer-stats.mjs?v=20261025-transfer-worker';
-import { createNativePlaybackFallback } from './media-playback-fallback.mjs?v=20261025-transfer-worker';
-import { createPlaybackPrime } from './media-playback-prime.mjs?v=20261025-transfer-worker';
-import { createPlaybackReport } from './media-playback-report.mjs?v=20261025-transfer-worker';
+import { createSourceResponseStats, publicSourceResource, transferBytes } from './media-transfer-stats.mjs?v=20261025-iphone-recovery';
+import { createNativePlaybackFallback } from './media-playback-fallback.mjs?v=20261025-iphone-recovery';
+import { createPlaybackPrime } from './media-playback-prime.mjs?v=20261025-iphone-recovery';
+import { createPlaybackReport } from './media-playback-report.mjs?v=20261025-iphone-recovery';
 
 const DASH = '—';
 export const observed = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
@@ -49,18 +49,50 @@ export function sharedPositionDifference(current, target, duration) {
 // it can keep a slower player buffering indefinitely, especially on iPhone.
 export function createSharedPlaybackSync(video, { now = () => performance.now(), signal, onSeek = () => {} } = {}) {
   let stableAt = null, driftAt = null, driftDirection = 0, lastSeekAt = -Infinity, nextCheckAt = 0, pendingAlignment = false;
-  let seekStartedAt = null, recentSeekCostMs = 0;
+  let recovery = null, recentSeekCostMs = 0;
+  const page = video.ownerDocument;
   const reset = () => { stableAt = null; driftAt = null; driftDirection = 0; };
-  for (const event of ['waiting', 'stalled', 'pause']) video.addEventListener(event, reset, { signal });
-  video.addEventListener('seeking', () => { seekStartedAt ??= now(); reset(); }, { signal });
+  const interrupt = () => { reset(); if (recovery) recovery.stableAt = null; };
+  const cancelRecovery = () => { recovery = null; reset(); };
+  const cancelPlayback = () => { cancelRecovery(); pendingAlignment = false; };
+  const beginRecovery = (at, target) => {
+    recovery = { at, target, lastTime: target, stableAt: null, seeked: false };
+  };
+  for (const event of ['waiting', 'stalled']) video.addEventListener(event, interrupt, { signal });
+  for (const event of ['pause', 'ended']) video.addEventListener(event, cancelPlayback, { signal });
+  video.addEventListener('seeking', () => {
+    if (!recovery || recovery.seeked) beginRecovery(now(), video.currentTime);
+    interrupt();
+  }, { signal });
   video.addEventListener('seeked', () => {
-    if (seekStartedAt !== null) {
-      const cost = now() - seekStartedAt;
-      if (Number.isFinite(cost) && cost >= 0) recentSeekCostMs = cost;
-      seekStartedAt = null;
+    if (recovery) {
+      recovery.seeked = true;
+      recovery.lastTime = video.currentTime;
+      recovery.stableAt = null;
     }
   }, { signal });
-  video.addEventListener('emptied', () => { seekStartedAt = null; recentSeekCostMs = 0; reset(); }, { signal });
+  video.addEventListener('emptied', () => { cancelPlayback(); recentSeekCostMs = 0; }, { signal });
+  page?.addEventListener('visibilitychange', () => { if (page.hidden) cancelPlayback(); else reset(); }, { signal });
+  const recovering = (at) => {
+    if (!recovery) return false;
+    if (video.paused || video.ended || page?.hidden) { cancelRecovery(); return false; }
+    const time = video.currentTime;
+    if (video.seeking || video.readyState < 3 || !Number.isFinite(time) || time <= recovery.lastTime) {
+      recovery.stableAt = null;
+      recovery.lastTime = time;
+      return true;
+    }
+    recovery.lastTime = time;
+    recovery.stableAt ??= at;
+    // Safari can fire seeked/playing well before its clock advances. Reuse
+    // the ordinary five-second stability requirement, with actual progress.
+    if (at - recovery.stableAt < 5000) return true;
+    const cost = at - recovery.at - Math.max(0, time - recovery.target) * 1000;
+    if (Number.isFinite(cost)) recentSeekCostMs = Math.max(0, cost);
+    stableAt = recovery.stableAt;
+    recovery = null;
+    return false;
+  };
   return {
     align(target, duration, force = false) {
       const difference = sharedPositionDifference(video.currentTime, target, duration);
@@ -69,6 +101,8 @@ export function createSharedPlaybackSync(video, { now = () => performance.now(),
       pendingAlignment ||= force;
       force = pendingAlignment;
       const at = now();
+      const awaitingPlayback = recovering(at);
+      if (!force && awaitingPlayback) { reset(); return result; }
       if (!force && at < nextCheckAt) return result;
       nextCheckAt = at + 800;
       if (video.seeking) { reset(); return result; }
@@ -76,7 +110,7 @@ export function createSharedPlaybackSync(video, { now = () => performance.now(),
       // check uses the latest room position rather than a stale saved target.
       pendingAlignment = false;
       if (!force) {
-        if (video.paused || video.ended || video.readyState < 3) { reset(); return result; }
+        if (video.paused || video.ended || page?.hidden || video.readyState < 3) { reset(); return result; }
         // Both positions must share a continuous buffer with two seconds to
         // spare, avoiding a jump into missing media or the edge of the buffer.
         const start = Math.min(video.currentTime, target), end = Math.max(video.currentTime, target) + 2;
@@ -97,8 +131,10 @@ export function createSharedPlaybackSync(video, { now = () => performance.now(),
       }
       reset();
       lastSeekAt = at;
+      const position = Math.max(0, Math.min(target, video.duration - 0.05));
+      beginRecovery(at, position);
       onSeek(at);
-      video.currentTime = Math.max(0, Math.min(target, video.duration - 0.05));
+      video.currentTime = position;
       result.corrected = true;
       return result;
     },
@@ -350,7 +386,7 @@ async function initialise() {
       s.followLive === false ? 'Away from the live stream' :
       state.role === 'starter' ? 'You started the stream · live' : 'Shared stream · live');
     if ($('public-live-edge')) $('public-live-edge').hidden = !joined || s.followLive !== false;
-    if (publicPlay && !busy && !s?.browser?.seenFrame) {
+    if (publicPlay && !busy && !s?.priming && !s?.browser?.seenFrame) {
       const label = publicPlay.querySelector('[data-play-label]');
       if (label) label.textContent = known && !state.listeners ? 'Start the room' : 'Play & join';
     }
@@ -364,7 +400,7 @@ async function initialise() {
     publicRoom?.stop(); publicRoom = null;
     const pending = (async () => {
       const [{ createListenerSession }, { PUBLIC_SWARM_SOURCE_SHA256, PUBLIC_SWARM_RELAYS }] = await Promise.all([
-        import('./media-listener-session.mjs?v=20261025-transfer-worker'), import('./media-public-swarm.mjs?v=20261025-transfer-worker'),
+        import('./media-listener-session.mjs?v=20261025-iphone-recovery'), import('./media-public-swarm.mjs?v=20261025-iphone-recovery'),
       ]);
       if (request !== publicRoomRequest || pageAbort.signal.aborted) return null;
       const clock = createListenerSession({ room: `forgesworn-dejavu-listening-v1-${quality}`, source: PUBLIC_SWARM_SOURCE_SHA256,
@@ -1134,7 +1170,7 @@ async function initialise() {
       if (!local && initial.epochId && initial.startPosition >= 0) s.listenerAlignedEpoch = initial.epochId;
       if (!local) {
         try {
-          const { createPublicSwarm } = await import('./media-public-swarm.mjs?v=20261025-transfer-worker');
+          const { createPublicSwarm } = await import('./media-public-swarm.mjs?v=20261025-iphone-recovery');
           if (session !== s || s.abort.signal.aborted || s.hls !== player) return;
           s.publicPeer = createPublicSwarm({ Hls, hls: s.hls, video, playlistUrl: url.href, quality: s.quality,
             signal: s.abort.signal, onStats: metrics => { if (session === s && !s.nativeHls && !s.finishing) publicDelivery(s, metrics); } });
@@ -1349,7 +1385,7 @@ async function initialise() {
       if (!document.hidden && session && !video.paused && session.followLive !== false) followListener(session);
     }, { signal: pageAbort.signal });
     try {
-      const { createSwarmVisual } = await import('./media-swarm-visual.mjs?v=20261025-transfer-worker');
+      const { createSwarmVisual } = await import('./media-swarm-visual.mjs?v=20261025-iphone-recovery');
       if (!pageAbort.signal.aborted && $('public-swarm-map')) {
         swarmVisual = createSwarmVisual($('public-swarm-map'));
         publicDelivery(session);

@@ -49,8 +49,10 @@ the room and stops peer sharing; Play discovers the current room again and
 returns to its live position.  Native seeking can move away from live, with
 **Back to live** to return. Following playback checks the circular clock
 offset through the existing browser observation timer. Automatic correction
-allows 750 ms of decoder offset plus the last observed seek interruption
-(`seeking` to `seeked`), needs five seconds of stable playback and
+allows 750 ms of decoder offset plus the last observed seek interruption,
+measured through sustained advancing video time. Safari's `seeked` and
+`playing` events alone do not end recovery. Automatic correction needs
+five seconds of stable playback and
 an offset in the same direction for at least three seconds, and requires
 both positions in one continuous buffer with two seconds of headroom.
 Corrections are spaced at least 15 seconds apart. Waiting, seeking or
@@ -58,7 +60,9 @@ pausing restarts the recovery period. Joining, **Back to live** and recording
 loops can align immediately; returning from full screen uses the recovery
 checks. For example, a 500 ms seek makes the ordinary allowance 1.25 seconds;
 removing 770 ms of offset must not itself cause another half-second interruption.
-Emptying the video clears the old engine's measured cost. The music's tempo stays unchanged. This avoids repeated clock seeks
+Pausing or hiding the page cancels an unfinished measurement so time away
+cannot inflate the allowance. Emptying the video clears the old engine's
+measured cost. The music's tempo stays unchanged. This avoids repeated clock seeks
 interrupting a slower decoder while it is trying to recover. Buffering and
 differences
 in device clocks or audio output can still create temporary offsets; this is

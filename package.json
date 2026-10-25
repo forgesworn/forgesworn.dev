@@ -10,6 +10,7 @@
     "check:drift": "node scripts/check-catalogue-drift.mjs",
     "test": "node --test test/*.test.mjs",
     "test:media:lifecycle": "node test/media-player-lifecycle.mjs",
+    "test:media:showcase:lifecycle": "node test/media-showcase-lifecycle.mjs",
     "test:media:peer": "node test/media-peer-browser.mjs",
     "test:media:ui": "node test/media-ui-browser.mjs",
     "demo:media": "node scripts/serve-media-demo.mjs",

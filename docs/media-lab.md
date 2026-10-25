@@ -333,6 +333,12 @@ during cleanup.
 
 ## Check the launcher
 
+Check the homepage's startup controls with `npm run test:media:showcase:lifecycle`.
+This uses the real page and controller with explicit room, HLS and media-state
+fixtures. It checks that room updates preserve the loading label, a blocked
+audible play can retry the prepared player, and leaving the page releases it.
+It does not establish decoded playback or peer delivery.
+
 ```sh
 node --test test/media-lab-server.test.mjs
 ```
