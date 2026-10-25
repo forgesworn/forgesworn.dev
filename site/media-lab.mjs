@@ -1,7 +1,8 @@
 import { readInitialLiveStart } from './media-live-start.mjs';
-import { createSourceResponseStats, publicSourceResource, transferBytes } from './media-transfer-stats.mjs?v=20261025-public-turn';
-import { createNativePlaybackFallback } from './media-playback-fallback.mjs?v=20261025-public-turn';
-import { createPlaybackPrime } from './media-playback-prime.mjs?v=20261025-public-turn';
+import { createSourceResponseStats, publicSourceResource, transferBytes } from './media-transfer-stats.mjs?v=20261025-playback-report';
+import { createNativePlaybackFallback } from './media-playback-fallback.mjs?v=20261025-playback-report';
+import { createPlaybackPrime } from './media-playback-prime.mjs?v=20261025-playback-report';
+import { createPlaybackReport } from './media-playback-report.mjs?v=20261025-playback-report';
 
 const DASH = '—';
 export const observed = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
@@ -363,7 +364,7 @@ async function initialise() {
     publicRoom?.stop(); publicRoom = null;
     const pending = (async () => {
       const [{ createListenerSession }, { PUBLIC_SWARM_SOURCE_SHA256, PUBLIC_SWARM_RELAYS }] = await Promise.all([
-        import('./media-listener-session.mjs?v=20261025-public-turn'), import('./media-public-swarm.mjs?v=20261025-public-turn'),
+        import('./media-listener-session.mjs?v=20261025-playback-report'), import('./media-public-swarm.mjs?v=20261025-playback-report'),
       ]);
       if (request !== publicRoomRequest || pageAbort.signal.aborted) return null;
       const clock = createListenerSession({ room: `forgesworn-dejavu-listening-v1-${quality}`, source: PUBLIC_SWARM_SOURCE_SHA256,
@@ -563,7 +564,8 @@ async function initialise() {
 
   function checkPlaybackPrime(s) {
     if (!s.priming || !s.playbackPrime || !s.hls) return;
-    const result = s.playbackPrime.check({ target: s.listener?.position(), duration: s.durationSeconds });
+    const result = s.playbackPrime.check({ target: s.listener?.position(), duration: s.durationSeconds,
+      allowCurrent: s.browser.seenFrame === true });
     root.dataset.playbackPrime = result.reason;
     if (result.reason === 'next-loop' && !s.primingFromStart) {
       s.primingFromStart = true;
@@ -573,7 +575,6 @@ async function initialise() {
       // Managed sources may require playback demand before they admit more
       // data. Bootstrap once instead of waiting forever for a paused buffer.
       s.priming = false; s.mediaReady = true; s.playbackPrime.cancel();
-      s.followLive = false;
       s.listenerAlignedEpoch = s.listener?.snapshot().epochId;
       root.dataset.playbackPrime = 'bootstrap-demand';
       controls(); void play(s); return;
@@ -582,7 +583,8 @@ async function initialise() {
     s.priming = false; s.mediaReady = true;
     s.listenerAlignedEpoch = s.listener?.snapshot().epochId;
     s.playbackSync.align(result.position, s.durationSeconds, true);
-    if (result.reason === 'timeout-current') s.followLive = false;
+    // A current-buffer release can lag the room. Keep following armed so the
+    // existing stable, buffered correction can join the fresh clock later.
     controls(); void play(s);
   }
   const choices = {};
@@ -652,6 +654,11 @@ async function initialise() {
     }
     $('lab-clear').disabled = !runs.length;
     $('lab-export').disabled = !runs.length;
+    if ($('public-save-report')) $('public-save-report').disabled = !session?.playbackReport;
+    if ($('public-share-report')) {
+      $('public-share-report').hidden = typeof navigator.share !== 'function' || typeof File !== 'function';
+      $('public-share-report').disabled = !session?.playbackReport;
+    }
   }
 
   function qualityDetails() {
@@ -808,6 +815,53 @@ async function initialise() {
     publicDelivery(s);
   }
 
+  function recordPlaybackReport(s) {
+    if (local || !s.playbackReport) return;
+    const added = s.playbackReport.record(() => {
+      const metrics = s.publicPeer?.metrics() ?? s.fallbackPeerMetrics, b = s.browser;
+      const timing = s.nativeHls ? null : b.sourceResponses?.snapshot(observed(metrics?.originTransferredBytes));
+      let buffered = null, quality = null;
+      try { buffered = Array.from({ length: video.buffered.length }, (_, i) => [video.buffered.start(i), video.buffered.end(i)]); } catch {}
+      try { quality = video.getVideoPlaybackQuality?.(); } catch {}
+      const room = s.listener?.snapshot();
+      const drift = room?.ready && video.readyState > 0 ?
+        sharedPositionDifference(video.currentTime, s.listener.position(), s.durationSeconds) : null;
+      return {
+        position: video.currentTime, duration: video.duration, readyState: video.readyState,
+        paused: video.paused, seeking: video.seeking, ended: video.ended, visibility: document.visibilityState,
+        quality: s.quality, engine: s.playbackEngine, library: metrics?.library,
+        width: video.videoWidth, height: video.videoHeight, presentedWidth: b.mediaWidth, presentedHeight: b.mediaHeight,
+        hasPresentedFrame: b.seenFrame, firstFrameMs: b.firstFrameMs, decodedFrames: b.decodedFrames,
+        presentedFrames: b.presentedFrames, totalVideoFrames: quality?.totalVideoFrames, droppedVideoFrames: quality?.droppedVideoFrames,
+        buffered, playbackRate: video.playbackRate, priming: Boolean(s.priming), primingReason: root.dataset.playbackPrime,
+        following: room?.ready ? s.followLive !== false : null,
+        sharedDriftSeconds: drift,
+        waiting: b.waitingAt !== null, stallCount: b.stallCount, stallSeconds: b.stallSeconds, playerErrors: b.playerErrors,
+        peerBytes: metrics?.peerBytes, uploadedBytes: metrics?.uploadedBytes, loadedSourceBytes: s.nativeHls ? null : metrics?.originBytes,
+        sourceNetworkBodyBytes: timing?.covered ? timing.networkBodyBytes : null,
+        sourceCacheBodyBytes: timing?.covered ? timing.cacheBodyBytes : null, sourceTimingCoverage: timing?.coverage ?? 'unavailable',
+        peerEnabled: metrics?.enabled, connectedPeers: metrics?.connectedPeers, roomListeners: room?.listeners,
+        connections: metrics?.topology?.connections,
+      };
+    });
+    if (added && !s.reportStarted) {
+      s.reportStarted = true;
+      optionalText('public-report-status', 'Recent playback readings stay in this tab. Save or share them when you choose.');
+      controls();
+    }
+    if (s.reportDownload && performance.now() >= s.reportDownload.expiresAt) {
+      URL.revokeObjectURL(s.reportDownload.url); s.reportDownload = null;
+    }
+  }
+
+  function playbackReportFile() {
+    if (!session?.playbackReport) return null;
+    const report = { ...session.playbackReport.snapshot(), exportedAt: new Date().toISOString() };
+    const data = JSON.stringify(report, null, 2) + '\n';
+    const filename = `forgesworn-playback-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+    return { data, filename };
+  }
+
   function trackBrowser(s, playlist) {
     delete root.dataset.playbackFallback;
     s.playbackSync = createSharedPlaybackSync(video, { signal: s.abort.signal, onSeek: at => { s.roomSeekAt = at; } });
@@ -821,6 +875,7 @@ async function initialise() {
       responseBytes: null, requests: null, playerErrors: 0, httpErrors: null,
       sourceResponses: !local ? createSourceResponseStats() : null,
     };
+    if (!local) s.playbackReport = createPlaybackReport({ startedAt: s.clickAt });
     const endStall = () => {
       if (b.waitingAt !== null) { b.finishedStallSeconds += (performance.now() - b.waitingAt) / 1000; b.waitingAt = null; }
     };
@@ -948,7 +1003,7 @@ async function initialise() {
       const nativeEligible = nativeCapable && Boolean(s.hls) && !s.nativeHls && !s.sourceEof && b.seenFrame && !document.hidden;
       if (s.nativeFallbackPolicy.check(nativeEligible)) switchPublicToNative(s);
       if (!local && !nativeCapable && s.hls && b.seenFrame && !s.sourceEof && s.bufferedRecovery.check(b.presentedFrames)) s.bufferedRecoveries = (s.bufferedRecoveries ?? 0) + 1;
-      browserReadings(s); s.browserTimer = setTimeout(tick, 400);
+      browserReadings(s); recordPlaybackReport(s); s.browserTimer = setTimeout(tick, 400);
     } };
     tick();
   }
@@ -1078,7 +1133,7 @@ async function initialise() {
       if (!local && initial.epochId && initial.startPosition >= 0) s.listenerAlignedEpoch = initial.epochId;
       if (!local) {
         try {
-          const { createPublicSwarm } = await import('./media-public-swarm.mjs?v=20261025-public-turn');
+          const { createPublicSwarm } = await import('./media-public-swarm.mjs?v=20261025-playback-report');
           if (session !== s || s.abort.signal.aborted || s.hls !== player) return;
           s.publicPeer = createPublicSwarm({ Hls, hls: s.hls, video, playlistUrl: url.href, quality: s.quality,
             signal: s.abort.signal, onStats: metrics => { if (session === s && !s.nativeHls && !s.finishing) publicDelivery(s, metrics); } });
@@ -1120,6 +1175,7 @@ async function initialise() {
     clearTimeout(s.browserTimer);
     if (s.frameCallback !== undefined) video.cancelVideoFrameCallback?.(s.frameCallback);
     if (s.observer) { s.resourceEntries(s.observer.takeRecords()); s.observer.disconnect(); }
+    if (s.reportDownload) { URL.revokeObjectURL(s.reportDownload.url); s.reportDownload = null; }
     s.abort.abort();
     try { if (s.listener === publicRoom) s.listener.leave(); else s.listener?.stop(); } catch {}
     try { Promise.resolve(s.peer?.stop()).catch(() => {}); } catch {}
@@ -1292,7 +1348,7 @@ async function initialise() {
       if (!document.hidden && session && !video.paused && session.followLive !== false) followListener(session);
     }, { signal: pageAbort.signal });
     try {
-      const { createSwarmVisual } = await import('./media-swarm-visual.mjs?v=20261025-public-turn');
+      const { createSwarmVisual } = await import('./media-swarm-visual.mjs?v=20261025-playback-report');
       if (!pageAbort.signal.aborted && $('public-swarm-map')) {
         swarmVisual = createSwarmVisual($('public-swarm-map'));
         publicDelivery(session);
@@ -1305,6 +1361,28 @@ async function initialise() {
     } catch { /* Playback and counters remain available without the diagram. */ }
   }
   $('lab-clear').addEventListener('click', () => { runs.length = 0; renderTable(); });
+  $('public-save-report')?.addEventListener('click', () => {
+    const file = playbackReportFile();
+    if (!file || !session) return;
+    if (session.reportDownload) URL.revokeObjectURL(session.reportDownload.url);
+    const url = URL.createObjectURL(new Blob([file.data], { type: 'application/json' }));
+    session.reportDownload = { url, expiresAt: performance.now() + 10_000 };
+    const link = document.createElement('a'); link.href = url; link.download = file.filename;
+    document.body.append(link); link.click(); link.remove();
+    optionalText('public-report-status', 'Report ready to save. This page does not upload it. Playback continues.');
+  });
+  $('public-share-report')?.addEventListener('click', async () => {
+    const file = playbackReportFile();
+    if (!file) return;
+    try {
+      const attachment = new File([file.data], file.filename, { type: 'application/json' });
+      if (navigator.canShare && !navigator.canShare({ files: [attachment] })) throw new Error('File sharing unavailable');
+      await navigator.share({ files: [attachment], title: 'ForgeSworn playback report' });
+      optionalText('public-report-status', 'Report shared with your chosen destination. Playback continues.');
+    } catch (error) {
+      optionalText('public-report-status', error?.name === 'AbortError' ? 'Sharing cancelled. Playback continues.' : 'File sharing is unavailable here. Use Save report.');
+    }
+  });
   $('lab-export').addEventListener('click', () => {
     const data = { schema: 1, exportedAt: new Date().toISOString(), runs };
     const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2) + '\n'], { type: 'application/json' }));

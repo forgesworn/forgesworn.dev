@@ -286,6 +286,17 @@ The schema1 comparison export remains compatible: `browser.responseBytes`
 retains its existing response-body semantics, which can include cached loads;
 the new network/cache and coverage readings are separate live diagnostics.
 
+**Save report** and, where supported, **Share report** in Playback details
+export a separate `forgesworn-playback-report` JSON file. It retains at most
+240 observations, sampled at most once per second through the existing player
+tick: actual frame counters and dimensions, buffering, stalls, visibility,
+room offset, verified peer and upload counters, library version and anonymous
+selected route types. Missing readings remain `null`. It excludes addresses,
+SDP, peer identities, credentials and source URLs or filesystem paths. Nothing
+is uploaded by the page; sharing requires the viewer's action. Exporting does
+not pause playback. The report is a diagnostic observation, not by itself a
+controlled comparison or proof of a cold browser cache.
+
 These are browser observations, not a claim of net bandwidth or financial
 savings.  Signalling, commitments, duplicate attempts and protocol overhead
 also use bandwidth.  Published origin CPU/RSS results are dated native

@@ -27,7 +27,7 @@ export function createPlaybackPrime(video, {
     start: reset,
     reset,
     cancel() { active = false; },
-    check({ target, duration } = {}) {
+    check({ target, duration, allowCurrent = false } = {}) {
       if (!active) return result(false, null, 'cancelled');
       if (complete) return result(false, null, 'complete');
       const at = now();
@@ -56,6 +56,16 @@ export function createPlaybackPrime(video, {
           const needed = Math.min(headroomSeconds, duration - position);
           const safe = canStart ? covered(position, needed) : null;
           if (safe !== null) return result(true, safe, 'buffered');
+          // Loading from the start of a loop can track the advancing room
+          // clock without ever gaining the required headroom. Play appended
+          // current data instead of chasing that moving target until
+          // timeout. The controller keeps safe room correction armed at 1x.
+          const current = video.currentTime;
+          if (allowCurrent === true && canStart && Number.isFinite(current) && current >= 0 && current < duration && current <= position) {
+            const currentNeeded = longRecording ? headroomSeconds : Math.min(headroomSeconds, duration - current);
+            const safeCurrent = covered(current, currentNeeded);
+            if (safeCurrent !== null) return result(true, safeCurrent, 'buffered-current');
+          }
         }
       }
       if (expired) {

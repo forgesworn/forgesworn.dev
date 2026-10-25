@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSharedPlaybackSync } from '../site/media-lab.mjs';
+import { createPlaybackPrime } from '../site/media-playback-prime.mjs';
 
 function player() {
   const video = Object.assign(new EventTarget(), { currentTime: 20, duration: 268.6,
@@ -17,6 +18,36 @@ function player() {
       for (; at <= until; at += 400) sync.align(video.currentTime + difference, video.duration);
     } };
 }
+
+test('current-buffer replay release can safely join the fresh room later at unchanged tempo', () => {
+  const p = player(); let at = 0;
+  p.video.currentTime = 0; p.video.paused = true; p.video.playbackRate = 1;
+  p.ranges([]);
+  const prime = createPlaybackPrime(p.video, { now: () => at });
+  assert.equal(prime.check({ target: 0.1, duration: p.video.duration, allowCurrent: true }).ready, false);
+  at = 3_200; p.at(at); p.ranges([[0, 4]]);
+  const release = prime.check({ target: 3.3, duration: p.video.duration, allowCurrent: true });
+  assert.equal(release.reason, 'buffered-current');
+  p.sync.align(release.position, p.video.duration, true);
+  assert.equal(p.seeks.length, 0, 'releasing current media does not introduce another seek');
+  p.video.paused = false; p.event('playing');
+  let corrected = false;
+  for (at = 3_600; at <= 22_000; at += 400) {
+    p.at(at); p.video.currentTime = (at - 3_200) / 1000;
+    p.ranges([[0, p.video.currentTime + (at < 8_000 ? 1.5 : 8)]]);
+    const freshTarget = p.video.currentTime + 3.3;
+    const decision = p.sync.align(freshTarget, p.video.duration);
+    if (at < 18_200) assert.equal(decision.corrected, false, 'unsafe data and the normal cooldown remain enforced');
+    if (decision.corrected) {
+      assert.equal(p.video.currentTime, freshTarget, 'the correction uses the new room position');
+      corrected = true; break;
+    }
+  }
+  assert.equal(corrected, true, 'room following remains possible after current-buffer priming');
+  assert.equal(p.seeks.length, 1);
+  assert.equal(p.video.playbackRate, 1);
+  p.abort.abort();
+});
 
 test('subsecond decoder delay does not start a recurring seek and rebuffer cycle', () => {
   const p = player();
