@@ -121,7 +121,11 @@ async function close(run){
   assert.equal(await run.page.evaluate(()=>fixture.peers.every(p=>p.stopped)),true);
   assert.deepEqual(run.errors,[]);await run.context.close();
 }
-function gestureOrder(trace,native=false){
+async function gestureOrder(page,native=false){
+  // The join is asynchronous. Wait for its trace before comparing the actual
+  // ordering; a slow module import must not turn a missing event into -1.
+  await page.waitForFunction(()=>fixture.trace.some(x=>x.kind==='join'));
+  const trace=await page.evaluate(()=>fixture.trace);
   const play=trace.findIndex(x=>x.kind==='play'),source=trace.findIndex(x=>x.kind==='src'),join=trace.findIndex(x=>x.kind==='join');
   assert(source>=0&&play>source,'real pipeline/source is attached before play');assert(join>play,'play precedes async room setup');
   assert.equal(trace[play].inTap,true,'play stays in the original click turn');assert.equal(trace[play].trusted,true);
@@ -134,7 +138,7 @@ try {
   assert.equal(await first.page.locator('#public-play').innerText(),'Preparing player…');
   assert.deepEqual(await first.page.evaluate(()=>({players:fixture.players.length,peers:fixture.peers.length,trace:fixture.trace})),{players:0,peers:0,trace:[]});
   assert.deepEqual(first.mediaRequests,[]);first.release();await first.page.waitForFunction(()=>!document.getElementById('public-play').disabled);
-  await first.page.locator('#public-play').click();gestureOrder(await first.page.evaluate(()=>fixture.trace));
+  await first.page.locator('#public-play').click();await gestureOrder(first.page);
   assert.equal(await first.page.evaluate(()=>fixture.players[0].config.autoStartLoad),false);
   assert.equal(await first.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='source').length),0);
   assert.equal(await first.page.evaluate(()=>fixture.peers.length),0);
@@ -225,7 +229,7 @@ try {
   assert.equal(await replaced.page.evaluate(()=>fixture.peers.length),1);
   await close(replaced);checks.push('fatal startup during held room-code import permits one fresh trusted Replay');
 
-  const native=await open({engine:'native'});await native.page.locator('#public-play').click();gestureOrder(await native.page.evaluate(()=>fixture.trace),true);
+  const native=await open({engine:'native'});await native.page.locator('#public-play').click();await gestureOrder(native.page,true);
   assert.equal(await native.page.evaluate(()=>fixture.players.length),0);await native.page.evaluate(()=>fixture.releaseRoom());
   await native.page.evaluate(()=>{fixture.readyState=4;document.getElementById('lab-video').dispatchEvent(new Event('loadedmetadata'));fixture.finishPlay()});
   assert.equal(await native.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='play').length),1);await close(native);checks.push('native HLS assigns real source and plays in same gesture');
@@ -258,7 +262,7 @@ try {
   for(const quality of ['full','preview']) {
     const run=await open({recorded:true,quality});
     assert.deepEqual(run.mediaRequests,[],'recording preparation fetches no metadata or video before the tap');
-    await run.page.locator('#public-play').click();gestureOrder(await run.page.evaluate(()=>fixture.trace));
+    await run.page.locator('#public-play').click();await gestureOrder(run.page);
     assert.equal(await run.page.evaluate(()=>fixture.prepared.length),0,'no metadata before the acknowledged room join');
     await run.page.evaluate(()=>fixture.releaseRoom());
     await run.page.waitForFunction(()=>document.getElementById('main').dataset.playbackMode==='recorded-live'&&fixture.trace.some(x=>x.kind==='startLoad'));

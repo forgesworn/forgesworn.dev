@@ -415,6 +415,13 @@ locks that load to HTTP, so sources cannot mix after an append.  Pausing or
 turning off the swarm stops its peer arm while preserving normal HTTP
 playback.
 
+Sustainable serial waits also require an actual origin timing sample. A cold
+loader starts HTTP immediately instead of treating its configured reserve as
+measured recovery time. Cached and late-HAVE races retain their independent
+parallel window; ordinary positive budgets resume once source timing exists.
+This prevents the observed cold mixed-transfer admission, without establishing
+that later WAN, decoder or clock-correction interruptions are resolved.
+
 Each peer request stays within four pieces and 512 KiB, retaining the upload
 burst and rate bounds even when the complete fragment exceeds the burst.
 Only the accepted load-entry connections that advertise the object when the
