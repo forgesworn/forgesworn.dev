@@ -1,0 +1,97 @@
+{
+  "schema": 1,
+  "measuredAt": "2026-10-25",
+  "scope": "Cold peer-admission and recorded-playlist recovery fixes; not a stall-free 4K acceptance claim",
+  "sdk": {
+    "sourceCommit": "8d3b759fdb3358fbda2f002df51f42421990198f",
+    "mergeCommit": "01ebff76685e29921722518696412d83ac791115",
+    "pr": "https://github.com/forgesworn/relayswarm/pull/33",
+    "sourceChecks": {
+      "success": 15,
+      "optionalSkipped": 2
+    },
+    "runtime": "Sustainable serial waits require measured origin recovery. Unknown recovery starts HTTP immediately; cached and late-HAVE parallel races remain available.",
+    "targetedFixtureTests": 13,
+    "coreModeFixtureTests": 15,
+    "unchangedWasmSha256": "718007df4aed3e8ff6f823fc8d99c34c868f2daad975ac7ddcb0dd2b1e0e73f2",
+    "rustBuildPerformedForSiteBundle": false
+  },
+  "windowComparison": {
+    "boundary": "Two sequential local-source real Hls1.7.3/native-AAC cases. One visible player and one trusted Play each; actual wall clock, unchanged 1080p media, first segment held nine seconds. No SDK, WAN, physical-device or autoplay override claim.",
+    "oldFourSeconds": {
+      "pendingFirstSequence": 0,
+      "windowStartAdvancedTo": 5,
+      "omittedSequences": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "bufferGap": [
+        0.981,
+        4.992
+      ],
+      "waitPosition": 0.905,
+      "forwardSeekTarget": 10.96,
+      "postFrameWaitSeconds": 0.748,
+      "strictNoWaitPass": false
+    },
+    "newTwentyFourSeconds": {
+      "pendingFirstSequenceRetained": true,
+      "nextSequences": [
+        1,
+        2,
+        3
+      ],
+      "firstPlayingBuffer": [
+        0,
+        24.981
+      ],
+      "finalMediaTime": 20.629,
+      "presentedFrames": 518,
+      "droppedFrames": 0,
+      "seeks": 0,
+      "endedEvents": 0,
+      "pauseEvents": 0,
+      "timelineRegressions": 0,
+      "postFrameWaitCount": 1,
+      "postFrameWaitSeconds": 0.0591,
+      "waitPosition": 16.589,
+      "waitBuffer": [
+        12,
+        40.947
+      ],
+      "strictNoWaitPass": false,
+      "waitCause": "Undetermined; no seek or buffer hole observed at that event."
+    },
+    "targetedFragmentRetentionAndNoForcedJumpVerified": true,
+    "limits": {
+      "playlistFragments": 64,
+      "mediaBackBufferSeconds": 4,
+      "mediaByteTarget": 67108864
+    }
+  },
+  "earlierGuardOnlyFull4K": {
+    "seconds": 300.476,
+    "passed": false,
+    "stalls": [
+      13,
+      20
+    ],
+    "stalledSeconds": [
+      73.39,
+      75.69
+    ],
+    "droppedFrames": [
+      71,
+      98
+    ],
+    "scope": "Before the 24-second metadata-history change. Shows repeated window ejections and remains a failed acceptance result; not a controlled speed comparison."
+  },
+  "remaining": [
+    "Sustained cold-cache 4K continuity with both changes enabled",
+    "Uninterrupted physical iPhone replay trace",
+    "Independent-operator public TURN configuration"
+  ],
+  "fixturesLeftRunning": false
+}

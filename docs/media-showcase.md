@@ -84,11 +84,25 @@ cold-cache continuity.
 The supported recordings use a bounded client-generated live playlist. The
 canonical VOD manifest is verified against its pinned digest before its
 durations and exact media URLs are used. A sliding window includes 24 seconds
-ahead and four seconds behind the room clock, with a discontinuity and repeated
+ahead and 24 seconds behind the room clock, with a discontinuity and repeated
 initialisation map at each programme wrap. There is no ENDLIST in this view.
 The existing player can load the next head before the tail finishes; normal
 wraps do not end, reset to zero, re-prime, replace a peer identity or force a
 catch-up seek. No additional player or streaming service is created.
+
+The extra history retains metadata through a slow startup or temporary
+underflow. hls.js can otherwise seek forward when the current fragment falls
+outside its live playlist, even with infinite maximum latency. The playlist
+still has at most 64 fragments; the media back buffer remains four seconds
+and the encoded-media cache limits stay unchanged. This history does not
+prefetch old media or establish sustained cold-cache continuity.
+
+The [cold-start recovery receipt](evidence/cold-start-recovery-20261025.json)
+retains the controlled nine-second response delay: the short history omitted
+needed fragments and forced a catch-up seek; the longer history retained them
+and avoided that seek. A separate 59 ms wait still occurred in the new control,
+so its strict no-wait result remains red. The earlier full 4K run also remains
+red and predates this metadata-history correction.
 
 Each session has a fixed player-time origin derived from its first selected
 fragment. A global media sequence number is not a player timestamp. Shared
@@ -414,6 +428,13 @@ prefetch media outside the visible player's demand.  Progressive HTTP payload
 locks that load to HTTP, so sources cannot mix after an append.  Pausing or
 turning off the swarm stops its peer arm while preserving normal HTTP
 playback.
+
+Sustainable serial waits also require an actual origin timing sample. A cold
+loader starts HTTP immediately instead of treating its configured reserve as
+measured recovery time. Cached and late-HAVE races retain their independent
+parallel window; ordinary positive budgets resume once source timing exists.
+This prevents the observed cold mixed-transfer admission, without establishing
+that later WAN, decoder or clock-correction interruptions are resolved.
 
 Each peer request stays within four pieces and 512 KiB, retaining the upload
 burst and rate bounds even when the complete fragment exceeds the burst.

@@ -3,10 +3,10 @@
 // A receiver's ephemeral key wraps that digest for the existing live-commitment
 // verifier; this is local attestation, not a live broadcaster signing service.
 import { createHlsSwarm, commitmentContent, commitmentPieceSize, segmentMediaContext, KIND_SEGMENT_COMMITMENT, finalizeEvent,
-  generateSecretKey, relayswarmBuild } from './vendor/media-peer-demo.js?v=20261025-continuous';
-import { observeOriginLoader } from './media-transfer-stats.mjs?v=20261025-continuous';
-import { createPublicTurnCredentials } from './media-turn-credentials.mjs?v=20261025-continuous';
-import { parseRecordedManifest, createRecordedLive } from './media-recorded-live.mjs?v=20261025-continuous';
+  generateSecretKey, relayswarmBuild } from './vendor/media-peer-demo.js?v=20261025-cold-origin';
+import { observeOriginLoader } from './media-transfer-stats.mjs?v=20261025-cold-origin';
+import { createPublicTurnCredentials } from './media-turn-credentials.mjs?v=20261025-cold-origin';
+import { parseRecordedManifest, createRecordedLive } from './media-recorded-live.mjs?v=20261025-cold-origin';
 export { createRecordedLive };
 
 export const PUBLIC_SWARM_LIMITS = Object.freeze({
@@ -458,8 +458,8 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
         }
         swarm = createSwarm({ mode: 'peer-first', swarmId: plan.swarmId, relays: [...PUBLIC_SWARM_RELAYS],
           streamEvent, getCommitment, serve: true, serveOnCellular: false,
-          coreWasm: new URL('./vendor/relayswarm-core.wasm?v=20261025-continuous', import.meta.url), multiHolder: true,
-          transferWorkerUrl: new URL('./vendor/relayswarm-transfer-worker.js?v=20261025-continuous', import.meta.url),
+          coreWasm: new URL('./vendor/relayswarm-core.wasm?v=20261025-cold-origin', import.meta.url), multiHolder: true,
+          transferWorkerUrl: new URL('./vendor/relayswarm-transfer-worker.js?v=20261025-cold-origin', import.meta.url),
           zeroBudgetPeerRace: true, lateHaveRace: true, sustainablePeerWait: true,
           maxHoldersPerObject: PUBLIC_SWARM_LIMITS.maxPeers,
           iceServers: PUBLIC_SWARM_ICE.map(entry => ({ ...entry })), iceTransportPolicy: 'all',

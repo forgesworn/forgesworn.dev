@@ -1,8 +1,8 @@
 import { readInitialLiveStart } from './media-live-start.mjs';
-import { createSourceResponseStats, publicSourceResource, transferBytes } from './media-transfer-stats.mjs?v=20261025-continuous';
-import { createNativePlaybackFallback } from './media-playback-fallback.mjs?v=20261025-continuous';
-import { createPlaybackPrime } from './media-playback-prime.mjs?v=20261025-continuous';
-import { createPlaybackReport } from './media-playback-report.mjs?v=20261025-continuous';
+import { createSourceResponseStats, publicSourceResource, transferBytes } from './media-transfer-stats.mjs?v=20261025-cold-origin';
+import { createNativePlaybackFallback } from './media-playback-fallback.mjs?v=20261025-cold-origin';
+import { createPlaybackPrime } from './media-playback-prime.mjs?v=20261025-cold-origin';
+import { createPlaybackReport } from './media-playback-report.mjs?v=20261025-cold-origin';
 
 const DASH = '—';
 export const observed = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
@@ -421,7 +421,7 @@ async function initialise() {
     publicRoom?.stop(); publicRoom = null;
     const pending = (async () => {
       const [{ createListenerSession }, { PUBLIC_SWARM_SOURCE_SHA256, PUBLIC_SWARM_RELAYS }] = await Promise.all([
-        import('./media-listener-session.mjs?v=20261025-continuous'), import('./media-public-swarm.mjs?v=20261025-continuous'),
+        import('./media-listener-session.mjs?v=20261025-cold-origin'), import('./media-public-swarm.mjs?v=20261025-cold-origin'),
       ]);
       if (request !== publicRoomRequest || pageAbort.signal.aborted) return null;
       const clock = createListenerSession({ room: `forgesworn-dejavu-listening-v${quality === 'full' ? 2 : 1}-${quality}`, source: PUBLIC_SWARM_SOURCE_SHA256,
@@ -1351,7 +1351,7 @@ async function initialise() {
       const player = s.hls;
       if (player) {
         try {
-          const { createPublicSwarm, prepareRecordedSource, createRecordedLive } = await import('./media-public-swarm.mjs?v=20261025-continuous');
+          const { createPublicSwarm, prepareRecordedSource, createRecordedLive } = await import('./media-public-swarm.mjs?v=20261025-cold-origin');
           if (!owns() || s.hls !== player) return;
           // These two exports share the exact helper module/recording brand.
           // Preparing metadata fetches no video and happens only after joining.
@@ -1362,7 +1362,10 @@ async function initialise() {
           const latestRoom = s.listener?.snapshot();
           if (recording && latestRoom?.ready && /^[a-f0-9]{64}$/.test(latestRoom.epochId) &&
               Math.abs(recording.durationSeconds - s.durationSeconds) < 0.05) {
-            const view = createRecordedLive({ recording, epochMs: latestRoom.startedAt, signal: s.abort.signal,
+            // Keep metadata available through a slow startup/recovery. A short
+            // room-clock window makes hls.js skip pending media fragments even
+            // with infinite max latency. This does not enlarge the media cache.
+            const view = createRecordedLive({ recording, epochMs: latestRoom.startedAt, signal: s.abort.signal, backSeconds: 24,
               passthroughUrls: [s.publicUrl.href] });
             if (view) {
               const ParentLoader = player.config.pLoader ?? player.config.loader;
@@ -1627,7 +1630,7 @@ async function initialise() {
     }, { signal: pageAbort.signal });
     controls();
     try {
-      const { createSwarmVisual } = await import('./media-swarm-visual.mjs?v=20261025-continuous');
+      const { createSwarmVisual } = await import('./media-swarm-visual.mjs?v=20261025-cold-origin');
       if (!pageAbort.signal.aborted && $('public-swarm-map')) {
         swarmVisual = createSwarmVisual($('public-swarm-map'));
         publicDelivery(session);
