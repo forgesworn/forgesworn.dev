@@ -364,20 +364,22 @@ contribution.
 The demo also opts into `zeroBudgetPeerRace`.  When there is no safe time to
 wait before starting HTTP, the normal request starts immediately.  Only a
 peer that already advertised the exact cached object may race it through the
-existing whole-object transfer and asynchronous WebCrypto verification. The
-normal buffered mixed path retains the Rust piece planner. The first complete
-accepted source wins; the losing
+Rust piece planner's explicit peer-only mode. It has no internal HTTP source;
+the ordinary HTTP loader runs independently. A verified calibration piece
+unlocks further bounded ranges, while unassigned pieces remain bounded pending
+work. The first complete accepted source wins; the losing
 arm is cancelled.  This creates no additional origin request and does not
 prefetch media outside the visible player's demand.  Progressive HTTP payload
 locks that load to HTTP, so sources cannot mix after an append.  Pausing or
 turning off the swarm stops its peer arm while preserving normal HTTP
 playback.
 
-The cached whole-object arm retains the upload burst bound: six of the 134
-full-resolution fragments exceed the current 8 MiB burst and can be refused
-by that arm. HTTP remains available, and normal mixed transfers can request
-smaller ranges. A cached race does not give the piece planner a fictitious
-HTTP source whose requests will never execute.
+Each peer request stays within four pieces and 512 KiB, retaining the upload
+burst and rate bounds even when the complete fragment exceeds the burst.
+Only the initial matching holder connections that still advertise the object
+can participate. At the peer floor, remaining peer work is cancelled while
+the independent HTTP loader continues. Older modules without the explicit
+mode safely decline that arm. The buffered mixed mode keeps its HTTP ranges.
 
 ## Integrity and scope
 
@@ -409,8 +411,8 @@ source recording and signing keys do not enter the repository.
 
 Rendezvous uses the explicitly listed public Nostr relays and encrypted peer
 signals. STUN supplies direct candidate discovery. When playback starts, the
-browser also obtains an expiring Spry TLS credential from the independently
-operated Archy node. Direct connections remain eligible; a relay supplies a
+browser also requests an expiring Spry TLS credential from its configured,
+independently operated public Spry instance. Direct connections remain eligible; a relay supplies a
 route when the browser cannot use direct UDP. The static site contains no
 relay password or operator root secret. The separate native comparator can
 exercise Spry and coturn. RelaySwarm remains experimental; public credential
@@ -426,41 +428,50 @@ most 16 MiB. The player targets a twenty-second forward buffer with a
 twenty-four-second time ceiling, four seconds behind and a 64 MiB byte target.
 An appended fragment can overshoot a buffer target; decoder memory is
 separate.  There is no background download of the full 817 MB recording.
-The public profile supplies STUN and the operator's TCP/TLS TURN route without
-changing browser privacy preferences. Vanadium's default restriction on
+The public profile supplies STUN and, when configured, the operator's
+TCP/TLS TURN route without changing browser privacy preferences. Vanadium's default restriction on
 non-proxied UDP can require that relay; see the
 [GrapheneOS explanation](https://bsky.app/profile/grapheneos.org/post/3lqpnxljvd22d).
 If the issuer or a usable peer route is unavailable, HTTPS playback continues.
 The player never embeds private test credentials in its bundle.
 
-`media-turn-credentials.mjs` POSTs a bounded request to
-`https://demo.forgesworn.dev:7443/turn-credentials` only during participation.
-The response permits only `turns:demo.forgesworn.dev:5349?transport=tcp`, uses
-no-store responses and a unique expiring principal, and refreshes after two
-thirds of its remaining lifetime. Slow HTTP responses consume that lifetime.
+`media-turn-credentials.mjs` uses the configured public Spry instance's
+`POST /v1/public/credentials` contract only during participation. It validates
+the direct `urls`, `username`, `credential` and epoch-second `expiresAt` fields,
+selects only the pinned TLS TURN URL and coalesces one lease per viewer across
+new peer connections. The supported public service freshly mints one-hour
+credentials. The client keeps a conservative monotonic lifetime, charging
+request/body time and a rounding margin; a wall-clock correction can only
+shorten it. Renewal starts after two thirds of the remaining lifetime.
 New peer connections use the latest credential. Relayed connections retire
 shortly before their old credential expires so the SDK can reconnect while
 the playing HLS instance and verified cache survive. Pause cancels renewal.
 Diagnostics expose availability and expiry duration, never the credential.
 
-The operator runs a small Rust issuer behind an isolated TLS listener. It
-consumes a bounded private pool minted by Spry's existing CLI and cannot read
-the TURN root secret. Per-address and global issuance limits, four active
-issuer connections, 32 TURN allocations and an 8 MiB/s aggregate bandwidth
-limit per allocation bound this demo. The private dashboard remains separate.
-Operator installation and rollback are maintained in
-[Archy's issuer guide](https://github.com/forgesworn/archipelago-apps/tree/main/operator/turn-issuer).
-Published-origin browser CORS and bidirectional 1 MiB hash-verified TLS relay
-checks passed on 25 October 2026. Sustained cold-cache 4K contribution,
-credential rotation during playback and physical iPhone acceptance remain
-separate checks.
+An unconfigured public relay causes no request, timer or startup delay;
+HTTP playback and direct/STUN peers remain available.
+
+The public profile is separate from KithMoot's paired private mesh. Its source
+bounds issuance to 32 requests per minute globally and six per source, with a
+bounded in-memory source table. A 4 KiB client response cap, four-second
+request/body deadline and spaced retries bound the browser path. The final
+public instance endpoint and a deliberate 4K bandwidth setting are operator
+configuration; the existing paired instance is not an anonymous issuer.
+
+The earlier test issuer's published-origin CORS and bidirectional 1 MiB
+hash-verified TLS checks passed on 25 October 2026. That lab route was replaced
+by a separate operator deployment, so those results do not establish that the
+new public instance is live. Final public issuance, sustained cold-cache 4K,
+credential rotation during playback and physical iPhone acceptance require
+the configured public route and fresh playback evidence.
 The pinned 689 KiB piece catalogue is bounded to 1 MiB, and the browser uses
 the pinned Rust/WASM module. Both load only after Play. The bundle
 receipt records the exact source, WASM digest and dependency notices; the
 website build copies that public module without compiling Rust.
 
-The current browser bundle pins RelaySwarm 0.4.4. Cached schema-3 media reaches
-the mixed piece planner even when the whole-object peer estimate is late, and
+The browser bundle pins an exact RelaySwarm 0.4.4 source revision. Cached
+schema-3 media uses the explicit peer-only ranged planner even when the
+whole-object peer estimate is late, and
 waiting for unavailable main-rendition recorded media requires an active
 same-key fetch lease. Live and unknown playlists retain bounded seeding
 coordination.

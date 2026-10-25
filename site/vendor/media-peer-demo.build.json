@@ -1,17 +1,17 @@
 {
   "schema": 1,
   "project": "https://github.com/forgesworn/relayswarm",
-  "sourceCommit": "990336743e5aa1bdf4bbc5ff619d89ea96354c67",
+  "sourceCommit": "1563944e9b7a0a0e5ad7546d21634257835a6e45",
   "version": "0.4.4",
-  "sourceArchiveSha256": "d361b6cf9a89c3e3c8ca7687eecacc50b395be2706ebfd2700e22b43f078c533",
+  "sourceArchiveSha256": "947de39f9c14aedd200bdf8c84be8bb692e9785eb72a05f86a8e7449e90cfa3c",
   "packageLockSha256": "18a91b8d697ebcab1d259d4de876167dcbd4d47fc3c82196d179c4c490adca4a",
   "bundle": "media-peer-demo.js",
-  "bundleSha256": "a4b584db98440b72d59dfe509dcff4c75f3300c7ff3a60b0b897456a0fd5a903",
-  "bundleBytes": 213942,
+  "bundleSha256": "674ab00c9d31d124c00d2aaff4e3133855b83f687fa2c8eefb9375e62b1427fd",
+  "bundleBytes": 214334,
   "transferWorker": {
     "file": "relayswarm-transfer-worker.js",
-    "bytes": 6663,
-    "sha256": "55c3a7e7de8261e969d4c3b0e2b65a2d9a10e91adb3c8aac10127c06015e8697",
+    "bytes": 7074,
+    "sha256": "e364e263b1fa755f98befb2f92ff70f494f3025e9292ab87f15efabd747a6d64",
     "source": "src/browser/core-transfer-worker-runtime.mjs"
   },
   "sourceMap": false,
@@ -45,8 +45,8 @@
   ],
   "coreWasm": {
     "file": "relayswarm-core.wasm",
-    "bytes": 436288,
-    "sha256": "81d1415552fda3a5fae027a7fbdd00be19835fbe3cb0dbac1aed9a8066b19bb9",
+    "bytes": 457147,
+    "sha256": "718007df4aed3e8ff6f823fc8d99c34c868f2daad975ac7ddcb0dd2b1e0e73f2",
     "source": "src/browser/relayswarm-core.wasm",
     "rustBuildPerformed": false,
     "dependencies": [
