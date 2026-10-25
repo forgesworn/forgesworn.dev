@@ -85,7 +85,13 @@ function mockMedia() {
     listenerCreated: 0, observe: 0, join: 0, leave: 0, listenerStop: 0, source: '', nativeAssignments: 0,
     nativeMetadata: 0, nativePlay: 0, stalePlayRejected: 0, deferNextPlay: false, pendingPlay: null, unreadyFirstFrame: false,
     readyState: 0, paused: true, ended: false, seeking: false, error: null,
-    time: 12.5, roomPosition: 12.5, frames: 0, ranges: [[0, 268.6]], callbacks: new Map(), nextFrame: 0, setters: [] };
+    time: 12.5, roomPosition: 12.5, frames: 0, ranges: [[0, 268.6]], callbacks: new Map(), nextFrame: 0, setters: [],
+    sharedReport: null, shareHadActivation: null };
+  Object.defineProperty(navigator, 'canShare', { configurable: true, value: options => options.files?.length === 1 });
+  Object.defineProperty(navigator, 'share', { configurable: true, value: async options => {
+    state.shareHadActivation = navigator.userActivation.isActive;
+    state.sharedReport = JSON.parse(await options.files[0].text());
+  } });
   const proto = HTMLMediaElement.prototype;
   for (const [key, getter] of Object.entries({ paused: () => state.paused, ended: () => state.ended, seeking: () => state.seeking,
     readyState: () => state.readyState, error: () => state.error, duration: () => 268.6, currentSrc: () => state.source,
@@ -220,6 +226,28 @@ try {
   const before = await state(page); assert.equal(before.peerBytes, 4096); assert.equal(before.uploadBytes, 8192);
   assert.notEqual(before.firstFrameDisplay, '—', 'the first playable frame starts playback measurement');
   assert.equal(before.stallCount, 0);
+  await page.clock.runFor(1200);
+  await page.evaluate(() => { document.getElementById('public-stats-details').open = true; });
+  const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#public-save-report').click()]);
+  const stream = await download.createReadStream(); let contents = '';
+  for await (const chunk of stream) contents += chunk.toString();
+  const downloadedReport = JSON.parse(contents);
+  assert.equal(downloadedReport.kind, 'forgesworn-playback-report');
+  assert.ok(downloadedReport.samples.length > 0 && downloadedReport.samples.length <= 240);
+  const latest = downloadedReport.samples.at(-1);
+  assert.equal(latest.peerBytes, 4096); assert.equal(latest.uploadedBytes, 8192); assert.equal(latest.hasPresentedFrame, true);
+  assert.equal(latest.presentedWidth, 3840); assert.equal(latest.presentedHeight, 2160);
+  assert.doesNotMatch(contents, /https?:|\/Users\/|sdp|credentials|privateKey|peerId|pubkey/);
+  await download.delete();
+  await page.locator('#public-share-report').click();
+  await waitFor(page, () => Boolean(window.__nativeFixture.sharedReport), 'user-triggered report sharing');
+  const sharing = await page.evaluate(() => ({ kind: window.__nativeFixture.sharedReport.kind,
+    trustedActivation: window.__nativeFixture.shareHadActivation, paused: document.getElementById('lab-video').paused,
+    time: document.getElementById('lab-video').currentTime }));
+  assert.equal(sharing.kind, 'forgesworn-playback-report'); assert.equal(sharing.trustedActivation, true);
+  assert.equal(sharing.paused, false); assert.equal(sharing.time, before.time);
+  receipt.reportExport = { trigger: 'public-report-download-and-mocked-native-file-share', sampleCount: downloadedReport.samples.length,
+    latestReportObservation: latest, sharing, nativeShareSheetExercised: false };
   const savedTime = await page.evaluate(() => {
     const s = window.__nativeFixture, video = document.getElementById('lab-video');
     s.deferNextPlay = true; document.getElementById('public-play').click();

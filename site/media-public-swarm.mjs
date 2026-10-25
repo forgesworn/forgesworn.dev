@@ -3,9 +3,9 @@
 // A receiver's ephemeral key wraps that digest for the existing live-commitment
 // verifier; this is local attestation, not a live broadcaster signing service.
 import { createHlsSwarm, commitmentContent, commitmentPieceSize, segmentMediaContext, KIND_SEGMENT_COMMITMENT, finalizeEvent,
-  generateSecretKey, relayswarmBuild } from './vendor/media-peer-demo.js?v=20261025-public-turn';
-import { observeOriginLoader } from './media-transfer-stats.mjs?v=20261025-public-turn';
-import { createPublicTurnCredentials } from './media-turn-credentials.mjs?v=20261025-public-turn';
+  generateSecretKey, relayswarmBuild } from './vendor/media-peer-demo.js?v=20261025-playback-report';
+import { observeOriginLoader } from './media-transfer-stats.mjs?v=20261025-playback-report';
+import { createPublicTurnCredentials } from './media-turn-credentials.mjs?v=20261025-playback-report';
 
 export const PUBLIC_SWARM_LIMITS = Object.freeze({
   maxPeers: 3,
@@ -25,6 +25,8 @@ const FULL_PLAYLIST = '/media/dejavu-4k/index.m3u8';
 const FULL_MEDIA_BASE = 'https://v4v.com/forgesworn-media-demo/dejavu-4k-v1/';
 const PREVIEW_PLAYLIST = '/media/dejavu-preview/rtmp/index.m3u8';
 const HEX = /^[a-f0-9]{64}$/;
+const CANDIDATE_TYPES = new Set(['host', 'srflx', 'prflx', 'relay']);
+const RELAY_PROTOCOLS = new Set(['udp', 'tcp', 'tls']);
 const n = value => Number.isFinite(value) && value >= 0 ? value : 0;
 const hex = bytes => Array.from(bytes, value => value.toString(16).padStart(2, '0')).join('');
 const digest = async value => hex(new Uint8Array(await crypto.subtle.digest('SHA-256', value)));
@@ -158,6 +160,8 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
         const observation = peerObservations.get(connection);
         return { id: observation.id, peerId: identities.get(connection), state: connection.connectionState, iceState: connection.iceConnectionState,
           bytesSent: observation.sentBytes, bytesReceived: observation.receivedBytes, kind: observation.kind, trafficBasis: observation.trafficBasis,
+          localCandidateType: observation.localCandidateType, remoteCandidateType: observation.remoteCandidateType,
+          localRelayProtocol: observation.localRelayProtocol, remoteRelayProtocol: observation.remoteRelayProtocol,
           mediaBytesSent: observation.mediaBytesSent, verifiedMediaBytesReceived: observation.verifiedMediaBytesReceived,
           observedAtMs: observation.observedAtMs };
       }) },
@@ -211,6 +215,10 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
         Object.assign(observation, { sentBytes: rows.length ? rows.reduce((sum, row) => sum + n(row.bytesSent), 0) : null,
           receivedBytes: rows.length ? rows.reduce((sum, row) => sum + n(row.bytesReceived), 0) : null,
           kind: pair ? local?.candidateType === 'relay' || remote?.candidateType === 'relay' ? 'relay' : 'direct' : null,
+          localCandidateType: CANDIDATE_TYPES.has(local?.candidateType) ? local.candidateType : null,
+          remoteCandidateType: CANDIDATE_TYPES.has(remote?.candidateType) ? remote.candidateType : null,
+          localRelayProtocol: RELAY_PROTOCOLS.has(local?.relayProtocol) ? local.relayProtocol : null,
+          remoteRelayProtocol: RELAY_PROTOCOLS.has(remote?.relayProtocol) ? remote.relayProtocol : null,
           trafficBasis: channels.length ? 'data-channel' : pair ? 'candidate-pair' : null,
           observedAtMs: rows.length ? Math.round(performance.now()) : null });
       }));
@@ -325,7 +333,8 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
               }
             });
             peerObservations.set(this, { id: `peer-${nextPeer++}`, sentBytes: null, receivedBytes: null, mediaBytesSent: 0,
-              verifiedMediaBytesReceived: 0, kind: null, trafficBasis: null, observedAtMs: null });
+              verifiedMediaBytesReceived: 0, kind: null, trafficBasis: null, observedAtMs: null,
+              localCandidateType: null, remoteCandidateType: null, localRelayProtocol: null, remoteRelayProtocol: null });
             this.addEventListener('datachannel', event => observeChannel(event.channel, this));
             this.addEventListener('connectionstatechange', () => {
               if (this.connectionState === 'closed') {
@@ -342,7 +351,7 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
         }
         swarm = createSwarm({ mode: 'peer-first', swarmId: plan.swarmId, relays: [...PUBLIC_SWARM_RELAYS],
           streamEvent, getCommitment, serve: true, serveOnCellular: false,
-          coreWasm: new URL('./vendor/relayswarm-core.wasm?v=20261025-public-turn', import.meta.url), multiHolder: true,
+          coreWasm: new URL('./vendor/relayswarm-core.wasm?v=20261025-playback-report', import.meta.url), multiHolder: true,
           zeroBudgetPeerRace: true, sustainablePeerWait: true,
           maxHoldersPerObject: PUBLIC_SWARM_LIMITS.maxPeers,
           iceServers: PUBLIC_SWARM_ICE.map(entry => ({ ...entry })), iceTransportPolicy: 'all',

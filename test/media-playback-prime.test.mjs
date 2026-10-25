@@ -10,6 +10,7 @@ function fixture(ranges = [], options = {}) {
   return { video, prime, at(value) { at = value; }, buffers(value) { buffered = value; } };
 }
 const full = target => ({ target, duration: 268.6 });
+const replay = target => ({ ...full(target), allowCurrent: true });
 
 test('startup waits for appended headroom at the latest target and emits one decision', () => {
   const p = fixture([[10, 12]]);
@@ -28,6 +29,59 @@ test('a1.764-second target cannot start in the missing first fragment', () => {
   assert.equal(p.prime.check(full(1.764)).ready, false);
   p.at(400);
   assert.deepEqual(p.prime.check(full(2.164)), { ready: true, position: 2.164, reason: 'buffered' });
+});
+
+test('a replay plays its safe head buffer before an advancing clock forces the twelve-second escape', () => {
+  const p = fixture(); p.video.currentTime = 0;
+  assert.equal(p.prime.check(replay(0.1)).ready, false);
+  p.at(1_500); p.buffers([[0, 2]]);
+  assert.equal(p.prime.check(replay(1.6)).ready, false);
+  p.at(3_200); p.buffers([[0, 4]]);
+  assert.deepEqual(p.prime.check(replay(3.3)), { ready: true, position: 0, reason: 'buffered-current' });
+  assert.equal(p.video.currentTime, 0, 'the decision does not seek');
+  assert.equal(p.video.paused, true, 'the controller still owns playback');
+  assert.equal(p.video.playbackRate, 1);
+  assert.deepEqual(p.prime.check(replay(3.7)), { ready: false, position: null, reason: 'complete' });
+});
+
+test('an ordinary cold join waits for fresh room headroom instead of starting behind it', () => {
+  const p = fixture(); p.video.currentTime = 0;
+  p.prime.check(full(0.1));
+  p.at(3_200); p.buffers([[0, 4]]);
+  assert.deepEqual(p.prime.check(full(3.3)), { ready: false, position: 3.3, reason: 'buffering' });
+  p.at(4_000); p.buffers([[0, 8]]);
+  assert.deepEqual(p.prime.check(full(4.1)), { ready: true, position: 4.1, reason: 'buffered' });
+});
+
+test('fresh room headroom is preferred when the current position is also playable', () => {
+  const p = fixture([[0, 8]]); p.video.currentTime = 0;
+  assert.deepEqual(p.prime.check(replay(3.3)), { ready: true, position: 3.3, reason: 'buffered' });
+});
+
+test('the current-buffer escape needs one continuous ready range and never uses a later position', () => {
+  for (const ranges of [[[0, 2], [2.2, 4]], [[0.1, 4]], [[0, 2.99]]]) {
+    const p = fixture(ranges); p.video.currentTime = 0;
+    assert.equal(p.prime.check(replay(3.3)).ready, false, JSON.stringify(ranges));
+  }
+  const p = fixture([[264, 268.6]]); p.video.currentTime = 264;
+  assert.equal(p.prime.check(replay(0.5)).ready, false, 'a previous loop tail cannot substitute for its missing head');
+});
+
+test('current-buffer readiness cannot bypass seeking, media readiness, or an unknown room clock', () => {
+  for (const state of [{ seeking: true }, { readyState: 2 }]) {
+    const p = fixture([[0, 4]]); Object.assign(p.video, { currentTime: 0 }, state);
+    assert.equal(p.prime.check(replay(3.3)).ready, false);
+  }
+  const p = fixture([[0, 4]]); p.video.currentTime = 0;
+  assert.equal(p.prime.check({ target: NaN, duration: 268.6, allowCurrent: true }).ready, false);
+});
+
+test('a ready current head still waits for the room to wrap before a near-end join', () => {
+  const p = fixture([[0, 4]]); p.video.currentTime = 0;
+  assert.deepEqual(p.prime.check(replay(267.4)), { ready: false, position: 0, reason: 'next-loop' });
+  p.at(700); assert.equal(p.prime.check(replay(268.1)).ready, false);
+  p.at(1_450);
+  assert.deepEqual(p.prime.check(replay(0.25)), { ready: true, position: 0.25, reason: 'buffered' });
 });
 
 test('separate ranges cannot be added together to invent continuous headroom', () => {
