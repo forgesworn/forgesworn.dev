@@ -1,8 +1,8 @@
 import { readInitialLiveStart } from './media-live-start.mjs';
-import { createSourceResponseStats, publicSourceResource, transferBytes } from './media-transfer-stats.mjs?v=20261025-cold-origin';
-import { createNativePlaybackFallback } from './media-playback-fallback.mjs?v=20261025-cold-origin';
-import { createPlaybackPrime } from './media-playback-prime.mjs?v=20261025-cold-origin';
-import { createPlaybackReport } from './media-playback-report.mjs?v=20261025-cold-origin';
+import { createSourceResponseStats, publicSourceResource, transferBytes } from './media-transfer-stats.mjs?v=20261025-native-cors';
+import { createNativePlaybackFallback } from './media-playback-fallback.mjs?v=20261025-native-cors';
+import { createPlaybackPrime } from './media-playback-prime.mjs?v=20261025-native-cors';
+import { createPlaybackReport } from './media-playback-report.mjs?v=20261025-native-cors';
 
 const DASH = '—';
 export const observed = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
@@ -421,7 +421,7 @@ async function initialise() {
     publicRoom?.stop(); publicRoom = null;
     const pending = (async () => {
       const [{ createListenerSession }, { PUBLIC_SWARM_SOURCE_SHA256, PUBLIC_SWARM_RELAYS }] = await Promise.all([
-        import('./media-listener-session.mjs?v=20261025-cold-origin'), import('./media-public-swarm.mjs?v=20261025-cold-origin'),
+        import('./media-listener-session.mjs?v=20261025-native-cors'), import('./media-public-swarm.mjs?v=20261025-native-cors'),
       ]);
       if (request !== publicRoomRequest || pageAbort.signal.aborted) return null;
       const clock = createListenerSession({ room: `forgesworn-dejavu-listening-v${quality === 'full' ? 2 : 1}-${quality}`, source: PUBLIC_SWARM_SOURCE_SHA256,
@@ -1058,9 +1058,15 @@ async function initialise() {
       if (!local && s.hls && b.seenFrame && video.canPlayType('application/vnd.apple.mpegurl')) {
         switchPublicToNative(s, 'decode-error'); return;
       }
+      endStall();
       s.playbackFailed = true;
-      if (!local) { leaveListener(s); shareWhilePlaying(s, false); }
+      if (!local) {
+        s.startupPending = false; s.playbackWanted = false;
+        s.playbackVersion = (s.playbackVersion ?? 0) + 1;
+        leaveListener(s); shareWhilePlaying(s, false);
+      }
       status(local ? 'Playback could not continue. Stop the run, check the local runner and try again.' : 'The selected source could not be decoded. Try the preview or check the media-host response.', true);
+      if (!local) controls();
     }, { signal: s.abort.signal });
     if (typeof video.requestVideoFrameCallback === 'function') {
       const frame = (_now, metadata) => {
@@ -1206,6 +1212,9 @@ async function initialise() {
       }
       if (s.playbackWanted !== false) void play(s);
     }, { once: true, signal: s.abort.signal });
+    // The same-origin manifest contains approved cross-origin media. Native
+    // HLS must fetch those children in CORS mode too, before selecting source.
+    video.crossOrigin = 'anonymous';
     video.src = s.playlistUrl;
     status('Switching to your browser’s native player to recover playback.');
     browserReadings(s);
@@ -1218,6 +1227,7 @@ async function initialise() {
       s.listenerAlignedEpoch = s.listener?.snapshot().epochId;
       followListener(s, true);
     }, { once: true, signal: s.abort.signal });
+    video.crossOrigin = 'anonymous';
     video.src = url.href; s.mediaReady = true;
   }
 
@@ -1351,7 +1361,7 @@ async function initialise() {
       const player = s.hls;
       if (player) {
         try {
-          const { createPublicSwarm, prepareRecordedSource, createRecordedLive } = await import('./media-public-swarm.mjs?v=20261025-cold-origin');
+          const { createPublicSwarm, prepareRecordedSource, createRecordedLive } = await import('./media-public-swarm.mjs?v=20261025-native-cors');
           if (!owns() || s.hls !== player) return;
           // These two exports share the exact helper module/recording brand.
           // Preparing metadata fetches no video and happens only after joining.
@@ -1379,6 +1389,7 @@ async function initialise() {
           }
           let peer;
           peer = createPublicSwarm({ Hls, hls: player, video, playlistUrl: s.publicUrl.href, quality: s.quality,
+            turnConfiguration: { endpoint: root.dataset.turnCredentialEndpoint ?? null, turnUrl: root.dataset.turnUrl ?? null },
             ...(s.recordedView ? { recordedLive: { recording: s.recording, epochId: s.recordedEpochId } } : {}),
             signal: s.abort.signal, onStats: metrics => {
               if (peer && session === s && s.publicPeer === peer && !s.nativeHls && !s.finishing) publicDelivery(s, metrics);
@@ -1630,7 +1641,7 @@ async function initialise() {
     }, { signal: pageAbort.signal });
     controls();
     try {
-      const { createSwarmVisual } = await import('./media-swarm-visual.mjs?v=20261025-cold-origin');
+      const { createSwarmVisual } = await import('./media-swarm-visual.mjs?v=20261025-native-cors');
       if (!pageAbort.signal.aborted && $('public-swarm-map')) {
         swarmVisual = createSwarmVisual($('public-swarm-map'));
         publicDelivery(session);

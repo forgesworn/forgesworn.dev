@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { createPublicSwarm, validatePublicSwarmCatalogue, catalogueSegment, PUBLIC_SWARM_CATALOGUE_SHA256,
   PUBLIC_SWARM_LIMITS, PUBLIC_SWARM_RELAYS, PUBLIC_SWARM_ICE, prepareRecordedSource, createRecordedLive } from '../site/media-public-swarm.mjs';
 import { verifyEvent } from '../site/vendor/media-peer-demo.js';
+import { createPublicTurnCredentials } from '../site/media-turn-credentials.mjs';
 
 const bytes = await readFile(new URL('../site/media/dejavu-swarm/catalogue-v3.json', import.meta.url));
 const catalogue = JSON.parse(bytes);
@@ -116,7 +117,7 @@ test('public configuration bounds upload rate, peers and cache without a cumulat
 // Exercise the real adapter lifecycle with an injected SDK factory. Native
 // resource ownership and SDK accounting snapshots are simulated; no video/network
 // benchmark or real GiB transfer is claimed by these unit tests.
-function lifecycleFixture(t, { turnCredentials, origin = 'https://forgesworn.dev/live-media.html', fetchResponse } = {}) {
+function lifecycleFixture(t, { turnCredentials, turnConfiguration, turnFactory, origin = 'https://forgesworn.dev/live-media.html', fetchResponse } = {}) {
   let at = 0, nextTimer = 0, adapter;
   const timers = new Map(), globals = new Map(), sockets = [], connections = [], cycles = [];
   const page = new EventTarget(), abort = new AbortController(), fetches = [];
@@ -193,14 +194,18 @@ function lifecycleFixture(t, { turnCredentials, origin = 'https://forgesworn.dev
       },
     };
   };
-  const createTurnCredentials = () => turnCredentials ?? ({ start: async () => null, stop() {}, servers: () => [], leaseIdentity: () => null,
-    snapshot: () => ({ phase: 'unavailable', available: false, remainingMs: 0, failures: 0 }) });
+  const turnConfigurations = [];
+  const createTurnCredentials = configuration => {
+    turnConfigurations.push(configuration);
+    return turnFactory?.(configuration) ?? turnCredentials ?? ({ start: async () => null, stop() {}, servers: () => [], leaseIdentity: () => null,
+      snapshot: () => ({ phase: 'unavailable', available: false, remainingMs: 0, failures: 0 }) });
+  };
   const createAdapter = (recordedLive, quality = 'full') => createPublicSwarm({ Hls, hls, video,
     playlistUrl: quality === 'full' ? full.playlistUrl : preview.playlistUrl,
-    quality, signal: abort.signal, ...(recordedLive === undefined ? {} : { recordedLive }) }, { createSwarm, createTurnCredentials });
+    quality, signal: abort.signal, turnConfiguration, ...(recordedLive === undefined ? {} : { recordedLive }) }, { createSwarm, createTurnCredentials });
   adapter = createAdapter();
   const originLoader = hls.config.fLoader;
-  return { get adapter() { return adapter; }, hls, video, originLoader, sockets, connections, cycles, abort, fetches,
+  return { get adapter() { return adapter; }, hls, video, originLoader, sockets, connections, cycles, abort, fetches, turnConfigurations,
     prepare: (quality = 'full', signal = abort.signal) => prepareRecordedSource({ quality,
       playlistUrl: quality === 'full' ? full.playlistUrl : preview.playlistUrl, signal }),
     useRecorded(value, quality = 'full') { adapter.stop(); adapter = createAdapter(value, quality); return adapter; },
@@ -217,6 +222,39 @@ function lifecycleFixture(t, { turnCredentials, origin = 'https://forgesworn.dev
       at = end;
     } };
 }
+
+test('an omitted operator configuration leaves the real TURN provider unconfigured during peer playback', async t => {
+  const f = lifecycleFixture(t, { turnFactory: createPublicTurnCredentials });
+  assert.deepEqual(f.turnConfigurations, [{ endpoint: null, turnUrl: null }]);
+  assert.equal(f.fetches.length, 0);
+  await f.adapter.setEnabled(true);
+  assert(f.fetches.length > 0, 'ordinary pinned catalogue metadata still loads');
+  assert(f.fetches.every(({ options }) => options.method !== 'POST'), 'no public credential endpoint is queried');
+  assert.deepEqual(f.connections[0].configuration.iceServers, PUBLIC_SWARM_ICE);
+  await f.adapter.setEnabled(false); assert.equal(f.pendingTimers(), 0);
+});
+
+test('explicit operator configuration is captured before caller mutation and bound by the real TURN provider', async t => {
+  const configuration = { endpoint: 'https://operator.test/v1/public/credentials', turnUrl: 'turns:relay.test:5350?transport=tcp' };
+  const expected = { ...configuration }, requests = [];
+  const f = lifecycleFixture(t, { turnConfiguration: configuration, turnFactory: captured => createPublicTurnCredentials({
+    ...captured, fetchImpl: async (url, options) => {
+      requests.push({ url, method: options.method });
+      const expiresAt = Math.floor(Date.now() / 1000) + 3600;
+      return new Response(JSON.stringify({ urls: ['turns:ignored.test:5349?transport=tcp', expected.turnUrl],
+        username: `${expiresAt}:pub-${'a'.repeat(24)}`, credential: `${'b'.repeat(26)}I=`, expiresAt }),
+      { headers: { 'content-type': 'application/json' } });
+    },
+  }) });
+  assert.deepEqual(f.turnConfigurations, [expected]); assert.notEqual(f.turnConfigurations[0], configuration);
+  configuration.endpoint = 'https://changed.test/v1/public/credentials'; configuration.turnUrl = 'turns:changed.test:443?transport=tcp';
+  assert.equal(requests.length, 0, 'constructing the adapter does not issue credentials');
+  await f.adapter.setEnabled(true);
+  assert.deepEqual(requests, [{ url: expected.endpoint, method: 'POST' }]);
+  assert.deepEqual(f.connections[0].configuration.iceServers[1].urls, [expected.turnUrl]);
+  assert.deepEqual(f.turnConfigurations, [expected], 'later caller changes cannot retarget the active provider');
+  await f.adapter.setEnabled(false); assert.equal(f.pendingTimers(), 0);
+});
 
 test('native peer construction uses the current automatic lease and pause cancels its lifecycle', async t => {
   let identity = 'first-viewer', starts = 0, stops = 0;

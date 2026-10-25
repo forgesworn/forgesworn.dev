@@ -1,0 +1,96 @@
+{
+  "schema": 1,
+  "date": "2026-10-25",
+  "scope": "Native HLS CORS and recovery regression; not sustained continuity or physical-device acceptance",
+  "controllerSha256": "0b566f8567ac7d1e15dcb2967650307816376bde18d06cebed7a3c394efeb695",
+  "harness": {
+    "path": "test/media-native-fallback-real-browser.mjs",
+    "sha256": "eaeefae94dd7e9d71d25301720806797f266ccd33d9c7020b69432ecc69a6c7e"
+  },
+  "controlledNativeComparison": {
+    "browser": "155.0.8059.85",
+    "protocol": "HTTP/2 confirmed for init and segment requests in both cases",
+    "unset": {
+      "frames": 0,
+      "mediaError": 4
+    },
+    "anonymous": {
+      "frames": 447,
+      "droppedFrames": 0,
+      "mediaAdvanceSeconds": 17.759835
+    },
+    "method": "Actual native HLS on an inert document at the real public origin; no Hls.js, SDK, fulfilled media, autoplay overrides or audio rerouting. QUIC disabled only in the owned diagnostic browser."
+  },
+  "homepageRecovery": {
+    "passed": true,
+    "method": "Real homepage controller, Hls.js, SDK and remote licensed 4K media; one intentional fatal Hls event after decoded frames, one trusted Play",
+    "phase": {
+      "expected": 0.44125999999999976,
+      "actual": 0.44125999999999976,
+      "firstNativeFrame": {
+        "at": 1792942266496,
+        "mediaTime": 0.44,
+        "width": 3840,
+        "height": 2160
+      },
+      "transitionMs": 3827
+    },
+    "nativeFrames": 333,
+    "droppedFrames": 0,
+    "nativeObservationSeconds": 13.149,
+    "transitionInterruptionSeconds": 3.827,
+    "postFirstNativeWaits": 0,
+    "nativeMediaErrors": 0,
+    "unmuted": true,
+    "playbackRate": 1,
+    "videoElements": 1,
+    "audio": "Native AAC decoder and advancing decoded-audio counter",
+    "oldAdapterBefore": {
+      "enabled": true,
+      "phase": "waiting",
+      "coreState": "ready",
+      "transferWorkerState": "ready",
+      "resources": {
+        "activePeerConnections": 0,
+        "signallingConnections": 3,
+        "heldBytes": 6074938,
+        "heldHighWaterBytes": 6074938
+      }
+    },
+    "oldAdapterAfter": {
+      "enabled": false,
+      "phase": "stopped",
+      "coreState": null,
+      "transferWorkerState": null,
+      "resources": {
+        "activePeerConnections": 0,
+        "signallingConnections": 0,
+        "heldBytes": 0,
+        "heldHighWaterBytes": 6074938
+      }
+    },
+    "oldHlsDetached": true,
+    "mediaBodyBytes": 72798826,
+    "cleanup": {
+      "pagehideDispatched": true,
+      "contextClosed": true,
+      "browserClosed": true,
+      "ownedServers": 0,
+      "fixtureBrowserClosed": true,
+      "ownedBrowserProcessGone": true,
+      "ownedProfileStillExists": false
+    }
+  },
+  "limitations": [
+    "One intentional public Hls fatal event, not a spontaneous failure.",
+    "Old adapter had0native peer connections,3signalling connections and6,074,938held bytes; cleanup proves actual adapter/signalling/cache shutdown, not a connected-peer encounter.",
+    "Native transition cost3.827s; no interruption-free claim. Native13s observation had0post-first-native waits and0drops.",
+    "Chrome155 on this Mac; no physical phone or Safari qualification.",
+    "No new dependency, media encoding, library or infrastructure changes."
+  ],
+  "remaining": [
+    "Sustained cold-cache 4K with useful verified peer contribution",
+    "Automatic visitor credentials from a separately operated public Spry instance",
+    "Physical iPhone full replay plus following 20 seconds"
+  ]
+}

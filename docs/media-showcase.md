@@ -137,6 +137,16 @@ background time and recording wraps reset the stall observations. The switch
 releases the HLS instance and all peer resources, preserves volume and the
 playhead, and keeps the shared listener handle. It happens once per playback.
 
+Both native entry paths set `crossOrigin = 'anonymous'` before assigning the
+manifest: the same-origin playlist references media on the approved remote
+host. The [native recovery receipt](evidence/native-hls-recovery-20261025.json)
+records an HTTP/2-controlled native comparison and an intentional fatal-error
+test through the real homepage controller. Terminal media errors stop the
+stall timer, leave listener presence and restore an enabled Play again control.
+The recovery test proves phase restoration and resource shutdown; its measured
+transition interruption is retained and it does not qualify uninterrupted
+cold-cache playback or physical phones.
+
 Native HLS cannot use the RelaySwarm fragment loader. Its active peer topology
 is empty; earlier verified peer downloads and uploads remain visible as
 historical totals. Native origin-transfer totals are shown as unavailable.
@@ -495,8 +505,8 @@ source recording and signing keys do not enter the repository.
 
 Rendezvous uses the explicitly listed public Nostr relays and encrypted peer
 signals. STUN supplies direct candidate discovery. The public Spry credential
-endpoint remains unconfigured during operator deployment. Once a validated
-endpoint is configured, playback also requests an expiring TLS credential
+endpoint and expected TURN/TLS URL remain unconfigured. Once an independent
+operator supplies both, playback also requests an expiring TLS credential
 from that independently operated public instance. Direct connections remain
 eligible; a relay supplies a route when the browser cannot use direct UDP. The static site contains no
 relay password or operator root secret. The separate native comparator can
@@ -520,11 +530,19 @@ non-proxied UDP can require that relay; see the
 If the issuer or a usable peer route is unavailable, HTTPS playback continues.
 The player never embeds private test credentials in its bundle.
 
+An independently operated showcase supplies `data-turn-credential-endpoint`
+(an HTTPS URL) and `data-turn-url` (an explicit
+`turns:relay.example:5349?transport=tcp` route) on `#main`. Both are required;
+the ForgeSworn page supplies neither. TLS/TCP ports such as 443, 5349 and 5350
+are supported when explicitly selected. Issuer responses cannot select a
+different route, and later mutation of a configuration object cannot retarget
+an existing peer adapter.
+
 `media-turn-credentials.mjs` uses the configured public Spry instance's
 `POST /v1/public/credentials` contract only during participation. It validates
 the direct `urls`, `username`, `credential` and epoch-second `expiresAt` fields,
-selects only the pinned TLS TURN URL and coalesces one lease per viewer across
-new peer connections. The supported public service freshly mints one-hour
+selects only the explicitly configured TLS TURN URL and coalesces one lease per viewer across
+new peer connections. The supported public service contract freshly mints one-hour
 credentials. The client keeps a conservative monotonic lifetime, charging
 request/body time and a rounding margin; a wall-clock correction can only
 shorten it. Renewal starts after two thirds of the remaining lifetime.
@@ -545,8 +563,8 @@ configuration; the existing paired instance is not an anonymous issuer.
 
 The earlier test issuer's published-origin CORS and bidirectional 1 MiB
 hash-verified TLS checks passed on 25 October 2026. That lab route was replaced
-by a separate operator deployment, so those results do not establish that the
-new public instance is live. Final public issuance, sustained cold-cache 4K,
+by the paired private deployment. No separate public instance is live in the
+reviewed evidence. Final public issuance, sustained cold-cache 4K,
 credential rotation during playback and physical iPhone acceptance require
 the configured public route and fresh playback evidence.
 The pinned 689 KiB piece catalogue is bounded to 1 MiB, and the browser uses
