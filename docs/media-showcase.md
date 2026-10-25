@@ -308,6 +308,11 @@ is uploaded by the page; sharing requires the viewer's action. Exporting does
 not pause playback. The report is a diagnostic observation, not by itself a
 controlled comparison or proof of a cold browser cache.
 
+Playback waits include real underflow and seek interruptions. A network
+`stalled` event alone does not increment the playback counter while the media
+still has future data and is not seeking; frame and playhead readings remain
+separate evidence of progress.
+
 These are browser observations, not a claim of net bandwidth or financial
 savings.  Signalling, commitments, duplicate attempts and protocol overhead
 also use bandwidth.  Published origin CPU/RSS results are dated native

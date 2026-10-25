@@ -55,7 +55,7 @@ async function open({held=false,heldVisual=false,heldRoomCode=false,engine='mse'
     catch{return route.fulfill({status:404,body:''})}
   });
   await page.addInitScript(({engine,reject})=>{
-    const state=window.fixture={engine,reject,players:[],peers:[],trace:[],readyState:1,currentTime:0,ranges:[],paused:true,source:'',
+    const state=window.fixture={engine,reject,players:[],peers:[],trace:[],readyState:1,currentTime:0,ranges:[],paused:true,seeking:false,source:'',
       holdJoin:true,joinWaiters:[],playWaiters:[],inTap:false,trusted:false};
     const add = EventTarget.prototype.addEventListener;
     EventTarget.prototype.addEventListener = function (type, callback, options) {
@@ -72,7 +72,7 @@ async function open({held=false,heldVisual=false,heldRoomCode=false,engine='mse'
     HTMLVideoElement.prototype.requestVideoFrameCallback=function(callback){state.frameCallback=callback;return 1};
     HTMLVideoElement.prototype.cancelVideoFrameCallback=function(){state.frameCallback=null};
     Object.defineProperties(HTMLMediaElement.prototype,{
-      readyState:{get:()=>state.readyState},duration:{get:()=>268.6},paused:{get:()=>state.paused},
+      readyState:{get:()=>state.readyState},duration:{get:()=>268.6},paused:{get:()=>state.paused},seeking:{get:()=>state.seeking},
       currentTime:{get:()=>state.currentTime,set:value=>{state.currentTime=value}},
       src:{get:()=>state.source,set:value=>{state.source=value;state.trace.push({kind:'src',value})}},
       buffered:{get:()=>({length:state.ranges.length,start:i=>state.ranges[i][0],end:i=>state.ranges[i][1]})},
@@ -121,6 +121,32 @@ try {
   await first.page.evaluate(()=>fixture.presentFrame());
   assert.equal(await first.page.locator('#public-play').isHidden(),true);
   assert.equal(await first.page.evaluate(()=>document.getElementById('lab-video').muted),false);
+  for (const readyState of [3, 4]) {
+    const seconds = readyState === 3 ? 61 : 62;
+    await first.page.evaluate(({readyState,seconds})=>{
+      fixture.readyState=readyState;fixture.currentTime=seconds;
+      document.getElementById('lab-video').dispatchEvent(new Event('stalled'));
+      fixture.presentFrame();
+    },{readyState,seconds});
+    // The time reading is updated by the real observation tick. Wait for that
+    // update before checking the count, rather than inspecting stale DOM.
+    await first.page.waitForFunction(seconds=>document.getElementById('browser-time').textContent===`1:${String(seconds-60).padStart(2,'0')}`,seconds);
+    assert.equal(await first.page.locator('#browser-stalls').textContent(),'0','network stalled with playable advancing frames is not a playback interruption');
+  }
+  await first.page.evaluate(()=>{
+    fixture.currentTime=63;fixture.readyState=2;
+    document.getElementById('lab-video').dispatchEvent(new Event('waiting'));
+  });
+  await first.page.waitForFunction(()=>document.getElementById('browser-time').textContent==='1:03');
+  assert.equal(await first.page.locator('#browser-stalls').textContent(),'1','real waiting during underflow is counted');
+  await first.page.evaluate(()=>{
+    fixture.readyState=4;document.getElementById('lab-video').dispatchEvent(new Event('playing'));fixture.presentFrame();
+    fixture.currentTime=64;fixture.seeking=true;
+    const video=document.getElementById('lab-video');video.dispatchEvent(new Event('seeking'));video.dispatchEvent(new Event('waiting'));
+  });
+  await first.page.waitForFunction(()=>document.getElementById('browser-time').textContent==='1:04');
+  assert.equal(await first.page.locator('#browser-stalls').textContent(),'2','real waiting during a buffered seek remains counted');
+  checks.push('healthy network stalled is ignored after an observation tick; real underflow and seek waits remain counted');
   await close(first);checks.push('code-only preparation; same-turn attach/play; held join and stable Loading; fresh start position; no async duplicate play');
 
   const denied=await open({reject:true});await denied.page.locator('#public-play').click();

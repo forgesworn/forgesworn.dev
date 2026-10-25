@@ -944,7 +944,10 @@ async function initialise() {
     const endStall = () => {
       if (b.waitingAt !== null) { b.finishedStallSeconds += (performance.now() - b.waitingAt) / 1000; b.waitingAt = null; }
     };
-    const waiting = () => {
+    const waiting = (event) => {
+      // stalled describes a network fetch, not necessarily stopped playback.
+      // Keep real waiting, underflow and seek interruptions measurable.
+      if (event?.type === 'stalled' && video.readyState >= 3 && !video.seeking) return;
       if (session === s && !s.sourceEof && b.seenFrame && !video.paused && !video.ended && b.waitingAt === null) { b.waitingAt = performance.now(); b.stallCount++; }
     };
     video.addEventListener('waiting', waiting, { signal: s.abort.signal });
