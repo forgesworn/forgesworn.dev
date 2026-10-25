@@ -1,24 +1,43 @@
 // The independent operator returns short-lived TURN passwords. The site's
 // published assets never contain a relay password or the operator's root key.
-// The issuer stays unconfigured until the operator supplies a validated
-// standard-public instance. No legacy endpoint is queried while it is absent.
+// The issuer and expected route stay unconfigured until explicitly supplied.
+// Neither an issuer response nor a published default can choose a relay.
 export const PUBLIC_TURN_ENDPOINT = null;
-export const PUBLIC_TURN_URL = 'turns:demo.forgesworn.dev:5349?transport=tcp';
+export const PUBLIC_TURN_URL = null;
 const LIFETIME_MS = 3600 * 1000 - 1000;
 const unavailable = () => new Error('Peer relay temporarily unavailable.');
 const exact = (value, fields) => value && typeof value === 'object' && !Array.isArray(value) &&
   Object.keys(value).length === fields.length && fields.every(field => Object.hasOwn(value, field));
 
-export function validatePublicTurnLease(value) {
-  if (!exact(value, ['urls', 'username', 'credential', 'expiresAt']) ||
+function configuredTurnUrl(value) {
+  if (typeof value !== 'string' || value.length > 512 || /[\u0000-\u0020\u007f-\u009f]/.test(value)) return null;
+  const match = /^turns:(\[[^\]]+\]|[^:[\]]+):([1-9]\d{0,4})\?transport=tcp$/.exec(value);
+  if (!match || Number(match[2]) > 65535) return null;
+  const host = match[1];
+  if (!host.startsWith('[')) {
+    const name = host.endsWith('.') ? host.slice(0, -1) : host;
+    if (!name || name.length > 253 || !name.split('.').every(label =>
+      /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i.test(label))) return null;
+  }
+  try {
+    const url = new URL(`https://${host}:${match[2]}/`);
+    // Reject URL-normalised non-DNS host spellings such as abbreviated IPv4.
+    if (!host.startsWith('[') && url.hostname !== host.toLowerCase()) return null;
+    return value;
+  } catch { return null; }
+}
+
+export function validatePublicTurnLease(value, { turnUrl } = {}) {
+  const route = configuredTurnUrl(turnUrl);
+  if (!route || !exact(value, ['urls', 'username', 'credential', 'expiresAt']) ||
       !Number.isSafeInteger(value.expiresAt) || value.expiresAt <= 0 || value.expiresAt > Math.floor(Number.MAX_SAFE_INTEGER / 1000) ||
       !Array.isArray(value.urls) || value.urls.length < 1 || value.urls.length > 8 ||
       !value.urls.every(url => typeof url === 'string' && url.length > 0 && url.length <= 512) ||
-      !value.urls.includes(PUBLIC_TURN_URL) ||
+      !value.urls.includes(route) ||
       typeof value.username !== 'string' || !/^[1-9]\d{0,12}:pub-[a-f0-9]{24}$/.test(value.username) ||
       !value.username.startsWith(`${value.expiresAt}:pub-`) ||
       typeof value.credential !== 'string' || !/^[A-Za-z0-9+/]{26}[AEIMQUYcgkosw048]=$/.test(value.credential)) throw unavailable();
-  return { server: { urls: [PUBLIC_TURN_URL], username: value.username, credential: value.credential },
+  return { server: { urls: [route], username: value.username, credential: value.credential },
     lifetimeMs: LIFETIME_MS, refreshAfterMs: Math.floor(LIFETIME_MS * 2 / 3) };
 }
 
@@ -33,16 +52,17 @@ function abortable(promise, signal) {
 }
 
 function configuredEndpoint(value) {
-  if (typeof value !== 'string' || value.length > 2048) return null;
+  if (typeof value !== 'string' || value.length > 2048 || /[\u0000-\u0020\u007f-\u009f]/.test(value)) return null;
   try {
     const url = new URL(value);
-    return url.protocol === 'https:' && url.hostname && !url.username && !url.password && !url.hash ? url.href : null;
+    return url.protocol === 'https:' && url.hostname && !url.username && !url.password && !url.search && !url.hash ? url.href : null;
   } catch { return null; }
 }
 
-export function createPublicTurnCredentials({ endpoint = PUBLIC_TURN_ENDPOINT, fetchImpl = globalThis.fetch, now = () => performance.now(), wallNow = Date.now,
+export function createPublicTurnCredentials({ endpoint = PUBLIC_TURN_ENDPOINT, turnUrl = PUBLIC_TURN_URL,
+  fetchImpl = globalThis.fetch, now = () => performance.now(), wallNow = Date.now,
   setTimer = setTimeout, clearTimer = clearTimeout, onChange = () => {} } = {}) {
-  const issuer = configuredEndpoint(endpoint);
+  const route = configuredTurnUrl(turnUrl), issuer = route && configuredEndpoint(endpoint);
   let active = false, generation = 0, pending = null, lease = null, timer, expiryTimer, failures = 0, retryAt = 0, phase = 'off';
   function remaining(value = lease) {
     if (!value) return 0;
@@ -95,7 +115,7 @@ export function createPublicTurnCredentials({ endpoint = PUBLIC_TURN_ENDPOINT, f
         const bytes = new Uint8Array(size); let offset = 0;
         for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
         const body = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
-        const value = validatePublicTurnLease(body);
+        const value = validatePublicTurnLease(body, { turnUrl: route });
         if (controller.signal.aborted || !active || ownGeneration !== generation) throw unavailable();
         const elapsed = Math.max(0, now() - requestedAt);
         const nextLease = { ...value, at: requestedAt, expiresAt: body.expiresAt * 1000 };

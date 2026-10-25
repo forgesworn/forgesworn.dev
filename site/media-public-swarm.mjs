@@ -3,10 +3,10 @@
 // A receiver's ephemeral key wraps that digest for the existing live-commitment
 // verifier; this is local attestation, not a live broadcaster signing service.
 import { createHlsSwarm, commitmentContent, commitmentPieceSize, segmentMediaContext, KIND_SEGMENT_COMMITMENT, finalizeEvent,
-  generateSecretKey, relayswarmBuild } from './vendor/media-peer-demo.js?v=20261025-cold-origin';
-import { observeOriginLoader } from './media-transfer-stats.mjs?v=20261025-cold-origin';
-import { createPublicTurnCredentials } from './media-turn-credentials.mjs?v=20261025-cold-origin';
-import { parseRecordedManifest, createRecordedLive } from './media-recorded-live.mjs?v=20261025-cold-origin';
+  generateSecretKey, relayswarmBuild } from './vendor/media-peer-demo.js?v=20261025-native-cors';
+import { observeOriginLoader } from './media-transfer-stats.mjs?v=20261025-native-cors';
+import { createPublicTurnCredentials } from './media-turn-credentials.mjs?v=20261025-native-cors';
+import { parseRecordedManifest, createRecordedLive } from './media-recorded-live.mjs?v=20261025-native-cors';
 export { createRecordedLive };
 
 export const PUBLIC_SWARM_LIMITS = Object.freeze({
@@ -193,7 +193,7 @@ function recordedCatalogueSegment(recording, plan, context) {
  * rate, peer count and cache remain bounded until this adapter is stopped.
  * setEnabled(false) restores the normal HTTP loader without replacing the
  * video, seeking, muting, or destroying its current MediaSource. */
-export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signal, onStats = () => {}, recordedLive },
+export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signal, onStats = () => {}, recordedLive, turnConfiguration },
   { createSwarm = createHlsSwarm, createTurnCredentials = createPublicTurnCredentials } = {}) {
   if (!Hls || !hls?.config || !video) throw new Error('An existing video and HLS player are required.');
   const origin = globalThis.location?.href;
@@ -216,7 +216,9 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
   let lastDelivery = null, lastReason = 'off', receivedOriginBytes = 0, loadedMediaBytes = 0, lastPeerBytes = 0;
   let highWaterBytes = 0, signalErrors = 0, lastSnapshot = null, nextPeer = 1, observing = false, request = 0;
   let sentMediaBytes = 0, noLocalRoutes = 0;
-  const turn = createTurnCredentials();
+  const { endpoint = null, turnUrl = null } = turnConfiguration ?? {};
+  const turn = createTurnCredentials({ endpoint: typeof endpoint === 'string' ? endpoint : null,
+    turnUrl: typeof turnUrl === 'string' ? turnUrl : null });
   const connectionLeases = new Map();
 
   const metrics = () => {
@@ -458,8 +460,8 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
         }
         swarm = createSwarm({ mode: 'peer-first', swarmId: plan.swarmId, relays: [...PUBLIC_SWARM_RELAYS],
           streamEvent, getCommitment, serve: true, serveOnCellular: false,
-          coreWasm: new URL('./vendor/relayswarm-core.wasm?v=20261025-cold-origin', import.meta.url), multiHolder: true,
-          transferWorkerUrl: new URL('./vendor/relayswarm-transfer-worker.js?v=20261025-cold-origin', import.meta.url),
+          coreWasm: new URL('./vendor/relayswarm-core.wasm?v=20261025-native-cors', import.meta.url), multiHolder: true,
+          transferWorkerUrl: new URL('./vendor/relayswarm-transfer-worker.js?v=20261025-native-cors', import.meta.url),
           zeroBudgetPeerRace: true, lateHaveRace: true, sustainablePeerWait: true,
           maxHoldersPerObject: PUBLIC_SWARM_LIMITS.maxPeers,
           iceServers: PUBLIC_SWARM_ICE.map(entry => ({ ...entry })), iceTransportPolicy: 'all',

@@ -78,8 +78,9 @@ has its own permission notice and is not relicensed under MIT.
 
 [Join the 4K listening room](https://forgesworn.dev/) and watch actual visitor
 connections and media traffic.  Play & join contributes verified video while
-the mix plays; pause stops sharing. Direct peers and automatically issued,
-short-lived Spry TLS credentials support different browser network policies.
+the mix plays; pause stops sharing. Direct peers and HTTPS playback are
+available. Automatic short-lived Spry TLS access awaits a separately operated
+public relay; the paired private node does not issue public visitor credentials.
 The [showcase guide](docs/media-showcase.md)
 records its integrity model and resource limits.  Run the
 [local comparison](docs/media-lab.md) with the same recording through native

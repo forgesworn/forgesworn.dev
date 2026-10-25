@@ -100,7 +100,7 @@ async function open({held=false,heldVisual=false,heldRoomCode=false,heldMetadata
     Object.defineProperties(HTMLMediaElement.prototype,{
       readyState:{get:()=>state.readyState},duration:{get:()=>state.duration},paused:{get:()=>state.paused},seeking:{get:()=>state.seeking},
       currentTime:{get:()=>state.currentTime,set:value=>{state.currentTime=value}},
-      src:{get:()=>state.source,set:value=>{state.source=value;if(!value.startsWith('blob:'))state.duration=state.sourceDuration;state.trace.push({kind:'src',value})}},
+      src:{get:()=>state.source,set(value){state.source=value;if(!value.startsWith('blob:'))state.duration=state.sourceDuration;state.trace.push({kind:'src',value,crossOrigin:this.crossOrigin})}},
       buffered:{get:()=>({length:state.ranges.length,start:i=>state.ranges[i][0],end:i=>state.ranges[i][1]})},
     });
     const canPlay=HTMLMediaElement.prototype.canPlayType;
@@ -130,6 +130,7 @@ async function gestureOrder(page,native=false){
   assert(source>=0&&play>source,'real pipeline/source is attached before play');assert(join>play,'play precedes async room setup');
   assert.equal(trace[play].inTap,true,'play stays in the original click turn');assert.equal(trace[play].trusted,true);
   assert.match(trace[play].source,native?/^https:\/\/forgesworn\.dev\/media\//:/^blob:/);
+  if(native)assert.equal(trace[source].crossOrigin,'anonymous','native CORS mode is set before assigning its manifest');
 }
 try {
   browser=await chromium.launch({headless:true});
@@ -348,6 +349,7 @@ try {
   });
   await fallback.page.waitForFunction(()=>document.getElementById('main').dataset.playbackFallback==='player-error');
   assert.equal(await fallback.page.evaluate(()=>fixture.source),origin+'/media/dejavu-4k/index.m3u8');
+  assert.equal(await fallback.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='src').at(-1).crossOrigin),'anonymous','fallback enables CORS before loading cross-origin child media');
   assert.equal(await fallback.page.evaluate(()=>fixture.players.every(p=>p.destroyed)&&fixture.peers.every(p=>p.stopped)),true);
   const nativePlayCalls=await fallback.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='play').length);
   await fallback.page.evaluate(()=>{fixture.readyState=4;document.getElementById('lab-video').dispatchEvent(new Event('loadedmetadata'))});
@@ -356,7 +358,12 @@ try {
   assert.equal(await fallback.page.evaluate(()=>fixture.paused),false);
   assert(Math.abs(await fallback.page.evaluate(()=>fixture.currentTime)-phase)<0.01,'native fallback restores phase, never the continuous raw offset');
   assert.equal(await fallback.page.locator('#main').getAttribute('data-playback-mode'),'recorded-vod');
-  await close(fallback);checks.push('pause then explicit resume authorises a later native fallback; programme phase and approved original VOD are preserved');
+  await fallback.page.evaluate(()=>{fixture.finishPlay();fixture.presentFrame();document.getElementById('lab-video').dispatchEvent(new Event('error'))});
+  assert.equal(await fallback.page.locator('#public-play').isVisible(),true,'a native failure restores the visible retry action');
+  assert.equal(await fallback.page.locator('#public-play').isDisabled(),false);
+  assert.equal(await fallback.page.locator('#public-play').innerText(),'Play again');
+  assert.equal(await fallback.page.evaluate(()=>document.getElementById('lab-video').controls),false);
+  await close(fallback);checks.push('pause then explicit resume authorises a later native fallback; anonymous CORS, programme phase and approved original VOD are preserved; failure restores retry');
   console.log(JSON.stringify({suite:'media-showcase-lifecycle',passed:true,checks,
     scope:'Real controller; explicit HLS/room/media fixtures. No decoded playback, physical-device or peer-delivery qualification.'}));
 } finally { await browser?.close(); }

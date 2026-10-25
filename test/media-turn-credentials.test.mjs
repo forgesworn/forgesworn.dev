@@ -6,15 +6,16 @@ const EPOCH = 2000000000000;
 const LIFETIME = 3599000;
 const REFRESH = Math.floor(LIFETIME * 2 / 3);
 const FIXTURE_ISSUER = 'https://issuer.test/v1/public/credentials';
+const FIXTURE_TURN_URL = 'turns:relay.test:5349?transport=tcp';
 function response(at = EPOCH) {
   const expiresAt = Math.floor(at / 1000) + 3600;
-  return { urls: ['turn:relay.test:3478?transport=tcp', PUBLIC_TURN_URL],
+  return { urls: ['turn:relay.test:3478?transport=tcp', FIXTURE_TURN_URL],
     username: `${expiresAt}:pub-${'a'.repeat(24)}`, credential: `${'b'.repeat(26)}I=`, expiresAt };
 }
 function clock() {
   let at = 0, next = 0, wallOffset = EPOCH;
   const timers = new Map();
-  return { endpoint: FIXTURE_ISSUER, now: () => at, wallNow: () => wallOffset + at,
+  return { endpoint: FIXTURE_ISSUER, turnUrl: FIXTURE_TURN_URL, now: () => at, wallNow: () => wallOffset + at,
     setWallOffset(value) { wallOffset = value; },
     setTimer(fn, ms) { const id = ++next; timers.set(id, { fn, at: at + ms }); return id; },
     clearTimer: id => timers.delete(id), size: () => timers.size,
@@ -33,9 +34,9 @@ function clock() {
 const json = value => new Response(JSON.stringify(value), { headers: { 'content-type': 'application/json' } });
 
 test('an unconfigured viewer immediately remains unavailable across concurrent starts and pause/restart without networking or timers', async () => {
-  assert.equal(PUBLIC_TURN_ENDPOINT, null);
+  assert.equal(PUBLIC_TURN_ENDPOINT, null); assert.equal(PUBLIC_TURN_URL, null);
   const time = clock(); let requests = 0;
-  const credentials = createPublicTurnCredentials({ ...time, endpoint: undefined,
+  const credentials = createPublicTurnCredentials({ ...time, endpoint: undefined, turnUrl: undefined,
     fetchImpl() { requests++; throw new Error('no issuer is configured'); } });
   try {
     assert.deepEqual(credentials.snapshot(), { phase: 'off', available: false, remainingMs: 0, failures: 0 });
@@ -52,7 +53,9 @@ test('an unconfigured viewer immediately remains unavailable across concurrent s
 test('invalid configured issuer URLs cannot create credential requests or retries', async () => {
   for (const endpoint of ['not a URL', 'http://issuer.test/v1/public/credentials',
     'https://user:secret@issuer.test/v1/public/credentials', 'https://issuer.test/v1/public/credentials#fragment',
-    'https://issuer.test:invalid/v1/public/credentials', 'https://issuer.test/' + 'x'.repeat(2048)]) {
+    'https://issuer.test:invalid/v1/public/credentials', 'https://issuer.test/v1/public/credentials?unsupported=1',
+    'https://issuer.\ntest/v1/public/credentials', ' https://issuer.test/v1/public/credentials',
+    'https://issuer.test/' + 'x'.repeat(2048)]) {
     const time = clock(); let requests = 0;
     const credentials = createPublicTurnCredentials({ ...time, endpoint, fetchImpl() { requests++; throw new Error('invalid configured URL'); } });
     try {
@@ -62,21 +65,87 @@ test('invalid configured issuer URLs cannot create credential requests or retrie
   }
 });
 
+test('an issuer alone or a TURN route alone stays unconfigured without networking or retries', async () => {
+  for (const options of [{ endpoint: FIXTURE_ISSUER, turnUrl: undefined },
+    { endpoint: undefined, turnUrl: FIXTURE_TURN_URL }, { endpoint: null, turnUrl: null }]) {
+    const time = clock(); let requests = 0;
+    const credentials = createPublicTurnCredentials({ ...time, ...options, fetchImpl() { requests++; throw new Error('incomplete configuration'); } });
+    try {
+      assert.equal(await credentials.start(), null); await time.advance(3600000);
+      assert.deepEqual(credentials.servers(), []); assert.equal(credentials.leaseIdentity(), null);
+      assert.equal(credentials.snapshot().phase, 'unavailable'); assert.equal(requests, 0); assert.equal(time.size(), 0);
+      credentials.stop(); assert.equal(await credentials.start(), null); assert.equal(requests, 0);
+    } finally { credentials.stop(); assert.equal(time.size(), 0); }
+  }
+});
+
+test('explicit DNS and IPv6 TURN TLS routes bind their exact host and supported TCP port', () => {
+  for (const turnUrl of [FIXTURE_TURN_URL, 'turns:other-operator.test:443?transport=tcp',
+    'turns:relay.test:1?transport=tcp', 'turns:relay.test:5350?transport=tcp', 'turns:relay.test:65535?transport=tcp',
+    'turns:[2001:db8::1]:5349?transport=tcp', 'turns:[2001:0db8:0:0:0:0:0:1]:443?transport=tcp']) {
+    const value = response(); value.urls = ['turns:ignored.test:5349?transport=tcp', turnUrl];
+    assert.deepEqual(validatePublicTurnLease(value, { turnUrl }).server.urls, [turnUrl]);
+  }
+  assert.throws(() => validatePublicTurnLease(response()), { message: 'Peer relay temporarily unavailable.' });
+  assert.throws(() => validatePublicTurnLease(response(), { turnUrl: 'turns:other-operator.test:5349?transport=tcp' }));
+  assert.throws(() => validatePublicTurnLease(response(), { turnUrl: 'turns:relay.test:5350?transport=tcp' }));
+});
+
+test('invalid expected TURN routes cannot trigger issuance even when the endpoint is configured', async () => {
+  for (const turnUrl of ['turn:relay.test:5349?transport=tcp', 'stuns:relay.test:5349?transport=tcp',
+    'turns://relay.test:5349?transport=tcp', 'turns:relay.test?transport=tcp',
+    'turns:relay.test:0?transport=tcp', 'turns:relay.test:65536?transport=tcp', 'turns:relay.test:01?transport=tcp',
+    'turns:relay.test:-1?transport=tcp', 'turns:relay.test:1.5?transport=tcp', 'turns:relay.test:5349?transport=udp',
+    'turns:relay.test:5349', 'turns:relay.test:5349?transport=tcp&extra=1',
+    'turns:relay.test:5349?transport=tcp&transport=tcp', 'turns:relay.test:5349?transport=tcp#fragment',
+    'turns:user:secret@relay.test:5349?transport=tcp', 'turns:relay.test/path:5349?transport=tcp',
+    'turns:bad..test:5349?transport=tcp', 'turns:-relay.test:5349?transport=tcp',
+    `turns:${'a'.repeat(64)}.test:5349?transport=tcp`, 'turns:127.1:5349?transport=tcp',
+    'turns:2001:db8::1:5349?transport=tcp', 'turns:[2001:db8:::1]:5349?transport=tcp',
+    'turns:[fe80::1%25fixture]:5349?transport=tcp', 'turns:relay.\ntest:5349?transport=tcp',
+    'turns:relay.test:5349?transport=tcp\u0000', ' turns:relay.test:5349?transport=tcp']) {
+    const time = clock(); let requests = 0;
+    const credentials = createPublicTurnCredentials({ ...time, turnUrl, fetchImpl() { requests++; throw new Error('invalid route'); } });
+    try {
+      assert.throws(() => validatePublicTurnLease({ ...response(), urls: [turnUrl] }, { turnUrl }));
+      assert.equal(await credentials.start(), null); await time.advance(3600000);
+      assert.equal(requests, 0); assert.equal(time.size(), 0); assert.deepEqual(credentials.servers(), []);
+      assert.equal(credentials.snapshot().phase, 'unavailable');
+    } finally { credentials.stop(); assert.equal(time.size(), 0); }
+  }
+});
+
+test('a different explicitly configured operator is accepted without accepting an issuer-chosen route', async () => {
+  const endpoint = 'https://other-operator.test/v1/public/credentials';
+  const turnUrl = 'turns:other-operator.test:5350?transport=tcp';
+  for (const advertised of [turnUrl, FIXTURE_TURN_URL]) {
+    const time = clock(); let requests = 0;
+    const credentials = createPublicTurnCredentials({ ...time, endpoint, turnUrl, fetchImpl: async url => {
+      requests++; assert.equal(url, endpoint); return json({ ...response(), urls: [advertised] });
+    } });
+    try {
+      await credentials.start(); assert.equal(requests, 1);
+      assert.equal(credentials.snapshot().available, advertised === turnUrl);
+      assert.deepEqual(credentials.servers().map(server => server.urls), advertised === turnUrl ? [[turnUrl]] : []);
+    } finally { credentials.stop(); assert.equal(time.size(), 0); }
+  }
+});
+
 test('the direct public lease selects only the configured TLS route and fixed conservative lifetime', () => {
   const valid = response();
-  const result = validatePublicTurnLease(valid);
-  assert.deepEqual(result.server, { urls: [PUBLIC_TURN_URL], username: valid.username, credential: valid.credential });
+  const result = validatePublicTurnLease(valid, { turnUrl: FIXTURE_TURN_URL });
+  assert.deepEqual(result.server, { urls: [FIXTURE_TURN_URL], username: valid.username, credential: valid.credential });
   assert.equal(result.lifetimeMs, LIFETIME);
   assert.equal(result.refreshAfterMs, REFRESH);
   valid.urls[1] = 'changed';
-  assert.deepEqual(result.server.urls, [PUBLIC_TURN_URL]);
+  assert.deepEqual(result.server.urls, [FIXTURE_TURN_URL]);
 });
 
 test('public leases reject other contracts, wrong expiry units, labels, hashes and routes', () => {
   for (const change of [
     value => { value.urls = ['turns:evil.test:5349?transport=tcp']; },
-    value => { value.urls = [PUBLIC_TURN_URL.replace('5349', '5350')]; },
-    value => { value.urls = Array(9).fill(PUBLIC_TURN_URL); },
+    value => { value.urls = [FIXTURE_TURN_URL.replace('5349', '5350')]; },
+    value => { value.urls = Array(9).fill(FIXTURE_TURN_URL); },
     value => { value.urls.push('x'.repeat(513)); },
     value => { value.urls.push(null); },
     value => { value.credential = 'password'; },
@@ -93,10 +162,10 @@ test('public leases reject other contracts, wrong expiry units, labels, hashes a
     value => { delete value.credential; },
   ]) {
     const value = response(); change(value);
-    assert.throws(() => validatePublicTurnLease(value), { message: 'Peer relay temporarily unavailable.' });
+    assert.throws(() => validatePublicTurnLease(value, { turnUrl: FIXTURE_TURN_URL }), { message: 'Peer relay temporarily unavailable.' });
   }
   assert.throws(() => validatePublicTurnLease({ v: 1, iceServers: [], ttlSeconds: 3600,
-    issuedAt: EPOCH, expiresAt: EPOCH + 3600000, refreshAt: EPOCH + 2400000, serverTime: EPOCH }));
+    issuedAt: EPOCH, expiresAt: EPOCH + 3600000, refreshAt: EPOCH + 2400000, serverTime: EPOCH }, { turnUrl: FIXTURE_TURN_URL }));
 });
 
 test('issuance starts with playback, coalesces requests and keeps credentials out of diagnostics', async () => {
@@ -118,7 +187,7 @@ test('issuance starts with playback, coalesces requests and keeps credentials ou
     await credentials.start(); credentials.servers(); credentials.leaseIdentity();
     assert.equal(requests, 1, 'ordinary reads and new dials reuse one still-fresh viewer lease');
     const copy = credentials.servers(); copy[0].urls[0] = 'changed'; copy[0].username = 'changed';
-    assert.equal(credentials.servers()[0].urls[0], PUBLIC_TURN_URL);
+    assert.equal(credentials.servers()[0].urls[0], FIXTURE_TURN_URL);
     assert.equal(credentials.leaseIdentity(), response().username);
     const diagnostics = JSON.stringify(credentials.snapshot());
     assert.equal(diagnostics.includes(response().credential), false);

@@ -26,6 +26,8 @@ export default class Hls {
   constructor(config){this.config=config;this.handlers=new Map();this.mediaSource={constructor:{name:'MediaSource'}};window.__nativeFixture.hls.push(this);}
   on(name,fn){this.handlers.set(name,fn);} off(name){this.handlers.delete(name);}
   loadSource(url){this.url=url;}
+  startLoad(position){this.startPosition=position;}
+  stopLoad(){}
   attachMedia(video){this.video=video;const s=window.__nativeFixture;s.readyState=4;s.time=this.config.startPosition>=0?this.config.startPosition:12.5;
     queueMicrotask(()=>{this.handlers.get(Hls.Events.MEDIA_ATTACHED)?.('attached',{media:video,mediaSource:this.mediaSource});this.handlers.get(Hls.Events.MANIFEST_PARSED)?.('manifest',{});});}
   destroy(){const s=window.__nativeFixture;s.hlsDestroy++;if(s.pendingPlay){s.stalePlayRejected++;s.pendingPlay.reject(new DOMException('Fixture old HLS playback interrupted','AbortError'));s.pendingPlay=null;}this.handlers.clear();}
@@ -34,6 +36,9 @@ export default class Hls {
 const peerModule = `
 export const PUBLIC_SWARM_SOURCE_SHA256='76d90719a756c77d1008088c58ca6b28a74eb0ef01e5337906cfb68d3e2b13aa';
 export const PUBLIC_SWARM_RELAYS=['wss://fixture.invalid'];
+// This fixture exercises the approved VOD-to-native recovery path. Continuous
+// recording metadata and media are deliberately absent from its mock boundary.
+export async function prepareRecordedSource(){return null;}
 export function createPublicSwarm({onStats}){
  const s=window.__nativeFixture;s.peerCreated++;let enabled=false,stopped=false;
  const metrics=()=>({enabled,phase:stopped?'stopped':enabled?'peer':'origin',reason:stopped?'stopped':'opted-in',serving:enabled,
