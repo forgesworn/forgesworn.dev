@@ -130,6 +130,9 @@ function lifecycleFixture(t, { turnCredentials } = {}) {
   install('setInterval', (fn, ms) => schedule(fn, ms, true)); install('clearInterval', id => timers.delete(id));
   const createSwarm = options => {
     assert.equal(options.sustainablePeerWait, true, 'peer waits must allow the playback buffer to replenish');
+    const workerUrl = new URL(options.transferWorkerUrl);
+    assert.equal(workerUrl.origin, new URL(import.meta.url).origin);
+    assert.equal(workerUrl.pathname, new URL('../site/vendor/relayswarm-transfer-worker.js', import.meta.url).pathname);
     const live = { mode: 'peer-first', pubkey: String(cycles.length + 1).repeat(64), core: { state: 'ready' },
       bytes: { peerFirst: 0, uploaded: 0, uploadRemaining: null, held: 1024 },
       segments: {}, peers: {}, relays: {} };

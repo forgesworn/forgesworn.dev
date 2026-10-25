@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const SOURCE = '85bbeface16e2df935cae467b06e3ad9b727efca';
+const SOURCE = '990336743e5aa1bdf4bbc5ff619d89ea96354c67';
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const root = fileURLToPath(new URL('../', import.meta.url));
 
@@ -35,8 +35,15 @@ export { matchFilter } from 'nostr-tools/filter';\n`;
       preserveSymlinks: true, metafile: true, logLevel: 'silent',
       banner: { js: `/*! RelaySwarm ${packageJson.version}; public source ${SOURCE}. See media-peer-demo.NOTICE.txt. */` } });
     const bytes = built.outputFiles[0].contents;
+    // The host supplies this explicit companion URL; bundlers must not infer
+    // an adjacent source file from the single bundled SDK entry point.
+    const worker = await build({ entryPoints: ['src/browser/core-transfer-worker-runtime.mjs'], absWorkingDir: scratch,
+      bundle: true, platform: 'browser', format: 'esm', minify: true, write: false, sourcemap: false,
+      preserveSymlinks: true, metafile: true, logLevel: 'silent',
+      banner: { js: `/*! RelaySwarm ${packageJson.version} transfer worker; public source ${SOURCE}. See media-peer-demo.NOTICE.txt. */` } });
+    const workerBytes = worker.outputFiles[0].contents;
     const packages = new Set();
-    for (const file of Object.keys(built.metafile.inputs)) {
+    for (const file of [...Object.keys(built.metafile.inputs), ...Object.keys(worker.metafile.inputs)]) {
       const match = /(?:^|\/)node_modules\/((?:@[^/]+\/)?[^/]+)/.exec(file);
       if (match) packages.add(match[1]);
     }
@@ -81,10 +88,13 @@ export { matchFilter } from 'nostr-tools/filter';\n`;
     await writeFile(join(directory, 'relayswarm-core.wasm'), wasm);
     await writeFile(join(directory, 'relayswarm-core.NOTICE.txt'), wasmNotices.join('\n').replace(/\r\n/g, '\n').replace(/[ \t]+$/gm, ''));
     await writeFile(join(directory, 'media-peer-demo.js'), bytes);
+    await writeFile(join(directory, 'relayswarm-transfer-worker.js'), workerBytes);
     await writeFile(join(directory, 'media-peer-demo.NOTICE.txt'), notices.join('\n'));
     const receipt = { schema: 1, project: 'https://github.com/forgesworn/relayswarm', sourceCommit: SOURCE,
       version: packageJson.version, sourceArchiveSha256: sha(archive), packageLockSha256: sha(lock),
       bundle: 'media-peer-demo.js', bundleSha256: sha(bytes), bundleBytes: bytes.length,
+      transferWorker: { file: 'relayswarm-transfer-worker.js', bytes: workerBytes.length, sha256: sha(workerBytes),
+        source: 'src/browser/core-transfer-worker-runtime.mjs' },
       sourceMap: false, originalSourceModified: false, dependencies,
       coreWasm: { file: 'relayswarm-core.wasm', bytes: wasm.length, sha256: sha(wasm), source: 'src/browser/relayswarm-core.wasm',
         rustBuildPerformed: false, dependencies: wasmDependencies } };

@@ -78,12 +78,14 @@ test('only vetted route enums and media counters survive, with no peer or transp
 test('reports copy only explicit playback fields, never source paths, identities or credentials', () => {
   const p = fixture(); p.report.record({ engine: 'hls.js · ManagedMediaSource', quality: 'full', width: 3840, height: 2160,
     library: { version: '0.4.4', sourceCommit: 'a'.repeat(40), privateKey: 'key-secret', url: 'file:///private/source' },
+    transferWorkerState: 'ready', transferWorkerReason: 'credential-secret',
     source: '/Users/private/source.mp4', location: 'https://private.invalid', sdk: { ticket: 'ticket-secret' },
     peerId: 'peer-secret', userAgent: 'device-secret', peerBytes: 123, stallCount: 1, stallSeconds: 0.22 });
   const result = p.report.snapshot(), row = result.samples[0];
   assert.equal(row.engine, 'hls.js · ManagedMediaSource'); assert.equal(row.width, 3840); assert.equal(row.height, 2160);
   assert.deepEqual(row.library, { version: '0.4.4', sourceCommit: 'a'.repeat(40) });
   assert.equal(row.stallSeconds, 0.22);
+  assert.equal(row.transferWorkerState, 'ready');
   assert.doesNotMatch(JSON.stringify(result), /secret|\/Users|file:\/\/|private[.]invalid/);
 });
 

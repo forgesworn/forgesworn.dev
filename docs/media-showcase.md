@@ -364,12 +364,20 @@ contribution.
 The demo also opts into `zeroBudgetPeerRace`.  When there is no safe time to
 wait before starting HTTP, the normal request starts immediately.  Only a
 peer that already advertised the exact cached object may race it through the
-verified piece engine.  The first complete accepted source wins; the losing
+existing whole-object transfer and asynchronous WebCrypto verification. The
+normal buffered mixed path retains the Rust piece planner. The first complete
+accepted source wins; the losing
 arm is cancelled.  This creates no additional origin request and does not
 prefetch media outside the visible player's demand.  Progressive HTTP payload
 locks that load to HTTP, so sources cannot mix after an append.  Pausing or
 turning off the swarm stops its peer arm while preserving normal HTTP
 playback.
+
+The cached whole-object arm retains the upload burst bound: six of the 134
+full-resolution fragments exceed the current 8 MiB burst and can be refused
+by that arm. HTTP remains available, and normal mixed transfers can request
+smaller ranges. A cached race does not give the piece planner a fictitious
+HTTP source whose requests will never execute.
 
 ## Integrity and scope
 
@@ -447,7 +455,7 @@ checks passed on 25 October 2026. Sustained cold-cache 4K contribution,
 credential rotation during playback and physical iPhone acceptance remain
 separate checks.
 The pinned 689 KiB piece catalogue is bounded to 1 MiB, and the browser uses
-the existing 402 KiB Rust/WASM module.  Both load only after Play.  The bundle
+the pinned Rust/WASM module. Both load only after Play. The bundle
 receipt records the exact source, WASM digest and dependency notices; the
 website build copies that public module without compiling Rust.
 
@@ -461,6 +469,18 @@ ranges copies six MiB into WASM instead of 96 MiB; this is input-copy accounting
 not a throughput or device-continuity claim. Playback details show the actual native/MSE engine and
 vendored library version/source. The former 15-minute adapter cutoff was
 removed; recordings and native loop connections can continue while playing.
+
+The site explicitly packages and enables a dedicated module Worker for the
+Rust piece-transfer scheduler and payload verification. It reuses the already
+compiled WASM module; no additional WASM request is needed. The companion's
+source, size and SHA-256 are recorded beside the SDK bundle in
+`site/vendor/media-peer-demo.build.json`. Worker startup is asynchronous.
+While it is unavailable, HTTP playback continues; failed transfers do not
+retry large Rust verification on the browser's main thread. Work, queued
+payloads and concurrent objects are bounded, and leaving the swarm terminates
+its Worker. This moves verification work away from playback and controls;
+physical-device continuity and useful peer contribution still need measured
+playback evidence.
 
 Public relays see connecting addresses and metadata.  Connected peers can
 learn one another's network addresses.  The page explains participation
