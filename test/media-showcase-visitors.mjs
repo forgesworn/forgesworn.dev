@@ -272,6 +272,7 @@ async function snapshot(page) {
       diagnostics: raw ? { segments: raw.segments, bytes: raw.bytes, core: raw.core, warmAhead: raw.warmAhead ?? null,
         uploadPacing: raw.uploadPacing ?? null, peerAdmission: raw.peerAdmission ?? null,
         latePeerRace: raw.latePeerRace ?? null,
+        startupBuffer: raw.startupBuffer ?? null,
         sharedPlayback,
         peerCounts: Object.fromEntries(Object.entries(raw.peers).filter(([, value]) => typeof value === 'number')),
         eligibility: raw.peerEligibilityDiagnostics, requests: raw.peerRequestDiagnostics, refusals: raw.uploadRefusalDiagnostics,

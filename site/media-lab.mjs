@@ -1,8 +1,8 @@
 import { readInitialLiveStart } from './media-live-start.mjs';
-import { createSourceResponseStats, publicSourceResource, transferBytes } from './media-transfer-stats.mjs?v=20261025-warm-ahead';
-import { createNativePlaybackFallback } from './media-playback-fallback.mjs?v=20261025-warm-ahead';
-import { createPlaybackPrime } from './media-playback-prime.mjs?v=20261025-warm-ahead';
-import { createPlaybackReport } from './media-playback-report.mjs?v=20261025-warm-ahead';
+import { createSourceResponseStats, publicSourceResource, transferBytes } from './media-transfer-stats.mjs?v=20261025-startup-buffer';
+import { createNativePlaybackFallback } from './media-playback-fallback.mjs?v=20261025-startup-buffer';
+import { createPlaybackPrime } from './media-playback-prime.mjs?v=20261025-startup-buffer';
+import { createPlaybackReport } from './media-playback-report.mjs?v=20261025-startup-buffer';
 
 const DASH = '—';
 export const observed = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
@@ -421,7 +421,7 @@ async function initialise() {
     publicRoom?.stop(); publicRoom = null;
     const pending = (async () => {
       const [{ createListenerSession }, { PUBLIC_SWARM_SOURCE_SHA256, PUBLIC_SWARM_RELAYS }] = await Promise.all([
-        import('./media-listener-session.mjs?v=20261025-warm-ahead'), import('./media-public-swarm.mjs?v=20261025-warm-ahead'),
+        import('./media-listener-session.mjs?v=20261025-startup-buffer'), import('./media-public-swarm.mjs?v=20261025-startup-buffer'),
       ]);
       if (request !== publicRoomRequest || pageAbort.signal.aborted) return null;
       const clock = createListenerSession({ room: `forgesworn-dejavu-listening-v${quality === 'full' ? 2 : 1}-${quality}`, source: PUBLIC_SWARM_SOURCE_SHA256,
@@ -468,8 +468,9 @@ async function initialise() {
     finally { if (publicRoomLoading === pending) publicRoomLoading = null; }
   }
 
-  function followListener(s, force = false) {
-    if (local || session !== s || s.finishing || s.playbackFailed || s.switchingPlayback || s.priming || !s.listenerWanted || !s.listener?.snapshot().ready ||
+  function followListener(s, force = false, initialPipeline = null) {
+    const ownedInitialFrame = force && initialPipeline && s.framePipeline === initialPipeline && s.hls === initialPipeline.player && !initialPipeline.seenFrame;
+    if (local || session !== s || s.finishing || s.playbackFailed || s.switchingPlayback && !ownedInitialFrame || s.priming || !s.listenerWanted || !s.listener?.snapshot().ready ||
         !s.mediaReady || video.readyState < 1 || !s.recordedView && !Number.isFinite(video.duration)) return;
     if (!force && s.followLive === false) return;
     if (s.recordedView && s.recordedEpochId !== s.listener.snapshot().epochId) return;
@@ -1068,28 +1069,41 @@ async function initialise() {
       status(local ? 'Playback could not continue. Stop the run, check the local runner and try again.' : 'The selected source could not be decoded. Try the preview or check the media-host response.', true);
       if (!local) controls();
     }, { signal: s.abort.signal });
+    s.framePipeline = null;
     if (typeof video.requestVideoFrameCallback === 'function') {
-      const frame = (_now, metadata) => {
-        if (session !== s || s.finishing || s.sourceEof) return;
-        b.presentedFrames = (b.presentedFrames ?? 0) + 1;
-        if (observed(metadata?.width) > 0 && observed(metadata?.height) > 0) { b.mediaWidth = metadata.width; b.mediaHeight = metadata.height; }
-        // A callback queued for a paused priming frame can arrive after play()
-        // while the startup seek is still decoding. It is not playback yet.
-        const playableFrame = !video.paused && !video.seeking && video.readyState >= 3;
-        if (!b.seenFrame && playableFrame) {
-          b.seenFrame = true; b.firstFrameMs = performance.now() - s.clickAt;
-          s.startupPending = false;
-          b.lastDecodeAt = performance.now(); b.lastDecoded = observed(video.webkitDecodedFrameCount) ?? 0;
-          $('video-empty').hidden = true;
-          controls();
-        }
-        if (playableFrame) endStall();
+      s.observeFramePipeline = pipeline => {
+        if (s.frameCallback !== undefined) video.cancelVideoFrameCallback?.(s.frameCallback);
+        s.framePipeline = pipeline;
+        const frame = (_now, metadata) => {
+          if (session !== s || s.finishing || s.sourceEof || s.framePipeline !== pipeline) return;
+          b.presentedFrames = (b.presentedFrames ?? 0) + 1;
+          if (observed(metadata?.width) > 0 && observed(metadata?.height) > 0) { b.mediaWidth = metadata.width; b.mediaHeight = metadata.height; }
+          // A callback queued for a paused priming frame can arrive after play()
+          // while the startup seek is still decoding. It is not playback yet.
+          const playableFrame = !video.paused && !video.seeking && video.readyState >= 3;
+          if (playableFrame && pipeline) pipeline.seenFrame = true;
+          if (!b.seenFrame && playableFrame) {
+            b.seenFrame = true; b.firstFrameMs = performance.now() - s.clickAt;
+            s.startupPending = false;
+            b.lastDecodeAt = performance.now(); b.lastDecoded = observed(video.webkitDecodedFrameCount) ?? 0;
+            $('video-empty').hidden = true;
+            controls();
+          }
+          if (playableFrame) endStall();
+          s.frameCallback = video.requestVideoFrameCallback(frame);
+        };
         s.frameCallback = video.requestVideoFrameCallback(frame);
       };
-      s.frameCallback = video.requestVideoFrameCallback(frame);
+      s.observeFramePipeline(null);
     } else {
+      s.observeFramePipeline = pipeline => { s.framePipeline = pipeline; };
       video.addEventListener('timeupdate', () => {
         if (!video.paused && !video.seeking && video.readyState >= 3 && video.videoWidth > 0 && video.currentTime > 0) {
+          const pipeline = s.framePipeline, decoded = observed(video.webkitDecodedFrameCount);
+          if (pipeline && decoded !== null) {
+            if (pipeline.decodedBaseline !== null && decoded < pipeline.decodedBaseline) pipeline.decodedBaseline = 0;
+            if (pipeline.decodedBaseline !== null && decoded > pipeline.decodedBaseline) pipeline.seenFrame = true;
+          }
           b.seenFrame = true; s.startupPending = false; $('video-empty').hidden = true; controls();
         }
       }, { signal: s.abort.signal });
@@ -1240,6 +1254,13 @@ async function initialise() {
       maxBufferLength: local ? 4 : 20, maxMaxBufferLength: local ? 6 : 24,
       maxBufferSize: (local ? 8 : 64) * 1024 * 1024, backBufferLength: local ? 0 : 4,
       enableWorker: true, startPosition });
+    const decodedBaseline = observed(video.webkitDecodedFrameCount);
+    const framePipeline = { player, seenFrame: false, decodedBaseline,
+      observable: typeof video.requestVideoFrameCallback === 'function' || decodedBaseline !== null };
+    // A legacy player without either witness cannot prove a new pipeline's
+    // first frame. Keep its prior global playback guard; do not invent one.
+    const hasPipelineFrame = () => framePipeline.seenFrame || !framePipeline.observable && s.browser.seenFrame;
+    s.observeFramePipeline?.(framePipeline);
     let initialMetadataArmed = false;
     s.playbackEngine = 'hls.js';
     player.on(Hls.Events.MEDIA_ATTACHED, (_, { mediaSource }) => {
@@ -1277,23 +1298,23 @@ async function initialise() {
       const room = s.listener?.snapshot();
       const position = room?.ready ? roomMediaTime(s) ?? -1 : s.invitedStart || -1;
       if (room?.ready && position >= 0) s.listenerAlignedEpoch = room.epochId;
-      if (!initialMetadataArmed && s.quality === 'full' && s.recordedView && !s.browser.seenFrame &&
+      if (!initialMetadataArmed && s.quality === 'full' && s.recordedView && !hasPipelineFrame() &&
           room?.ready && room.epochId === s.recordedEpochId) {
         initialMetadataArmed = true;
-        const epoch = room.epochId, version = s.playbackVersion ?? 0;
+        const epoch = room.epochId;
         // The first fragment can take seconds after manifest parsing. Refresh
         // that one initial position before a frame is shown, on the original
         // pending play and pipeline, instead of paying a later clock catch-up.
         const ownsInitialAlignment = () => {
           const currentRoom = s.listener?.snapshot();
           return session === s && s.hls === player && !s.finishing && !s.playbackFailed && !s.abort.signal.aborted &&
-            !s.switchingPlayback && version === (s.playbackVersion ?? 0) && s.playbackWanted !== false && !video.paused &&
-            !s.browser.seenFrame && s.recordedView && s.recordedEpochId === epoch && currentRoom?.ready && currentRoom.epochId === epoch;
+            s.framePipeline === framePipeline && s.playbackWanted !== false && !video.paused &&
+            !hasPipelineFrame() && s.recordedView && s.recordedEpochId === epoch && currentRoom?.ready && currentRoom.epochId === epoch;
         };
         const alignInitialMetadata = () => {
           if (!ownsInitialAlignment() || video.seeking) return;
           s.listenerAlignedEpoch = epoch;
-          followListener(s, true);
+          followListener(s, true, framePipeline);
         };
         video.addEventListener('loadedmetadata', () => {
           if (!ownsInitialAlignment()) return;
@@ -1391,6 +1412,15 @@ async function initialise() {
       const room = s.listener?.snapshot();
       if (s.publicSourceLoaded && (!s.recordedView || s.recordedEpochId === room?.epochId)) {
         if (s.recordedView && s.recordedLoadStopped && room?.ready) {
+          const player = s.hls, peer = s.publicPeer, view = s.recordedView, epoch = s.recordedEpochId;
+          const ownsResume = () => owns() && s.hls === player && s.publicPeer === peer && s.recordedView === view &&
+            s.recordedEpochId === epoch && s.listener?.snapshot().ready && s.listener.snapshot().epochId === epoch &&
+            s.listenerWanted && !video.paused && !video.ended;
+          if (s.quality === 'full' && peer) {
+            try { await peer.setEnabled(true); }
+            catch { if (!ownsResume()) return; s.publicSharingFailed = true; publicDelivery(s); }
+          }
+          if (!ownsResume()) return;
           s.recordedLoadStopped = false;
           s.roomSeekAt = performance.now();
           s.hls.startLoad(roomMediaTime(s) ?? -1);
@@ -1410,7 +1440,7 @@ async function initialise() {
       if (player) {
         let peer, setupEpoch;
         try {
-          const { createPublicSwarm, prepareRecordedSource, createRecordedLive } = await import('./media-public-swarm.mjs?v=20261025-warm-ahead');
+          const { createPublicSwarm, prepareRecordedSource, createRecordedLive } = await import('./media-public-swarm.mjs?v=20261025-startup-buffer');
           if (!owns() || s.hls !== player) return;
           // These two exports share the exact helper module/recording brand.
           // Preparing metadata fetches no video and happens only after joining.
@@ -1441,7 +1471,17 @@ async function initialise() {
             }
           }
           setupEpoch = latestRoom?.ready ? latestRoom.epochId : null;
+          const startupView = s.recordedView, startupEpoch = s.recordedEpochId, startupPipeline = s.framePipeline;
+          const ownsStartupPipeline = () => session === s && !s.finishing && !s.playbackFailed && !s.abort.signal.aborted &&
+            s.playbackWanted !== false && s.hls === player && s.framePipeline === startupPipeline && startupPipeline?.player === player &&
+            s.publicPeer === peer && s.recordedView === startupView && s.recordedEpochId === startupEpoch &&
+            s.listener?.snapshot().ready && s.listener.snapshot().epochId === startupEpoch && s.listenerWanted && !video.paused && !video.ended;
           peer = createPublicSwarm({ Hls, hls: player, video, playlistUrl: s.publicUrl.href, quality: s.quality,
+            startupBufferNeeded: startupView && s.quality === 'full' ? () => ownsStartupPipeline() && startupPipeline.observable && !startupPipeline.seenFrame : null,
+            startupBufferTarget: startupView && s.quality === 'full' ? () => {
+              if (!ownsStartupPipeline() || !startupPipeline.observable || startupPipeline.seenFrame) return null;
+              return roomMediaTime(s);
+            } : null,
             turnConfiguration: { endpoint: root.dataset.turnCredentialEndpoint ?? null, turnUrl: root.dataset.turnUrl ?? null },
             ...(s.recordedView ? { recordedLive: { recording: s.recording, epochId: s.recordedEpochId } } : {}),
             signal: s.abort.signal, onStats: metrics => {
@@ -1706,7 +1746,7 @@ async function initialise() {
     }, { signal: pageAbort.signal });
     controls();
     try {
-      const { createSwarmVisual } = await import('./media-swarm-visual.mjs?v=20261025-warm-ahead');
+      const { createSwarmVisual } = await import('./media-swarm-visual.mjs?v=20261025-startup-buffer');
       if (!pageAbort.signal.aborted && $('public-swarm-map')) {
         swarmVisual = createSwarmVisual($('public-swarm-map'));
         publicDelivery(session);

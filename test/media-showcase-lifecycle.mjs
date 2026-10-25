@@ -66,7 +66,7 @@ const types = { '.html':'text/html','.mjs':'text/javascript','.js':'text/javascr
 let browser;
 const checks=[];
 async function open({held=false,heldVisual=false,heldRoomCode=false,heldMetadata=false,engine='mse',reject=false,
-  recorded=false,quality='full',holdPeerEnable=false}={}) {
+  recorded=false,quality='full',holdPeerEnable=false,frameWitness='rvfc'}={}) {
   const context=await browser.newContext(),page=await context.newPage(),errors=[],mediaRequests=[];
   page.setDefaultTimeout(8000);
   let release;const gate=new Promise(resolve=>{release=resolve});if(!held)release();
@@ -86,7 +86,7 @@ async function open({held=false,heldVisual=false,heldRoomCode=false,heldMetadata
     try{return await route.fulfill({contentType:types[extname(path)]??'application/octet-stream',body:await readFile(path)})}
     catch{return route.fulfill({status:404,body:''})}
   });
-  await page.addInitScript(({engine,reject,recorded,quality,holdPeerEnable})=>{
+  await page.addInitScript(({engine,reject,recorded,quality,holdPeerEnable,frameWitness})=>{
     const state=window.fixture={engine,reject,players:[],peers:[],trace:[],readyState:1,currentTime:0,ranges:[],paused:true,seeking:false,source:'',
       recorded,views:[],prepared:[],brandedAdapters:0,nativeCapable:false,epochId:'1'.repeat(64),startedAt:Date.now()-50_000,
       sourceDuration:quality==='preview'?29.96:267.32,duration:quality==='preview'?29.96:267.32,wallOffset:0,
@@ -106,8 +106,13 @@ async function open({held=false,heldVisual=false,heldRoomCode=false,heldMetadata
     state.releasePeer=()=>{state.holdPeerEnable=false;for(const resolve of state.peerWaiters.splice(0))resolve()};
     state.finishPlay=()=>{state.readyState=4;state.ranges=[[0,100]];for(const {resolve}of state.playWaiters.splice(0))resolve();document.getElementById('lab-video').dispatchEvent(new Event('playing'))};
     state.presentFrame=()=>{state.frameCallback?.(performance.now(),{width:3840,height:2160})};
-    HTMLVideoElement.prototype.requestVideoFrameCallback=function(callback){state.frameCallback=callback;return 1};
-    HTMLVideoElement.prototype.cancelVideoFrameCallback=function(){state.frameCallback=null};
+    state.frameCallbacks=[];state.frameRegistrations=0;
+    HTMLVideoElement.prototype.requestVideoFrameCallback=function(callback){state.frameCallback=callback;state.frameCallbacks.push(callback);return ++state.frameRegistrations};
+    HTMLVideoElement.prototype.cancelVideoFrameCallback=function(id){if(id===state.frameRegistrations)state.frameCallback=null};
+    if(frameWitness==='none')Object.defineProperties(HTMLVideoElement.prototype,{
+      requestVideoFrameCallback:{configurable:true,value:undefined},cancelVideoFrameCallback:{configurable:true,value:undefined},
+      webkitDecodedFrameCount:{configurable:true,get:()=>undefined},videoWidth:{configurable:true,get:()=>3840},videoHeight:{configurable:true,get:()=>2160},
+    });
     Object.defineProperties(HTMLMediaElement.prototype,{
       readyState:{get:()=>state.readyState},duration:{get:()=>state.duration},paused:{get:()=>state.paused},seeking:{get:()=>state.seeking},
       currentTime:{get:()=>state.currentTime,set:value=>{state.currentTime=value;state.trace.push({kind:'seek',position:value})}},
@@ -121,7 +126,7 @@ async function open({held=false,heldVisual=false,heldRoomCode=false,heldMetadata
       state.paused=false;this.dispatchEvent(new Event('play'));return new Promise((resolve,reject)=>state.playWaiters.push({resolve,reject}));};
     HTMLMediaElement.prototype.pause=function(){state.paused=true;this.dispatchEvent(new Event('pause'));for(const {reject}of state.playWaiters.splice(0))reject(new DOMException('Paused','AbortError'))};
     HTMLMediaElement.prototype.load=function(){state.trace.push({kind:'load'})};
-  },{engine,reject,recorded,quality,holdPeerEnable});
+  },{engine,reject,recorded,quality,holdPeerEnable,frameWitness});
   await page.goto(origin+'/?q='+quality,{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>fixture.requested);
   if(!held)await page.waitForFunction(()=>!document.getElementById('public-play').disabled);
   return {page,context,errors,mediaRequests,release,releaseVisual,releaseRoomCode,releaseMetadata};
@@ -145,6 +150,30 @@ async function gestureOrder(page,native=false){
 }
 try {
   browser=await chromium.launch({headless:true});
+  const legacyFrames=await open({recorded:true,frameWitness:'none'});
+  await legacyFrames.page.locator('#public-play').click();await legacyFrames.page.evaluate(()=>fixture.releaseRoom());
+  await legacyFrames.page.waitForFunction(()=>fixture.trace.some(x=>x.kind==='startLoad'));
+  assert.equal(await legacyFrames.page.evaluate(()=>fixture.peers[0].options.startupBufferNeeded()),false,
+    'without any real per-pipeline frame witness the new startup gate stays off');
+  const legacyMetadata=await legacyFrames.page.evaluate(()=>{
+    fixture.finishPlay();fixture.currentTime+=0.2;
+    const video=document.getElementById('lab-video');video.dispatchEvent(new Event('timeupdate'));
+    video.dispatchEvent(new Event('waiting'));fixture.finishPlay();
+    const before=fixture.trace.filter(x=>x.kind==='seek').length;
+    fixture.wallOffset+=2200;video.dispatchEvent(new Event('loadedmetadata'));
+    return {before,after:fixture.trace.filter(x=>x.kind==='seek').length,registrations:fixture.frameRegistrations,
+      target:fixture.peers[0].options.startupBufferTarget()};
+  });
+  assert.equal(legacyMetadata.after,legacyMetadata.before,'legacy known-playback guard still prevents late initial alignment');
+  assert.equal(legacyMetadata.registrations,0);assert.equal(legacyMetadata.target,null,'unobservable pipeline never invents a barrier/frame witness');
+  await legacyFrames.page.waitForFunction(()=>document.getElementById('browser-stalls').textContent==='1');
+  await legacyFrames.page.evaluate(()=>{document.getElementById('lab-video').pause();void document.getElementById('lab-video').play()});
+  await legacyFrames.page.waitForFunction(()=>fixture.trace.filter(x=>x.kind==='startLoad').length===2);
+  const legacyResume=await legacyFrames.page.evaluate(()=>{fixture.finishPlay();return {needed:fixture.peers[0].options.startupBufferNeeded(),
+    registrations:fixture.frameRegistrations,pendingPlays:fixture.playWaiters.length,paused:fixture.paused,players:fixture.players.length,
+    first:document.getElementById('first-frame').textContent,stalls:document.getElementById('browser-stalls').textContent};});
+  assert.deepEqual(legacyResume,{needed:false,registrations:0,pendingPlays:0,paused:false,players:1,first:'—',stalls:'1'});
+  await close(legacyFrames);checks.push('legacy browsers without a real per-pipeline frame witness opt out of the new barrier, retain late-metadata guards and resume without invented frame credit or counter resets');
   const installing=await open({holdPeerEnable:true});
   await installing.page.locator('#public-play').click();await gestureOrder(installing.page);
   await installing.page.evaluate(()=>fixture.releaseRoom());
@@ -231,6 +260,8 @@ try {
     await run.page.waitForFunction(()=>fixture.trace.some(x=>x.kind==='startLoad'));
     const guarded=await run.page.evaluate(guard=>{
       const video=document.getElementById('lab-video');
+      const startup=fixture.peers[0].options.startupBufferTarget;
+      const startupBefore=startup();
       if(guard==='paused')video.pause();
       else if(guard==='pagehide')window.dispatchEvent(new PageTransitionEvent('pagehide'));
       else if(guard==='first-frame'){fixture.finishPlay();fixture.presentFrame()}
@@ -238,9 +269,11 @@ try {
       const before=fixture.trace.filter(x=>x.kind==='seek').length;
       fixture.wallOffset+=2200;fixture.readyState=1;fixture.ranges=[[0,2]];
       video.dispatchEvent(new Event('loadedmetadata'));
-      return {before,after:fixture.trace.filter(x=>x.kind==='seek').length};
+      return {before,after:fixture.trace.filter(x=>x.kind==='seek').length,startupBefore,startupAfter:startup()};
     },guard);
     assert.equal(guarded.after,guarded.before,`${guard} fences a late initial metadata seek`);
+    assert(Number.isFinite(guarded.startupBefore),'the current player exposes a fresh startup target');
+    assert.equal(guarded.startupAfter,null,`${guard} retires the startup buffer target`);
     await close(run);
   }
   checks.push('paused, departed, already-presented and changed-epoch sessions reject late initial metadata alignment');
@@ -253,18 +286,28 @@ try {
   const staleMetadata=await replacedMetadata.page.evaluate(()=>{
     fixture.wallOffset+=2200;fixture.readyState=1;fixture.ranges=[[0,2]];
     const video=document.getElementById('lab-video'),before=fixture.trace.filter(x=>x.kind==='seek').length;
+    let playingEvents=0;video.addEventListener('playing',()=>playingEvents++);
+    const plays=fixture.trace.filter(x=>x.kind==='play').length,pendingPlays=fixture.playWaiters.length;
     // The old callback is still a listener on the same visible element until
     // metadata arrives. It must not reinterpret the replacement's timeline.
     fixture.metadataHandlers[0].call(video,new Event('loadedmetadata'));
     const old=fixture.trace.filter(x=>x.kind==='seek').length;
     video.dispatchEvent(new Event('loadedmetadata'));
+    const after=fixture.trace.filter(x=>x.kind==='seek').length,current=fixture.currentTime,target=fixture.views[1].mediaTimeAt(Date.now());
+    const beforePlaying=playingEvents===0,playsAfter=fixture.trace.filter(x=>x.kind==='play').length,pendingAfter=fixture.playWaiters.length;
+    fixture.finishPlay();fixture.presentFrame();fixture.wallOffset+=2200;
+    fixture.metadataHandlers[1].call(video,new Event('loadedmetadata'));
     return {before,old,after:fixture.trace.filter(x=>x.kind==='seek').length,current:fixture.currentTime,
-      target:fixture.views[1].mediaTimeAt(Date.now()),players:fixture.players.length};
+      firstAfter:after,firstCurrent:current,firstTarget:target,players:fixture.players.length,beforePlaying,plays,playsAfter,pendingPlays,pendingAfter};
   });
   assert.equal(staleMetadata.old,staleMetadata.before,'the replaced player cannot seek the current visible element');
-  assert.equal(staleMetadata.after,staleMetadata.before,'pipeline replacement keeps its existing owned-transition alignment contract');
+  assert.equal(staleMetadata.firstAfter,staleMetadata.before+1,'current new-epoch metadata refreshes the room clock while its transition still awaits playing');
+  assert(Math.abs(staleMetadata.firstCurrent-staleMetadata.firstTarget)<0.5);
+  assert.equal(staleMetadata.beforePlaying,true);assert(staleMetadata.pendingPlays>0);
+  assert.equal(staleMetadata.playsAfter,staleMetadata.plays);assert.equal(staleMetadata.pendingAfter,staleMetadata.pendingPlays,'alignment preserves the original pending play');
+  assert.equal(staleMetadata.after,staleMetadata.firstAfter,'a presented current-pipeline frame fences even a saved metadata callback');
   assert.equal(staleMetadata.players,2);
-  await close(replacedMetadata);checks.push('old-player metadata is inert after an acknowledged epoch replacement');
+  await close(replacedMetadata);checks.push('current new-epoch metadata aligns once before playing without replacing pending play; old-player and post-frame callbacks stay inert');
 
   const previewMetadata=await open({recorded:true,quality:'preview'});
   await previewMetadata.page.locator('#public-play').click();await previewMetadata.page.evaluate(()=>fixture.releaseRoom());
@@ -468,6 +511,66 @@ try {
     assert.equal(await failed.page.evaluate(()=>fixture.peers.every(p=>!p.enabled)),true);await close(failed);
   }
   checks.push('fatal HLS/media errors clear Loading and fence old promise rejection');
+
+  const preFrameResume=await open({recorded:true});
+  await preFrameResume.page.locator('#public-play').click();await preFrameResume.page.evaluate(()=>fixture.releaseRoom());
+  await preFrameResume.page.waitForFunction(()=>fixture.trace.some(x=>x.kind==='startLoad'));
+  const beforeResume=await preFrameResume.page.evaluate(()=>{
+    const options=fixture.peers[0].options;
+    fixture.oldEmptyFrame=fixture.frameCallbacks[0];
+    const registrations=fixture.frameRegistrations;
+    fixture.oldEmptyFrame(performance.now(),{width:3840,height:2160});
+    const staleLoopUnchanged=fixture.frameRegistrations===registrations;
+    const needed=options.startupBufferNeeded();
+    document.getElementById('lab-video').pause();fixture.holdPeerEnable=true;
+    void document.getElementById('lab-video').play();
+    return {loads:fixture.trace.filter(x=>x.kind==='startLoad').length,needed,staleLoopUnchanged};
+  });
+  assert.equal(beforeResume.needed,true);assert.equal(beforeResume.staleLoopUnchanged,true,'an initial unowned callback cannot start a duplicate observer');
+  await preFrameResume.page.waitForFunction(()=>fixture.peerWaiters.length>0);
+  assert.equal(await preFrameResume.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='startLoad').length),beforeResume.loads,
+    'resuming before the first encoded body waits for the fresh peer loader instead of starting ordinary HTTP');
+  const resumedIntent=await preFrameResume.page.evaluate(()=>({needed:fixture.peers[0].options.startupBufferNeeded(),target:fixture.peers[0].options.startupBufferTarget()}));
+  assert.equal(resumedIntent.needed,true);assert(Number.isFinite(resumedIntent.target),'the adapter callback accepts the new play intent on the same pipeline');
+  await preFrameResume.page.evaluate(()=>fixture.releasePeer());
+  await preFrameResume.page.waitForFunction(()=>fixture.trace.filter(x=>x.kind==='startLoad').length===2);
+  const resumedMetadata=await preFrameResume.page.evaluate(()=>{
+    fixture.wallOffset+=2200;fixture.readyState=1;fixture.ranges=[[0,4]];
+    const before=fixture.trace.filter(x=>x.kind==='seek').length;
+    document.getElementById('lab-video').dispatchEvent(new Event('loadedmetadata'));
+    const after=fixture.trace.filter(x=>x.kind==='seek').length;
+    fixture.finishPlay();
+    const playingStillNeedsFrame=fixture.peers[0].options.startupBufferNeeded();
+    fixture.presentFrame();
+    document.getElementById('lab-video').dispatchEvent(new Event('waiting'));fixture.finishPlay();
+    return {before,after,playingStillNeedsFrame,afterFrame:fixture.peers[0].options.startupBufferNeeded(),
+      players:fixture.players.length,attaches:fixture.trace.filter(x=>x.kind==='attach').length,plays:fixture.trace.filter(x=>x.kind==='play').length};
+  });
+  assert.equal(resumedMetadata.after,resumedMetadata.before+1,'pre-frame resume preserves fresh initial metadata alignment across the play-version change');
+  assert.equal(resumedMetadata.playingStillNeedsFrame,true,'playing is not a presented frame');assert.equal(resumedMetadata.afterFrame,false);
+  assert.deepEqual([resumedMetadata.players,resumedMetadata.attaches,resumedMetadata.plays],[1,1,2],'resume keeps one visible pipeline and adds only its requested play');
+  await preFrameResume.page.waitForFunction(()=>document.getElementById('first-frame').textContent!=='—'&&document.getElementById('browser-stalls').textContent==='1');
+  const firstMetrics=await preFrameResume.page.evaluate(()=>({first:document.getElementById('first-frame').textContent,stalls:document.getElementById('browser-stalls').textContent}));
+  await preFrameResume.page.evaluate(()=>{fixture.holdPeerEnable=true;document.getElementById('lab-video').pause();void document.getElementById('lab-video').play()});
+  await preFrameResume.page.waitForFunction(()=>fixture.peerWaiters.length>0);
+  assert.equal(await preFrameResume.page.evaluate(()=>fixture.peers[0].options.startupBufferNeeded()),false,'same-pipeline post-frame resume does not request another barrier');
+  await preFrameResume.page.evaluate(()=>fixture.releasePeer());
+  await preFrameResume.page.waitForFunction(()=>fixture.trace.filter(x=>x.kind==='startLoad').length===3);
+  await preFrameResume.page.evaluate(()=>{fixture.finishPlay();fixture.oldPipelineFrame=fixture.frameCallback;fixture.replaceEpoch()});
+  await preFrameResume.page.waitForFunction(()=>fixture.players.length===2&&fixture.peers.length===2&&fixture.trace.filter(x=>x.kind==='source').length===2);
+  const replacementFrame=await preFrameResume.page.evaluate(()=>{
+    const needed=fixture.peers[1].options.startupBufferNeeded(),before=fixture.frameRegistrations,callback=fixture.frameCallback;
+    fixture.oldPipelineFrame(performance.now(),{width:3840,height:2160});
+    const staleNeeded=fixture.peers[1].options.startupBufferNeeded(),oneLoop=before===fixture.frameRegistrations&&callback===fixture.frameCallback;
+    fixture.finishPlay();fixture.presentFrame();
+    return {needed,staleNeeded,oneLoop,afterFrame:fixture.peers[1].options.startupBufferNeeded(),
+      first:document.getElementById('first-frame').textContent,stalls:document.getElementById('browser-stalls').textContent};
+  });
+  assert.deepEqual([replacementFrame.needed,replacementFrame.staleNeeded,replacementFrame.oneLoop,replacementFrame.afterFrame],[true,true,true,false],
+    'a new epoch owns a new first-frame obligation; queued old callbacks cannot satisfy it or reschedule');
+  assert.equal(replacementFrame.first,firstMetrics.first);assert.equal(replacementFrame.stalls,firstMetrics.stalls,'pipeline replacement preserves cumulative measurements');
+  await close(preFrameResume);
+  checks.push('pre-frame resume installs its peer loader before loading; actual per-pipeline frames control barriers and preserve metadata alignment, counters and one observer across epoch changes');
 
   for(const quality of ['full','preview']) {
     const run=await open({recorded:true,quality});
