@@ -74,6 +74,7 @@ function sample(input, elapsedMs) {
     sourceCacheBodyBytes: sourceTimingCoverage === 'complete' ? integer(value(input, 'sourceCacheBodyBytes')) : null,
     sourceTimingCoverage,
     peerEnabled: boolean(value(input, 'peerEnabled')), connectedPeers: integer(value(input, 'connectedPeers')),
+    transferWorkerState: choice(value(input, 'transferWorkerState'), ['off', 'waiting-core', 'loading', 'ready', 'failed', 'stopped']),
     roomListeners: integer(value(input, 'roomListeners')), connections: connections(value(input, 'connections')),
   };
 }

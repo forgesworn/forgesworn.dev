@@ -131,11 +131,13 @@ try {
       codedFrame: window.codedFrame, audioRmsPeak: window.audioRmsPeak, muted: video.muted, volume: video.volume,
       videoElements: document.querySelectorAll('video').length,
       visibleVideoElements: [...document.querySelectorAll('video')].filter(v=>!v.hidden).length, fixtureError: window.fixtureError ?? null }))));
+    assert(snapshots.every(m => !['failed', 'stopped'].includes(m.core?.transferWorker?.state)), 'The packaged module worker failed during playback.');
     if (snapshots.some(m => m.verifiedPeerSegments > 0) && snapshots.some(m => m.uploadedBytes > 0) && snapshots.every(m => m.decodedFrames > 10) &&
       snapshots.some(m => m.peerBytes > 0 && m.topology.connections.reduce((sum, p) => sum + (p.bytesReceived ?? 0), 0) >= m.peerBytes)) break;
     await new Promise(resolve => setTimeout(resolve, 500));
   }
   receipt.players = snapshots;
+  assert.ok(snapshots.every(m => m.core?.transferWorker?.state === 'ready'), 'Each player must start its real packaged module worker.');
   assert.ok(snapshots.every(m => m.fixtureError === null && m.decodedFrames > 10 && m.videoElements === 1 && m.visibleVideoElements === 1));
   assert.ok(snapshots.every(m => m.audioRmsPeak > 0.00001 && m.muted === false && m.volume > 0), 'Decoded audible audio was not observed in both visible players.');
   if (quality === 'full') assert.ok(snapshots.every(m => m.codedFrame?.width === 3840 && m.codedFrame?.height === 2160), 'Both visible players must decode actual 3840x2160 media pixels.');

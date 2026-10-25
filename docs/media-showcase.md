@@ -361,15 +361,29 @@ accepted segment.  Performance receipts must include playback progress and
 stalls alongside useful peer bytes; an open connection alone proves no
 contribution.
 
-The demo also opts into `zeroBudgetPeerRace`.  When there is no safe time to
-wait before starting HTTP, the normal request starts immediately.  Only a
-peer that already advertised the exact cached object may race it through the
-verified piece engine.  The first complete accepted source wins; the losing
+The demo also opts into `zeroBudgetPeerRace` and `lateHaveRace`. When there is
+no safe time to wait before starting HTTP, the normal request starts
+immediately. A native connection already accepted at load entry may race it
+after advertising the exact cached object, including an object that becomes
+available while HTTP runs. This uses the original 2.5-second window, with no
+extension or added HTTP request. One holder set is frozen when the peer arm
+starts; a new or replaced connection cannot join that load. The
+Rust piece planner uses its explicit peer-only mode. It has no internal HTTP source;
+the ordinary HTTP loader runs independently. A verified calibration piece
+unlocks further bounded ranges, while unassigned pieces remain bounded pending
+work. The first complete accepted source wins; the losing
 arm is cancelled.  This creates no additional origin request and does not
 prefetch media outside the visible player's demand.  Progressive HTTP payload
 locks that load to HTTP, so sources cannot mix after an append.  Pausing or
 turning off the swarm stops its peer arm while preserving normal HTTP
 playback.
+
+Each peer request stays within four pieces and 512 KiB, retaining the upload
+burst and rate bounds even when the complete fragment exceeds the burst.
+Only the accepted load-entry connections that advertise the object when the
+peer arm starts can participate. At the peer floor, remaining peer work is cancelled while
+the independent HTTP loader continues. Older modules without the explicit
+mode safely decline that arm. The buffered mixed mode keeps its HTTP ranges.
 
 ## Integrity and scope
 
@@ -400,10 +414,11 @@ an exact `/media/` identity without moving or altering the recording.  The
 source recording and signing keys do not enter the repository.
 
 Rendezvous uses the explicitly listed public Nostr relays and encrypted peer
-signals. STUN supplies direct candidate discovery. When playback starts, the
-browser also obtains an expiring Spry TLS credential from the independently
-operated Archy node. Direct connections remain eligible; a relay supplies a
-route when the browser cannot use direct UDP. The static site contains no
+signals. STUN supplies direct candidate discovery. The public Spry credential
+endpoint remains unconfigured during operator deployment. Once a validated
+endpoint is configured, playback also requests an expiring TLS credential
+from that independently operated public instance. Direct connections remain
+eligible; a relay supplies a route when the browser cannot use direct UDP. The static site contains no
 relay password or operator root secret. The separate native comparator can
 exercise Spry and coturn. RelaySwarm remains experimental; public credential
 delivery alone does not qualify sustained 4K playback or physical phones.
@@ -418,41 +433,50 @@ most 16 MiB. The player targets a twenty-second forward buffer with a
 twenty-four-second time ceiling, four seconds behind and a 64 MiB byte target.
 An appended fragment can overshoot a buffer target; decoder memory is
 separate.  There is no background download of the full 817 MB recording.
-The public profile supplies STUN and the operator's TCP/TLS TURN route without
-changing browser privacy preferences. Vanadium's default restriction on
+The public profile supplies STUN and, when configured, the operator's
+TCP/TLS TURN route without changing browser privacy preferences. Vanadium's default restriction on
 non-proxied UDP can require that relay; see the
 [GrapheneOS explanation](https://bsky.app/profile/grapheneos.org/post/3lqpnxljvd22d).
 If the issuer or a usable peer route is unavailable, HTTPS playback continues.
 The player never embeds private test credentials in its bundle.
 
-`media-turn-credentials.mjs` POSTs a bounded request to
-`https://demo.forgesworn.dev:7443/turn-credentials` only during participation.
-The response permits only `turns:demo.forgesworn.dev:5349?transport=tcp`, uses
-no-store responses and a unique expiring principal, and refreshes after two
-thirds of its remaining lifetime. Slow HTTP responses consume that lifetime.
+`media-turn-credentials.mjs` uses the configured public Spry instance's
+`POST /v1/public/credentials` contract only during participation. It validates
+the direct `urls`, `username`, `credential` and epoch-second `expiresAt` fields,
+selects only the pinned TLS TURN URL and coalesces one lease per viewer across
+new peer connections. The supported public service freshly mints one-hour
+credentials. The client keeps a conservative monotonic lifetime, charging
+request/body time and a rounding margin; a wall-clock correction can only
+shorten it. Renewal starts after two thirds of the remaining lifetime.
 New peer connections use the latest credential. Relayed connections retire
 shortly before their old credential expires so the SDK can reconnect while
 the playing HLS instance and verified cache survive. Pause cancels renewal.
 Diagnostics expose availability and expiry duration, never the credential.
 
-The operator runs a small Rust issuer behind an isolated TLS listener. It
-consumes a bounded private pool minted by Spry's existing CLI and cannot read
-the TURN root secret. Per-address and global issuance limits, four active
-issuer connections, 32 TURN allocations and an 8 MiB/s aggregate bandwidth
-limit per allocation bound this demo. The private dashboard remains separate.
-Operator installation and rollback are maintained in
-[Archy's issuer guide](https://github.com/forgesworn/archipelago-apps/tree/main/operator/turn-issuer).
-Published-origin browser CORS and bidirectional 1 MiB hash-verified TLS relay
-checks passed on 25 October 2026. Sustained cold-cache 4K contribution,
-credential rotation during playback and physical iPhone acceptance remain
-separate checks.
+An unconfigured public relay causes no request, timer or startup delay;
+HTTP playback and direct/STUN peers remain available.
+
+The public profile is separate from KithMoot's paired private mesh. Its source
+bounds issuance to 32 requests per minute globally and six per source, with a
+bounded in-memory source table. A 4 KiB client response cap, four-second
+request/body deadline and spaced retries bound the browser path. The final
+public instance endpoint and a deliberate 4K bandwidth setting are operator
+configuration; the existing paired instance is not an anonymous issuer.
+
+The earlier test issuer's published-origin CORS and bidirectional 1 MiB
+hash-verified TLS checks passed on 25 October 2026. That lab route was replaced
+by a separate operator deployment, so those results do not establish that the
+new public instance is live. Final public issuance, sustained cold-cache 4K,
+credential rotation during playback and physical iPhone acceptance require
+the configured public route and fresh playback evidence.
 The pinned 689 KiB piece catalogue is bounded to 1 MiB, and the browser uses
-the existing 402 KiB Rust/WASM module.  Both load only after Play.  The bundle
+the pinned Rust/WASM module. Both load only after Play. The bundle
 receipt records the exact source, WASM digest and dependency notices; the
 website build copies that public module without compiling Rust.
 
-The current browser bundle pins RelaySwarm 0.4.4. Cached schema-3 media reaches
-the mixed piece planner even when the whole-object peer estimate is late, and
+The browser bundle pins an exact RelaySwarm 0.4.4 source revision. Cached
+schema-3 media uses the explicit peer-only ranged planner even when the
+whole-object peer estimate is late, and
 waiting for unavailable main-rendition recorded media requires an active
 same-key fetch lease. Live and unknown playlists retain bounded seeding
 coordination.
@@ -461,6 +485,18 @@ ranges copies six MiB into WASM instead of 96 MiB; this is input-copy accounting
 not a throughput or device-continuity claim. Playback details show the actual native/MSE engine and
 vendored library version/source. The former 15-minute adapter cutoff was
 removed; recordings and native loop connections can continue while playing.
+
+The site explicitly packages and enables a dedicated module Worker for the
+Rust piece-transfer scheduler and payload verification. It reuses the already
+compiled WASM module; no additional WASM request is needed. The companion's
+source, size and SHA-256 are recorded beside the SDK bundle in
+`site/vendor/media-peer-demo.build.json`. Worker startup is asynchronous.
+While it is unavailable, HTTP playback continues; failed transfers do not
+retry large Rust verification on the browser's main thread. Work, queued
+payloads and concurrent objects are bounded, and leaving the swarm terminates
+its Worker. This moves verification work away from playback and controls;
+physical-device continuity and useful peer contribution still need measured
+playback evidence.
 
 Public relays see connecting addresses and metadata.  Connected peers can
 learn one another's network addresses.  The page explains participation

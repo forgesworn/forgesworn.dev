@@ -3,9 +3,9 @@
 // A receiver's ephemeral key wraps that digest for the existing live-commitment
 // verifier; this is local attestation, not a live broadcaster signing service.
 import { createHlsSwarm, commitmentContent, commitmentPieceSize, segmentMediaContext, KIND_SEGMENT_COMMITMENT, finalizeEvent,
-  generateSecretKey, relayswarmBuild } from './vendor/media-peer-demo.js?v=20261025-playback-report';
-import { observeOriginLoader } from './media-transfer-stats.mjs?v=20261025-playback-report';
-import { createPublicTurnCredentials } from './media-turn-credentials.mjs?v=20261025-playback-report';
+  generateSecretKey, relayswarmBuild } from './vendor/media-peer-demo.js?v=20261025-transfer-worker';
+import { observeOriginLoader } from './media-transfer-stats.mjs?v=20261025-transfer-worker';
+import { createPublicTurnCredentials } from './media-turn-credentials.mjs?v=20261025-transfer-worker';
 
 export const PUBLIC_SWARM_LIMITS = Object.freeze({
   maxPeers: 3,
@@ -145,7 +145,8 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
       originFallbacks: totals.originFallbacks + n(live?.segments.originFallbacks),
       integrityRejected: totals.integrityRejected + n(live?.segments.peerCorrupt) + n(live?.segments.commitmentRejected),
       peerShare: loadedMediaBytes > 0 ? Math.min(1, peerBytes / loadedMediaBytes) : 0,
-      core: live?.core ? { state: live.core.state, decided: live.core.decided, multiHolder: live.core.multiHolder } : null,
+      core: live?.core ? { state: live.core.state, decided: live.core.decided, multiHolder: live.core.multiHolder,
+        transferWorker: live.core.transferWorker } : null,
       resources: { activePeerConnections: [...connections].filter(connection => connection.connectionState !== 'closed').length,
         signallingConnections: [...sockets].filter(socket => socket.readyState < 2).length,
         heldBytes: n(live?.bytes.held), heldHighWaterBytes: highWaterBytes },
@@ -351,8 +352,9 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
         }
         swarm = createSwarm({ mode: 'peer-first', swarmId: plan.swarmId, relays: [...PUBLIC_SWARM_RELAYS],
           streamEvent, getCommitment, serve: true, serveOnCellular: false,
-          coreWasm: new URL('./vendor/relayswarm-core.wasm?v=20261025-playback-report', import.meta.url), multiHolder: true,
-          zeroBudgetPeerRace: true, sustainablePeerWait: true,
+          coreWasm: new URL('./vendor/relayswarm-core.wasm?v=20261025-transfer-worker', import.meta.url), multiHolder: true,
+          transferWorkerUrl: new URL('./vendor/relayswarm-transfer-worker.js?v=20261025-transfer-worker', import.meta.url),
+          zeroBudgetPeerRace: true, lateHaveRace: true, sustainablePeerWait: true,
           maxHoldersPerObject: PUBLIC_SWARM_LIMITS.maxPeers,
           iceServers: PUBLIC_SWARM_ICE.map(entry => ({ ...entry })), iceTransportPolicy: 'all',
           WebSocketImpl: ObservedSocket, RTCPeerConnectionImpl: ObservedConnection,

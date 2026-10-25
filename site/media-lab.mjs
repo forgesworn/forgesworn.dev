@@ -1,8 +1,8 @@
 import { readInitialLiveStart } from './media-live-start.mjs';
-import { createSourceResponseStats, publicSourceResource, transferBytes } from './media-transfer-stats.mjs?v=20261025-playback-report';
-import { createNativePlaybackFallback } from './media-playback-fallback.mjs?v=20261025-playback-report';
-import { createPlaybackPrime } from './media-playback-prime.mjs?v=20261025-playback-report';
-import { createPlaybackReport } from './media-playback-report.mjs?v=20261025-playback-report';
+import { createSourceResponseStats, publicSourceResource, transferBytes } from './media-transfer-stats.mjs?v=20261025-transfer-worker';
+import { createNativePlaybackFallback } from './media-playback-fallback.mjs?v=20261025-transfer-worker';
+import { createPlaybackPrime } from './media-playback-prime.mjs?v=20261025-transfer-worker';
+import { createPlaybackReport } from './media-playback-report.mjs?v=20261025-transfer-worker';
 
 const DASH = '—';
 export const observed = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
@@ -364,7 +364,7 @@ async function initialise() {
     publicRoom?.stop(); publicRoom = null;
     const pending = (async () => {
       const [{ createListenerSession }, { PUBLIC_SWARM_SOURCE_SHA256, PUBLIC_SWARM_RELAYS }] = await Promise.all([
-        import('./media-listener-session.mjs?v=20261025-playback-report'), import('./media-public-swarm.mjs?v=20261025-playback-report'),
+        import('./media-listener-session.mjs?v=20261025-transfer-worker'), import('./media-public-swarm.mjs?v=20261025-transfer-worker'),
       ]);
       if (request !== publicRoomRequest || pageAbort.signal.aborted) return null;
       const clock = createListenerSession({ room: `forgesworn-dejavu-listening-v1-${quality}`, source: PUBLIC_SWARM_SOURCE_SHA256,
@@ -841,6 +841,7 @@ async function initialise() {
         sourceNetworkBodyBytes: timing?.covered ? timing.networkBodyBytes : null,
         sourceCacheBodyBytes: timing?.covered ? timing.cacheBodyBytes : null, sourceTimingCoverage: timing?.coverage ?? 'unavailable',
         peerEnabled: metrics?.enabled, connectedPeers: metrics?.connectedPeers, roomListeners: room?.listeners,
+        transferWorkerState: metrics?.core?.transferWorker?.state,
         connections: metrics?.topology?.connections,
       };
     });
@@ -1133,7 +1134,7 @@ async function initialise() {
       if (!local && initial.epochId && initial.startPosition >= 0) s.listenerAlignedEpoch = initial.epochId;
       if (!local) {
         try {
-          const { createPublicSwarm } = await import('./media-public-swarm.mjs?v=20261025-playback-report');
+          const { createPublicSwarm } = await import('./media-public-swarm.mjs?v=20261025-transfer-worker');
           if (session !== s || s.abort.signal.aborted || s.hls !== player) return;
           s.publicPeer = createPublicSwarm({ Hls, hls: s.hls, video, playlistUrl: url.href, quality: s.quality,
             signal: s.abort.signal, onStats: metrics => { if (session === s && !s.nativeHls && !s.finishing) publicDelivery(s, metrics); } });
@@ -1348,7 +1349,7 @@ async function initialise() {
       if (!document.hidden && session && !video.paused && session.followLive !== false) followListener(session);
     }, { signal: pageAbort.signal });
     try {
-      const { createSwarmVisual } = await import('./media-swarm-visual.mjs?v=20261025-playback-report');
+      const { createSwarmVisual } = await import('./media-swarm-visual.mjs?v=20261025-transfer-worker');
       if (!pageAbort.signal.aborted && $('public-swarm-map')) {
         swarmVisual = createSwarmVisual($('public-swarm-map'));
         publicDelivery(session);
