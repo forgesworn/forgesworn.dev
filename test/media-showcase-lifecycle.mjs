@@ -274,7 +274,10 @@ try {
         infinite:fixture.duration===Infinity,rate:player.config.maxLiveSyncPlaybackRate,maxLatency:player.config.liveMaxLatencyDuration===Infinity,
         playlist:view.recording.playlistUrl,outer:fixture.trace.find(x=>x.kind==='source').url,
         epoch:fixture.peers[0].options.recordedLive.epochId,oneVideo:document.querySelectorAll('video').length,
-        room:fixture.roomConfig,recordingDuration:view.durationSeconds};
+        room:fixture.roomConfig,recordingDuration:view.durationSeconds,historySeconds:view.backSeconds,
+        retainsPendingFragment:view.windowAt(Date.now()+20_000).startSequence===view.originSequence,
+        windowFragments:view.windowAt(Date.now()+20_000).fragments.length,
+        mediaBackBuffer:player.config.backBufferLength,mediaByteTarget:player.config.maxBufferSize};
     });
     assert.equal(installed.branded,1,'the real adapter accepts the real prepared-recording WeakSet brand');
     assert.equal(installed.viewCount,1);assert.equal(installed.loader,'function');assert.equal(installed.infinite,true);
@@ -283,6 +286,8 @@ try {
     assert.equal(installed.epoch,'1'.repeat(64));
     assert.deepEqual(installed.room,{room:`forgesworn-dejavu-listening-v${quality==='full'?2:1}-${quality}`,duration:quality==='full'?267.32:29.96});
     assert.equal(installed.recordingDuration,installed.room.duration,'the pinned programme and shared room use exactly the same duration');
+    assert.equal(installed.historySeconds,24);assert.equal(installed.retainsPendingFragment,true);assert(installed.windowFragments<=64);
+    assert.equal(installed.mediaBackBuffer,4);assert.equal(installed.mediaByteTarget,64*1024*1024);
     assert.equal(installed.playlist,origin+(quality==='full'?'/media/dejavu-4k/index.m3u8':'/media/dejavu-preview/rtmp/stream.m3u8'));
     assert.equal(installed.outer,origin+(quality==='full'?'/media/dejavu-4k/index.m3u8':'/media/dejavu-preview/rtmp/index.m3u8'),'preview keeps its original master source');
     await run.page.evaluate(()=>{fixture.finishPlay();fixture.presentFrame()});

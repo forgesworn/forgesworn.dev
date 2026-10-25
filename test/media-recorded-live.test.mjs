@@ -71,6 +71,25 @@ test('every wrap has one discontinuity and repeated MAP while first-window DS ca
   plan.stop();
 });
 
+test('a slow startup keeps its current fragment inside the bounded recovery playlist', async () => {
+  const recording = await parse(); let at = epoch + 3_000;
+  const options = { recording, epochMs: epoch, now: () => at, aheadSeconds: 24 };
+  const narrow = createRecordedLive({ ...options, backSeconds: 4 });
+  const recovery = createRecordedLive({ ...options, backSeconds: 24 });
+  const first = recovery.windowAt(at);
+  at += 20_000;
+  assert(narrow.windowAt(at).startSequence > first.startSequence, 'the old window drops the pending fragment');
+  const retained = recovery.windowAt(at);
+  assert.equal(retained.startSequence, first.startSequence, 'a delayed first response can still append at the current playhead');
+  assert(retained.fragments.some(fragment => fragment.mediaStart === 0));
+  assert(retained.fragments.length <= 64);
+  at += 100_000;
+  assert(recovery.windowAt(at).startSequence > first.startSequence, 'history still expires after the bounded recovery interval');
+  assert(recovery.windowAt(at).fragments.length <= 64);
+  assert.equal(createRecordedLive({ ...options, backSeconds: 24.001 }), null);
+  narrow.stop(); recovery.stop();
+});
+
 test('sequence windows and state remain bounded after many wraps and invalid clocks decline', async () => {
   const recording = await parse(); let at = epoch + 3_000;
   const plan = createRecordedLive({ recording, epochMs: epoch, now: () => at, aheadSeconds: 10, backSeconds: 4 });

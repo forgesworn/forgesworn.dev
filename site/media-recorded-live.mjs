@@ -76,7 +76,7 @@ export function createRecordedLive({ recording, epochMs, now = Date.now, signal,
   try {
     if (!recordings.has(recording) || !Number.isSafeInteger(epochMs) || epochMs < 0 || typeof now !== 'function' || signal?.aborted ||
         !Number.isFinite(aheadSeconds) || aheadSeconds < recording.targetDuration * 3 || aheadSeconds > 30 ||
-        !Number.isFinite(backSeconds) || backSeconds < 0 || backSeconds > 8 || !Array.isArray(passthroughUrls) || passthroughUrls.length > 4) return null;
+        !Number.isFinite(backSeconds) || backSeconds < 0 || backSeconds > 24 || !Array.isArray(passthroughUrls) || passthroughUrls.length > 4) return null;
     const pass = new Set(passthroughUrls.map(value => approvedUrl(value)));
     const count = recording.segments.length, duration = recording.durationUs;
     const elapsedAt = at => {

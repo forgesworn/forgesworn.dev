@@ -1362,7 +1362,10 @@ async function initialise() {
           const latestRoom = s.listener?.snapshot();
           if (recording && latestRoom?.ready && /^[a-f0-9]{64}$/.test(latestRoom.epochId) &&
               Math.abs(recording.durationSeconds - s.durationSeconds) < 0.05) {
-            const view = createRecordedLive({ recording, epochMs: latestRoom.startedAt, signal: s.abort.signal,
+            // Keep metadata available through a slow startup/recovery. A short
+            // room-clock window makes hls.js skip pending media fragments even
+            // with infinite max latency. This does not enlarge the media cache.
+            const view = createRecordedLive({ recording, epochMs: latestRoom.startedAt, signal: s.abort.signal, backSeconds: 24,
               passthroughUrls: [s.publicUrl.href] });
             if (view) {
               const ParentLoader = player.config.pLoader ?? player.config.loader;
