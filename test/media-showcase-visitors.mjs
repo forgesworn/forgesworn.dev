@@ -221,7 +221,24 @@ async function snapshot(page) {
       uploadedBytes: Number(node.dataset.mediaBytesSent), verifiedPeerBytes: Number(node.dataset.verifiedMediaBytesReceived),
       label: node.querySelector('.swarm-sub')?.textContent, name: node.querySelector('.swarm-label')?.textContent,
     }));
-    return { measuredAt: Date.now(), currentTime: video.currentTime, duration: video.duration, width: video.videoWidth, height: video.videoHeight,
+    const sampledAt = Date.now(), mediaTime = video.currentTime;
+    let sharedPlayback = null;
+    if (qa.wantDiagnostics) try {
+      const current = qa.controllerSession, view = current?.recordedView;
+      if (view && !current.finishing && !current.abort.signal.aborted && current.hls === qa.hls && qa.hls?.media === video) {
+        const room = current.listener?.snapshot();
+        const finite = value => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
+        const roomEpochId = typeof room?.epochId === 'string' ? room.epochId : null;
+        const recordedEpochId = typeof current.recordedEpochId === 'string' ? current.recordedEpochId : null;
+        sharedPlayback = { sampledAt, mediaTime,
+          recordingPosition: finite(view.recordingPosition(mediaTime)), recordingDuration: finite(view.durationSeconds),
+          roomPosition: room?.ready === true ? finite(current.listener.position()) : null,
+          roomReady: typeof room?.ready === 'boolean' ? room.ready : null, roomEpochId, recordedEpochId,
+          sameEpoch: roomEpochId !== null && recordedEpochId !== null ? roomEpochId === recordedEpochId : null,
+          following: current.followLive !== false };
+      }
+    } catch {}
+    return { measuredAt: sampledAt, currentTime: mediaTime, duration: video.duration, width: video.videoWidth, height: video.videoHeight,
       codedFrame: qa.codedFrame, presentedFrames: qa.presentedFrames, bufferSeconds, buffered, readyState: video.readyState, seeking: video.seeking,
       decodedFrames: video.getVideoPlaybackQuality().totalVideoFrames, droppedFrames: video.getVideoPlaybackQuality().droppedVideoFrames,
       paused: video.paused, muted: video.muted, volume: video.volume,
@@ -253,6 +270,8 @@ async function snapshot(page) {
       nativeSource: { crossOrigin: video.crossOrigin, currentSrc: video.currentSrc, errorCode: video.error?.code ?? null },
       controller: qa.wantDiagnostics ? qa.controllerState?.() ?? null : undefined,
       diagnostics: raw ? { segments: raw.segments, bytes: raw.bytes, core: raw.core, warmAhead: raw.warmAhead ?? null,
+        uploadPacing: raw.uploadPacing ?? null, peerAdmission: raw.peerAdmission ?? null,
+        sharedPlayback,
         peerCounts: Object.fromEntries(Object.entries(raw.peers).filter(([, value]) => typeof value === 'number')),
         eligibility: raw.peerEligibilityDiagnostics, requests: raw.peerRequestDiagnostics, refusals: raw.uploadRefusalDiagnostics,
         transport: raw.transportDiagnostics, errors: { total: raw.errors?.total, byStage: raw.errors?.byStage } } : undefined,

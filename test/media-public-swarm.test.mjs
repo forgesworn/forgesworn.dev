@@ -293,7 +293,14 @@ test('a completed empty ICE gather reports no browser route without crediting pe
 
 test('active peer delivery survives fifteen minutes and multi-GiB incoming totals until explicit pause', async t => {
   const f = lifecycleFixture(t);
+  assert.equal(f.adapter.metrics().uploadPacing, null);
+  assert.equal(f.adapter.metrics().peerAdmission, null);
   await f.adapter.setEnabled(true);
+  assert.equal(f.adapter.metrics().uploadPacing, null, 'older SDK snapshots remain unknown instead of reporting zero queue activity');
+  assert.equal(f.adapter.metrics().peerAdmission, null);
+  const uploadPacing = { enabled: true, queued: 1, reservedBytes: 98304, waited: 1, granted: 0 };
+  const peerAdmission = { claimedLinks: 1, waiting: 1, claims: 2, waited: 1 };
+  Object.assign(f.cycles[0].live, { uploadPacing, peerAdmission });
   const identity = f.adapter.metrics().viewerId;
   for (let segment = 0; segment < 700; segment++) f.hls.loaded(4 * 1024 * 1024);
   f.advance(16 * 60 * 1000);
@@ -301,12 +308,16 @@ test('active peer delivery survives fifteen minutes and multi-GiB incoming total
   assert.deepEqual(live.library, { version: libraryBuild.version, sourceCommit: libraryBuild.sourceCommit });
   assert.equal(live.enabled, true); assert.equal(live.reason, 'opted-in'); assert.equal(live.serving, true);
   assert.equal(live.viewerId, identity); assert.equal(live.loadedMediaBytes, 700 * 4 * 1024 * 1024);
+  assert.deepEqual(live.uploadPacing, uploadPacing, 'the current SDK supplies its bounded queue accounting');
+  assert.deepEqual(live.peerAdmission, peerAdmission);
   assert.equal(live.resources.signallingConnections, 3); assert.equal(live.resources.activePeerConnections, 1);
   await f.adapter.setEnabled(true); assert.equal(f.cycles.length, 1, 'a later active enable does not replace the current peers');
   await f.adapter.setEnabled(false);
   assert.ok(f.sockets.every(socket => socket.readyState === 3));
   assert.ok(f.connections.every(connection => connection.connectionState === 'closed'));
   assert.equal(f.adapter.metrics().resources.heldBytes, 0); assert.equal(f.pendingTimers(), 0);
+  assert.equal(f.adapter.metrics().uploadPacing, null, 'retired SDK queue counters are not presented as a live queue');
+  assert.equal(f.adapter.metrics().peerAdmission, null);
   assert.equal(f.hls.config.fLoader, f.originLoader); assert.equal(f.video.currentTime, 123.25); assert.equal(f.video.volume, 0.4);
 });
 
@@ -412,6 +423,8 @@ test('recorded mode signs actual global sequence and discontinuity against the u
     await f.adapter.setEnabled(true);
     const options = f.cycles[0].options;
     assert.equal(options.warmAhead, quality === 'full', 'bounded loading ahead is enabled for full 4K only');
+    assert.equal(options.uploadPacing, quality === 'full', 'bounded upload admission is enabled for full 4K only');
+    assert.equal(options.maxUploadBytesPerSecond, 4 * 1024 * 1024, 'pacing does not increase the existing upload rate');
     assert.match(options.swarmId, /^forgesworn-recorded-live-v2-[a-f0-9]{64}$/);
     assert(options.swarmId.length <= 128);
     assert.equal(f.fetches.length, 2, 'enabling reuses prepared metadata instead of fetching media');
