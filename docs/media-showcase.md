@@ -12,6 +12,19 @@ not diverge.  `site/index.html` remains generated output.  The native
 loopback comparator at `media-lab.html` retains its separate process controls
 and opens its diagnostic sections automatically.
 
+The recording label sits with the source caption below the player. It does
+not cover the picture or Safari’s native fullscreen control when controls
+appear.
+
+A [physical Safari trace](evidence/physical-safari-playback-20261026.json) on
+26 October recorded 330 seconds of advancing ManagedMediaSource playback,
+including an actual programme wrap and 178 seconds afterwards. Observed
+counters stayed at zero stalls and player errors; the owner reported
+“Smooth, no pauses”. This qualifies that existing phone session on revision
+`9e07608`, not a cold phone cache, dropped-frame performance, peer delivery
+or public TURN. Native dimensions, audio properties and frame counters
+remain unmeasured.
+
 ## Real participation
 
 Each visitor has one visible video and one hls.js player.  There is no hidden
