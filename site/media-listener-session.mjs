@@ -1,7 +1,7 @@
 // Signed, short-lived observations of a shared listening clock. This is an
 // experimental public addressable event (NIP-01), not NIP-78 private app storage.
 // Relay partitions and dishonest clients prevent an authoritative audience count.
-import { finalizeEvent, generateSecretKey, verifyEvent } from './vendor/media-peer-demo.js?v=20261025-startup-buffer';
+import { finalizeEvent, generateSecretKey, verifyEvent } from './vendor/media-peer-demo.js?v=20261025-prepared-room';
 
 export const LISTENER_SESSION_KIND = 30378;
 export const LISTENER_TELEMETRY_KIND = 20378;
@@ -29,7 +29,10 @@ function integer(value, fallback, min, max, label) {
 }
 
 /**
- * join() is the only path that creates a viewer identity or publishes presence.
+ * prepareJoin() reserves a local actor without publishing a cold room; its
+ * opaque token is valid only until commit, leave, stop or operation cancellation.
+ * commitPreparedStart() publishes and waits for ACK, adopting any active epoch
+ * observed in the meantime. join() preserves immediate-start compatibility.
  * Explicit observe() opts into read-only metadata networking before playback.
  * duration is seconds; startedAt is Unix milliseconds; position() is seconds.
  * leave() is reusable; stop() is terminal. onChange receives a fresh snapshot.
@@ -67,7 +70,8 @@ export function createListenerSession(options, runtime = {}) {
   let lastCreatedAt = 0, lastPublishedAt = -Infinity, truncated = false;
   let generation = 0, pendingJoin = null, joinPromise = null;
   let openTimer = null, discoveryTimer = null, heartbeatTimer = null, publishTimer = null, ackTimer = null, observationTimer = null;
-  let initialEventId = null;
+  let initialEventId = null, prepareMode = false, preparedToken = null, committingToken = null, candidateId = null;
+  let operationSignal = null, operationAbort = null;
   const records = new Map(), reports = new Map(), entries = [];
 
   function position() {
@@ -86,7 +90,7 @@ export function createListenerSession(options, runtime = {}) {
     const rows = freshRows();
     const active = rows.filter(row => row.status === 'active' && (row.author !== id || phase === 'active'));
     const viewedEpoch = phase === 'observing' ? rows.map(row => row.epoch).sort(compareEpoch)[0] : epoch;
-    return { id, joined: ['discovering', 'publishing', 'active'].includes(phase), ready: phase === 'active', status: phase,
+    return { id, prepared: phase === 'prepared', joined: ['discovering', 'publishing', 'active'].includes(phase), ready: phase === 'active', status: phase,
       observed: entries.some(entry => entry.ws?.readyState === 1 && entry.observed),
       epochId: viewedEpoch?.id ?? null, startedAt: viewedEpoch?.startedAt ?? null, position: position(),
       listeners: active.length, truncated,
@@ -108,7 +112,17 @@ export function createListenerSession(options, runtime = {}) {
       if (result && typeof result.then === 'function') Promise.resolve(result).catch(() => {});
     } catch {}
   }
-  function bestEpoch() { return freshRows().map(row => row.epoch).sort(compareEpoch)[0] ?? null; }
+  function bestEpoch(activeOnly = false) { return freshRows().filter(row => !activeOnly || row.status === 'active').map(row => row.epoch).sort(compareEpoch)[0] ?? null; }
+  function clearOperationSignal() {
+    operationSignal?.removeEventListener('abort', operationAbort);
+    operationSignal = operationAbort = null;
+  }
+  function bindOperationSignal(value) {
+    clearOperationSignal();
+    if (!value) return;
+    operationSignal = value; operationAbort = () => failJoin(abortError());
+    value.addEventListener('abort', operationAbort, { once: true });
+  }
   function observationTick() {
     observationTimer = null;
     if (!observeOpted || phase === 'stopped') return;
@@ -122,7 +136,7 @@ export function createListenerSession(options, runtime = {}) {
     try { entry.ws.send(JSON.stringify(frame)); return true; } catch { entry.publication = previous; return false; }
   }
   function chooseEpoch() {
-    const best = bestEpoch();
+    const best = bestEpoch(prepareMode);
     if (['publishing', 'active'].includes(phase) && best && (!epoch || compareEpoch(best, epoch) < 0) && !sameEpoch(best, epoch)) {
       epoch = { ...best };
       queuePublish();
@@ -261,7 +275,16 @@ export function createListenerSession(options, runtime = {}) {
       failJoin(new Error('Listening relays disconnected during discovery.'));
       return;
     }
-    const existing = bestEpoch();
+    const existing = bestEpoch(prepareMode);
+    if (prepareMode && !existing) {
+      epoch = { id, startedAt: null }; candidateId = id; preparedToken = Object.freeze({});
+      phase = 'prepared';
+      notify();
+      if (phase !== 'prepared' || !preparedToken) return;
+      const pending = pendingJoin; pendingJoin = null; joinPromise = null;
+      pending?.resolve({ ...snapshot(), prepared: true, token: preparedToken });
+      return;
+    }
     epoch = existing ? { ...existing } : { id, startedAt: now() };
     phase = 'publishing';
     ackTimer = later(() => failJoin(new Error('Listening relays did not accept this listener.')), publishTimeoutMs);
@@ -271,6 +294,9 @@ export function createListenerSession(options, runtime = {}) {
     if (phase !== 'publishing' || eventId !== initialEventId) return;
     cancel(ackTimer); ackTimer = null;
     phase = 'active';
+    // ACK owns the active room before notifying the host, which may retire
+    // the old SDK synchronously and abort its completed commit operation.
+    clearOperationSignal();
     // A newly observed older epoch may have converged while the ACK was pending.
     if (!sameEpoch(JSON.parse(lastEvent.content).epoch, epoch)) queuePublish();
     heartbeatTimer = later(heartbeat, heartbeatMs);
@@ -278,7 +304,9 @@ export function createListenerSession(options, runtime = {}) {
     notify();
     if (phase !== 'active') return;
     const pending = pendingJoin; pendingJoin = null;
-    pending?.resolve(snapshot());
+    const result = { ...snapshot(), ...(prepareMode ? { prepared: false, token: null, adopted: Boolean(candidateId && epoch.id !== candidateId) } : {}) };
+    preparedToken = committingToken = null;
+    pending?.resolve(result);
   }
   function disposeSocket(entry) {
     cancel(entry.openTimer); entry.openTimer = null;
@@ -289,13 +317,13 @@ export function createListenerSession(options, runtime = {}) {
     try { ws.close(); } catch {}
   }
   function connect(entry, token) {
-    if (token !== generation || !['observing', 'discovering', 'publishing', 'active'].includes(phase)) return;
+    if (token !== generation || !['observing', 'discovering', 'prepared', 'publishing', 'active'].includes(phase)) return;
     entry.attempts++;
     let ws;
     const failed = () => {
       if (entry.ws !== ws) return;
       disposeSocket(entry); notify();
-      if (token === generation && ['observing', 'discovering', 'publishing', 'active'].includes(phase) && entry.attempts <= MAX_RETRIES) {
+      if (token === generation && ['observing', 'discovering', 'prepared', 'publishing', 'active'].includes(phase) && entry.attempts <= MAX_RETRIES) {
         entry.retry = later(() => { entry.retry = null; connect(entry, token); }, Math.min(1000 * 2 ** Math.max(0, entry.attempts - 1), 16000));
       }
     };
@@ -360,14 +388,15 @@ export function createListenerSession(options, runtime = {}) {
   function clearActor(nextPhase, error) {
     for (const timer of [openTimer, discoveryTimer, heartbeatTimer, publishTimer, ackTimer]) cancel(timer);
     openTimer = discoveryTimer = heartbeatTimer = publishTimer = ackTimer = null;
+    clearOperationSignal(); preparedToken = committingToken = candidateId = null; prepareMode = false;
     key?.fill(0); key = null; id = null; epoch = null; lastEvent = null; initialEventId = null;
     phase = nextPhase;
     const pending = pendingJoin; pendingJoin = null; joinPromise = null;
     pending?.reject(error ?? abortError());
   }
   function failJoin(error) {
+    if (phase === 'publishing' && (prepareMode || observeOpted)) publish('left');
     if (!observeOpted) return teardown('unavailable', error);
-    if (phase === 'publishing') publish('left');
     clearActor('observing', error);
     notify();
   }
@@ -385,7 +414,7 @@ export function createListenerSession(options, runtime = {}) {
     for (const [index, url] of relays.entries()) {
       const entry = { url, sub: `listen-${++subscriptionSerial}-${index}`, ws: null, retry: null, openTimer: null,
         attempts: 0, rateAt: now(), frames: 0, handlers: null, publication: null, observed: false };
-      if (token !== generation || !['observing', 'discovering', 'publishing', 'active'].includes(phase)) break;
+      if (token !== generation || !['observing', 'discovering', 'prepared', 'publishing', 'active'].includes(phase)) break;
       entries.push(entry); connect(entry, token);
     }
   }
@@ -398,11 +427,17 @@ export function createListenerSession(options, runtime = {}) {
     notify();
     return snapshot();
   }
-  function join() {
-    if (phase === 'stopped' || signal?.aborted) return Promise.reject(abortError());
-    if (phase === 'active') return Promise.resolve(snapshot());
-    if (joinPromise) return joinPromise;
+  function beginJoin(prepared, operation = {}) {
+    if (phase === 'stopped' || signal?.aborted || operation.signal?.aborted) return Promise.reject(abortError());
+    if (phase === 'active') return Promise.resolve({ ...snapshot(), ...(prepared ? { prepared: false, token: null } : {}) });
+    if (phase === 'prepared') return prepared ? Promise.resolve({ ...snapshot(), prepared: true, token: preparedToken }) : commitPreparedStart(preparedToken, operation);
+    if (joinPromise) {
+      if (!prepared && phase === 'discovering') prepareMode = false;
+      return prepared && !prepareMode ? joinPromise.then(value => ({ ...value, prepared: false, token: null })) : joinPromise;
+    }
     if (typeof Socket !== 'function') return Promise.reject(new Error('Listening relays are unavailable.'));
+    prepareMode = prepared; candidateId = null;
+    bindOperationSignal(operation.signal);
     phase = 'discovering'; lastCreatedAt = 0; lastPublishedAt = -Infinity; truncated = false;
     key = generateSecretKey();
     id = finalizeEvent({ kind: LISTENER_SESSION_KIND, created_at: Math.floor(now() / 1000), tags: [], content: '' }, key).pubkey;
@@ -415,6 +450,25 @@ export function createListenerSession(options, runtime = {}) {
       discoveryTimer = later(finishDiscovery, discoveryMs);
     }
     notify();
+    return result;
+  }
+  function prepareJoin(operation = {}) { return beginJoin(true, operation); }
+  function join() { return beginJoin(false); }
+  function commitPreparedStart(token, operation = {}) {
+    if (phase === 'publishing' && token && token === committingToken) return joinPromise;
+    if (phase !== 'prepared' || !token || token !== preparedToken || signal?.aborted || operation.signal?.aborted) {
+      if (phase === 'prepared' && token === preparedToken && operation.signal?.aborted) failJoin(abortError());
+      return Promise.reject(abortError());
+    }
+    bindOperationSignal(operation.signal);
+    committingToken = token; preparedToken = null;
+    const existing = bestEpoch(true);
+    epoch = existing ? { ...existing } : { id: candidateId, startedAt: now() };
+    phase = 'publishing';
+    joinPromise = new Promise((resolve, reject) => { pendingJoin = { resolve, reject }; });
+    const result = joinPromise;
+    ackTimer = later(() => failJoin(new Error('Listening relays did not accept this listener.')), publishTimeoutMs);
+    publish(); notify();
     return result;
   }
   function leave() {
@@ -432,5 +486,5 @@ export function createListenerSession(options, runtime = {}) {
   }
   signal?.addEventListener('abort', stop, { once: true });
   page?.addEventListener('pagehide', stop, { once: true });
-  return { observe, join, snapshot, position, leave, stop };
+  return { observe, prepareJoin, commitPreparedStart, join, snapshot, position, leave, stop };
 }

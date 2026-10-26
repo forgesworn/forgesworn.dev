@@ -70,16 +70,20 @@ function stats() {
     loading: { start: 0, first: 0, end: 0 }, parsing: { start: 0, end: 0 }, buffering: { start: 0, first: 0, end: 0 } };
 }
 
-/** A fixed session origin: Hls time zero is the first issued fragment, not SN. */
+/** A fixed session origin: Hls time zero is the first issued fragment, not SN.
+ * Explicit epochMs:null prepares raw zero without PDT or an advancing clock.
+ * anchor(ms) binds that local view once; it never rebases an active timeline. */
 export function createRecordedLive({ recording, epochMs, now = Date.now, signal, aheadSeconds = 24, backSeconds = 4,
   passthroughUrls = [] } = {}) {
   try {
-    if (!recordings.has(recording) || !Number.isSafeInteger(epochMs) || epochMs < 0 || typeof now !== 'function' || signal?.aborted ||
+    if (!recordings.has(recording) || (epochMs !== null && (!Number.isSafeInteger(epochMs) || epochMs < 0)) || typeof now !== 'function' || signal?.aborted ||
         !Number.isFinite(aheadSeconds) || aheadSeconds < recording.targetDuration * 3 || aheadSeconds > 30 ||
         !Number.isFinite(backSeconds) || backSeconds < 0 || backSeconds > 24 || !Array.isArray(passthroughUrls) || passthroughUrls.length > 4) return null;
     const pass = new Set(passthroughUrls.map(value => approvedUrl(value)));
     const count = recording.segments.length, duration = recording.durationUs;
     const elapsedAt = at => {
+      if (!Number.isFinite(at)) throw new Error('Unsupported timeline');
+      if (epochMs === null) return 0;
       const elapsed = Math.round((at - epochMs) * 1000);
       if (!Number.isSafeInteger(elapsed) || elapsed < 0 || elapsed > Number.MAX_SAFE_INTEGER - 60_000_000) throw new Error('Unsupported timeline');
       return elapsed;
@@ -93,8 +97,8 @@ export function createRecordedLive({ recording, epochMs, now = Date.now, signal,
     };
     const createdAt = now(), first = locate(elapsedAt(createdAt));
     const originOffsetUs = first.cycle * duration + recording.segments[first.index].startUs;
-    const timelineOriginMs = epochMs + originOffsetUs / 1000;
-    if (!Number.isFinite(timelineOriginMs) || !Number.isFinite(new Date(timelineOriginMs).getTime())) return null;
+    const timelineOrigin = () => epochMs === null ? null : epochMs + originOffsetUs / 1000;
+    if (epochMs !== null && (!Number.isFinite(timelineOrigin()) || !Number.isFinite(new Date(timelineOrigin()).getTime()))) return null;
     let stopped = false, issued = false;
     const active = new Set();
     const windowAt = (at, initial = false) => {
@@ -113,10 +117,10 @@ export function createRecordedLive({ recording, epochMs, now = Date.now, signal,
         const programmeUs = cc * duration + segment.startUs;
         if (sn !== start && index === 0) lines.push('#EXT-X-DISCONTINUITY');
         if (sn === start || index === 0) lines.push(`#EXT-X-MAP:URI="${recording.initUrl}"`);
-        lines.push(`#EXT-X-PROGRAM-DATE-TIME:${new Date(epochMs + programmeUs / 1000).toISOString()}`,
-          `#EXTINF:${(segment.durationUs / 1_000_000).toFixed(6)},`, segment.url);
+        if (epochMs !== null) lines.push(`#EXT-X-PROGRAM-DATE-TIME:${new Date(epochMs + programmeUs / 1000).toISOString()}`);
+        lines.push(`#EXTINF:${(segment.durationUs / 1_000_000).toFixed(6)},`, segment.url);
         fragments.push(Object.freeze({ sn, cc, index, url: segment.url, durationSeconds: segment.durationUs / 1_000_000,
-          mediaStart: (programmeUs - originOffsetUs) / 1_000_000, programmeTimeMs: epochMs + programmeUs / 1000 }));
+          mediaStart: (programmeUs - originOffsetUs) / 1_000_000, programmeTimeMs: epochMs === null ? null : epochMs + programmeUs / 1000 }));
       }
       const text = lines.join('\n') + '\n';
       if (encode(text).length > LIMITS.playlistBytes) throw new Error('Timeline playlist exceeds bounds');
@@ -185,7 +189,12 @@ export function createRecordedLive({ recording, epochMs, now = Date.now, signal,
       }
       destroy() { this.abort(); }
     };
-    return Object.freeze({ recording, timelineOriginMs, originSequence: first.sn, aheadSeconds, backSeconds,
+    return Object.freeze({ recording, get timelineOriginMs() { return timelineOrigin(); },
+      anchor(value) {
+        const at = now();
+        if (stopped || epochMs !== null || !Number.isSafeInteger(value) || value < 0 || !Number.isFinite(new Date(value).getTime()) || !Number.isFinite(at) || value > at) return false;
+        epochMs = value; return true;
+      }, originSequence: first.sn, aheadSeconds, backSeconds,
       durationSeconds: recording.durationSeconds, startPosition: (elapsedAt(createdAt) - originOffsetUs) / 1_000_000,
       mediaTimeAt: at => (elapsedAt(at) - originOffsetUs) / 1_000_000,
       recordingPosition: mediaTime => Number.isFinite(mediaTime) ? mod(recording.segments[first.index].startUs / 1_000_000 + mediaTime, duration / 1_000_000) : null,

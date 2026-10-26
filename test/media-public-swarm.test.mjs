@@ -117,7 +117,7 @@ test('public configuration bounds upload rate, peers and cache without a cumulat
 // Exercise the real adapter lifecycle with an injected SDK factory. Native
 // resource ownership and SDK accounting snapshots are simulated; no video/network
 // benchmark or real GiB transfer is claimed by these unit tests.
-function lifecycleFixture(t, { turnCredentials, turnConfiguration, turnFactory, origin = 'https://forgesworn.dev/live-media.html', fetchResponse, startupBufferTarget, startupBufferNeeded } = {}) {
+function lifecycleFixture(t, { turnCredentials, turnConfiguration, turnFactory, origin = 'https://forgesworn.dev/live-media.html', fetchResponse, startupBufferTarget, startupBufferNeeded, startupBufferCommit } = {}) {
   let at = 0, nextTimer = 0, adapter;
   const timers = new Map(), globals = new Map(), sockets = [], connections = [], cycles = [];
   const page = new EventTarget(), abort = new AbortController(), fetches = [];
@@ -203,7 +203,7 @@ function lifecycleFixture(t, { turnCredentials, turnConfiguration, turnFactory, 
   };
   const createAdapter = (recordedLive, quality = 'full') => createPublicSwarm({ Hls, hls, video,
     playlistUrl: quality === 'full' ? full.playlistUrl : preview.playlistUrl,
-    quality, signal: abort.signal, turnConfiguration, startupBufferTarget, startupBufferNeeded, ...(recordedLive === undefined ? {} : { recordedLive }) }, { createSwarm, createTurnCredentials });
+    quality, signal: abort.signal, turnConfiguration, startupBufferTarget, startupBufferNeeded, startupBufferCommit, ...(recordedLive === undefined ? {} : { recordedLive }) }, { createSwarm, createTurnCredentials });
   adapter = createAdapter();
   const originLoader = hls.config.fLoader;
   return { get adapter() { return adapter; }, hls, video, originLoader, sockets, connections, cycles, abort, fetches, turnConfigurations,
@@ -499,6 +499,30 @@ test('a fresh SDK on resume has no startup barrier after its current pipeline pr
   needsFrame = true;
   f.useRecorded({ recording, epochId: 'b'.repeat(64) }); await f.adapter.setEnabled(true);
   assert.equal(f.cycles[2].options.startupBufferTarget(), 3, 'a new current pipeline can need the barrier again');
+});
+
+test('startup room activation belongs to the current recorded adapter and original abort signal', async t => {
+  let calls = 0, received, finish;
+  const gate = new Promise(resolve => { finish = resolve; });
+  const f = lifecycleFixture(t, { startupBufferNeeded: () => true, startupBufferTarget: () => 0,
+    startupBufferCommit: value => { calls++; received = value; return gate; } });
+  await f.adapter.setEnabled(true);
+  assert.equal(f.cycles[0].options.startupBufferCommit, null, 'ordinary VOD cannot activate a prepared room');
+  const recording = await f.prepare(); f.useRecorded({ recording, epochId: 'a'.repeat(64) });
+  await f.adapter.setEnabled(true);
+  const commit = f.cycles[1].options.startupBufferCommit;
+  const signal = new AbortController().signal;
+  const pending = commit(Object.freeze({ signal }));
+  assert.equal(calls, 1); assert.equal(received.signal, signal); assert.equal(Object.isFrozen(received), true);
+  await f.adapter.setEnabled(false);
+  finish();
+  await assert.rejects(pending, { name: 'AbortError' }, 'late activation settlement cannot approve an old SDK generation');
+  await assert.rejects(commit({ signal }), { name: 'AbortError' });
+  assert.equal(calls, 1, 'retired callbacks never invoke host activation');
+  await f.adapter.setEnabled(true);
+  const cancelled = new AbortController(); cancelled.abort();
+  await assert.rejects(f.cycles[2].options.startupBufferCommit({ signal: cancelled.signal }), { name: 'AbortError' });
+  assert.equal(calls, 1, 'an already cancelled startup cannot publish room presence');
 });
 
 test('recorded mapping refuses wrong URI, duration, global identity and unsupported media contexts', async t => {

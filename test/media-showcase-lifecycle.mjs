@@ -26,15 +26,39 @@ const fixtures = {
   '/media-listener-session.mjs': `export function createListenerSession({onChange,room,duration}) {
     fixture.roomConfig={room,duration};
     const position=()=>fixture.recorded?((Date.now()-fixture.startedAt)/1000)%fixture.sourceDuration:50;
-    let joined=false,generation=0; const snapshot=()=>({ready:joined,observed:true,connectedRelays:1,joined,
-      listeners:joined?1:0,epochId:fixture.epochId,position:position(),startedAt:fixture.startedAt});
+    let joined=false,prepared=false,token=null,generation=0;
+    const snapshot=()=>({ready:joined,prepared,observed:true,connectedRelays:1,joined,
+      listeners:joined?1:0,epochId:fixture.coldRoom&&!prepared&&!joined?null:fixture.epochId,
+      position:prepared||fixture.coldRoom&&!joined?0:position(),startedAt:prepared?null:fixture.startedAt});
     const notify=()=>onChange(snapshot()); fixture.roomUpdate=notify;
     fixture.replaceEpoch=()=>{fixture.epochId='2'.repeat(64);fixture.startedAt=Date.now()-10_000;notify()};
-    return {snapshot,position,observe:notify,join:async()=>{
+    const roomApi={snapshot,position,observe:notify,join:async()=>{
       const request=++generation; fixture.trace.push({kind:'join'});
       if(fixture.holdJoin) await new Promise(resolve=>fixture.joinWaiters.push(resolve));
       if(request!==generation) throw new DOMException('Join cancelled','AbortError'); joined=true; notify();
-    },leave:()=>{generation++;joined=false;notify()},stop(){generation++}};
+    },leave:()=>{generation++;joined=false;prepared=false;token=null;notify()},stop(){generation++}};
+    if(fixture.coldRoom){
+      roomApi.prepareJoin=async()=>{
+        const request=++generation;fixture.trace.push({kind:'join'});
+        if(fixture.holdJoin)await new Promise(resolve=>fixture.joinWaiters.push(resolve));
+        if(request!==generation)throw new DOMException('Prepare cancelled','AbortError');
+        if(joined)return {...snapshot(),token:null};
+        fixture.preparations=(fixture.preparations||0)+1;
+        if(fixture.preparations>1)fixture.epochId='3'.repeat(64);
+        prepared=true;token=Object.freeze({});notify();return {...snapshot(),token};
+      };
+      roomApi.commitPreparedStart=async(value,{signal}={})=>{
+        const request=generation;fixture.trace.push({kind:'commit'});
+        if(value!==token||!prepared||signal?.aborted)throw new DOMException('Invalid preparation','AbortError');
+        if(fixture.holdCommit)await new Promise(resolve=>fixture.commitWaiters.push(resolve));
+        if(request!==generation||value!==token||signal?.aborted)throw new DOMException('Commit cancelled','AbortError');
+        const adopted=fixture.adoptOnCommit===true;
+        if(adopted)fixture.epochId='2'.repeat(64);
+        fixture.startedAt=Date.now()-(adopted?10_000:0);prepared=false;token=null;joined=true;notify();
+        return {...snapshot(),adopted};
+      };
+    }
+    return roomApi;
   }`,
   '/media-public-swarm.mjs': `import * as real from '/__actual-public-swarm.mjs';
     export const PUBLIC_SWARM_SOURCE_SHA256=real.PUBLIC_SWARM_SOURCE_SHA256,PUBLIC_SWARM_RELAYS=[];
@@ -66,7 +90,7 @@ const types = { '.html':'text/html','.mjs':'text/javascript','.js':'text/javascr
 let browser;
 const checks=[];
 async function open({held=false,heldVisual=false,heldRoomCode=false,heldMetadata=false,engine='mse',reject=false,
-  recorded=false,quality='full',holdPeerEnable=false,frameWitness='rvfc'}={}) {
+  recorded=false,quality='full',holdPeerEnable=false,frameWitness='rvfc',coldRoom=false,holdCommit=false}={}) {
   const context=await browser.newContext(),page=await context.newPage(),errors=[],mediaRequests=[];
   page.setDefaultTimeout(8000);
   let release;const gate=new Promise(resolve=>{release=resolve});if(!held)release();
@@ -86,11 +110,12 @@ async function open({held=false,heldVisual=false,heldRoomCode=false,heldMetadata
     try{return await route.fulfill({contentType:types[extname(path)]??'application/octet-stream',body:await readFile(path)})}
     catch{return route.fulfill({status:404,body:''})}
   });
-  await page.addInitScript(({engine,reject,recorded,quality,holdPeerEnable,frameWitness})=>{
+  await page.addInitScript(({engine,reject,recorded,quality,holdPeerEnable,frameWitness,coldRoom,holdCommit})=>{
     const state=window.fixture={engine,reject,players:[],peers:[],trace:[],readyState:1,currentTime:0,ranges:[],paused:true,seeking:false,source:'',
       recorded,views:[],prepared:[],brandedAdapters:0,nativeCapable:false,epochId:'1'.repeat(64),startedAt:Date.now()-50_000,
       sourceDuration:quality==='preview'?29.96:267.32,duration:quality==='preview'?29.96:267.32,wallOffset:0,
-      holdJoin:true,joinWaiters:[],playWaiters:[],inTap:false,trusted:false,holdPeerEnable,peerWaiters:[],metadataHandlers:[]};
+      holdJoin:true,joinWaiters:[],playWaiters:[],inTap:false,trusted:false,holdPeerEnable,peerWaiters:[],metadataHandlers:[],
+      coldRoom,holdCommit,commitWaiters:[]};
     const wallNow=Date.now;Date.now=()=>wallNow()+state.wallOffset;
     const add = EventTarget.prototype.addEventListener;
     EventTarget.prototype.addEventListener = function (type, callback, options) {
@@ -104,6 +129,7 @@ async function open({held=false,heldVisual=false,heldRoomCode=false,heldMetadata
     };
     state.releaseRoom=()=>{state.holdJoin=false;for(const resolve of state.joinWaiters.splice(0))resolve()};
     state.releasePeer=()=>{state.holdPeerEnable=false;for(const resolve of state.peerWaiters.splice(0))resolve()};
+    state.releaseCommit=()=>{state.holdCommit=false;for(const resolve of state.commitWaiters.splice(0))resolve()};
     state.finishPlay=()=>{state.readyState=4;state.ranges=[[0,100]];for(const {resolve}of state.playWaiters.splice(0))resolve();document.getElementById('lab-video').dispatchEvent(new Event('playing'))};
     state.presentFrame=()=>{state.frameCallback?.(performance.now(),{width:3840,height:2160})};
     state.frameCallbacks=[];state.frameRegistrations=0;
@@ -126,7 +152,7 @@ async function open({held=false,heldVisual=false,heldRoomCode=false,heldMetadata
       state.paused=false;this.dispatchEvent(new Event('play'));return new Promise((resolve,reject)=>state.playWaiters.push({resolve,reject}));};
     HTMLMediaElement.prototype.pause=function(){state.paused=true;this.dispatchEvent(new Event('pause'));for(const {reject}of state.playWaiters.splice(0))reject(new DOMException('Paused','AbortError'))};
     HTMLMediaElement.prototype.load=function(){state.trace.push({kind:'load'})};
-  },{engine,reject,recorded,quality,holdPeerEnable,frameWitness});
+  },{engine,reject,recorded,quality,holdPeerEnable,frameWitness,coldRoom,holdCommit});
   await page.goto(origin+'/?q='+quality,{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>fixture.requested);
   if(!held)await page.waitForFunction(()=>!document.getElementById('public-play').disabled);
   return {page,context,errors,mediaRequests,release,releaseVisual,releaseRoomCode,releaseMetadata};
@@ -511,6 +537,76 @@ try {
     assert.equal(await failed.page.evaluate(()=>fixture.peers.every(p=>!p.enabled)),true);await close(failed);
   }
   checks.push('fatal HLS/media errors clear Loading and fence old promise rejection');
+
+  const cold=await open({recorded:true,coldRoom:true,holdCommit:true});
+  await cold.page.locator('#public-play').click();await cold.page.evaluate(()=>fixture.releaseRoom());
+  await cold.page.waitForFunction(()=>fixture.trace.some(x=>x.kind==='startLoad'));
+  const prepared=await cold.page.evaluate(()=>{
+    fixture.wallOffset+=4000;
+    return {target:fixture.peers[0].options.startupBufferTarget(),view:fixture.views[0].mediaTimeAt(Date.now()),
+      commits:fixture.trace.filter(x=>x.kind==='commit').length,count:document.getElementById('main').dataset.watcherCount,
+      loads:fixture.trace.filter(x=>x.kind==='startLoad').map(x=>x.position)};
+  });
+  assert.equal(prepared.target,0);assert.equal(prepared.view,0);assert.equal(prepared.commits,0);
+  assert.deepEqual(prepared.loads,[0],'an unpublished room prepares the genuine first raw fragment');
+  assert.equal(prepared.count,'0','preparation does not invent an active watcher');
+  await cold.page.evaluate(()=>{
+    fixture.commitController=new AbortController();
+    fixture.peers[0].options.startupBufferCommit({signal:fixture.commitController.signal})
+      .then(()=>fixture.commitOutcome='done',error=>fixture.commitOutcome=error.name);
+  });
+  await cold.page.waitForFunction(()=>fixture.trace.some(x=>x.kind==='commit'));
+  assert.equal(await cold.page.evaluate(()=>fixture.views[0].mediaTimeAt(Date.now())),0,'pending ACK cannot start the local clock');
+  await cold.page.evaluate(()=>fixture.releaseCommit());
+  await cold.page.waitForFunction(()=>fixture.commitOutcome==='done');
+  const anchored=await cold.page.evaluate(()=>{
+    const target=fixture.peers[0].options.startupBufferTarget();
+    fixture.commitController.abort();
+    fixture.finishPlay();fixture.presentFrame();
+    return {target,players:fixture.players.length,attaches:fixture.trace.filter(x=>x.kind==='attach').length,
+      plays:fixture.trace.filter(x=>x.kind==='play').length,epoch:document.getElementById('main').dataset.sharedEpoch};
+  });
+  assert(anchored.target>=0&&anchored.target<0.75,'fresh playback starts against the newly acknowledged anchor');
+  assert.deepEqual([anchored.players,anchored.attaches,anchored.plays],[1,1,1]);assert.equal(anchored.epoch,'1'.repeat(64));
+  await close(cold);
+
+  for(const adopt of [false,true]){
+    const pending=await open({recorded:true,coldRoom:true,holdCommit:true});
+    await pending.page.locator('#public-play').click();await pending.page.evaluate(()=>fixture.releaseRoom());
+    await pending.page.waitForFunction(()=>fixture.peers.length===1&&typeof fixture.peers[0].options.startupBufferCommit==='function');
+    await pending.page.evaluate(()=>{
+      fixture.peers[0].options.startupBufferCommit({signal:new AbortController().signal})
+        .then(()=>fixture.commitOutcome='done',error=>fixture.commitOutcome=error.name);
+    });
+    await pending.page.waitForFunction(()=>fixture.trace.some(x=>x.kind==='commit'));
+    await pending.page.evaluate(adopt=>{if(adopt)fixture.adoptOnCommit=true;else document.getElementById('lab-video').pause();fixture.releaseCommit()},adopt);
+    await pending.page.waitForFunction(()=>fixture.commitOutcome==='AbortError');
+    if(adopt){
+      await pending.page.waitForFunction(()=>fixture.peers.length===2&&fixture.trace.filter(x=>x.kind==='source').length===2);
+      const converged=await pending.page.evaluate(()=>({players:fixture.players.length,attaches:fixture.trace.filter(x=>x.kind==='attach').length,
+        plays:fixture.trace.filter(x=>x.kind==='play').length,oldStopped:fixture.peers[0].stopped,
+        epoch:fixture.peers[1].options.recordedLive.epochId,target:fixture.peers[1].options.startupBufferTarget(),
+        metadataHandlers:fixture.metadataHandlers.length}));
+      assert.deepEqual([converged.players,converged.attaches,converged.plays],[1,1,1],'a losing unpresented candidate reuses the trusted pipeline');
+      assert.equal(converged.oldStopped,true);assert.equal(converged.epoch,'2'.repeat(64));assert(converged.target>0);
+      assert.equal(converged.metadataHandlers,2,'new epoch arms its own initial metadata alignment');
+    }else{
+      assert.equal(await pending.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='source').length),1,'late cancelled activation cannot reload or resume');
+      await pending.page.evaluate(()=>{void document.getElementById('lab-video').play()});
+      await pending.page.waitForFunction(()=>fixture.peers.length===2&&fixture.trace.filter(x=>x.kind==='source').length===2);
+      await pending.page.evaluate(async()=>{
+        await fixture.peers[1].options.startupBufferCommit({signal:new AbortController().signal});
+        fixture.finishPlay();fixture.presentFrame();
+      });
+      const resumed=await pending.page.evaluate(()=>({players:fixture.players.length,attaches:fixture.trace.filter(x=>x.kind==='attach').length,
+        plays:fixture.trace.filter(x=>x.kind==='play').length,epoch:fixture.peers[1].options.recordedLive.epochId,
+        oldStopped:fixture.peers[0].stopped}));
+      assert.deepEqual([resumed.players,resumed.attaches,resumed.plays],[1,1,2],'explicit resume prepares afresh on the same empty player');
+      assert.equal(resumed.oldStopped,true);assert.equal(resumed.epoch,'3'.repeat(64));
+    }
+    await close(pending);
+  }
+  checks.push('first room buffers at zero before activation; ACK anchors one trusted pipeline; pause and competing epochs retire candidate authority');
 
   const preFrameResume=await open({recorded:true});
   await preFrameResume.page.locator('#public-play').click();await preFrameResume.page.evaluate(()=>fixture.releaseRoom());

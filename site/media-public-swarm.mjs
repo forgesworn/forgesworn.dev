@@ -3,10 +3,10 @@
 // A receiver's ephemeral key wraps that digest for the existing live-commitment
 // verifier; this is local attestation, not a live broadcaster signing service.
 import { createHlsSwarm, commitmentContent, commitmentPieceSize, segmentMediaContext, KIND_SEGMENT_COMMITMENT, finalizeEvent,
-  generateSecretKey, relayswarmBuild } from './vendor/media-peer-demo.js?v=20261025-startup-buffer';
-import { observeOriginLoader } from './media-transfer-stats.mjs?v=20261025-startup-buffer';
-import { createPublicTurnCredentials } from './media-turn-credentials.mjs?v=20261025-startup-buffer';
-import { parseRecordedManifest, createRecordedLive } from './media-recorded-live.mjs?v=20261025-startup-buffer';
+  generateSecretKey, relayswarmBuild } from './vendor/media-peer-demo.js?v=20261025-prepared-room';
+import { observeOriginLoader } from './media-transfer-stats.mjs?v=20261025-prepared-room';
+import { createPublicTurnCredentials } from './media-turn-credentials.mjs?v=20261025-prepared-room';
+import { parseRecordedManifest, createRecordedLive } from './media-recorded-live.mjs?v=20261025-prepared-room';
 export { createRecordedLive };
 
 export const PUBLIC_SWARM_LIMITS = Object.freeze({
@@ -193,7 +193,7 @@ function recordedCatalogueSegment(recording, plan, context) {
  * rate, peer count and cache remain bounded until this adapter is stopped.
  * setEnabled(false) restores the normal HTTP loader without replacing the
  * video, seeking, muting, or destroying its current MediaSource. */
-export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signal, onStats = () => {}, recordedLive, turnConfiguration, startupBufferTarget, startupBufferNeeded },
+export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signal, onStats = () => {}, recordedLive, turnConfiguration, startupBufferTarget, startupBufferNeeded, startupBufferCommit },
   { createSwarm = createHlsSwarm, createTurnCredentials = createPublicTurnCredentials } = {}) {
   if (!Hls || !hls?.config || !video) throw new Error('An existing video and HLS player are required.');
   const origin = globalThis.location?.href;
@@ -469,8 +469,8 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
         }
         swarm = createSwarm({ mode: 'peer-first', swarmId: plan.swarmId, relays: [...PUBLIC_SWARM_RELAYS],
           streamEvent, getCommitment, serve: true, serveOnCellular: false,
-          coreWasm: new URL('./vendor/relayswarm-core.wasm?v=20261025-startup-buffer', import.meta.url), multiHolder: true,
-          transferWorkerUrl: new URL('./vendor/relayswarm-transfer-worker.js?v=20261025-startup-buffer', import.meta.url),
+          coreWasm: new URL('./vendor/relayswarm-core.wasm?v=20261025-prepared-room', import.meta.url), multiHolder: true,
+          transferWorkerUrl: new URL('./vendor/relayswarm-transfer-worker.js?v=20261025-prepared-room', import.meta.url),
           zeroBudgetPeerRace: true, lateHaveRace: true, sustainablePeerWait: true,
           warmAhead: false,
           startupBufferTarget: needsStartupBuffer ? () => {
@@ -479,6 +479,12 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
               const target = startupBufferTarget();
               return Number.isFinite(target) && target >= 0 ? target : null;
             } catch { return null; }
+          } : null,
+          startupBufferCommit: needsStartupBuffer && typeof startupBufferCommit === 'function' ? async ({ signal: startupSignal }) => {
+            const current = () => enabled && !stopped && ownGeneration === generation && !startupSignal.aborted;
+            if (!current()) throw new DOMException('Startup cancelled', 'AbortError');
+            await startupBufferCommit(Object.freeze({ signal: startupSignal }));
+            if (!current()) throw new DOMException('Startup cancelled', 'AbortError');
           } : null,
           uploadPacing: quality === 'full',
           latePeerRace: quality === 'full',

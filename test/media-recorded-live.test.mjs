@@ -159,3 +159,32 @@ test('manifest verification cancellation and a clock before the fixed origin dec
   assert.throws(() => plan.windowAt(epoch + 2_999), /precedes timeline/);
   plan.stop();
 });
+
+test('unanchored preparation freezes raw zero without invented PDT and one anchor preserves fragment identities', async () => {
+  const recording = await parse(); let at = epoch;
+  const plan = createRecordedLive({ recording, epochMs: null, now: () => at, aheadSeconds: 5, backSeconds: 2 });
+  assert(plan); assert.equal(plan.timelineOriginMs, null); assert.equal(plan.originSequence, 0); assert.equal(plan.startPosition, 0);
+  const first = plan.windowAt(at); at += 12000; const later = plan.windowAt(at);
+  assert.equal(plan.mediaTimeAt(at), 0); assert.deepEqual(later, first); assert(!first.text.includes('PROGRAM-DATE-TIME'));
+  assert(first.fragments.every(f => f.programmeTimeMs === null));
+  const identities = window => window.fragments.map(({ programmeTimeMs, ...identity }) => identity);
+  for (const bad of [undefined, null, NaN, -1, at + 1, 1.5]) assert.equal(plan.anchor(bad), false);
+  assert.equal(plan.anchor(at), true); assert.equal(plan.timelineOriginMs, at); assert.equal(plan.mediaTimeAt(at), 0);
+  const anchored = plan.windowAt(at); assert.deepEqual(identities(anchored), identities(first));
+  assert.match(anchored.text, /#EXT-X-PROGRAM-DATE-TIME:/); assert.equal(anchored.fragments[0].programmeTimeMs, at);
+  assert.equal(plan.anchor(at), false); assert.equal(plan.anchor(at - 1), false);
+  at += 1000; assert.equal(plan.mediaTimeAt(at), 1); plan.stop();
+});
+
+test('unanchored loader updates only clock metadata after anchor and cancellation prevents anchoring', async () => {
+  const recording = await parse(); let at = epoch; const cancellation = new AbortController();
+  const plan = createRecordedLive({ recording, epochMs: null, now: () => at, signal: cancellation.signal, aheadSeconds: 5 });
+  const Loader = plan.createPlaylistLoader(); const load = () => new Promise(resolve => new Loader({}).load({ url, type: 'level' }, {}, { onSuccess: response => resolve(response.data) }));
+  const before = await load(); at += 7000; assert.equal(plan.anchor(at), true); const after = await load();
+  assert.equal(after.replace(/^#EXT-X-PROGRAM-DATE-TIME:.*\n/gm, ''), before);
+  const other = createRecordedLive({ recording, epochMs: null, now: () => at, signal: cancellation.signal, aheadSeconds: 5 });
+  cancellation.abort(); assert.equal(other.anchor(at), false); assert.throws(() => other.windowAt(at), /stopped/);
+  const existing = createRecordedLive({ recording, epochMs: epoch, now: () => at, aheadSeconds: 5 });
+  assert.equal(existing.anchor(at), false); assert.equal(existing.mediaTimeAt(at), 0.04);
+  existing.stop();
+});

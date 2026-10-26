@@ -1,8 +1,8 @@
 import { readInitialLiveStart } from './media-live-start.mjs';
-import { createSourceResponseStats, publicSourceResource, transferBytes } from './media-transfer-stats.mjs?v=20261025-startup-buffer';
-import { createNativePlaybackFallback } from './media-playback-fallback.mjs?v=20261025-startup-buffer';
-import { createPlaybackPrime } from './media-playback-prime.mjs?v=20261025-startup-buffer';
-import { createPlaybackReport } from './media-playback-report.mjs?v=20261025-startup-buffer';
+import { createSourceResponseStats, publicSourceResource, transferBytes } from './media-transfer-stats.mjs?v=20261025-prepared-room';
+import { createNativePlaybackFallback } from './media-playback-fallback.mjs?v=20261025-prepared-room';
+import { createPlaybackPrime } from './media-playback-prime.mjs?v=20261025-prepared-room';
+import { createPlaybackReport } from './media-playback-report.mjs?v=20261025-prepared-room';
 
 const DASH = '—';
 export const observed = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
@@ -421,7 +421,7 @@ async function initialise() {
     publicRoom?.stop(); publicRoom = null;
     const pending = (async () => {
       const [{ createListenerSession }, { PUBLIC_SWARM_SOURCE_SHA256, PUBLIC_SWARM_RELAYS }] = await Promise.all([
-        import('./media-listener-session.mjs?v=20261025-startup-buffer'), import('./media-public-swarm.mjs?v=20261025-startup-buffer'),
+        import('./media-listener-session.mjs?v=20261025-prepared-room'), import('./media-public-swarm.mjs?v=20261025-prepared-room'),
       ]);
       if (request !== publicRoomRequest || pageAbort.signal.aborted) return null;
       const clock = createListenerSession({ room: `forgesworn-dejavu-listening-v${quality === 'full' ? 2 : 1}-${quality}`, source: PUBLIC_SWARM_SOURCE_SHA256,
@@ -448,7 +448,18 @@ async function initialise() {
             s.listenerState = state;
             if (previous && state.ready && state.epochId !== previous) {
               s.followLive = true;
+              if (s.listenerPreparation && s.recordedView?.timelineOriginMs === null && !s.framePipeline?.seenFrame) {
+                // Another starter won while this empty pipeline buffered. No
+                // body has reached HLS: retire its authority and reuse the
+                // original attached player and pending trusted play request.
+                s.hls?.stopLoad();
+                stopUnloadedPublicSetup(s);
+                s.publicSourceLoaded = false;
+                s.listenerPreparation = null;
+              }
               if (s.recordedView) {
+                void completePublicStartup(s).catch(() => publicStartupFailed(s));
+              } else if (!s.publicSourceLoaded && s.publicPrepared && s.playbackWanted !== false) {
                 void completePublicStartup(s).catch(() => publicStartupFailed(s));
               } else if (s.publicSourceLoaded) {
                 if (s.mediaReady) s.listenerAlignedEpoch = state.epochId;
@@ -484,7 +495,7 @@ async function initialise() {
     listenerStatus(s);
   }
 
-  async function joinListener(s, align = true) {
+  async function joinListener(s, align = true, prepare = false) {
     if (local || session !== s || s.finishing || s.abort.signal.aborted) return;
     s.listenerWanted = true;
     if (s.listener?.snapshot().ready) {
@@ -495,9 +506,11 @@ async function initialise() {
       }
       listenerStatus(s); return;
     }
+    if (prepare && s.listenerPreparation && s.listener?.snapshot().prepared) return;
     if (s.listenerJoining) {
       await s.listenerJoining;
-      if (session === s && s.listenerWanted && !s.finishing && !s.listenerFailed && !s.listener?.snapshot().ready) return joinListener(s, align);
+      if (session === s && s.listenerWanted && !s.finishing && !s.listenerFailed &&
+          !s.listener?.snapshot().ready && !(prepare && s.listenerPreparation)) return joinListener(s, align, prepare);
       return;
     }
     const request = s.listenerRequest = (s.listenerRequest ?? 0) + 1;
@@ -507,11 +520,13 @@ async function initialise() {
       try {
         s.listener = await ensureListenerRoom(s.quality);
         if (!s.listener || session !== s || !s.listenerWanted || request !== s.listenerRequest || s.abort.signal.aborted) return;
-        await s.listener.join();
+        const result = prepare && typeof s.listener.prepareJoin === 'function' ?
+          await s.listener.prepareJoin({ signal: s.abort.signal }) : await s.listener.join();
         if (session !== s || !s.listenerWanted || request !== s.listenerRequest || s.abort.signal.aborted) {
           if (session !== s || !s.listenerWanted) s.listener.leave();
           return;
         }
+        s.listenerPreparation = result?.prepared ? result.token : null;
         s.listenerFailed = false; s.followLive = true;
         if (align) { s.listenerAlignedEpoch = s.listener.snapshot().epochId; followListener(s, true); }
       } catch {
@@ -525,6 +540,14 @@ async function initialise() {
 
   function leaveListener(s) {
     s.listenerWanted = false;
+    if (s.listenerPreparation && s.recordedView?.timelineOriginMs === null && !s.framePipeline?.seenFrame) {
+      // Cancelling local preparation has not delivered a media body. Resume
+      // may prepare a new identity on this same authorised empty pipeline.
+      s.hls?.stopLoad();
+      stopUnloadedPublicSetup(s);
+      s.publicSourceLoaded = false;
+    }
+    s.listenerPreparation = null;
     s.listenerRequest = (s.listenerRequest ?? 0) + 1;
     s.listener?.leave();
     listenerStatus(s);
@@ -1261,7 +1284,7 @@ async function initialise() {
     // first frame. Keep its prior global playback guard; do not invent one.
     const hasPipelineFrame = () => framePipeline.seenFrame || !framePipeline.observable && s.browser.seenFrame;
     s.observeFramePipeline?.(framePipeline);
-    let initialMetadataArmed = false;
+    let initialMetadataEpoch = null;
     s.playbackEngine = 'hls.js';
     player.on(Hls.Events.MEDIA_ATTACHED, (_, { mediaSource }) => {
       if (session !== s || s.hls !== player) return;
@@ -1296,11 +1319,11 @@ async function initialise() {
       // Start the real stream at the fresh room position without another play
       // call or a second media attachment that would cancel that request.
       const room = s.listener?.snapshot();
-      const position = room?.ready ? roomMediaTime(s) ?? -1 : s.invitedStart || -1;
+      const position = room?.ready || room?.prepared ? roomMediaTime(s) ?? -1 : s.invitedStart || -1;
       if (room?.ready && position >= 0) s.listenerAlignedEpoch = room.epochId;
-      if (!initialMetadataArmed && s.quality === 'full' && s.recordedView && !hasPipelineFrame() &&
-          room?.ready && room.epochId === s.recordedEpochId) {
-        initialMetadataArmed = true;
+      if (initialMetadataEpoch !== room?.epochId && s.quality === 'full' && s.recordedView && !hasPipelineFrame() &&
+          (room?.ready || room?.prepared) && room.epochId === s.recordedEpochId) {
+        initialMetadataEpoch = room.epochId;
         const epoch = room.epochId;
         // The first fragment can take seconds after manifest parsing. Refresh
         // that one initial position before a frame is shown, on the original
@@ -1407,7 +1430,8 @@ async function initialise() {
     let restartSetup = false;
     const owns = () => current() && version === (s.playbackVersion ?? 0);
     const pending = (async () => {
-      await joinListener(s, !s.recordedView && Boolean(s.publicSourceLoaded));
+      const prepare = s.quality === 'full' && s.hls && !s.publicSourceLoaded && s.framePipeline?.observable && !s.framePipeline.seenFrame;
+      await joinListener(s, !s.recordedView && Boolean(s.publicSourceLoaded), prepare);
       if (!owns() || !s.listenerWanted) return;
       const room = s.listener?.snapshot();
       if (s.publicSourceLoaded && (!s.recordedView || s.recordedEpochId === room?.epochId)) {
@@ -1440,21 +1464,22 @@ async function initialise() {
       if (player) {
         let peer, setupEpoch;
         try {
-          const { createPublicSwarm, prepareRecordedSource, createRecordedLive } = await import('./media-public-swarm.mjs?v=20261025-startup-buffer');
+          const { createPublicSwarm, prepareRecordedSource, createRecordedLive } = await import('./media-public-swarm.mjs?v=20261025-prepared-room');
           if (!owns() || s.hls !== player) return;
           // These two exports share the exact helper module/recording brand.
-          // Preparing metadata fetches no video and happens only after joining.
-          const recording = s.listener?.snapshot().ready ? await prepareRecordedSource({
+          // A cold first room prepares locally before publishing its clock.
+          // Existing rooms retain their active, advancing epoch.
+          const recording = s.listener?.snapshot().ready || s.listenerPreparation ? await prepareRecordedSource({
             quality: s.quality, playlistUrl: s.publicUrl.href, signal: s.abort.signal,
           }).catch(() => null) : null;
           if (!owns() || s.hls !== player) return;
           const latestRoom = s.listener?.snapshot();
-          if (recording && latestRoom?.ready && /^[a-f0-9]{64}$/.test(latestRoom.epochId) &&
+          if (recording && (latestRoom?.ready || latestRoom?.prepared && s.listenerPreparation) && /^[a-f0-9]{64}$/.test(latestRoom.epochId) &&
               Math.abs(recording.durationSeconds - s.durationSeconds) < 0.05) {
             // Keep metadata available through a slow startup/recovery. A short
             // room-clock window makes hls.js skip pending media fragments even
             // with infinite max latency. This does not enlarge the media cache.
-            const view = createRecordedLive({ recording, epochMs: latestRoom.startedAt, signal: s.abort.signal, backSeconds: 24,
+            const view = createRecordedLive({ recording, epochMs: latestRoom.ready ? latestRoom.startedAt : null, signal: s.abort.signal, backSeconds: 24,
               passthroughUrls: [s.publicUrl.href] });
             if (view) {
               const ParentLoader = player.config.pLoader ?? player.config.loader;
@@ -1470,17 +1495,29 @@ async function initialise() {
               s.recording = recording; s.recordedView = view; s.recordedEpochId = latestRoom.epochId;
             }
           }
-          setupEpoch = latestRoom?.ready ? latestRoom.epochId : null;
+          setupEpoch = latestRoom?.ready || latestRoom?.prepared ? latestRoom.epochId : null;
           const startupView = s.recordedView, startupEpoch = s.recordedEpochId, startupPipeline = s.framePipeline;
           const ownsStartupPipeline = () => session === s && !s.finishing && !s.playbackFailed && !s.abort.signal.aborted &&
             s.playbackWanted !== false && s.hls === player && s.framePipeline === startupPipeline && startupPipeline?.player === player &&
             s.publicPeer === peer && s.recordedView === startupView && s.recordedEpochId === startupEpoch &&
-            s.listener?.snapshot().ready && s.listener.snapshot().epochId === startupEpoch && s.listenerWanted && !video.paused && !video.ended;
+            (s.listener?.snapshot().ready || s.listenerPreparation && s.listener?.snapshot().prepared) &&
+            s.listener.snapshot().epochId === startupEpoch && s.listenerWanted && !video.paused && !video.ended;
           peer = createPublicSwarm({ Hls, hls: player, video, playlistUrl: s.publicUrl.href, quality: s.quality,
             startupBufferNeeded: startupView && s.quality === 'full' ? () => ownsStartupPipeline() && startupPipeline.observable && !startupPipeline.seenFrame : null,
             startupBufferTarget: startupView && s.quality === 'full' ? () => {
               if (!ownsStartupPipeline() || !startupPipeline.observable || startupPipeline.seenFrame) return null;
               return roomMediaTime(s);
+            } : null,
+            startupBufferCommit: startupView && s.listenerPreparation ? async ({ signal }) => {
+              const token = s.listenerPreparation;
+              if (!ownsStartupPipeline() || signal.aborted) throw new DOMException('Startup cancelled', 'AbortError');
+              const committed = await s.listener.commitPreparedStart(token, { signal });
+              // A competing epoch retires this adapter through onChange.
+              if (!ownsStartupPipeline() || signal.aborted || committed.adopted || committed.epochId !== startupEpoch)
+                throw new DOMException('Startup epoch changed', 'AbortError');
+              if (!startupView.anchor(committed.startedAt)) throw new Error('Startup clock could not be anchored');
+              s.listenerPreparation = null;
+              listenerStatus(s);
             } : null,
             turnConfiguration: { endpoint: root.dataset.turnCredentialEndpoint ?? null, turnUrl: root.dataset.turnUrl ?? null },
             ...(s.recordedView ? { recordedLive: { recording: s.recording, epochId: s.recordedEpochId } } : {}),
@@ -1500,8 +1537,17 @@ async function initialise() {
           s.publicSharingFailed = true; publicDelivery(s);
         }
         if (!owns() || s.hls !== player || peer && s.publicPeer !== peer) return;
+        // Unsupported metadata or failed peer setup cannot leave an unpublished
+        // room frozen forever. Retain the ordinary direct-source startup path.
+        if (s.listenerPreparation && (!s.recordedView || s.publicSharingFailed)) {
+          const committed = await s.listener.commitPreparedStart(s.listenerPreparation, { signal: s.abort.signal });
+          if (!owns() || s.hls !== player || peer && s.publicPeer !== peer) return;
+          if (s.recordedView && !s.recordedView.anchor(committed.startedAt)) throw new Error('Startup clock could not be anchored');
+          s.listenerPreparation = null;
+          setupEpoch = committed.epochId;
+        }
         const latestRoom = s.listener?.snapshot();
-        if (setupEpoch && (!latestRoom?.ready || latestRoom.epochId !== setupEpoch)) {
+        if (setupEpoch && (!(latestRoom?.ready || latestRoom?.prepared && s.listenerPreparation) || latestRoom.epochId !== setupEpoch)) {
           stopUnloadedPublicSetup(s); restartSetup = true;
           return;
         }
@@ -1746,7 +1792,7 @@ async function initialise() {
     }, { signal: pageAbort.signal });
     controls();
     try {
-      const { createSwarmVisual } = await import('./media-swarm-visual.mjs?v=20261025-startup-buffer');
+      const { createSwarmVisual } = await import('./media-swarm-visual.mjs?v=20261025-prepared-room');
       if (!pageAbort.signal.aborted && $('public-swarm-map')) {
         swarmVisual = createSwarmVisual($('public-swarm-map'));
         publicDelivery(session);

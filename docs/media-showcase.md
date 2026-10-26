@@ -81,6 +81,25 @@ playback does not wait for the former paused three-second prime. This preserves
 the tap's playback request; it does not establish startup headroom or guarantee
 cold-cache continuity.
 
+For a new full-recording room, discovery reserves a local candidate identity
+without publishing an active listener or starting its clock. The original HLS
+pipeline prepares verified encoded media at raw position zero. Its SDK startup
+barrier holds the first callback until contiguous media covers measured source
+recovery headroom, within three objects, 24 MiB and the original eight-second
+deadline. It then acknowledges the room start over the existing relays, anchors
+that same timeline once, and repeats fresh target, authority and coverage checks
+before releasing the callback. Preparation is not decoded playback or an active
+watcher. The trusted play request and visible player remain the same.
+
+Existing rooms retain their advancing clock. If another starter publishes first,
+the unpublished candidate cohort is retired before any held body reaches HLS;
+the empty attached player joins the observed epoch. Pause and cancellation retire
+local preparation. A published epoch is never moved backwards. Unsupported
+metadata and browsers without a frame witness retain the ordinary startup path.
+These implementation checks do not qualify sustained playback: the previous M4
+candidate failed before the first frame, and fresh two-viewer continuity and
+shared-clock acceptance remain required for this revision.
+
 The supported recordings use a bounded client-generated live playlist. The
 canonical VOD manifest is verified against its pinned digest before its
 durations and exact media URLs are used. A sliding window includes 24 seconds
