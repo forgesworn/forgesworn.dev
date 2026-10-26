@@ -509,14 +509,94 @@ test('prepare joins an existing active room immediately and does not freeze or r
   f.advance(1000); assert.equal(follower.position(), 7.25); follower.stop(); starter.stop();
 });
 
-test('prepared commit adopts a newly observed active epoch and reports candidate scope replacement', async () => {
+test('prepared listener adopts a newly observed active epoch before its buffer commit', async () => {
   const f = fixture(), a = f.create(), pending = a.prepareJoin(); f.advance(1250); const candidate = await pending;
   const b = f.create(), live = await f.join(b); f.advance(0);
-  assert.equal(a.snapshot().epochId, candidate.epochId); assert.equal(a.snapshot().prepared, true);
-  const committing = a.commitPreparedStart(candidate.token); f.advance(0); const joined = await committing;
-  assert.equal(joined.adopted, true); assert.equal(joined.epochId, live.epochId); assert.equal(joined.startedAt, live.startedAt);
+  const joined = a.snapshot();
+  assert.equal(joined.ready, true, 'a prepared listener cannot wait on its private buffer while a verified active room exists');
+  assert.equal(joined.prepared, false); assert.equal(joined.epochId, live.epochId); assert.equal(joined.startedAt, live.startedAt);
   assert.notEqual(joined.epochId, candidate.epochId); assert.equal(joined.listeners, 2);
   a.stop(); b.stop(); assert.equal(f.activeTimers(), 0);
+});
+
+test('automatic prepared adoption waits for ACK under the original operation signal', async () => {
+  const f = fixture(), operation = new AbortController(), session = f.create({}, 'prepared');
+  const pending = session.prepareJoin({ signal: operation.signal }); f.advance(1250); const reservation = await pending;
+  for (const url of ['wss://one.test/', 'wss://two.test/']) f.acks.set(url, null);
+  const active = f.signed(); f.inject('wss://one.test/', active); f.advance(0);
+  const publishing = session.snapshot();
+  assert.equal(publishing.adoptingPrepared, true); assert.equal(publishing.ready, false);
+  assert.equal(publishing.prepared, false); assert.equal(publishing.status, 'publishing');
+  assert.equal(publishing.epochId, JSON.parse(active.content).epoch.id);
+  const sdk = new AbortController(), joined = session.commitPreparedStart(reservation.token, { signal: sdk.signal });
+  sdk.abort(); f.advance(1000);
+  assert.equal(session.snapshot().adoptingPrepared, true, 'coalescing cannot replace the session-owned cancellation with a retiring SDK signal');
+  const publication = f.published.at(-1).event.id;
+  for (const socket of f.sockets) socket.respond(['OK', publication, true]);
+  f.advance(0); const result = await joined;
+  assert.equal(result.ready, true); assert.equal(result.adoptingPrepared, false);
+  operation.abort(); assert.equal(session.snapshot().ready, true, 'ACK detached the completed operation before host cleanup');
+  session.stop(); assert.equal(f.activeTimers(), 0);
+});
+
+for (const action of ['leave', 'stop', 'signal', 'refuse', 'timeout']) test(`automatic prepared adoption handles ${action} without late activation`, async () => {
+  const f = fixture(), operation = new AbortController(), session = f.create({}, 'prepared'); session.observe();
+  const pending = session.prepareJoin({ signal: operation.signal }); f.advance(1250); const reservation = await pending;
+  for (const url of ['wss://one.test/', 'wss://two.test/']) f.acks.set(url, null);
+  f.inject('wss://one.test/', f.signed()); f.advance(0);
+  const wait = session.commitPreparedStart(reservation.token), rejected = assert.rejects(wait);
+  const publication = f.published.at(-1).event.id;
+  if (action === 'signal') operation.abort();
+  else if (action === 'leave' || action === 'stop') session[action]();
+  else if (action === 'timeout') f.advance(LISTENER_SESSION_DEFAULTS.publishTimeoutMs);
+  else { for (const socket of f.sockets) socket.respond(['OK', publication, false]); f.advance(LISTENER_SESSION_DEFAULTS.publishTimeoutMs); }
+  await rejected;
+  for (const socket of f.sockets) if (socket.readyState === 1) socket.respond(['OK', publication, true]);
+  f.advance(0);
+  assert.equal(session.snapshot().ready, false); assert.equal(session.snapshot().adoptingPrepared, false);
+  session.stop(); assert.equal(f.activeTimers(), 0);
+});
+
+test('prepared notification reentrancy settles its original caller through automatic adoption or leave', async () => {
+  for (const action of ['active', 'leave']) {
+    const f = fixture(); let session, fired = false;
+    session = f.create({ onChange: state => {
+      if (!state.prepared || fired) return; fired = true;
+      if (action === 'leave') session.leave();
+      else { f.inject('wss://one.test/', f.signed()); f.advance(0); }
+    } });
+    const pending = session.prepareJoin();
+    const result = action === 'leave' ? assert.rejects(pending, { name: 'AbortError' }) : pending;
+    f.advance(1250); const joined = await result;
+    if (action === 'active') { assert.equal(joined.ready, true); assert.equal(joined.prepared, false); assert.equal(joined.adoptingPrepared, false); }
+    session.stop(); assert.equal(f.activeTimers(), 0);
+  }
+});
+
+test('a cancelled prepared notification cannot bridge its caller into a reentrant new actor', async () => {
+  const f = fixture(); let session, replacement, originalActor, fired = false;
+  session = f.create({ onChange: state => {
+    if (!state.prepared || fired) return; fired = true; originalActor = state.id;
+    session.leave(); replacement = session.prepareJoin();
+  } });
+  session.observe();
+  const pending = session.prepareJoin(), rejected = assert.rejects(pending, { name: 'AbortError' });
+  f.advance(1250); await rejected;
+  f.advance(1250); const next = await replacement;
+  assert.equal(next.prepared, true); assert.notEqual(next.id, originalActor);
+  session.stop(); assert.equal(f.activeTimers(), 0);
+});
+
+test('prepared reservation ignores left, invalid, expired and wrong-source rows without publishing', async () => {
+  for (const bad of ['left', 'signature', 'expired', 'source']) {
+    const f = fixture(), session = f.create({}, 'prepared');
+    const pending = session.prepareJoin(); f.advance(1250); const reservation = await pending;
+    let event = f.signed(bad === 'left' ? { status: 'left' } : bad === 'expired' ? { created_at: Math.floor(f.now() / 1000) - 25 } : bad === 'source' ? { extra: { source: 'c'.repeat(64) } } : {});
+    if (bad === 'signature') event = { ...event, sig: '0'.repeat(128) };
+    f.inject('wss://one.test/', event); f.advance(0);
+    assert.equal(session.snapshot().prepared, true, bad); assert.equal(session.snapshot().epochId, reservation.epochId, bad);
+    assert.equal(f.published.length, 0, bad); session.stop(); assert.equal(f.activeTimers(), 0);
+  }
 });
 
 test('prepared starts ignore left-only grace rows while legacy join retains its grace compatibility', async () => {
