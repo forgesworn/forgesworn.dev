@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "measuredAt": "2026-10-26",
+  "scope": "Normal Safari in a fresh iOS 18.3 Simulator on Apple Silicon; no physical-phone or NAT qualification.",
+  "sourceRevision": "9a5b2ffc2cd11f8e0bc1e858966f1fd866dd6d97",
+  "playbackPass": false,
+  "initial": {
+    "captureElapsedMs": 152615,
+    "mediaPosition": 148.3247615838542,
+    "firstFrameMs": 4616,
+    "width": 3841,
+    "height": 2160,
+    "stallCount": 0,
+    "droppedVideoFrames": 3,
+    "peerBytesReceived": 33524077,
+    "mediaBytesSent": 4751360
+  },
+  "failure": {
+    "firstErrorElapsedMs": 153860,
+    "nativeFallbackElapsedMs": 158707,
+    "lastCaptureElapsedMs": 394758.00000000006,
+    "lastPosition": 0,
+    "lastPaused": true,
+    "lastReadyState": 0,
+    "lastPlayerErrors": 8
+  },
+  "limits": [
+    "Failure followed Save report; causation is unproven.",
+    "The counter combines fatal and nonfatal HLS and native errors; it is not a count of independent playback failures.",
+    "Zero reported stalls does not override a terminal paused player.",
+    "No autoplay policy override or forced mute.",
+    "This run did not reach replay."
+  ],
+  "controllerRegression": {
+    "baseline": "Fails because no native play request precedes loadedmetadata.",
+    "corrected": "Immediate demand; phase restoration without duplicate play; pause/rejection and replay priming covered.",
+    "checks": 29,
+    "decodedSafariRecoveryVerified": false
+  }
+}

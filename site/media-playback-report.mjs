@@ -9,6 +9,23 @@ const choice = (input, values) => values.includes(input) ? input : null;
 const candidate = input => choice(input, ['host', 'srflx', 'prflx', 'relay']);
 const protocol = input => choice(input, ['udp', 'tcp', 'tls']);
 
+function playerError(input) {
+  if (!input || typeof input !== 'object') return null;
+  // Fixed engine codes only. Error messages, URLs and arbitrary SDK objects
+  // can contain private source, transport or credential data.
+  return {
+    type: choice(value(input, 'type'), ['native', 'networkError', 'mediaError', 'keySystemError', 'muxError', 'otherError']),
+    detail: choice(value(input, 'detail'), ['manifestLoadError', 'manifestLoadTimeOut', 'manifestParsingError',
+      'manifestIncompatibleCodecsError', 'levelLoadError', 'levelLoadTimeOut', 'levelParsingError',
+      'fragLoadError', 'fragLoadTimeOut', 'fragParsingError', 'fragGap', 'remuxAllocError',
+      'bufferAddCodecError', 'bufferIncompatibleCodecsError', 'bufferAppendError', 'bufferAppendingError',
+      'bufferAppendNoProgress', 'bufferStalledError', 'bufferFullError', 'bufferSeekOverHole',
+      'bufferNudgeOnStall', 'internalException', 'aborted', 'attachMediaError', 'mediaSourceRequiresReset', 'unknown']),
+    fatal: boolean(value(input, 'fatal')),
+    mediaErrorCode: choice(value(input, 'mediaErrorCode'), [1, 2, 3, 4]),
+  };
+}
+
 function ranges(input) {
   if (!Array.isArray(input) || input.length > 8) return null;
   const result = [];
@@ -60,6 +77,9 @@ function sample(input, elapsedMs) {
     readyState: choice(value(input, 'readyState'), [0, 1, 2, 3, 4]),
     paused: boolean(value(input, 'paused')), seeking: boolean(value(input, 'seeking')), ended: boolean(value(input, 'ended')),
     lastPlayError: choice(value(input, 'lastPlayError'), ['NotAllowedError', 'AbortError', 'NotSupportedError', 'InvalidStateError', 'SecurityError', 'Error']),
+    lastPlayerError: playerError(value(input, 'lastPlayerError')),
+    playbackFailed: boolean(value(input, 'playbackFailed')),
+    playbackFallback: choice(value(input, 'playbackFallback'), ['stalls', 'unexpected-end', 'decode-error', 'player-error']),
     visibility: choice(value(input, 'visibility'), ['visible', 'hidden', 'prerender']),
     quality: choice(value(input, 'quality'), ['full', 'preview']),
     engine: choice(value(input, 'engine'), ['hls.js', 'hls.js · ManagedMediaSource', 'hls.js · MediaSource', 'Native HLS', 'Native MP4']),

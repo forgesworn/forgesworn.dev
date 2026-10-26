@@ -48,6 +48,22 @@ test('play rejection diagnostics retain only fixed error names and never message
   assert.doesNotMatch(JSON.stringify(p.report.snapshot()), /secret|private[.]invalid|playErrorMessage/);
 });
 
+test('player failures retain fixed engine codes and fallback state without error payloads or identities', () => {
+  const p = fixture();
+  p.report.record({ lastPlayerError: { type: 'mediaError', detail: 'bufferAppendError', fatal: true,
+    message: 'credential-secret', url: 'https://private.invalid' }, playbackFailed: true, playbackFallback: 'player-error' });
+  p.at(1200); p.report.record({ lastPlayerError: { type: 'native', mediaErrorCode: 3 } });
+  p.at(2400); p.report.record({ lastPlayerError: { type: 'device-secret', detail: 'credential-secret',
+    fatal: 'true', mediaErrorCode: 99 }, playbackFailed: 'true', playbackFallback: 'private-secret' });
+  const rows = p.report.snapshot().samples;
+  assert.deepEqual(rows[0].lastPlayerError, { type: 'mediaError', detail: 'bufferAppendError', fatal: true, mediaErrorCode: null });
+  assert.equal(rows[0].playbackFailed, true); assert.equal(rows[0].playbackFallback, 'player-error');
+  assert.deepEqual(rows[1].lastPlayerError, { type: 'native', detail: null, fatal: null, mediaErrorCode: 3 });
+  assert.deepEqual(rows[2].lastPlayerError, { type: null, detail: null, fatal: null, mediaErrorCode: null });
+  assert.equal(rows[2].playbackFailed, null); assert.equal(rows[2].playbackFallback, null);
+  assert.doesNotMatch(JSON.stringify(p.report.snapshot()), /secret|private[.]invalid|message|url/);
+});
+
 test('a continuous recording retains raw media time and independently bounded programme phase', () => {
   const p = fixture();
   p.report.record({ position: 701.75, duration: Infinity, buffered: [[699, 721]],
