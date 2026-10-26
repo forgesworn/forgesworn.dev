@@ -117,7 +117,7 @@ test('public configuration bounds upload rate, peers and cache without a cumulat
 // Exercise the real adapter lifecycle with an injected SDK factory. Native
 // resource ownership and SDK accounting snapshots are simulated; no video/network
 // benchmark or real GiB transfer is claimed by these unit tests.
-function lifecycleFixture(t, { turnCredentials, turnConfiguration, turnFactory, origin = 'https://forgesworn.dev/live-media.html', fetchResponse } = {}) {
+function lifecycleFixture(t, { turnCredentials, turnConfiguration, turnFactory, origin = 'https://forgesworn.dev/live-media.html', fetchResponse, startupBufferTarget, startupBufferNeeded, startupBufferCommit } = {}) {
   let at = 0, nextTimer = 0, adapter;
   const timers = new Map(), globals = new Map(), sockets = [], connections = [], cycles = [];
   const page = new EventTarget(), abort = new AbortController(), fetches = [];
@@ -171,6 +171,7 @@ function lifecycleFixture(t, { turnCredentials, turnConfiguration, turnFactory, 
     assert.equal(options.zeroBudgetPeerRace, true);
     assert.equal(options.lateHaveRace, true, 'an existing peer may finish the requested segment while HTTP is running');
     assert.equal(options.maxPeerWaitMs, 2500, 'late availability must use the original bounded race window');
+    assert.equal(options.lateWindowMs, 4000, 'a new peer must fit the existing late window');
     const workerUrl = new URL(options.transferWorkerUrl);
     assert.equal(workerUrl.origin, new URL(import.meta.url).origin);
     assert.equal(workerUrl.pathname, new URL('../site/vendor/relayswarm-transfer-worker.js', import.meta.url).pathname);
@@ -202,7 +203,7 @@ function lifecycleFixture(t, { turnCredentials, turnConfiguration, turnFactory, 
   };
   const createAdapter = (recordedLive, quality = 'full') => createPublicSwarm({ Hls, hls, video,
     playlistUrl: quality === 'full' ? full.playlistUrl : preview.playlistUrl,
-    quality, signal: abort.signal, turnConfiguration, ...(recordedLive === undefined ? {} : { recordedLive }) }, { createSwarm, createTurnCredentials });
+    quality, signal: abort.signal, turnConfiguration, startupBufferTarget, startupBufferNeeded, startupBufferCommit, ...(recordedLive === undefined ? {} : { recordedLive }) }, { createSwarm, createTurnCredentials });
   adapter = createAdapter();
   const originLoader = hls.config.fLoader;
   return { get adapter() { return adapter; }, hls, video, originLoader, sockets, connections, cycles, abort, fetches, turnConfigurations,
@@ -293,7 +294,20 @@ test('a completed empty ICE gather reports no browser route without crediting pe
 
 test('active peer delivery survives fifteen minutes and multi-GiB incoming totals until explicit pause', async t => {
   const f = lifecycleFixture(t);
+  assert.equal(f.adapter.metrics().uploadPacing, null);
+  assert.equal(f.adapter.metrics().peerAdmission, null);
+  assert.equal(f.adapter.metrics().latePeerRace, null);
+  assert.equal(f.adapter.metrics().startupBuffer, null);
   await f.adapter.setEnabled(true);
+  assert.equal(f.adapter.metrics().uploadPacing, null, 'older SDK snapshots remain unknown instead of reporting zero queue activity');
+  assert.equal(f.adapter.metrics().peerAdmission, null);
+  assert.equal(f.adapter.metrics().latePeerRace, null, 'an older SDK cannot claim a new-peer race happened');
+  assert.equal(f.adapter.metrics().startupBuffer, null, 'an older SDK cannot claim startup headroom');
+  const uploadPacing = { enabled: true, queued: 1, reservedBytes: 98304, waited: 1, granted: 0 };
+  const peerAdmission = { claimedLinks: 1, waiting: 1, claims: 2, waited: 1 };
+  const latePeerRace = { started: 1, delivered: 0 };
+  const startupBuffer = { enabled: true, state: 'ready', released: 1, failures: 0 };
+  Object.assign(f.cycles[0].live, { uploadPacing, peerAdmission, latePeerRace, startupBuffer });
   const identity = f.adapter.metrics().viewerId;
   for (let segment = 0; segment < 700; segment++) f.hls.loaded(4 * 1024 * 1024);
   f.advance(16 * 60 * 1000);
@@ -301,12 +315,20 @@ test('active peer delivery survives fifteen minutes and multi-GiB incoming total
   assert.deepEqual(live.library, { version: libraryBuild.version, sourceCommit: libraryBuild.sourceCommit });
   assert.equal(live.enabled, true); assert.equal(live.reason, 'opted-in'); assert.equal(live.serving, true);
   assert.equal(live.viewerId, identity); assert.equal(live.loadedMediaBytes, 700 * 4 * 1024 * 1024);
+  assert.deepEqual(live.uploadPacing, uploadPacing, 'the current SDK supplies its bounded queue accounting');
+  assert.deepEqual(live.peerAdmission, peerAdmission);
+  assert.deepEqual(live.latePeerRace, latePeerRace);
+  assert.deepEqual(live.startupBuffer, startupBuffer);
   assert.equal(live.resources.signallingConnections, 3); assert.equal(live.resources.activePeerConnections, 1);
   await f.adapter.setEnabled(true); assert.equal(f.cycles.length, 1, 'a later active enable does not replace the current peers');
   await f.adapter.setEnabled(false);
   assert.ok(f.sockets.every(socket => socket.readyState === 3));
   assert.ok(f.connections.every(connection => connection.connectionState === 'closed'));
   assert.equal(f.adapter.metrics().resources.heldBytes, 0); assert.equal(f.pendingTimers(), 0);
+  assert.equal(f.adapter.metrics().uploadPacing, null, 'retired SDK queue counters are not presented as a live queue');
+  assert.equal(f.adapter.metrics().peerAdmission, null);
+  assert.equal(f.adapter.metrics().latePeerRace, null);
+  assert.equal(f.adapter.metrics().startupBuffer, null);
   assert.equal(f.hls.config.fLoader, f.originLoader); assert.equal(f.video.currentTime, 123.25); assert.equal(f.video.volume, 0.4);
 });
 
@@ -411,6 +433,11 @@ test('recorded mode signs actual global sequence and discontinuity against the u
     f.useRecorded({ recording, epochId: 'a'.repeat(64) }, quality);
     await f.adapter.setEnabled(true);
     const options = f.cycles[0].options;
+    assert.equal(options.warmAhead, false, 'steady speculative downloads cannot compete with playback');
+    assert.equal(options.startupBufferTarget, null, 'startup buffering requires an explicit current-player target');
+    assert.equal(options.uploadPacing, quality === 'full', 'bounded upload admission is enabled for full 4K only');
+    assert.equal(options.latePeerRace, quality === 'full', 'a newly available peer may race only for the full 4K player');
+    assert.equal(options.maxUploadBytesPerSecond, 4 * 1024 * 1024, 'pacing does not increase the existing upload rate');
     assert.match(options.swarmId, /^forgesworn-recorded-live-v2-[a-f0-9]{64}$/);
     assert(options.swarmId.length <= 128);
     assert.equal(f.fetches.length, 2, 'enabling reuses prepared metadata instead of fetching media');
@@ -427,6 +454,75 @@ test('recorded mode signs actual global sequence and discontinuity against the u
       assert(value.expiresAt > Date.now() / 1000 && value.expiresAt <= Date.now() / 1000 + 120);
     }
   });
+});
+
+test('startup buffering is confined to the recorded full player and its live adapter generation', async t => {
+  let target = 1.25, invalid = false;
+  const f = lifecycleFixture(t, { startupBufferNeeded: () => true, startupBufferTarget: () => {
+    if (invalid) throw new Error('Old player is unavailable');
+    return target;
+  } });
+  await f.adapter.setEnabled(true);
+  assert.equal(f.cycles[0].options.startupBufferTarget, null, 'plain VOD has no shared room target');
+  const recording = await f.prepare();
+  f.useRecorded({ recording, epochId: 'a'.repeat(64) });
+  await f.adapter.setEnabled(true);
+  const first = f.cycles[1].options.startupBufferTarget;
+  assert.equal(first(), 1.25);
+  target = 3.75;
+  assert.equal(first(), 3.75, 'the callback reads fresh programme time');
+  for (const value of [null, undefined, NaN, Infinity, -1]) {
+    target = value; assert.equal(first(), null, 'invalid geometry cannot release initial media');
+  }
+  invalid = true; assert.equal(first(), null, 'ownership errors fail closed');
+  invalid = false; target = 4;
+  await f.adapter.setEnabled(false);
+  assert.equal(first(), null);
+  await f.adapter.setEnabled(true);
+  assert.equal(first(), null, 'a previous enabled generation cannot target the replacement');
+  const current = f.cycles[2].options.startupBufferTarget;
+  assert.equal(current(), 4);
+  f.pagehide(); assert.equal(current(), null);
+});
+
+test('a fresh SDK on resume has no startup barrier after its current pipeline presented a frame', async t => {
+  let needsFrame = true, targetReads = 0;
+  const f = lifecycleFixture(t, { startupBufferNeeded: () => needsFrame, startupBufferTarget: () => { targetReads++; return 3; } });
+  const recording = await f.prepare(); f.useRecorded({ recording, epochId: 'a'.repeat(64) });
+  await f.adapter.setEnabled(true);
+  assert.equal(typeof f.cycles[0].options.startupBufferTarget, 'function');
+  needsFrame = false;
+  await f.adapter.setEnabled(false); await f.adapter.setEnabled(true);
+  assert.equal(f.cycles.length, 2, 'pause/resume really creates another SDK instance');
+  assert.equal(f.cycles[1].options.startupBufferTarget, null, 'completed pipeline never starts a terminal-invalid barrier');
+  assert.equal(targetReads, 0, 'eligibility is explicit and does not probe a null target');
+  needsFrame = true;
+  f.useRecorded({ recording, epochId: 'b'.repeat(64) }); await f.adapter.setEnabled(true);
+  assert.equal(f.cycles[2].options.startupBufferTarget(), 3, 'a new current pipeline can need the barrier again');
+});
+
+test('startup room activation belongs to the current recorded adapter and original abort signal', async t => {
+  let calls = 0, received, finish;
+  const gate = new Promise(resolve => { finish = resolve; });
+  const f = lifecycleFixture(t, { startupBufferNeeded: () => true, startupBufferTarget: () => 0,
+    startupBufferCommit: value => { calls++; received = value; return gate; } });
+  await f.adapter.setEnabled(true);
+  assert.equal(f.cycles[0].options.startupBufferCommit, null, 'ordinary VOD cannot activate a prepared room');
+  const recording = await f.prepare(); f.useRecorded({ recording, epochId: 'a'.repeat(64) });
+  await f.adapter.setEnabled(true);
+  const commit = f.cycles[1].options.startupBufferCommit;
+  const signal = new AbortController().signal;
+  const pending = commit(Object.freeze({ signal }));
+  assert.equal(calls, 1); assert.equal(received.signal, signal); assert.equal(Object.isFrozen(received), true);
+  await f.adapter.setEnabled(false);
+  finish();
+  await assert.rejects(pending, { name: 'AbortError' }, 'late activation settlement cannot approve an old SDK generation');
+  await assert.rejects(commit({ signal }), { name: 'AbortError' });
+  assert.equal(calls, 1, 'retired callbacks never invoke host activation');
+  await f.adapter.setEnabled(true);
+  const cancelled = new AbortController(); cancelled.abort();
+  await assert.rejects(f.cycles[2].options.startupBufferCommit({ signal: cancelled.signal }), { name: 'AbortError' });
+  assert.equal(calls, 1, 'an already cancelled startup cannot publish room presence');
 });
 
 test('recorded mapping refuses wrong URI, duration, global identity and unsupported media contexts', async t => {

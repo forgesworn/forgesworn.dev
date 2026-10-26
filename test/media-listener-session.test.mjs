@@ -481,3 +481,126 @@ test('leaving an opted-in observer during a pending publish rejects join but kee
   f.acks.set('wss://one.test/', true); assert.equal((await f.join(observer)).ready, true);
   assert.equal(f.sockets.length, 2); observer.stop(); assert.equal(f.activeTimers(), 0);
 });
+
+test('cold preparation reserves no published presence or advancing room until its exact token commits', async () => {
+  const f = fixture(), session = f.create();
+  const pending = session.prepareJoin(); f.advance(1250); const prepared = await pending;
+  assert.equal(prepared.prepared, true); assert.equal(prepared.ready, false); assert.equal(prepared.startedAt, null);
+  assert.equal(prepared.listeners, 0); assert.equal(prepared.epochId, prepared.id); assert(Object.isFrozen(prepared.token));
+  assert.equal(session.snapshot().prepared, true); assert.equal(Object.hasOwn(session.snapshot(), 'token'), false);
+  f.advance(12000);
+  assert.equal(session.position(), 0); assert.equal(session.snapshot().startedAt, null); assert.equal(f.published.length, 0);
+  const repeated = await session.prepareJoin(); assert.equal(repeated.token, prepared.token);
+  await assert.rejects(session.commitPreparedStart(Object.freeze({})), { name: 'AbortError' });
+  assert.equal(session.snapshot().prepared, true, 'unrelated tokens do not retire the live reservation');
+  const at = f.now(), committed = session.commitPreparedStart(prepared.token); f.advance(0); const live = await committed;
+  assert.equal(live.ready, true); assert.equal(live.prepared, false); assert.equal(live.adopted, false);
+  assert.equal(live.epochId, prepared.epochId); assert.equal(live.startedAt, at); assert.equal(live.position, 0);
+  assert.equal(live.listeners, 1); f.advance(2000); assert.equal(session.position(), 2);
+  await assert.rejects(session.commitPreparedStart(prepared.token), { name: 'AbortError' });
+  session.stop(); assert.equal(f.activeTimers(), 0);
+});
+
+test('prepare joins an existing active room immediately and does not freeze or replace its clock', async () => {
+  const f = fixture(), starter = f.create(), first = await f.join(starter); f.advance(5000);
+  const follower = f.create(), pending = follower.prepareJoin(); f.advance(1250); const joined = await pending;
+  assert.equal(joined.ready, true); assert.equal(joined.prepared, false); assert.equal(joined.token, null);
+  assert.equal(joined.epochId, first.epochId); assert.equal(joined.startedAt, first.startedAt); assert.equal(joined.position, 6.25);
+  f.advance(1000); assert.equal(follower.position(), 7.25); follower.stop(); starter.stop();
+});
+
+test('prepared commit adopts a newly observed active epoch and reports candidate scope replacement', async () => {
+  const f = fixture(), a = f.create(), pending = a.prepareJoin(); f.advance(1250); const candidate = await pending;
+  const b = f.create(), live = await f.join(b); f.advance(0);
+  assert.equal(a.snapshot().epochId, candidate.epochId); assert.equal(a.snapshot().prepared, true);
+  const committing = a.commitPreparedStart(candidate.token); f.advance(0); const joined = await committing;
+  assert.equal(joined.adopted, true); assert.equal(joined.epochId, live.epochId); assert.equal(joined.startedAt, live.startedAt);
+  assert.notEqual(joined.epochId, candidate.epochId); assert.equal(joined.listeners, 2);
+  a.stop(); b.stop(); assert.equal(f.activeTimers(), 0);
+});
+
+test('prepared starts ignore left-only grace rows while legacy join retains its grace compatibility', async () => {
+  const f = fixture(), old = f.create(), first = await f.join(old); old.leave(); f.advance(0);
+  const next = f.create({}, 'next'), pending = next.prepareJoin(); f.advance(1250); const prepared = await pending;
+  assert.equal(prepared.prepared, true); assert.notEqual(prepared.epochId, first.epochId); assert.equal(f.published.filter(r => r.label === 'next').length, 0);
+  const committed = next.commitPreparedStart(prepared.token); f.advance(0); const live = await committed;
+  assert.equal(live.adopted, false); assert.equal(live.epochId, prepared.epochId);
+  next.stop(); old.stop();
+});
+
+for (const cancellation of ['leave', 'stop', 'signal']) test(`prepared reservation ${cancellation} cancellation rejects stale token and late ACK cannot revive it`, async () => {
+  const f = fixture(), session = f.create(), operation = new AbortController(); session.observe();
+  const pending = session.prepareJoin({ signal: operation.signal }); f.advance(1250); const prepared = await pending;
+  f.acks.set('wss://one.test/', null); f.acks.set('wss://two.test/', null);
+  const commit = session.commitPreparedStart(prepared.token, { signal: operation.signal });
+  const rejected = assert.rejects(commit, { name: 'AbortError' });
+  const publication = f.published.at(-1).event.id;
+  if (cancellation === 'signal') operation.abort(); else session[cancellation]();
+  await rejected;
+  for (const socket of f.sockets) if (socket.readyState === 1) socket.respond(['OK', publication, true]);
+  f.advance(0); assert.equal(session.snapshot().ready, false); assert.equal(session.snapshot().prepared, false);
+  await assert.rejects(session.commitPreparedStart(prepared.token), { name: 'AbortError' });
+  session.stop(); assert.equal(f.activeTimers(), 0);
+});
+
+test('abort during preparation discovery rejects once and a fresh reservation uses a different token', async () => {
+  const f = fixture(), session = f.create(), operation = new AbortController(); session.observe();
+  const pending = session.prepareJoin({ signal: operation.signal }); const rejected = assert.rejects(pending, { name: 'AbortError' });
+  operation.abort(); await rejected; f.advance(1250); assert.equal(f.published.length, 0);
+  const next = session.prepareJoin(); f.advance(1250); const prepared = await next;
+  session.leave(); const again = session.prepareJoin(); f.advance(1250); const fresh = await again;
+  assert.notEqual(fresh.token, prepared.token); await assert.rejects(session.commitPreparedStart(prepared.token), { name: 'AbortError' });
+  session.stop(); assert.equal(f.activeTimers(), 0);
+});
+
+test('concurrent prepared starters converge through the existing signed epoch rule', async () => {
+  const f = fixture(), a = f.create(), b = f.create();
+  const pa = a.prepareJoin(), pb = b.prepareJoin(); f.advance(1250); const aa = await pa, bb = await pb;
+  assert.equal(f.published.length, 0);
+  const ca = a.commitPreparedStart(aa.token), cb = b.commitPreparedStart(bb.token); f.advance(0);
+  await Promise.all([ca, cb]); f.advance(1000);
+  assert.equal(a.snapshot().epochId, b.snapshot().epochId); assert.equal(a.snapshot().startedAt, b.snapshot().startedAt);
+  assert.equal(a.snapshot().listeners, 2); a.stop(); b.stop(); assert.equal(f.activeTimers(), 0);
+});
+
+test('legacy join during preparation discovery still commits immediately, and reentrant leave rejects preparation', async () => {
+  const f = fixture(), session = f.create(); const preparation = session.prepareJoin(), joining = session.join();
+  f.advance(1250); const [a, b] = await Promise.all([preparation, joining]); assert.equal(a.ready, true); assert.equal(b.ready, true);
+  session.stop();
+  let cancelled;
+  const other = f.create({ onChange(state) { if (state.prepared) cancelled.leave(); } }); cancelled = other;
+  const pending = other.prepareJoin(), rejected = assert.rejects(pending, { name: 'AbortError' });
+  f.advance(1250); await rejected; assert.equal(other.snapshot().prepared, false); other.stop(); assert.equal(f.activeTimers(), 0);
+});
+
+test('successful prepared ACK detaches the SDK operation signal before normal barrier release aborts it', async () => {
+  const f = fixture(), session = f.create(), operation = new AbortController();
+  const pending = session.prepareJoin(); f.advance(1250); const prepared = await pending;
+  const committing = session.commitPreparedStart(prepared.token, { signal: operation.signal }); f.advance(0); const live = await committing;
+  operation.abort(); f.advance(1000);
+  assert.equal(session.snapshot().ready, true); assert.equal(session.snapshot().epochId, live.epochId);
+  assert.equal(session.position(), 1); assert(f.published.every(row => JSON.parse(row.event.content).status === 'active'));
+  session.stop(); assert.equal(f.activeTimers(), 0);
+});
+
+test('standalone prepared publication abort emits a final tombstone before its sockets are closed', async () => {
+  const f = fixture(), session = f.create(), operation = new AbortController();
+  const pending = session.prepareJoin(); f.advance(1250); const prepared = await pending;
+  f.acks.set('wss://one.test/', null); f.acks.set('wss://two.test/', null);
+  const committing = session.commitPreparedStart(prepared.token, { signal: operation.signal });
+  const rejected = assert.rejects(committing, { name: 'AbortError' }); operation.abort(); await rejected;
+  const statuses = f.published.map(row => JSON.parse(row.event.content).status);
+  assert.deepEqual(statuses, ['active', 'active', 'left', 'left']);
+  assert.equal(session.snapshot().ready, false); assert.equal(session.snapshot().listeners, 0);
+  assert(f.sockets.every(socket => socket.readyState === 3)); session.stop(); assert.equal(f.activeTimers(), 0);
+});
+
+test('ACK notification can retire the old SDK synchronously without aborting the newly acknowledged room', async () => {
+  const f = fixture(), operation = new AbortController();
+  const session = f.create({ onChange(state) { if (state.ready) operation.abort(); } });
+  const pending = session.prepareJoin(); f.advance(1250); const prepared = await pending;
+  const committing = session.commitPreparedStart(prepared.token, { signal: operation.signal }); f.advance(0); const joined = await committing;
+  assert.equal(operation.signal.aborted, true); assert.equal(joined.ready, true); assert.equal(session.snapshot().ready, true);
+  assert(f.published.every(row => JSON.parse(row.event.content).status === 'active'));
+  session.stop(); assert.equal(f.activeTimers(), 0);
+});

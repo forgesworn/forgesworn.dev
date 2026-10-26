@@ -132,7 +132,7 @@ function instrumentAdapter(source) {
 
 function instrumentController(source) {
   for (const [before, after] of [
-    ["s.playbackEngine = 'hls.js';", "s.playbackEngine = 'hls.js'; window.__visitorQa.hls = player;"],
+    ["s.playbackEngine = 'hls.js';", "s.playbackEngine = 'hls.js'; window.__visitorQa.hls = player; window.__visitorQa.controllerSession = s;"],
     ['s.hls.on(Hls.Events.ERROR, (_, data) => {',
       's.hls.on(Hls.Events.ERROR, (_, data) => { window.__visitorQa.captureHlsError(data);'],
   ]) {
@@ -170,12 +170,32 @@ async function snapshot(page) {
     const qa = window.__visitorQa;
     qa.flushLongTasks?.();
     const connections = await Promise.all(qa.peers.map(async (peer, nativeId) => {
-      const record = { nativeId, owned: qa.ownedPeers.includes(peer), state: peer.connectionState };
+      const record = { nativeId, owned: qa.ownedPeers.includes(peer), state: peer.connectionState,
+        iceState: peer.iceConnectionState, gatheringState: peer.iceGatheringState, signallingState: peer.signalingState };
       if (record.state === 'closed') return record;
       try {
-        const reports = [...(await peer.getStats()).values()].filter(row => row.type === 'data-channel');
+        const all = [...(await peer.getStats()).values()], byId = new Map(all.map(row => [row.id, row]));
+        const reports = all.filter(row => row.type === 'data-channel');
         record.bytesSent = reports.reduce((sum, row) => sum + (row.bytesSent ?? 0), 0);
         record.bytesReceived = reports.reduce((sum, row) => sum + (row.bytesReceived ?? 0), 0);
+        const candidateType = row => ['host', 'srflx', 'prflx', 'relay'].includes(row?.candidateType) ? row.candidateType : null;
+        const protocol = row => ['udp', 'tcp', 'tls'].includes(row?.protocol) ? row.protocol : null;
+        const number = value => Number.isFinite(value) && value >= 0 ? value : null;
+        record.candidates = all.filter(row => ['local-candidate', 'remote-candidate'].includes(row.type))
+          .reduce((counts, row) => {
+            const key = [row.type, candidateType(row) ?? 'unknown', protocol(row) ?? 'unknown'].join(':');
+            counts[key] = (counts[key] ?? 0) + 1; return counts;
+          }, {});
+        const pairs = all.filter(row => row.type === 'candidate-pair');
+        record.candidatePairs = pairs.slice(0, 16).map(row => ({
+          state: ['frozen', 'waiting', 'in-progress', 'failed', 'succeeded'].includes(row.state) ? row.state : null,
+          nominated: row.nominated === true, localType: candidateType(byId.get(row.localCandidateId)),
+          remoteType: candidateType(byId.get(row.remoteCandidateId)), localProtocol: protocol(byId.get(row.localCandidateId)),
+          requestsSent: number(row.requestsSent), responsesReceived: number(row.responsesReceived),
+          bytesSent: number(row.bytesSent), bytesReceived: number(row.bytesReceived),
+          currentRoundTripTime: number(row.currentRoundTripTime),
+        }));
+        record.droppedCandidatePairs = Math.max(0, pairs.length - record.candidatePairs.length);
       } catch {}
       return record;
     }));
@@ -201,7 +221,24 @@ async function snapshot(page) {
       uploadedBytes: Number(node.dataset.mediaBytesSent), verifiedPeerBytes: Number(node.dataset.verifiedMediaBytesReceived),
       label: node.querySelector('.swarm-sub')?.textContent, name: node.querySelector('.swarm-label')?.textContent,
     }));
-    return { measuredAt: Date.now(), currentTime: video.currentTime, duration: video.duration, width: video.videoWidth, height: video.videoHeight,
+    const sampledAt = Date.now(), mediaTime = video.currentTime;
+    let sharedPlayback = null;
+    if (qa.wantDiagnostics) try {
+      const current = qa.controllerSession, view = current?.recordedView;
+      if (view && !current.finishing && !current.abort.signal.aborted && current.hls === qa.hls && qa.hls?.media === video) {
+        const room = current.listener?.snapshot();
+        const finite = value => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
+        const roomEpochId = typeof room?.epochId === 'string' ? room.epochId : null;
+        const recordedEpochId = typeof current.recordedEpochId === 'string' ? current.recordedEpochId : null;
+        sharedPlayback = { sampledAt, mediaTime,
+          recordingPosition: finite(view.recordingPosition(mediaTime)), recordingDuration: finite(view.durationSeconds),
+          roomPosition: room?.ready === true ? finite(current.listener.position()) : null,
+          roomReady: typeof room?.ready === 'boolean' ? room.ready : null, roomEpochId, recordedEpochId,
+          sameEpoch: roomEpochId !== null && recordedEpochId !== null ? roomEpochId === recordedEpochId : null,
+          following: current.followLive !== false };
+      }
+    } catch {}
+    return { measuredAt: sampledAt, currentTime: mediaTime, duration: video.duration, width: video.videoWidth, height: video.videoHeight,
       codedFrame: qa.codedFrame, presentedFrames: qa.presentedFrames, bufferSeconds, buffered, readyState: video.readyState, seeking: video.seeking,
       decodedFrames: video.getVideoPlaybackQuality().totalVideoFrames, droppedFrames: video.getVideoPlaybackQuality().droppedVideoFrames,
       paused: video.paused, muted: video.muted, volume: video.volume,
@@ -230,7 +267,13 @@ async function snapshot(page) {
       workerEvidence: qa.workers.map(record => ({ ...record, posts: { ...record.posts } })),
       hlsErrors: qa.hlsErrors.slice(), hls: qa.hls ? { loadingEnabled: qa.hls.loadingEnabled,
         mediaAttached: qa.hls.media === video, currentLevel: qa.hls.currentLevel, bandwidthEstimate: qa.hls.bandwidthEstimate } : null,
-      diagnostics: raw ? { segments: raw.segments, bytes: raw.bytes, core: raw.core,
+      nativeSource: { crossOrigin: video.crossOrigin, currentSrc: video.currentSrc, errorCode: video.error?.code ?? null },
+      controller: qa.wantDiagnostics ? qa.controllerState?.() ?? null : undefined,
+      diagnostics: raw ? { segments: raw.segments, bytes: raw.bytes, core: raw.core, warmAhead: raw.warmAhead ?? null,
+        uploadPacing: raw.uploadPacing ?? null, peerAdmission: raw.peerAdmission ?? null,
+        latePeerRace: raw.latePeerRace ?? null,
+        startupBuffer: raw.startupBuffer ?? null,
+        sharedPlayback,
         peerCounts: Object.fromEntries(Object.entries(raw.peers).filter(([, value]) => typeof value === 'number')),
         eligibility: raw.peerEligibilityDiagnostics, requests: raw.peerRequestDiagnostics, refusals: raw.uploadRefusalDiagnostics,
         transport: raw.transportDiagnostics, errors: { total: raw.errors?.total, byStage: raw.errors?.byStage } } : undefined,
@@ -247,7 +290,7 @@ async function snapshot(page) {
           attribution: edge.dataset.attribution })),
         nativeDescription: map.querySelector('svg')?.getAttribute('aria-label'),
         viewBox: map.querySelector('svg')?.getAttribute('viewBox') },
-      native: { connections, activeConnections: connections.filter(peer => peer.state !== 'closed').length,
+      native: { connections, iceErrors: qa.iceErrors ?? [], activeConnections: connections.filter(peer => peer.state !== 'closed').length,
         connectedConnections: connections.filter(peer => peer.owned && peer.state === 'connected').length,
         openSockets: qa.sockets.filter(socket => socket.readyState < 2).length,
         ownedOpenSockets: qa.ownedSockets.filter(socket => socket.readyState < 2).length,
@@ -391,7 +434,7 @@ try {
     await context.route(options.site ? url.origin + '/**' : resource => observedModule(resource, options.diagnostics === 'true'), routeAsset);
     const page = await context.newPage(); pages.push(page);
     const http = { requests: 0, completed: 0, failed: 0, bodyBytes: 0, encodedTransferBytes: 0 };
-    const requestIds = new Set(), requestRecords = new Map(); mediaHttp.push(http);
+    const requestIds = new Set(), requestRecords = new Map(), extraOrigins = new Map(); mediaHttp.push(http);
     const requests = []; receipt.mediaRequests.push(requests);
     const nativeMedia = { properties: {}, errors: [] }; receipt.nativeMedia.push(nativeMedia);
     const cdp = await context.newCDPSession(page); cdps.push(cdp);
@@ -412,6 +455,8 @@ try {
       if (requests.length >= 512) { receipt.droppedMediaRequestRecords++; return; }
       const range = Object.entries(event.request.headers).find(([key]) => key.toLowerCase() === 'range')?.[1] ?? null;
       const record = { id: event.requestId, url: event.request.url, method: event.request.method, range,
+        origin: Object.entries(event.request.headers).find(([key]) => key.toLowerCase() === 'origin')?.[1] ?? null,
+        actualOrigin: extraOrigins.get(event.requestId) ?? null,
         startedAt: event.wallTime * 1000, timestamp: event.timestamp, status: null, protocol: null,
         responseAt: null, firstBodyAt: null, lastBodyAt: null, endedAt: null, bodyBytes: 0, encodedDataBytes: 0,
         completedEncodedTransferBytes: null, completed: false, error: null,
@@ -419,7 +464,14 @@ try {
           priority: priority(event.request.initialPriority), priorityChanges: [], droppedPriorityChanges: 0,
           bodyChunks: [], bodyChunkCount: 0, droppedBodyChunks: 0 } : {}) };
       requests.push(record); requestRecords.set(event.requestId, record);
+      extraOrigins.delete(event.requestId);
     } });
+    cdp.on('Network.requestWillBeSentExtraInfo', event => {
+      const origin = Object.entries(event.headers).find(([key]) => key.toLowerCase() === 'origin')?.[1] ?? null;
+      const record = requestRecords.get(event.requestId);
+      if (record) record.actualOrigin = origin;
+      else if (extraOrigins.size < 512) extraOrigins.set(event.requestId, origin);
+    });
     if (options.diagnostics === 'true') cdp.on('Network.resourceChangedPriority', event => {
       const record = requestRecords.get(event.requestId); if (!record) return;
       record.priority = priority(event.newPriority);
@@ -432,7 +484,7 @@ try {
       record.responseAt = at(event, record); record.ttfbMs = record.responseAt - record.startedAt;
       record.fromDiskCache = event.response.fromDiskCache ?? false; record.fromServiceWorker = event.response.fromServiceWorker ?? false;
       record.headers = Object.fromEntries(Object.entries(event.response.headers).filter(([key]) =>
-        /^(?:content-length|content-type|content-encoding|content-range|accept-ranges|cache-control|age|cf-cache-status|retry-after|timing-allow-origin)$/i.test(key)));
+        /^(?:content-length|content-type|content-encoding|content-range|accept-ranges|cache-control|age|cf-cache-status|retry-after|timing-allow-origin|access-control-allow-origin|vary)$/i.test(key)));
     });
     cdp.on('Network.dataReceived', event => {
       if (requestIds.has(event.requestId)) http.bodyBytes += event.dataLength;
@@ -455,10 +507,19 @@ try {
       if (requestIds.has(event.requestId)) { http.failed++; requestIds.delete(event.requestId); }
       const record = requestRecords.get(event.requestId); if (!record) return;
       record.endedAt = at(event, record); record.durationMs = record.endedAt - record.startedAt;
-      record.error = event.errorText; record.cancelled = event.canceled ?? false; requestRecords.delete(event.requestId);
+      record.error = event.errorText; record.cancelled = event.canceled ?? false;
+      record.corsError = event.corsErrorStatus ?? null; record.blockedReason = event.blockedReason ?? null;
+      requestRecords.delete(event.requestId);
     });
     await page.addInitScript(({ wantDiagnostics, longTaskLimit }) => {
       const qa = window.__visitorQa = { peers: [], ownedPeers: [], sockets: [], ownedSockets: [], workers: [], events: [], hlsErrors: [], presentedFrames: 0, codedFrame: null, wantDiagnostics };
+      qa.controllerState = () => {
+        const s = qa.controllerSession, b = s?.browser;
+        return { aborted: s?.abort.signal.aborted ?? null, finishing: s?.finishing ?? null,
+          failed: s?.playbackFailed ?? null, wanted: s?.playbackWanted ?? null, nativeHls: s?.nativeHls ?? null,
+          waitingAt: b?.waitingAt ?? null, finishedStallSeconds: b?.finishedStallSeconds ?? null,
+          stallSeconds: b?.stallSeconds ?? null, stallCount: b?.stallCount ?? null };
+      };
       const timing = qa.startupTiming = { timeOriginMs: performance.timeOrigin, trustedPlayClickCount: 0, droppedTrustedPlayClicks: 0,
         trustedPlayClicks: [], firstPlayingAtMs: null, firstPlayingObservedAtMs: null,
         firstPresentedFrameAtMs: null, firstPresentationAtMs: null, firstExpectedDisplayAtMs: null,
@@ -508,7 +569,13 @@ try {
         if (qa.hlsErrors.length > 128) qa.hlsErrors.shift();
       };
       const NativePeer = RTCPeerConnection, NativeSocket = WebSocket, NativeWorker = Worker;
-      window.RTCPeerConnection = class extends NativePeer { constructor(...args) { super(...args); qa.peers.push(this); } };
+      window.RTCPeerConnection = class extends NativePeer { constructor(...args) {
+        super(...args); qa.peers.push(this);
+        this.addEventListener('icecandidateerror', event => {
+          const errors = qa.iceErrors ??= [];
+          if (errors.length < 32) errors.push({ nativeId: qa.peers.indexOf(this), code: event.errorCode, at: Date.now() });
+        });
+      } };
       window.WebSocket = class extends NativeSocket { constructor(...args) { super(...args); qa.sockets.push(this); } };
       window.Worker = class extends NativeWorker {
         constructor(workerUrl, workerOptions) {
@@ -551,8 +618,14 @@ try {
             const buffered = [];
             for (let i = 0; i < video.buffered.length; i++) buffered.push([video.buffered.start(i), video.buffered.end(i)]);
             qa.events.push({ type, at: Date.now(), time: video.currentTime, paused: video.paused, seeking: video.seeking,
-              readyState: video.readyState, buffered, errorCode: video.error?.code ?? null });
+              readyState: video.readyState, buffered, errorCode: video.error?.code ?? null,
+              crossOrigin: video.crossOrigin, currentSrc: video.currentSrc,
+              controller: qa.wantDiagnostics ? qa.controllerState() : undefined });
             if (qa.events.length > 600) qa.events.shift();
+            if (type === 'error' && qa.wantDiagnostics) queueMicrotask(() => {
+              qa.events.push({ type: 'after-error-handlers', at: Date.now(), controller: qa.controllerState() });
+              if (qa.events.length > 600) qa.events.shift();
+            });
           });
         const frame = (now, metadata) => {
           qa.presentedFrames++;

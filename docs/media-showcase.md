@@ -81,6 +81,25 @@ playback does not wait for the former paused three-second prime. This preserves
 the tap's playback request; it does not establish startup headroom or guarantee
 cold-cache continuity.
 
+For a new full-recording room, discovery reserves a local candidate identity
+without publishing an active listener or starting its clock. The original HLS
+pipeline prepares verified encoded media at raw position zero. Its SDK startup
+barrier holds the first callback until contiguous media covers measured source
+recovery headroom, within three objects, 24 MiB and the original eight-second
+deadline. It then acknowledges the room start over the existing relays, anchors
+that same timeline once, and repeats fresh target, authority and coverage checks
+before releasing the callback. Preparation is not decoded playback or an active
+watcher. The trusted play request and visible player remain the same.
+
+Existing rooms retain their advancing clock. If another starter publishes first,
+the unpublished candidate cohort is retired before any held body reaches HLS;
+the empty attached player joins the observed epoch. Pause and cancellation retire
+local preparation. A published epoch is never moved backwards. Unsupported
+metadata and browsers without a frame witness retain the ordinary startup path.
+The latest M4 checks below qualify this revision for two fresh browser contexts
+on one direct route, including an actual recording wrap. Physical phones,
+cross-network traversal and public TURN remain separate acceptance gates.
+
 The supported recordings use a bounded client-generated live playlist. The
 canonical VOD manifest is verified against its pinned digest before its
 durations and exact media URLs are used. A sliding window includes 24 seconds
@@ -113,8 +132,8 @@ same visible video; same-epoch pause/resume retains the mapping.
 
 Unrecognised metadata and native HLS retain the original VOD path. That path
 can prime three seconds on replay, with its bounded current-position release
-and playback-demand bootstrap. Those fallback waits remain measured; the
-continuous-playlist mechanism does not establish a zero-stall acceptance pass.
+and playback-demand bootstrap. Those fallback waits remain measured and are outside the prepared-room M4
+qualification below.
 Recorded public playback targets 20 seconds of forward buffer,
 caps its time target at 24 seconds and retains four seconds behind the
 playhead. Its hls.js byte target is 64 MiB, which is not a hard process-memory
@@ -365,6 +384,46 @@ measurements, separate from this public replay.
 
 ## 4K delivery observations
 
+The [26 October prepared-room summary](evidence/prepared-room-4k-20261026.json)
+records staged 60.075-second and 330.213-second full-4K checks. Both viewers had
+**zero post-first-frame stalls and zero dropped frames**. Their maximum sampled
+room-clock offsets were 0.321/0.119 seconds in the short run and 0.343/0.116
+seconds in the long run, within the unchanged 750 ms budget. The second viewer's
+first three samples were not yet presented; every later eligible sample was
+checked, with no unknown samples or violations.
+
+| Run | Viewer | Accepted peer bytes | Peer share | HTTP body bytes | Accepted loaded bytes |
+| --- | --- | ---: | ---: | ---: | ---: |
+| 60 s | A | 24,484,771 | 11.08% | 216,343,039 | 220,988,648 |
+| 60 s | B | 42,297,447 | 19.72% | 191,321,195 | 214,516,682 |
+| 330 s | A | 127,992,334 | 12.02% | 1,039,748,321 | 1,064,588,887 |
+| 330 s | B | 70,385,118 | 6.65% | 1,041,002,497 | 1,058,116,921 |
+
+The original contribution gate requires at least 10 MiB and 10% accepted peer
+share in **one harness-selected receiving viewer**. In the long run A passed;
+B's 6.65% remains below that share threshold. These percentages describe loaded
+video, including buffered media. HTTP body totals include partial reads before
+losing races were aborted. They are observations, not net HTTP, wire-byte,
+billing or competitor-advantage claims.
+
+Both long-run viewers actually crossed the 267.32-second programme boundary:
+recording phase rolled over while raw Hls time kept increasing, and SDK
+observations included discontinuity counters 0 then 1. Periodic samples cover
+at least another 61.558 seconds for A and 62.638 seconds for B after their first
+observed wrapped phases. Each retained one visible video, one nonempty media
+source URI and one acknowledged epoch pair; no pipeline reset or post-frame
+interruption was observed. JavaScript Hls object identity was not serialized.
+The periodic sampled window was 329.387 seconds, distinct from the run's
+330.213-second observation timer.
+
+These were two fresh Chrome 155 contexts on the same M4 Mac, using normal
+unmuted HTML media at 1x and direct host-to-host UDP peers. Browser HTTP cache
+was disabled; a cold CDN was not established. Startup still took 4.111 seconds
+for A and 2.981 seconds for B in the long run. The short pass also had faster
+HTTP delivery than the preceding failed run, so this is not a controlled claim
+that preparation alone caused the improvement. Physical iPhone playback,
+separate networks/NAT and independently operated public TURN remain unqualified.
+
 The [playback recovery receipt](evidence/iphone-playback-recovery-20261024.json)
 records nine focused recovery cases and a three-browser preview check using
 the current correction policy. All three retained their membership and peer
@@ -564,9 +623,10 @@ configuration; the existing paired instance is not an anonymous issuer.
 The earlier test issuer's published-origin CORS and bidirectional 1 MiB
 hash-verified TLS checks passed on 25 October 2026. That lab route was replaced
 by the paired private deployment. No separate public instance is live in the
-reviewed evidence. Final public issuance, sustained cold-cache 4K,
+reviewed evidence. Final public issuance, sustained 4K through that relay,
 credential rotation during playback and physical iPhone acceptance require
-the configured public route and fresh playback evidence.
+the configured public route and fresh playback evidence. The direct-peer M4
+checks above do not qualify that public TURN path.
 The pinned 689 KiB piece catalogue is bounded to 1 MiB, and the browser uses
 the pinned Rust/WASM module. Both load only after Play. The bundle
 receipt records the exact source, WASM digest and dependency notices; the

@@ -3,10 +3,10 @@
 // A receiver's ephemeral key wraps that digest for the existing live-commitment
 // verifier; this is local attestation, not a live broadcaster signing service.
 import { createHlsSwarm, commitmentContent, commitmentPieceSize, segmentMediaContext, KIND_SEGMENT_COMMITMENT, finalizeEvent,
-  generateSecretKey, relayswarmBuild } from './vendor/media-peer-demo.js?v=20261025-native-cors';
-import { observeOriginLoader } from './media-transfer-stats.mjs?v=20261025-native-cors';
-import { createPublicTurnCredentials } from './media-turn-credentials.mjs?v=20261025-native-cors';
-import { parseRecordedManifest, createRecordedLive } from './media-recorded-live.mjs?v=20261025-native-cors';
+  generateSecretKey, relayswarmBuild } from './vendor/media-peer-demo.js?v=20261025-prepared-room';
+import { observeOriginLoader } from './media-transfer-stats.mjs?v=20261025-prepared-room';
+import { createPublicTurnCredentials } from './media-turn-credentials.mjs?v=20261025-prepared-room';
+import { parseRecordedManifest, createRecordedLive } from './media-recorded-live.mjs?v=20261025-prepared-room';
 export { createRecordedLive };
 
 export const PUBLIC_SWARM_LIMITS = Object.freeze({
@@ -193,7 +193,7 @@ function recordedCatalogueSegment(recording, plan, context) {
  * rate, peer count and cache remain bounded until this adapter is stopped.
  * setEnabled(false) restores the normal HTTP loader without replacing the
  * video, seeking, muting, or destroying its current MediaSource. */
-export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signal, onStats = () => {}, recordedLive, turnConfiguration },
+export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signal, onStats = () => {}, recordedLive, turnConfiguration, startupBufferTarget, startupBufferNeeded, startupBufferCommit },
   { createSwarm = createHlsSwarm, createTurnCredentials = createPublicTurnCredentials } = {}) {
   if (!Hls || !hls?.config || !video) throw new Error('An existing video and HLS player are required.');
   const origin = globalThis.location?.href;
@@ -244,6 +244,11 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
       peerShare: loadedMediaBytes > 0 ? Math.min(1, peerBytes / loadedMediaBytes) : 0,
       core: live?.core ? { state: live.core.state, decided: live.core.decided, multiHolder: live.core.multiHolder,
         transferWorker: live.core.transferWorker } : null,
+      warmAhead: live?.warmAhead ?? null,
+      uploadPacing: live?.uploadPacing ?? null,
+      peerAdmission: live?.peerAdmission ?? null,
+      latePeerRace: live?.latePeerRace ?? null,
+      startupBuffer: live?.startupBuffer ?? null,
       resources: { activePeerConnections: [...connections].filter(connection => connection.connectionState !== 'closed').length,
         signallingConnections: [...sockets].filter(socket => socket.readyState < 2).length,
         heldBytes: n(live?.bytes.held), heldHighWaterBytes: highWaterBytes },
@@ -458,11 +463,31 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
             super.close(); connections.delete(this); peerObservations.delete(this);
           }
         }
+        let needsStartupBuffer = false;
+        if (quality === 'full' && recording && typeof startupBufferTarget === 'function' && typeof startupBufferNeeded === 'function') {
+          try { needsStartupBuffer = startupBufferNeeded() === true; } catch {}
+        }
         swarm = createSwarm({ mode: 'peer-first', swarmId: plan.swarmId, relays: [...PUBLIC_SWARM_RELAYS],
           streamEvent, getCommitment, serve: true, serveOnCellular: false,
-          coreWasm: new URL('./vendor/relayswarm-core.wasm?v=20261025-native-cors', import.meta.url), multiHolder: true,
-          transferWorkerUrl: new URL('./vendor/relayswarm-transfer-worker.js?v=20261025-native-cors', import.meta.url),
+          coreWasm: new URL('./vendor/relayswarm-core.wasm?v=20261025-prepared-room', import.meta.url), multiHolder: true,
+          transferWorkerUrl: new URL('./vendor/relayswarm-transfer-worker.js?v=20261025-prepared-room', import.meta.url),
           zeroBudgetPeerRace: true, lateHaveRace: true, sustainablePeerWait: true,
+          warmAhead: false,
+          startupBufferTarget: needsStartupBuffer ? () => {
+            if (!enabled || stopped || ownGeneration !== generation) return null;
+            try {
+              const target = startupBufferTarget();
+              return Number.isFinite(target) && target >= 0 ? target : null;
+            } catch { return null; }
+          } : null,
+          startupBufferCommit: needsStartupBuffer && typeof startupBufferCommit === 'function' ? async ({ signal: startupSignal }) => {
+            const current = () => enabled && !stopped && ownGeneration === generation && !startupSignal.aborted;
+            if (!current()) throw new DOMException('Startup cancelled', 'AbortError');
+            await startupBufferCommit(Object.freeze({ signal: startupSignal }));
+            if (!current()) throw new DOMException('Startup cancelled', 'AbortError');
+          } : null,
+          uploadPacing: quality === 'full',
+          latePeerRace: quality === 'full',
           maxHoldersPerObject: PUBLIC_SWARM_LIMITS.maxPeers,
           iceServers: PUBLIC_SWARM_ICE.map(entry => ({ ...entry })), iceTransportPolicy: 'all',
           WebSocketImpl: ObservedSocket, RTCPeerConnectionImpl: ObservedConnection,
