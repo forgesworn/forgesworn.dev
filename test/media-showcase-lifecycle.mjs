@@ -29,23 +29,31 @@ const fixtures = {
   '/media-listener-session.mjs': `export function createListenerSession({onChange,room,duration}) {
     fixture.roomConfig={room,duration};
     const position=()=>fixture.recorded?((Date.now()-fixture.startedAt)/1000)%fixture.sourceDuration:50;
-    let joined=false,prepared=false,token=null,generation=0;
-    const snapshot=()=>({ready:joined,prepared,observed:true,connectedRelays:1,joined,
-      listeners:joined?1:0,epochId:fixture.coldRoom&&!prepared&&!joined?null:fixture.epochId,
-      position:prepared||fixture.coldRoom&&!joined?0:position(),startedAt:prepared?null:fixture.startedAt});
+    let joined=false,prepared=false,publishing=false,foreign=false,token=null,generation=0,cancelCommit=null;
+    const snapshot=()=>({ready:joined,prepared,observed:true,connectedRelays:1,joined:joined||publishing,
+      status:prepared?'prepared':publishing?'publishing':joined?'active':'observing',
+      listeners:(joined?1:0)+(foreign?1:0),epochId:fixture.coldRoom&&!prepared&&!joined&&!publishing&&!foreign?null:fixture.epochId,
+      position:prepared||fixture.coldRoom&&!joined&&!publishing&&!foreign?0:position(),startedAt:prepared?null:fixture.startedAt});
     const notify=()=>onChange(snapshot()); fixture.roomUpdate=notify;
+    fixture.listenerSnapshot=snapshot;
     fixture.replaceEpoch=()=>{fixture.epochId='2'.repeat(64);fixture.startedAt=Date.now()-10_000;notify()};
+    fixture.adoptPublishingEpoch=()=>{if(!publishing)throw new Error('Expected publishing');
+      foreign=true;fixture.epochId='2'.repeat(64);fixture.startedAt=Date.now()-10_000;notify()};
     const roomApi={snapshot,position,observe:notify,join:async()=>{
       const request=++generation; fixture.trace.push({kind:'join'});
       if(fixture.holdJoin) await new Promise(resolve=>fixture.joinWaiters.push(resolve));
-      if(request!==generation) throw new DOMException('Join cancelled','AbortError'); joined=true; notify();
-    },leave:()=>{generation++;joined=false;prepared=false;token=null;notify()},stop(){generation++}};
+      if(request!==generation) throw new DOMException('Join cancelled','AbortError');
+      publishing=true;notify();await Promise.resolve();
+      if(request!==generation)throw new DOMException('Join cancelled','AbortError');publishing=false;joined=true;notify();
+    },leave:()=>{generation++;cancelCommit?.();joined=false;prepared=false;publishing=false;token=null;notify()},
+      stop(){generation++;cancelCommit?.();joined=false;prepared=false;publishing=false;token=null}};
     if(fixture.coldRoom){
       roomApi.prepareJoin=async()=>{
         const request=++generation;fixture.trace.push({kind:'join'});
         if(fixture.holdJoin)await new Promise(resolve=>fixture.joinWaiters.push(resolve));
         if(request!==generation)throw new DOMException('Prepare cancelled','AbortError');
         if(joined)return {...snapshot(),token:null};
+        if(foreign){await roomApi.join();return {...snapshot(),prepared:false,token:null};}
         fixture.preparations=(fixture.preparations||0)+1;
         if(fixture.preparations>1)fixture.epochId='3'.repeat(64);
         prepared=true;token=Object.freeze({});notify();return {...snapshot(),token};
@@ -53,12 +61,28 @@ const fixtures = {
       roomApi.commitPreparedStart=async(value,{signal}={})=>{
         const request=generation;fixture.trace.push({kind:'commit'});
         if(value!==token||!prepared||signal?.aborted)throw new DOMException('Invalid preparation','AbortError');
-        if(fixture.holdCommit)await new Promise(resolve=>fixture.commitWaiters.push(resolve));
-        if(request!==generation||value!==token||signal?.aborted)throw new DOMException('Commit cancelled','AbortError');
-        const adopted=fixture.adoptOnCommit===true;
-        if(adopted)fixture.epochId='2'.repeat(64);
-        fixture.startedAt=Date.now()-(adopted?10_000:0);prepared=false;token=null;joined=true;notify();
-        return {...snapshot(),adopted};
+        const candidate=fixture.epochId;
+        if(fixture.adoptOnCommit){foreign=true;fixture.epochId='2'.repeat(64);}
+        fixture.startedAt=Date.now()-(foreign?10_000:0);prepared=false;token=null;publishing=true;
+        const result=new Promise((resolve,reject)=>{
+          let settled=false;
+          const aborted=()=>roomApi.leave();
+          const cleanup=()=>{signal?.removeEventListener('abort',aborted);if(cancelCommit===cancel)cancelCommit=null};
+          const cancel=()=>{if(settled)return;settled=true;cleanup();reject(new DOMException('Commit cancelled','AbortError'))};
+          const acknowledge=()=>{
+            if(settled)return;
+            if(request!==generation||signal?.aborted){cancel();return;}
+            // The real actor removes its operation abort listener BEFORE it
+            // notifies active: that callback may retire the losing SDK.
+            settled=true;cleanup();publishing=false;joined=true;notify();
+            resolve({...snapshot(),adopted:fixture.epochId!==candidate});
+          };
+          cancelCommit=cancel;signal?.addEventListener('abort',aborted,{once:true});
+          fixture.commitWaiters.push(acknowledge);
+          notify();
+          if(!fixture.holdCommit)queueMicrotask(acknowledge);
+        });
+        return result;
       };
     }
     return roomApi;
@@ -572,6 +596,11 @@ try {
       .then(()=>fixture.commitOutcome='done',error=>fixture.commitOutcome=error.name);
   });
   await cold.page.waitForFunction(()=>fixture.trace.some(x=>x.kind==='commit'));
+  assert.deepEqual(await cold.page.evaluate(()=>{const s=fixture.listenerSnapshot();return{
+    prepared:s.prepared,joined:s.joined,ready:s.ready,status:s.status,
+    sources:fixture.trace.filter(x=>x.kind==='source').length,peers:fixture.peers.length}}),
+    {prepared:false,joined:true,ready:false,status:'publishing',sources:1,peers:1},
+    'publication is joined but unready while its real ACK is pending');
   assert.equal(await cold.page.evaluate(()=>fixture.views[0].mediaTimeAt(Date.now())),0,'pending ACK cannot start the local clock');
   await cold.page.evaluate(()=>fixture.releaseCommit());
   await cold.page.waitForFunction(()=>fixture.commitOutcome==='done');
@@ -584,20 +613,34 @@ try {
   });
   assert(anchored.target>=0&&anchored.target<0.75,'fresh playback starts against the newly acknowledged anchor');
   assert.deepEqual([anchored.players,anchored.attaches,anchored.plays],[1,1,1]);assert.equal(anchored.epoch,'1'.repeat(64));
+  await cold.page.evaluate(()=>fixture.roomUpdate());
+  assert.deepEqual(await cold.page.evaluate(()=>[fixture.players.length,fixture.peers.length,fixture.trace.filter(x=>x.kind==='source').length]),[1,1,1],
+    'same-epoch publication, ACK and repeated ready observations do not churn the recording scope');
   await close(cold);
 
-  for(const adopt of [false,true]){
+  for(const action of ['pause','adopt-at-commit','adopt-while-publishing','abort','pagehide']){
+    const adopt=action.startsWith('adopt');
     const pending=await open({recorded:true,coldRoom:true,holdCommit:true});
     await pending.page.locator('#public-play').click();await pending.page.evaluate(()=>fixture.releaseRoom());
-    await pending.page.waitForFunction(()=>fixture.peers.length===1&&typeof fixture.peers[0].options.startupBufferCommit==='function');
-    await pending.page.evaluate(()=>{
-      fixture.peers[0].options.startupBufferCommit({signal:new AbortController().signal})
+    await pending.page.waitForFunction(()=>fixture.peers.length===1&&fixture.trace.some(x=>x.kind==='startLoad'));
+    await pending.page.evaluate(action=>{
+      fixture.adoptOnCommit=action==='adopt-at-commit';fixture.oldMetadata=fixture.metadataHandlers.at(-1);
+      fixture.commitController=new AbortController();
+      fixture.peers[0].options.startupBufferCommit({signal:fixture.commitController.signal})
         .then(()=>fixture.commitOutcome='done',error=>fixture.commitOutcome=error.name);
-    });
-    await pending.page.waitForFunction(()=>fixture.trace.some(x=>x.kind==='commit'));
-    await pending.page.evaluate(adopt=>{if(adopt)fixture.adoptOnCommit=true;else document.getElementById('lab-video').pause();fixture.releaseCommit()},adopt);
+    },action);
+    await pending.page.waitForFunction(()=>fixture.listenerSnapshot().status==='publishing');
+    await pending.page.evaluate(action=>{
+      if(action==='adopt-while-publishing')fixture.adoptPublishingEpoch();
+      else if(action==='pause')document.getElementById('lab-video').pause();
+      else if(action==='abort')fixture.commitController.abort();
+      else if(action==='pagehide')window.dispatchEvent(new PageTransitionEvent('pagehide'));
+      fixture.releaseCommit();
+    },action);
     await pending.page.waitForFunction(()=>fixture.commitOutcome==='AbortError');
     if(adopt){
+      assert.equal(await pending.page.evaluate(()=>fixture.peers[0].stopped),true,
+        'ACK of a changed ready epoch retires the loaded unpresented candidate after its unready notification');
       await pending.page.waitForFunction(()=>fixture.peers.length===2&&fixture.trace.filter(x=>x.kind==='source').length===2);
       const converged=await pending.page.evaluate(()=>({players:fixture.players.length,attaches:fixture.trace.filter(x=>x.kind==='attach').length,
         plays:fixture.trace.filter(x=>x.kind==='play').length,oldStopped:fixture.peers[0].stopped,
@@ -606,8 +649,26 @@ try {
       assert.deepEqual([converged.players,converged.attaches,converged.plays],[1,1,1],'a losing unpresented candidate reuses the trusted pipeline');
       assert.equal(converged.oldStopped,true);assert.equal(converged.epoch,'2'.repeat(64));assert(converged.target>0);
       assert.equal(converged.metadataHandlers,2,'new epoch arms its own initial metadata alignment');
-    }else{
+      const retired=await pending.page.evaluate(async()=>{
+        const old=fixture.peers[0],before=document.getElementById('public-peer-bytes').dataset.bytes;
+        const seeks=fixture.trace.filter(x=>x.kind==='seek').length;
+        fixture.oldMetadata();old.options.onStats({peerBytes:999999});
+        const result=await old.options.startupBufferCommit({signal:new AbortController().signal}).then(()=>false,error=>error.name==='AbortError');
+        fixture.roomUpdate();
+        return{target:old.options.startupBufferTarget(),rejected:result,bytes:document.getElementById('public-peer-bytes').dataset.bytes,
+          unchanged:before,seeks:fixture.trace.filter(x=>x.kind==='seek').length-seeks};
+      });
+      assert.equal(retired.target,null);assert.equal(retired.rejected,true);assert.equal(retired.bytes,retired.unchanged);
+      assert.equal(retired.seeks,0,'old metadata and cohort callbacks cannot reach the fresh scope');
+      assert.deepEqual(await pending.page.evaluate(()=>[fixture.players.length,fixture.peers.length,fixture.trace.filter(x=>x.kind==='source').length]),[1,2,2],
+        'a repeated same ready epoch does not create another scope');
+    }else if(action==='pause'){
       assert.equal(await pending.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='source').length),1,'late cancelled activation cannot reload or resume');
+      const pausedMetadata=await pending.page.evaluate(()=>{
+        const seeks=fixture.trace.filter(x=>x.kind==='seek').length;fixture.oldMetadata();
+        return{seeks:fixture.trace.filter(x=>x.kind==='seek').length-seeks,target:fixture.peers[0].options.startupBufferTarget()};
+      });
+      assert.deepEqual(pausedMetadata,{seeks:0,target:null},'a paused publication cannot release its old cohort or metadata');
       await pending.page.evaluate(()=>{void document.getElementById('lab-video').play()});
       await pending.page.waitForFunction(()=>fixture.peers.length===2&&fixture.trace.filter(x=>x.kind==='source').length===2);
       await pending.page.evaluate(async()=>{
@@ -619,10 +680,17 @@ try {
         oldStopped:fixture.peers[0].stopped}));
       assert.deepEqual([resumed.players,resumed.attaches,resumed.plays],[1,1,2],'explicit resume prepares afresh on the same empty player');
       assert.equal(resumed.oldStopped,true);assert.equal(resumed.epoch,'3'.repeat(64));
+    }else{
+      const late=await pending.page.evaluate(()=>{
+        const seeks=fixture.trace.filter(x=>x.kind==='seek').length;fixture.oldMetadata();
+        return{sources:fixture.trace.filter(x=>x.kind==='source').length,plays:fixture.trace.filter(x=>x.kind==='play').length,
+          seeks:fixture.trace.filter(x=>x.kind==='seek').length-seeks,target:fixture.peers[0].options.startupBufferTarget()};
+      });
+      assert.deepEqual(late,{sources:1,plays:1,seeks:0,target:null},'aborted/departed publication cannot activate old bytes or metadata');
     }
     await close(pending);
   }
-  checks.push('first room buffers at zero before activation; ACK anchors one trusted pipeline; pause and competing epochs retire candidate authority');
+  checks.push('first room buffers at zero; two-phase publishing/ACK retains one trusted pipeline or hands off the bound epoch; pause, abort and departure fence retired authority');
 
   const preFrameResume=await open({recorded:true});
   await preFrameResume.page.locator('#public-play').click();await preFrameResume.page.evaluate(()=>fixture.releaseRoom());

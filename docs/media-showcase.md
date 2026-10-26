@@ -109,7 +109,15 @@ the unpublished candidate cohort is retired before any held body reaches HLS;
 the empty attached player joins the observed epoch. Pause and cancellation retire
 local preparation. A published epoch is never moved backwards. Unsupported
 metadata and browsers without a frame witness retain the ordinary startup path.
-The latest M4 checks below qualify this revision for two fresh browser contexts
+An adopted epoch can first appear in an unready publication notification and
+then become ready after its ACK. Recorded playback compares that ready epoch
+with the recording's bound epoch, so the intervening notification cannot hide
+the required handoff. A losing unpresented candidate retires its view and peer
+scope on the same empty player and original pending Play; a presented pipeline
+keeps its existing replacement path. Same-epoch ACKs do not reload the source.
+Controller fixtures cover both notification stages and stale callbacks. They
+do not establish a cause for every cold-start failure or qualify fresh playback.
+The M4 checks below qualify their recorded source revision for two fresh browser contexts
 on one direct route, including an actual recording wrap. Physical phones,
 cross-network traversal and public TURN remain separate acceptance gates.
 

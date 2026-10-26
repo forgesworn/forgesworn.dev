@@ -447,9 +447,12 @@ async function initialise() {
           if (request !== publicRoomRequest || pageAbort.signal.aborted) return;
           const s = session?.quality === quality ? session : null;
           if (s && !s.finishing) {
-            const previous = s.listenerState?.epochId;
+            // Publishing can name a new epoch before it is acknowledged. A
+            // recording must compare the ready epoch with its actual binding,
+            // rather than that intervening unready notification.
+            const boundEpoch = s.recordedEpochId ?? s.listenerState?.epochId;
             s.listenerState = state;
-            if (previous && state.ready && state.epochId !== previous) {
+            if (boundEpoch && state.ready && state.epochId !== boundEpoch) {
               s.followLive = true;
               if (s.listenerPreparation && s.recordedView?.timelineOriginMs === null && !s.framePipeline?.seenFrame) {
                 // Another starter won while this empty pipeline buffered. No
