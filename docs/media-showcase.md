@@ -442,6 +442,39 @@ request. The pinned RelaySwarm source `e910147` also rolls its bounded startup
 plan forward using verified future-load timing. Release still requires current
 verified coverage; the three-object, 24 MiB and eight-second limits are unchanged.
 
+The [deployed public receipt](evidence/public-prepared-adoption-4k-20261026.json)
+records two fresh, HTTP-cache-disabled Chrome profiles on one M4 Max using the
+actual public CDN assets at site revision `6e7d20c`, without asset, controller,
+RTC or endpoint overrides. Each played unmuted at 1x for more than 330 seconds
+after its first frame. Both had **zero observed post-frame stalls and dropped
+frames**, crossed the programme wrap without resetting raw media time, and
+continued for at least 60 seconds afterwards.
+
+| Viewer | Accepted peer bytes | Share of loaded media | Uploaded media bytes | First frame | Maximum sampled room offset |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| A | 225,087,782 | 21.05% | 509,931,304 | 12.979 s | 0.258 s |
+| B (preselected receiver) | 479,604,520 | 45.31% | 285,596,943 | 5.030 s | 0.242 s |
+
+Both exceeded the predeclared receiver threshold of 10 MiB and 10% accepted
+peer media. The percentages include buffered media and do not measure net
+network or cost savings. Startup is measured above; it was not instantaneous.
+A retained one nonfatal pre-frame `networkError/aborted` event for the old
+fragment; its cumulative error count remained at one throughout playback. B
+remained at zero. No new post-frame player error was observed.
+
+One normal report export around 150 seconds and a final export retained the
+whole observation despite each report's 240-sample limit. Those interactions
+remained in all measurements; no window was excluded. Exact overlapping sample
+rows agreed. The merged reports contained 274 and 273 known sync observations,
+with maximum gaps of 1.226 and 1.218 seconds. Single video, nonempty source URI
+and room-epoch continuity were sampled; the epoch witness came from the DOM,
+not directly from the SDK binding.
+
+This establishes that deployed same-M4 run. The CDN cache was not controlled.
+The selected route was direct host-to-host; its transport protocol was not
+captured. Physical-phone performance on this revision, independent networks,
+public TURN and interactive eight-person calls remain separate gates.
+
 The [room-adoption candidate receipt](evidence/prepared-adoption-staged-4k-20261026.json)
 records one 60-second run per viewer on the same M4 Max, with browser HTTP cache
 disabled and four candidate assets substituted. Both viewers had zero observed
@@ -453,7 +486,8 @@ observation overlap was 57.408 seconds. All 306 fresh, eligible room comparisons
 matched, including 294 during that overlap. B retained one nonfatal pre-frame
 `aborted` event while its old loader stopped for room adoption.
 
-This is staged evidence. It does not establish deployed 330-second continuity,
+That candidate run is staged evidence. It does not itself establish deployed
+330-second continuity,
 physical-phone performance, public TURN or net network savings. The recorded
 listening room exercises peer-assisted HLS; it does not qualify KithMoot's
 interactive camera/microphone path or eight-person meetings.
