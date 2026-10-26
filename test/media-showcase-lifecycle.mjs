@@ -750,6 +750,7 @@ try {
   const resumeLoads=await fallback.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='startLoad').length);
   await fallback.page.evaluate(()=>{void document.getElementById('lab-video').play()});
   await fallback.page.waitForFunction(prior=>fixture.trace.filter(x=>x.kind==='startLoad').length>prior,resumeLoads);
+  const nativePlayCalls=await fallback.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='play').length);
   const phase=await fallback.page.evaluate(()=>{
     fixture.finishPlay();fixture.presentFrame();fixture.currentTime=fixture.sourceDuration+20;
     const position=fixture.views[1].recordingPosition(fixture.currentTime);fixture.nativeCapable=true;
@@ -759,10 +760,12 @@ try {
   assert.equal(await fallback.page.evaluate(()=>fixture.source),origin+'/media/dejavu-4k/index.m3u8');
   assert.equal(await fallback.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='src').at(-1).crossOrigin),'anonymous','fallback enables CORS before loading cross-origin child media');
   assert.equal(await fallback.page.evaluate(()=>fixture.players.every(p=>p.destroyed)&&fixture.peers.every(p=>p.stopped)),true);
-  const nativePlayCalls=await fallback.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='play').length);
+  assert.equal(await fallback.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='play').length),nativePlayCalls+1,
+    'native recovery requests playback before metadata arrives, so fetching does not depend on a future metadata event');
+  assert.equal(await fallback.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='play').at(-1).source),origin+'/media/dejavu-4k/index.m3u8');
   await fallback.page.evaluate(()=>{fixture.readyState=4;document.getElementById('lab-video').dispatchEvent(new Event('loadedmetadata'))});
   assert.equal(await fallback.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='play').length),nativePlayCalls+1,
-    'an earlier cancelled transition cannot suppress native playback after an explicit resume');
+    'metadata restores programme phase without issuing a second play request');
   assert.equal(await fallback.page.evaluate(()=>fixture.paused),false);
   assert(Math.abs(await fallback.page.evaluate(()=>fixture.currentTime)-phase)<0.01,'native fallback restores phase, never the continuous raw offset');
   assert.equal(await fallback.page.locator('#main').getAttribute('data-playback-mode'),'recorded-vod');
@@ -772,6 +775,43 @@ try {
   assert.equal(await fallback.page.locator('#public-play').innerText(),'Play again');
   assert.equal(await fallback.page.evaluate(()=>document.getElementById('lab-video').controls),false);
   await close(fallback);checks.push('pause then explicit resume authorises a later native fallback; anonymous CORS, programme phase and approved original VOD are preserved; failure restores retry');
+
+  for (const reject of [false,true]) {
+    const recovery=await open({recorded:true});
+    await recovery.page.locator('#public-play').click();await recovery.page.evaluate(()=>fixture.releaseRoom());
+    await recovery.page.waitForFunction(()=>fixture.brandedAdapters===1);
+    await recovery.page.evaluate(reject=>{
+      fixture.finishPlay();fixture.presentFrame();fixture.nativeCapable=true;fixture.reject=reject;
+      fixture.players[0].handlers.get('error')(null,{fatal:true,type:'mediaError',details:'bufferAppendError'});
+    },reject);
+    await recovery.page.waitForFunction(()=>document.getElementById('main').dataset.playbackFallback==='player-error');
+    if(reject)await recovery.page.waitForFunction(()=>document.getElementById('main').dataset.playbackPlayError==='NotAllowedError');
+    else await recovery.page.evaluate(()=>{
+      const v=document.getElementById('lab-video');v.dispatchEvent(new Event('pointerdown'));v.pause();
+    });
+    const requested=await recovery.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='play').length);
+    assert.equal(requested,2,'one initial play and one native recovery demand');
+    await recovery.page.evaluate(()=>{fixture.readyState=4;document.getElementById('lab-video').dispatchEvent(new Event('loadedmetadata'))});
+    assert.equal(await recovery.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='play').length),requested,
+      'late native metadata cannot undo a viewer pause or retry rejected autoplay');
+    assert.equal(await recovery.page.evaluate(()=>fixture.paused),true);
+    assert.equal(await recovery.page.locator('#main').getAttribute('data-shared-session'),'paused');
+    await close(recovery);
+  }
+  checks.push('native recovery starts before metadata; later metadata cannot resume a viewer pause or retry rejected autoplay');
+
+  const primedFallback=await open({recorded:false});
+  await primedFallback.page.locator('#public-play').click();await primedFallback.page.evaluate(()=>fixture.releaseRoom());
+  await primedFallback.page.waitForFunction(()=>fixture.trace.some(x=>x.kind==='source'));
+  await primedFallback.page.evaluate(()=>{
+    fixture.finishPlay();fixture.presentFrame();document.getElementById('lab-video').dispatchEvent(new Event('ended'));
+    fixture.nativeCapable=true;fixture.players[0].handlers.get('error')(null,{fatal:true});
+  });
+  await primedFallback.page.waitForFunction(()=>document.getElementById('main').dataset.playbackFallback==='player-error');
+  assert.equal(await primedFallback.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='play').length),2,
+    'an old replay priming barrier cannot suppress the replacement native demand');
+  assert.equal(await primedFallback.page.locator('#public-play').getAttribute('disabled'),null);
+  await close(primedFallback);checks.push('native handoff retires old replay priming before requesting replacement playback');
   console.log(JSON.stringify({suite:'media-showcase-lifecycle',passed:true,checks,
     scope:'Real controller; explicit HLS/room/media fixtures. No decoded playback, physical-device or peer-delivery qualification.'}));
 } finally { await browser?.close(); }

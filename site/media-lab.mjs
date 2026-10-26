@@ -2,7 +2,7 @@ import { readInitialLiveStart } from './media-live-start.mjs';
 import { createSourceResponseStats, publicSourceResource, transferBytes } from './media-transfer-stats.mjs?v=20261025-prepared-room';
 import { createNativePlaybackFallback } from './media-playback-fallback.mjs?v=20261025-prepared-room';
 import { createPlaybackPrime } from './media-playback-prime.mjs?v=20261025-prepared-room';
-import { createPlaybackReport } from './media-playback-report.mjs?v=20261025-prepared-room';
+import { createPlaybackReport } from './media-playback-report.mjs?v=20261026-native-demand';
 
 const DASH = '—';
 export const observed = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
@@ -947,6 +947,8 @@ async function initialise() {
         presentedFrames: b.presentedFrames, totalVideoFrames: quality?.totalVideoFrames, droppedVideoFrames: quality?.droppedVideoFrames,
         buffered, playbackRate: video.playbackRate, priming: Boolean(s.priming), primingReason: root.dataset.playbackPrime,
         lastPlayError: root.dataset.playbackPlayError ?? null,
+        lastPlayerError: b.lastPlayerError, playbackFailed: Boolean(s.playbackFailed),
+        playbackFallback: root.dataset.playbackFallback ?? null,
         following: room?.ready ? s.followLive !== false : null,
         sharedDriftSeconds: drift,
         waiting: b.waitingAt !== null, stallCount: b.stallCount, stallSeconds: b.stallSeconds, playerErrors: b.playerErrors,
@@ -1077,6 +1079,7 @@ async function initialise() {
       if (s.switchingPlayback && !video.error) return;
       s.switchingPlayback = false;
       b.playerErrors++;
+      b.lastPlayerError = { type: 'native', mediaErrorCode: video.error?.code };
       if (s.sourceEof && video.error?.code === 2) return;
       if (!local && !b.seenFrame) { publicStartupFailed(s); return; }
       if (!local && s.hls && b.seenFrame && video.canPlayType('application/vnd.apple.mpegurl')) {
@@ -1224,6 +1227,8 @@ async function initialise() {
     s.playbackVersion = (s.playbackVersion ?? 0) + 1;
     s.switchingPlayback = true;
     s.playbackTransitionStartedAt = performance.now();
+    s.playbackPrime?.cancel(); s.priming = false; s.mediaReady = true;
+    delete root.dataset.playbackPrime;
     s.nativeFallback = true;
     s.nativeHls = true;
     root.dataset.playbackFallback = reason;
@@ -1247,13 +1252,16 @@ async function initialise() {
         s.roomSeekAt = performance.now();
         video.currentTime = Math.min(position, Math.max(0, video.duration - 0.1));
       }
-      if (s.playbackWanted !== false) void play(s);
     }, { once: true, signal: s.abort.signal });
     // The same-origin manifest contains approved cross-origin media. Native
     // HLS must fetch those children in CORS mode too, before selecting source.
     video.crossOrigin = 'anonymous';
     video.src = s.playlistUrl;
     status('Switching to your browser’s native player to recover playback.');
+    // Demand the replacement source now, as for normal native startup. Waiting
+    // for metadata before play() can leave Safari paused without ever starting
+    // that load. Metadata only restores phase; it must not resume a later pause.
+    if (s.playbackWanted !== false) void play(s);
     browserReadings(s);
   }
 
@@ -1294,6 +1302,7 @@ async function initialise() {
     s.hls.on(Hls.Events.ERROR, (_, data) => {
       if (session !== s || s.finishing || s.hls !== player) return;
       s.browser.playerErrors++;
+      s.browser.lastPlayerError = { type: data.type, detail: data.details, fatal: data.fatal };
       if (data.fatal && !local && !s.browser.seenFrame) { publicStartupFailed(s); return; }
       if (data.fatal && !local && s.browser.seenFrame && video.canPlayType('application/vnd.apple.mpegurl')) {
         switchPublicToNative(s, 'player-error'); return;

@@ -158,7 +158,13 @@ playhead, and keeps the shared listener handle. It happens once per playback.
 
 Both native entry paths set `crossOrigin = 'anonymous'` before assigning the
 manifest: the same-origin playlist references media on the approved remote
-host. The [native recovery receipt](evidence/native-hls-recovery-20261025.json)
+host. A recovery requests native playback immediately after assigning that
+source; it does not wait for metadata to supply playback demand. Metadata
+restores the recording phase without issuing another Play, so a later viewer
+pause or browser policy rejection cannot be undone by that callback. The old
+HLS replay-prime barrier is cancelled during the handoff.
+
+The [native recovery receipt](evidence/native-hls-recovery-20261025.json)
 records an HTTP/2-controlled native comparison and an intentional fatal-error
 test through the real homepage controller. Terminal media errors stop the
 stall timer, leave listener presence and restore an enabled Play again control.
@@ -171,6 +177,23 @@ is empty; earlier verified peer downloads and uploads remain visible as
 historical totals. Native origin-transfer totals are shown as unavailable.
 This recovery is an alternative delivery path, not evidence that the original
 ManagedMediaSource issue or physical iPhone playback has passed acceptance.
+
+A subsequent [iOS 18.3 Simulator run](evidence/safari-native-demand-20261026.json) on the previously deployed revision
+presented 4K video for 148 seconds with no reported stalls and three dropped
+frames, while exchanging verified media with a direct peer. Shortly after
+the first report download, it recorded player errors and a native handoff
+that remained paused at time zero. The download's role is unproven; this is
+a failed run, not a replay or physical-phone pass. The new controller checks
+cover immediate native demand, phase restoration, pause, policy rejection and
+handoff during replay priming. They qualify controller ordering, not decoded
+recovery on Safari.
+
+Saved reports now retain allowlisted HLS error types/details, the fatal flag,
+native numeric media-error codes, terminal playback state and fallback reason.
+They never copy arbitrary error messages, source URLs or SDK error objects.
+A zero stall counter does not establish success when playback is failed or
+paused. Frame counters can reset on an engine change; earlier drops must not
+be discarded when assessing a run.
 
 For public browsers without native HLS, a separate decoder recovery handles a
 playhead frozen inside a continuous buffer after media arrives. After 1.5 seconds without movement and 750 ms
