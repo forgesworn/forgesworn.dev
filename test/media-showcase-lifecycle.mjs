@@ -628,7 +628,7 @@ try {
   await close(cold);
 
   for(const action of ['ack','pending-enable','pause','pagehide','ack-fail','deny-after-ack']){
-    const automatic=await open({recorded:true,coldRoom:true,holdCommit:true,holdPeerEnable:action==='pending-enable'});
+    const automatic=await open({recorded:true,coldRoom:true,holdCommit:true,holdPeerEnable:action==='pending-enable',observeReport:action==='ack-fail'});
     await automatic.page.locator('#public-play').click();await automatic.page.evaluate(()=>fixture.releaseRoom());
     await automatic.page.waitForFunction(()=>fixture.peers.length===1);
     if(action!=='pending-enable')await automatic.page.waitForFunction(()=>fixture.trace.some(x=>x.kind==='startLoad'));
