@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "kind": "physical-safari-playback",
+  "measuredAt": "2026-10-26T10:24:51Z",
+  "sourceRevision": "9e0760811cd470d4019087950d0c5c26160137d9",
+  "entryTag": "20261026-native-demand",
+  "scope": "Passive observations of an existing physical iPhone Safari page; no navigation, playback controls, export or policy overrides.",
+  "source": "Full Deja Vu recording, programme duration267.32s; decoded dimensions were not queried.",
+  "actualObservationSeconds": 330.1782553330995,
+  "sampleWindowSeconds": 329.114628250245,
+  "samplePairs": 132,
+  "allUnpaused": true,
+  "allReadyState4": true,
+  "allRecordedLiveMms": true,
+  "noFallbackObserved": true,
+  "noRawBacktracks": true,
+  "sameObservedEpoch": true,
+  "rawFirst": 1990.347909354,
+  "rawLast": 2319.492159734994,
+  "observedWraps": [
+    {
+      "beforeElapsed": 148.19478775002062,
+      "afterElapsed": 150.7787732500583,
+      "beforeRaw": 2138.5095060640742,
+      "afterRaw": 2141.091947621362,
+      "beforePhase": 267.03431061590965,
+      "afterPhase": 2.091457455041109,
+      "secondsBeyondObservedWrap": 178.37829250004143
+    }
+  ],
+  "observedStalls": 0,
+  "observedStallSeconds": 0,
+  "observedPlayerErrors": 0,
+  "httpResourceErrors": null,
+  "ownerAudibleFeedback": "Smooth, no pauses",
+  "ownerFeedbackScope": "The preceding five-minute trace, including its recording wrap.",
+  "frameCounts": null,
+  "droppedFrames": null,
+  "bufferRanges": null,
+  "nativeMediaErrorCode": null,
+  "decodedWidth": null,
+  "decodedHeight": null,
+  "muted": null,
+  "volume": null,
+  "playbackRate": null,
+  "unknowns": [
+    "Phone cache state and cold-start acceptance",
+    "Native frame/drop/audio/dimension counters",
+    "Cross-network, peer-contribution and public TURN qualification"
+  ],
+  "inspectionQueryErrors": 0,
+  "inspectionReceiverErrors": 0,
+  "cleanup": {
+    "ownerPageUntouched": true,
+    "inspectorClosed": true,
+    "lockdownClosed": true,
+    "ownSshTransportClosed": true
+  },
+  "rawReceiptSha256": "689a6908bc896ed79ff1dbc3c7a97df4aa096091dc7972b0ba876a5ad1a4dba2"
+}

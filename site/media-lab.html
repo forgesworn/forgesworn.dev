@@ -14,7 +14,7 @@
   <meta property="og:image" content="https://forgesworn.dev/media/dejavu-preview/poster.jpg">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/media-showcase.css?v=20261024-swarm-calm">
+  <link rel="stylesheet" href="/media-showcase.css?v=20261026-video-caption">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"ForgeSworn 4K listening room","url":"https://forgesworn.dev/media-lab.html","description":"Licensed 4K playback, observed peer-assisted delivery and open-source media libraries.","isPartOf":{"@type":"WebSite","name":"ForgeSworn","url":"https://forgesworn.dev/"},"potentialAction":{"@type":"DonateAction","target":"https://github.com/sponsors/TheCryptoDonkey"}}</script>
 </head>
 <body class="media-page">
@@ -34,7 +34,6 @@
           <div class="player-top local-only"><strong id="player-label">Licensed full broadcast</strong><span id="run-clock">Ready to measure</span></div>
           <div id="lab-video-wrap" class="video-stage">
             <video id="lab-video" controls playsinline preload="none" poster="/media/dejavu-preview/poster.jpg" width="3840" height="2160" aria-label="Deja Vu Ambient Sunrise Mix" aria-describedby="public-play-note">Your browser needs HTML video support to play the mix.</video>
-            <span class="film-corner public-only" aria-hidden="true"><span>4K</span> / ORIGINAL MIX</span>
             <button id="public-play" class="public-play public-only" type="button" disabled><span data-play-label>Play &amp; join</span></button>
             <button id="lab-fullscreen" class="fullscreen-button local-only" type="button" disabled>Full screen</button>
             <div id="video-empty" class="video-empty local-only"><strong>Same source.  Your machine.</strong><p>Choose a server and run the comparison.</p></div>
@@ -48,7 +47,7 @@
         <section class="settings local-only" aria-labelledby="settings-title"><h2 id="settings-title">Choose your run</h2><div class="settings-fields"><label class="field"><span>Media server</span><select id="lab-engine" disabled><option value="sapflow">Sapflow</option><option value="mediamtx">MediaMTX</option></select></label><label class="field"><span>Publisher ingest</span><select id="lab-transport" disabled><option value="rtmp">RTMP</option><option value="srt">SRT</option></select></label><label class="field"><span>Measurement window</span><select id="lab-duration" disabled><option value="full">Full mix</option><option value="30">30 seconds</option><option value="60">60 seconds</option></select></label><label class="field"><span>Source offset</span><select disabled aria-label="Fixed source offset"><option>0:00 · matched</option></select></label><div id="relay-controls" class="field-row" hidden><label class="field"><span>Viewer packet relay</span><select id="lab-relay"><option value="off">Off · direct HLS</option></select></label><label class="field"><span>Client → relay</span><select id="lab-turn-transport"><option value="udp">UDP</option><option value="tcp">TCP</option></select></label></div></div><p id="engine-version" class="engine-version">Select a locally installed server to see its version.</p><button id="lab-run" class="button run-button" disabled>Run &amp; play with sound <span aria-hidden="true">↗</span></button><div class="button-row"><button id="lab-play" class="button quiet" disabled>Play with sound</button><button id="lab-stop" class="button quiet" disabled>Stop run</button></div><p class="settings-note">Same source and offset for every run. Switching servers starts a fresh measurement. The origin and the publisher have separate CPU and memory readings.</p></section>
       </div>
       <section class="source film-footer" aria-label="Playing source">
-        <div><p id="source-title" class="source-title">Deja Vu Ambient Sunrise Mix</p><p id="source-meta" class="source-meta">3840 × 2160 · 25 fps · 4:28 · H.264 / AAC</p><span id="source-tag" class="source-tag">Licensed media</span></div>
+        <div><span class="film-corner public-only" aria-hidden="true"><span>4K</span> / ORIGINAL MIX</span><p id="source-title" class="source-title">Deja Vu Ambient Sunrise Mix</p><p id="source-meta" class="source-meta">3840 × 2160 · 25 fps · 4:28 · H.264 / AAC</p><span id="source-tag" class="source-tag">Licensed media</span></div>
         <label id="lab-quality-field" class="quality public-only" hidden><span>Picture</span><select id="lab-quality" aria-label="Video quality"><option value="full" selected>Original 4K</option><option value="preview">1080p excerpt</option></select></label>
       </section>
       <p id="lab-quality-note" class="quality-note public-only" hidden></p>
