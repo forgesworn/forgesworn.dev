@@ -68,6 +68,8 @@ npm test
 ```
 
 Both pages are generated output (gitignored) and are rebuilt in CI on deploy.
+Tests run serially because their real child-process fixtures have bounded
+startup and ownership windows. All cases, assertions and deadlines are retained.
 
 ## Licence
 
