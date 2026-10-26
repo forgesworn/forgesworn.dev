@@ -2,7 +2,7 @@ import { readInitialLiveStart } from './media-live-start.mjs';
 import { createSourceResponseStats, publicSourceResource, transferBytes } from './media-transfer-stats.mjs?v=20261025-prepared-room';
 import { createNativePlaybackFallback } from './media-playback-fallback.mjs?v=20261025-prepared-room';
 import { createPlaybackPrime } from './media-playback-prime.mjs?v=20261025-prepared-room';
-import { createPlaybackReport } from './media-playback-report.mjs?v=20261026-native-demand';
+import { createPlaybackReport } from './media-playback-report.mjs?v=20261026-startup-diagnostics';
 
 const DASH = '—';
 export const observed = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
@@ -358,6 +358,9 @@ async function initialise() {
   let detachFullscreen;
   let swarmVisual;
   let publicRoom = null, publicRoomQuality = null, publicRoomLoading = null, publicRoomRequest = 0;
+  // Observations only. Detaching retires the reference so a later pipeline
+  // cannot report, or retain, an old MediaSource and its SourceBuffers.
+  const attachedMediaSources = new WeakMap();
   let invitationUsed = false;
   const publicPlay = $('public-play');
   window.addEventListener('pagehide', () => {
@@ -934,6 +937,9 @@ async function initialise() {
       try { buffered = Array.from({ length: video.buffered.length }, (_, i) => [video.buffered.start(i), video.buffered.end(i)]); } catch {}
       try { quality = video.getVideoPlaybackQuality?.(); } catch {}
       const room = s.listener?.snapshot();
+      const read = (object, key) => { try { return object?.[key]; } catch { return undefined; } };
+      const player = s.hls, main = read(read(player, 'inFlightFragments'), 'main'), frag = read(main, 'frag');
+      const mediaSource = player ? attachedMediaSources.get(player) : null;
       const target = room?.ready ? roomMediaTime(s) : null;
       const drift = target !== null && video.readyState > 0 ? s.recordedView ? target - video.currentTime :
         sharedPositionDifference(video.currentTime, target, s.durationSeconds) : null;
@@ -949,13 +955,19 @@ async function initialise() {
         lastPlayError: root.dataset.playbackPlayError ?? null,
         lastPlayerError: b.lastPlayerError, playbackFailed: Boolean(s.playbackFailed),
         playbackFallback: root.dataset.playbackFallback ?? null,
+        startupPending: s.startupPending, playbackWanted: s.playbackWanted,
+        startupBuffer: s.publicPeer && !s.nativeHls ? metrics?.startupBuffer : null,
+        hls: player ? { loadingEnabled: read(player, 'loadingEnabled'), bufferingEnabled: read(player, 'bufferingEnabled'),
+          main: main ? { state: read(main, 'state'), sn: read(frag, 'sn'), cc: read(frag, 'cc'), type: read(frag, 'type') } : null } : null,
+        mediaSource: mediaSource ? { readyState: read(mediaSource, 'readyState'), streaming: read(mediaSource, 'streaming') } : null,
         following: room?.ready ? s.followLive !== false : null,
         sharedDriftSeconds: drift,
         waiting: b.waitingAt !== null, stallCount: b.stallCount, stallSeconds: b.stallSeconds, playerErrors: b.playerErrors,
         peerBytes: metrics?.peerBytes, uploadedBytes: metrics?.uploadedBytes, loadedSourceBytes: s.nativeHls ? null : metrics?.originBytes,
         sourceNetworkBodyBytes: timing?.covered ? timing.networkBodyBytes : null,
         sourceCacheBodyBytes: timing?.covered ? timing.cacheBodyBytes : null, sourceTimingCoverage: timing?.coverage ?? 'unavailable',
-        peerEnabled: metrics?.enabled, connectedPeers: metrics?.connectedPeers, roomListeners: room?.listeners,
+        peerEnabled: metrics?.enabled, connectedPeers: metrics?.connectedPeers,
+        roomPrepared: room?.prepared, roomReady: room?.ready, roomListeners: room?.listeners,
         transferWorkerState: metrics?.core?.transferWorker?.state,
         connections: metrics?.topology?.connections,
       };
@@ -1296,13 +1308,16 @@ async function initialise() {
     s.playbackEngine = 'hls.js';
     player.on(Hls.Events.MEDIA_ATTACHED, (_, { mediaSource }) => {
       if (session !== s || s.hls !== player) return;
+      if (mediaSource) attachedMediaSources.set(player, mediaSource);
       s.playbackEngine = typeof ManagedMediaSource === 'function' && mediaSource instanceof ManagedMediaSource ?
         'hls.js · ManagedMediaSource' : 'hls.js · MediaSource';
     });
+    if (Hls.Events.MEDIA_DETACHING) player.on(Hls.Events.MEDIA_DETACHING, () => attachedMediaSources.delete(player));
     s.hls.on(Hls.Events.ERROR, (_, data) => {
       if (session !== s || s.finishing || s.hls !== player) return;
       s.browser.playerErrors++;
-      s.browser.lastPlayerError = { type: data.type, detail: data.details, fatal: data.fatal };
+      s.browser.lastPlayerError = { type: data.type, detail: data.details, fatal: data.fatal,
+        fragment: data.frag ? { sn: data.frag.sn, cc: data.frag.cc, type: data.frag.type } : null };
       if (data.fatal && !local && !s.browser.seenFrame) { publicStartupFailed(s); return; }
       if (data.fatal && !local && s.browser.seenFrame && video.canPlayType('application/vnd.apple.mpegurl')) {
         switchPublicToNative(s, 'player-error'); return;
