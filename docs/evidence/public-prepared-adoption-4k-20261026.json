@@ -1,0 +1,221 @@
+{
+  "schema": 1,
+  "kind": "deployed-public-recorded-4k-room-adoption",
+  "measuredAt": "2026-10-26T18:00:31.951Z",
+  "scope": "Two fresh HTTP-cache-disabled Chromium profiles on one M4 Max, using the actual public CDN assets without substitutions. Each viewer observed for at least 330 seconds after first frame, at 1x and unmuted. This is not physical-phone, independent-network, TURN or eight-person-call acceptance.",
+  "source": {
+    "siteCommit": "6e7d20cbc4f294dce61c1e60a5544fe5b76fdcba",
+    "applicationCommit": "2534854bac99b2d75afec05c3450f8313bdd7301",
+    "sdkCommit": "e910147fe971b2a96327ded6a8e43e0647c41f3d",
+    "entryTag": "20261026-prepared-adoption",
+    "controllerSha256": "8f30da43ae54add9f93ae70c14d829b81452d87a583cb25188da85f22b64e0f8",
+    "listenerSha256": "a8138683d3259699c9065ec4cacadc0a50014be5512666fa04d3c683b921ff7e",
+    "publicSwarmSha256": "cc93371bdb2a7ce04c849436fa2316f570fe52f2fffd09748e05a9d349d9c31d",
+    "bundleSha256": "ae965a6dace9aff494161ced5f2f6e9dc515197d0871e5a666cf875ee7be598b",
+    "wasmSha256": "7767f54cbeac999bee42419394647fcd472544d5bad005350f83d8d4dce4dce9",
+    "workerSha256": "9b4db9c6998e3303197c047364b3eb9d15f45af5f825d1d2890827007ed7dfc4"
+  },
+  "protocolSha256": "d6d38c80e0b3ac4d150dbb958e6616c2f9fbfc591f45336d1aa37c282a80f548",
+  "measurement": {
+    "assetAndControllerOverrides": 0,
+    "rtcOrEndpointOverrides": 0,
+    "httpCacheDisabled": true,
+    "trustedPlayPerViewer": true,
+    "interaction": "One existing Save report button activation around 150 seconds per viewer and a final export after observation. No scroll, details, focus or playback controls changed. All effects retained; no excluded observation window.",
+    "syncMethod": "Two normal app report snapshots merged by exact elapsedMs; overlapping rows must agree. No clock or origin inference. Unknown, hidden or non-following observations fail qualification.",
+    "maximumAllowedSyncSampleGapMs": 2500,
+    "roomIdentityWitness": "Sampled stable DOM room epoch, single video object and nonempty source URI; not a direct bound-SDK cohort witness."
+  },
+  "selectedContributionReceiver": "M4B",
+  "contributionGate": {
+    "minimumAcceptedPeerBytes": 10485760,
+    "minimumAcceptedPeerShare": 0.1,
+    "selectedReceiverPassed": true,
+    "everyViewerPassed": true
+  },
+  "viewers": [
+    {
+      "viewer": "M4A",
+      "observationSeconds": 330.688,
+      "firstFrameMs": 12979.300000190735,
+      "postFrameStalls": 0,
+      "postFrameDroppedFrames": 0,
+      "acceptedPeerBytes": 225087782,
+      "acceptedLoadedMediaBytes": 1069507775,
+      "acceptedPeerShare": 0.2104592292468374,
+      "uploadedMediaBytes": 509931304,
+      "videoElementDimensions": {
+        "width": 3842,
+        "height": 2160
+      },
+      "allSixRuntimeAssetHashesVerified": true,
+      "stableSampledVideoSourceAndRoomEpoch": true,
+      "unknownOrHiddenIdentityRows": 0,
+      "sync": {
+        "sampleCount": 274,
+        "overlapCount": 91,
+        "maximumGapMs": 1225.5999994277954,
+        "full330Coverage": true,
+        "maximumAbsoluteDriftSeconds": 0.25812299999999944,
+        "syncQualified": true,
+        "unknownPlayerErrorRows": 0,
+        "cumulativePlayerErrorValues": [
+          1
+        ],
+        "postframePlayerErrorIncrease": false
+      },
+      "invalidSyncRows": {
+        "conflictingOverlapElapsedMs": 0,
+        "unknownDriftElapsedMs": 0,
+        "driftViolationElapsedMs": 0,
+        "nonFollowingOrRoomUnknownElapsedMs": 0,
+        "pausedOrUnknownElapsedMs": 0,
+        "underflowOrStallOrUnknownElapsedMs": 0,
+        "nonzeroOrUnknownDropElapsedMs": 0,
+        "nonVisibleOrUnknownElapsedMs": 0
+      },
+      "wrap": {
+        "beforeRaw": 266.617026,
+        "afterRaw": 268.620191,
+        "beforePhase": 266.56875600000006,
+        "afterPhase": 1.2652160000000094,
+        "advancing20sAfter": true,
+        "periodicSecondsAfterWrap": 68.134,
+        "stockCcValues": [
+          0,
+          1
+        ],
+        "stockCcAdvanced": true
+      },
+      "firstRetainedPlayerErrorObservation": {
+        "elapsedMs": 6055,
+        "hasPresentedFrame": false,
+        "literal": {
+          "type": "networkError",
+          "detail": "aborted",
+          "fatal": false,
+          "mediaErrorCode": null,
+          "fragment": {
+            "sn": 0,
+            "cc": 0,
+            "type": "main"
+          }
+        },
+        "actualErrorEventTime": "not captured; this is first report observation",
+        "millisecondsBeforeActualFrame": 6924.300000190735
+      },
+      "selectedIceEnums": [
+        {
+          "kind": "direct",
+          "localCandidateType": "host",
+          "remoteCandidateType": "host",
+          "localRelayProtocol": null,
+          "remoteRelayProtocol": null
+        }
+      ],
+      "hashes": {
+        "result.json": "b1fa0ea8c83cd069c2e472608ef045589ba0e40e01ce1d7c811b9682e75f12e4",
+        "stock-report-midway.json": "bf31107add681dc4d1b10aeea503d50bd8adbbfb0a466a73c30ca8292d4ae803",
+        "stock-report-final.json": "106e13a4257c794540a5d9e50c8da7ed2bc94838e2741fcc151191be2a400709"
+      }
+    },
+    {
+      "viewer": "M4B",
+      "observationSeconds": 330.839,
+      "firstFrameMs": 5030.400000572205,
+      "postFrameStalls": 0,
+      "postFrameDroppedFrames": 0,
+      "acceptedPeerBytes": 479604520,
+      "acceptedLoadedMediaBytes": 1058396292,
+      "acceptedPeerShare": 0.4531426684174362,
+      "uploadedMediaBytes": 285596943,
+      "videoElementDimensions": {
+        "width": 3842,
+        "height": 2160
+      },
+      "allSixRuntimeAssetHashesVerified": true,
+      "stableSampledVideoSourceAndRoomEpoch": true,
+      "unknownOrHiddenIdentityRows": 0,
+      "sync": {
+        "sampleCount": 273,
+        "overlapCount": 91,
+        "maximumGapMs": 1218.0,
+        "full330Coverage": true,
+        "maximumAbsoluteDriftSeconds": 0.24238900000000108,
+        "syncQualified": true,
+        "unknownPlayerErrorRows": 0,
+        "cumulativePlayerErrorValues": [
+          0
+        ],
+        "postframePlayerErrorIncrease": false
+      },
+      "invalidSyncRows": {
+        "conflictingOverlapElapsedMs": 0,
+        "unknownDriftElapsedMs": 0,
+        "driftViolationElapsedMs": 0,
+        "nonFollowingOrRoomUnknownElapsedMs": 0,
+        "pausedOrUnknownElapsedMs": 0,
+        "underflowOrStallOrUnknownElapsedMs": 0,
+        "nonzeroOrUnknownDropElapsedMs": 0,
+        "nonVisibleOrUnknownElapsedMs": 0
+      },
+      "wrap": {
+        "beforeRaw": 266.838195,
+        "afterRaw": 268.844421,
+        "beforePhase": 266.54651600000005,
+        "afterPhase": 1.2444710000000327,
+        "advancing20sAfter": true,
+        "periodicSecondsAfterWrap": 60.117,
+        "stockCcValues": [
+          0,
+          1
+        ],
+        "stockCcAdvanced": true
+      },
+      "firstRetainedPlayerErrorObservation": null,
+      "selectedIceEnums": [
+        {
+          "kind": "direct",
+          "localCandidateType": "host",
+          "remoteCandidateType": "host",
+          "localRelayProtocol": null,
+          "remoteRelayProtocol": null
+        }
+      ],
+      "hashes": {
+        "result.json": "8e3c9079c98a1a23687b35305cf1a700449d22c462153b11542b7254dee14579",
+        "stock-report-midway.json": "f726f8c146e10ead8db1cc4e580759c97db8b88ebebd8ca2daeb6cabfd6505df",
+        "stock-report-final.json": "4811dea82c8c25239300d2993beae81d503f938cb7e4dae45775ac5e20f4e026"
+      }
+    }
+  ],
+  "runtime": {
+    "nodeVersion": "v24.13.0",
+    "browserVersion": "155.0.8059.85",
+    "cpu": "Apple M4 Max",
+    "arch": "arm64"
+  },
+  "rawEvidence": {
+    "summarySha256": "f820c2fda0c2361b8835a74ac8b6390e5f0a455a301cec89867b1bf04bd4528b",
+    "auditSha256": "430d0a319210bc51d68ce265782906eaeee6047f7bee18f9d3b70d37201baee2",
+    "manifestSha256": "41008082752cc4eb2ddc8575a9182818055551c0502ea20a94227506e7d2c011",
+    "filesHashVerified": 20,
+    "bytesHashVerified": 2596320
+  },
+  "cleanup": {
+    "ownedBrowserAndFixtureProcesses": 0,
+    "ownedProfilesRemoved": true,
+    "ownedPlainStageRemoved": true
+  },
+  "limits": [
+    "HTTP cache was disabled and profiles were fresh; a cold CDN or origin was not established.",
+    "Both viewers ran on the same M4. Physical iPhone, GrapheneOS, separate-network traversal and public TURN remain separate gates.",
+    "Startup took 12.979 seconds for A and 5.030 seconds for B; this is not an instant-start or comparator-speed claim.",
+    "A retained one nonfatal pre-frame networkError/aborted SN0/CC0/main observation. The error count stayed at one throughout post-frame playback; B stayed at zero.",
+    "The sampled DOM room epoch is not the staged test direct bound-SDK cohort witness.",
+    "One midway measurement export per viewer is included in all gates; this is not claimed to be uninteracted playback.",
+    "Accepted media includes buffered data. Peer and upload payload counters do not establish wire-byte savings, cost savings or competitor superiority.",
+    "Selected candidates were host/host. Transport protocol was not captured in this run.",
+    "This exercises recorded peer-assisted HLS, not KithMoot interactive camera/microphone delivery or eight-person meetings."
+  ]
+}
