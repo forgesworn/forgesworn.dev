@@ -1,0 +1,225 @@
+{
+  "schema": 1,
+  "measuredAt": "2026-10-26",
+  "scope": "Two staged full-4K prepared-room runs on one M4 Mac; bounded direct-peer playback and sampled shared-clock evidence, not physical-phone, NAT or public-TURN acceptance.",
+  "sources": {
+    "measuredSiteCommit": "a0db0e63c54f85347dc0017361b92c603d22c768",
+    "runtimeEquivalentSiteCommit": "0bcd907a67d15dcbb83f52c25ac7d1a6d24a63f9",
+    "runtimeEquivalence": "The site, scripts and test Git trees are identical; the later commit changes only test concurrency and README guidance.",
+    "sdkCommit": "bea813a569b4ee001cbb8ed17a8662effe05d1a1",
+    "sdkVersion": "0.4.4",
+    "sourceArchiveSha256": "2aa64120a208cda685a0d3547212c84afd43795b0c0024d6aab56e2137a9a850",
+    "dependencyLockSha256": "18a91b8d697ebcab1d259d4de876167dcbd4d47fc3c82196d179c4c490adca4a",
+    "bundleSha256": "be700a1774ed62eb7b20c9a01b52b27c9d294c72cf584571d9e1a286c0ea665e",
+    "bundleBytes": 253864,
+    "transferWorkerSha256": "c4aea01d312410016e1563fdfccb1ec330bbf92b947a978fbf3764ba7febb307",
+    "wasmSha256": "718007df4aed3e8ff6f823fc8d99c34c868f2daad975ac7ddcb0dd2b1e0e73f2",
+    "rustBuildPerformed": false,
+    "siteModuleSha256": {
+      "media-lab.mjs": "154c24e5f1e694e97982370f80567327f4d895ccf51771dccbaf580816055ceb",
+      "media-public-swarm.mjs": "e8bcf48363345bc159aec925f6c7f8e4ad9aab3c4355c5da7b26a474f3958a34",
+      "media-listener-session.mjs": "e54d4a3c7bee3d7956ee44c20e4b1c5ec3d3cc0725781c8bf63f2fc7ba64673f",
+      "media-recorded-live.mjs": "ac20d4b824a3f12598cf0311b3e9dc06475e72b99621a8f9dc6a95cd9ba55052"
+    },
+    "recordingSourceSha256": "76d90719a756c77d1008088c58ca6b28a74eb0ef01e5337906cfb68d3e2b13aa"
+  },
+  "protocol": {
+    "host": "One Apple M4 Mac",
+    "browser": "Chrome",
+    "browserVersion": "155.0.8059.85",
+    "hlsVersion": "1.7.3",
+    "freshBrowserContexts": 2,
+    "visiblePlayersPerContext": 1,
+    "browserHttpCacheDisabled": true,
+    "cdnCacheColdProven": false,
+    "normalUnmutedHtmlMediaRoute": true,
+    "playbackRate": 1,
+    "recordingDurationSeconds": 267.32,
+    "codedVideoDimensions": [
+      3840,
+      2160
+    ],
+    "selectedWebRtcRoute": {
+      "kind": "direct",
+      "localCandidateType": "host",
+      "remoteCandidateType": "host",
+      "protocol": "udp"
+    },
+    "publicTurnQualified": false,
+    "postFirstFrameStallLimit": 0,
+    "droppedFrameLimit": 0,
+    "roomPhaseBudgetSeconds": 0.75,
+    "syncEligibility": "Every sampled post-first-frame, unpaused, acknowledged same-epoch phase is checked; seeking and underflow remain eligible. Unknown is never treated as zero.",
+    "usefulPeerGate": {
+      "scope": "One harness-selected receiving viewer; not every viewer",
+      "minimumAcceptedPeerBytes": 10485760,
+      "minimumAcceptedPeerShare": 0.1
+    },
+    "startupBounds": {
+      "encodedObjects": 3,
+      "encodedBytes": 25165824,
+      "originalDeadlineMs": 8000
+    },
+    "harnessSourceSha256": "d0c5122fcb25b6c7888150df26e0b58d4a25b67a1f1f15ca56740082b044ed0c",
+    "stagedHarnessSha256": "29d3a8439e03b4621e3a51a402d06a8a73ebb0b2c1593bcb3caa74a753e6729f",
+    "syncAuditorSha256": "f653966088a786eaafcdad84b827d7ca717902672172f5308e4fff45039a360a"
+  },
+  "runs": [
+    {
+      "requestedObservationSeconds": 60,
+      "observationSeconds": 60.075,
+      "periodicSampledWindowSeconds": 60.05,
+      "sampleCount": 58,
+      "rawReceiptSha256": "6395afdda7125cac4bd2b68915a2116866918c746a901bb6cf0336f01b3cb197",
+      "strictMediaGatePassed": true,
+      "syncGatePassed": true,
+      "pageErrors": 0,
+      "viewers": [
+        {
+          "viewer": "A",
+          "acceptedPeerBytes": 24484771,
+          "acceptedLoadedMediaBytes": 220988648,
+          "peerSharePercent": 11.08,
+          "observedHttpMediaResponseBodyBytes": 216343039,
+          "postFirstFrameStalls": 0,
+          "postFirstFrameStalledSeconds": 0,
+          "droppedFrames": 0,
+          "maxAbsoluteRoomPhaseOffsetSeconds": 0.320715,
+          "syncEligibleSamples": 58,
+          "syncKnownNoneligibleSamples": 0,
+          "syncKnownNoneligibleReason": null,
+          "syncUnknownSamples": 0,
+          "syncViolations": 0
+        },
+        {
+          "viewer": "B",
+          "acceptedPeerBytes": 42297447,
+          "acceptedLoadedMediaBytes": 214516682,
+          "peerSharePercent": 19.72,
+          "observedHttpMediaResponseBodyBytes": 191321195,
+          "postFirstFrameStalls": 0,
+          "postFirstFrameStalledSeconds": 0,
+          "droppedFrames": 0,
+          "maxAbsoluteRoomPhaseOffsetSeconds": 0.118992,
+          "syncEligibleSamples": 55,
+          "syncKnownNoneligibleSamples": 3,
+          "syncKnownNoneligibleReason": "not-yet-presented",
+          "syncUnknownSamples": 0,
+          "syncViolations": 0
+        }
+      ]
+    },
+    {
+      "requestedObservationSeconds": 330,
+      "observationSeconds": 330.213,
+      "periodicSampledWindowSeconds": 329.387,
+      "sampleCount": 307,
+      "rawReceiptSha256": "648f7907396e789e880b9ef8f72e60a7862533a3ff9787db9e359fc06f1cc349",
+      "strictMediaGatePassed": true,
+      "syncGatePassed": true,
+      "pageErrors": 0,
+      "viewers": [
+        {
+          "viewer": "A",
+          "acceptedPeerBytes": 127992334,
+          "acceptedLoadedMediaBytes": 1064588887,
+          "peerSharePercent": 12.02,
+          "observedHttpMediaResponseBodyBytes": 1039748321,
+          "postFirstFrameStalls": 0,
+          "postFirstFrameStalledSeconds": 0,
+          "droppedFrames": 0,
+          "maxAbsoluteRoomPhaseOffsetSeconds": 0.343165,
+          "syncEligibleSamples": 307,
+          "syncKnownNoneligibleSamples": 0,
+          "syncKnownNoneligibleReason": null,
+          "syncUnknownSamples": 0,
+          "syncViolations": 0
+        },
+        {
+          "viewer": "B",
+          "acceptedPeerBytes": 70385118,
+          "acceptedLoadedMediaBytes": 1058116921,
+          "peerSharePercent": 6.65,
+          "observedHttpMediaResponseBodyBytes": 1041002497,
+          "postFirstFrameStalls": 0,
+          "postFirstFrameStalledSeconds": 0,
+          "droppedFrames": 0,
+          "maxAbsoluteRoomPhaseOffsetSeconds": 0.116133,
+          "syncEligibleSamples": 304,
+          "syncKnownNoneligibleSamples": 3,
+          "syncKnownNoneligibleReason": "not-yet-presented",
+          "syncUnknownSamples": 0,
+          "syncViolations": 0
+        }
+      ],
+      "harnessSelectedReceivingViewer": "A"
+    }
+  ],
+  "actual330SecondWrap": {
+    "analysisProofSha256": "1e10afa3ab93108194263d4a5433905f48c8fae3591b35141beb1b39c6d1a549",
+    "method": "Actual recording-phase rollover and increasing raw Hls time with SDK discontinuity 0 then 1; post-wrap duration is measured from the first sampled wrapped phase to the final periodic sample.",
+    "viewers": [
+      {
+        "viewer": "A",
+        "observedWraps": 1,
+        "observedDiscontinuityCounters": [
+          0,
+          1
+        ],
+        "rawMediaSecondsBefore": 267.164662,
+        "rawMediaSecondsAfter": 268.244513,
+        "recordingPhaseSecondsBefore": 267.164662,
+        "recordingPhaseSecondsAfter": 0.924513,
+        "sampledSecondsAfterFirstWrappedSample": 61.558,
+        "negativeRawTimeSteps": 0,
+        "oneVisibleVideoAtEverySample": true,
+        "observedNonemptyMediaSourceUriCount": 1,
+        "observedEpochPairCount": 1,
+        "sameEpochAtEveryObservedSample": true,
+        "postFirstFrameInterruptionEvents": 0,
+        "tapToFirstFrameMs": 4111.3,
+        "startupHeadroomMs": 3924.0,
+        "requiredStartupHeadroomMs": 3212.5
+      },
+      {
+        "viewer": "B",
+        "observedWraps": 1,
+        "observedDiscontinuityCounters": [
+          0,
+          1
+        ],
+        "rawMediaSecondsBefore": 264.264375,
+        "rawMediaSecondsAfter": 265.391907,
+        "recordingPhaseSecondsBefore": 266.264375,
+        "recordingPhaseSecondsAfter": 0.071907,
+        "sampledSecondsAfterFirstWrappedSample": 62.638,
+        "negativeRawTimeSteps": 0,
+        "oneVisibleVideoAtEverySample": true,
+        "observedNonemptyMediaSourceUriCount": 1,
+        "observedEpochPairCount": 1,
+        "sameEpochAtEveryObservedSample": true,
+        "postFirstFrameInterruptionEvents": 0,
+        "tapToFirstFrameMs": 2980.9,
+        "startupHeadroomMs": 2330.0,
+        "requiredStartupHeadroomMs": 2058.75
+      }
+    ],
+    "observationLimit": "No reset was observed. The receipt does not serialize JavaScript Hls object identity, a global media-sequence counter, or a separately timestamped relay acknowledgement."
+  },
+  "interpretation": {
+    "peerShare": "Accepted verified peer bytes divided by accepted loaded media bytes; buffered media is included.",
+    "httpBodies": "Browser-observed HTTP media response bodies include partial reads before losing requests were aborted. They do not reconcile directly with accepted loaded totals and are not wire or billing totals.",
+    "selectedReceiver": "At 330 seconds viewer A met the unchanged contribution gate at 12.02%; viewer B was 6.65% and did not meet its 10% share threshold. The original gate selects one receiving viewer.",
+    "startup": "Zero stalls means post-first-frame. Startup loading remains: the 330-second run took 4111.3 ms and 2980.9 ms from tap to first frame.",
+    "confound": "The 60-second pass also had faster HTTP delivery than the preceding failed run. Browser cache bypass does not prove a cold CDN, and this was not a matched bandwidth or cache comparison isolating the preparation change.",
+    "netHttpSavingsClaim": false,
+    "wireOrBillingSavingsClaim": false,
+    "competitorAdvantageClaim": false
+  },
+  "remainingAcceptance": [
+    "Physical iPhone and other physical-phone playback",
+    "Separate devices and networks, including NAT traversal",
+    "Independently operated public TURN and credential rotation during playback",
+    "A controlled competitor or net-bandwidth comparison"
+  ]
+}
