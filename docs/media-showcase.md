@@ -383,10 +383,17 @@ export a separate `forgesworn-playback-report` JSON file. It retains at most
 tick: actual frame counters and dimensions, buffering, stalls, visibility,
 the last Play rejection's fixed error code (without its message),
 room offset, verified peer and upload counters, library version and anonymous
-selected route types. Missing readings remain `null`. It excludes addresses,
+selected route types. Startup observations distinguish the SDK barrier's fixed
+state/reason and one-shot counters, Hls loading/buffering and current main
+fragment enums/numbers, the attached MediaSource's state/streaming flag, and
+playback intent and room preparation/readiness. The last player error retains
+only its fixed codes and fragment type/sequence/discontinuity, without a URL.
+These observations do not retry, resume or otherwise change startup policy.
+Missing readings, retired pipelines and unsupported properties remain `null`. It excludes addresses,
 SDP, peer identities, credentials and source URLs or filesystem paths. Nothing
-is uploaded by the page; sharing requires the viewer's action. Exporting does
-not pause playback. The report is a diagnostic observation, not by itself a
+is uploaded by the page; sharing requires the viewer's action. Export handlers
+do not call playback controls; the browser's download/share presentation is
+observed separately. The report is a diagnostic observation, not by itself a
 controlled comparison or proof of a cold browser cache.
 
 Reports keep raw media position and buffer ranges. Continuous media duration

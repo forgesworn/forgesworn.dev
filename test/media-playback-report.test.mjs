@@ -56,12 +56,87 @@ test('player failures retain fixed engine codes and fallback state without error
   p.at(2400); p.report.record({ lastPlayerError: { type: 'device-secret', detail: 'credential-secret',
     fatal: 'true', mediaErrorCode: 99 }, playbackFailed: 'true', playbackFallback: 'private-secret' });
   const rows = p.report.snapshot().samples;
-  assert.deepEqual(rows[0].lastPlayerError, { type: 'mediaError', detail: 'bufferAppendError', fatal: true, mediaErrorCode: null });
+  assert.deepEqual(rows[0].lastPlayerError, { type: 'mediaError', detail: 'bufferAppendError', fatal: true, mediaErrorCode: null, fragment: null });
   assert.equal(rows[0].playbackFailed, true); assert.equal(rows[0].playbackFallback, 'player-error');
-  assert.deepEqual(rows[1].lastPlayerError, { type: 'native', detail: null, fatal: null, mediaErrorCode: 3 });
-  assert.deepEqual(rows[2].lastPlayerError, { type: null, detail: null, fatal: null, mediaErrorCode: null });
+  assert.deepEqual(rows[1].lastPlayerError, { type: 'native', detail: null, fatal: null, mediaErrorCode: 3, fragment: null });
+  assert.deepEqual(rows[2].lastPlayerError, { type: null, detail: null, fatal: null, mediaErrorCode: null, fragment: null });
   assert.equal(rows[2].playbackFailed, null); assert.equal(rows[2].playbackFallback, null);
   assert.doesNotMatch(JSON.stringify(p.report.snapshot()), /secret|private[.]invalid|message|url/);
+});
+
+test('startup diagnostics distinguish a cancelled barrier, suspended buffering and an uncommitted room', () => {
+  const p = fixture();
+  p.report.record({ startupPending: true, playbackWanted: true, roomPrepared: true, roomReady: false,
+    startupBuffer: { enabled: true, state: 'cancelled', reason: 'caller-abort', released: 0, failures: 0,
+      cancellations: 1, commitStarted: false, commitCompleted: false, owner: 'private-owner' },
+    hls: { loadingEnabled: true, bufferingEnabled: false, main: { state: 'FRAG_LOADING', sn: 0, cc: 0, type: 'main', url: 'https://private.invalid' } },
+    mediaSource: { readyState: 'open', streaming: false },
+    lastPlayerError: { type: 'networkError', detail: 'aborted', fatal: false,
+      fragment: { sn: 'initSegment', cc: 0, type: 'main', url: 'https://private.invalid' } } });
+  const row = p.report.snapshot().samples[0];
+  assert.deepEqual(row.startupBuffer, { enabled: true, state: 'cancelled', reason: 'caller-abort',
+    released: 0, failures: 0, cancellations: 1, commitStarted: false, commitCompleted: false });
+  assert.deepEqual(row.hls, { loadingEnabled: true, bufferingEnabled: false,
+    main: { state: 'FRAG_LOADING', sn: 0, cc: 0, type: 'main' } });
+  assert.deepEqual(row.mediaSource, { readyState: 'open', streaming: false });
+  assert.deepEqual(row.lastPlayerError.fragment, { sn: 'initSegment', cc: 0, type: 'main' });
+  assert.equal(row.startupPending, true); assert.equal(row.playbackWanted, true);
+  assert.equal(row.roomPrepared, true); assert.equal(row.roomReady, false);
+  assert.doesNotMatch(JSON.stringify(row), /private|owner|https?:/);
+});
+
+test('missing and older-engine diagnostics remain unavailable while genuine false and zero survive', () => {
+  const p = fixture(); p.report.record({});
+  const missing = p.report.snapshot().samples[0];
+  for (const key of ['startupBuffer', 'hls', 'mediaSource', 'startupPending', 'playbackWanted', 'roomPrepared', 'roomReady']) {
+    assert.equal(missing[key], null, key);
+  }
+  p.at(1200); p.report.record({ startupPending: false, playbackWanted: false, roomPrepared: false, roomReady: false,
+    startupBuffer: { enabled: false, state: 'off', released: 0, failures: 0, cancellations: 0, commitStarted: false, commitCompleted: false },
+    hls: { loadingEnabled: false, bufferingEnabled: false, main: { state: 'STOPPED' } }, mediaSource: { readyState: 'closed' } });
+  const row = p.report.snapshot().samples[1];
+  assert.equal(row.startupBuffer.released, 0); assert.equal(row.startupBuffer.enabled, false);
+  assert.equal(row.startupPending, false); assert.equal(row.playbackWanted, false);
+  assert.equal(row.roomPrepared, false); assert.equal(row.roomReady, false);
+  assert.deepEqual(row.hls.main, { state: 'STOPPED', sn: null, cc: null, type: null });
+  assert.deepEqual(row.mediaSource, { readyState: 'closed', streaming: null });
+});
+
+test('diagnostic enums, one-shot counters and fragment numbers cannot carry arbitrary payloads', () => {
+  const p = fixture(); p.report.record({ startupPending: 'true', playbackWanted: 1, roomPrepared: 'false', roomReady: 'secret',
+    startupBuffer: { enabled: 'yes', state: 'private-state', reason: 'credential-secret', released: 2, failures: -1,
+      cancellations: 0.5, commitStarted: 'true', commitCompleted: 1, context: { key: 'private-key' } },
+    hls: { loadingEnabled: 1, bufferingEnabled: 'false', main: { state: 'private-state', sn: '42', cc: Infinity,
+      type: 'https://private.invalid', address: '192.0.2.1', sdp: 'secret' } },
+    mediaSource: { readyState: 'private-state', streaming: 0, objectUrl: 'blob:private' },
+    lastPlayerError: { fragment: { sn: Number.MAX_SAFE_INTEGER + 1, cc: -1, type: 'private-type' } } });
+  const row = p.report.snapshot().samples[0];
+  assert.deepEqual(row.startupBuffer, { enabled: null, state: null, reason: null, released: null,
+    failures: null, cancellations: null, commitStarted: null, commitCompleted: null });
+  assert.deepEqual(row.hls, { loadingEnabled: null, bufferingEnabled: null,
+    main: { state: null, sn: null, cc: null, type: null } });
+  assert.deepEqual(row.mediaSource, { readyState: null, streaming: null });
+  assert.deepEqual(row.lastPlayerError.fragment, { sn: null, cc: null, type: null });
+  assert.equal(row.startupPending, null); assert.equal(row.playbackWanted, null);
+  assert.equal(row.roomPrepared, null); assert.equal(row.roomReady, null);
+  assert.doesNotMatch(JSON.stringify(row), /private|secret|192\.0\.2\.1|blob:/);
+});
+
+test('unreadable diagnostic getters cannot discard the rest of a sample or mutate stored readings', () => {
+  const p = fixture();
+  const startup = { state: 'failed', reason: 'deadline', failures: 1 };
+  Object.defineProperty(startup, 'released', { get() { throw new Error('private getter'); } });
+  const main = { state: 'WAITING_LEVEL', sn: 7, cc: 1, type: 'main' };
+  const input = { position: 4, startupBuffer: startup, hls: { main }, mediaSource: { readyState: 'ended', streaming: false } };
+  Object.defineProperty(input, 'roomReady', { get() { throw new Error('private getter'); } });
+  assert.equal(p.report.record(input), true);
+  startup.reason = 'private-mutation'; main.sn = 999;
+  const row = p.report.snapshot().samples[0];
+  assert.equal(row.position, 4); assert.equal(row.startupBuffer.reason, 'deadline'); assert.equal(row.startupBuffer.released, null);
+  assert.equal(row.hls.main.sn, 7); assert.equal(row.roomReady, null);
+  row.hls.main.sn = 123; row.startupBuffer.failures = 0;
+  assert.equal(p.report.snapshot().samples[0].hls.main.sn, 7);
+  assert.equal(p.report.snapshot().samples[0].startupBuffer.failures, 1);
 });
 
 test('a continuous recording retains raw media time and independently bounded programme phase', () => {

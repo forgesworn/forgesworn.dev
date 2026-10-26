@@ -8,6 +8,59 @@ const boolean = input => typeof input === 'boolean' ? input : null;
 const choice = (input, values) => values.includes(input) ? input : null;
 const candidate = input => choice(input, ['host', 'srflx', 'prflx', 'relay']);
 const protocol = input => choice(input, ['udp', 'tcp', 'tls']);
+const object = input => { try { return input !== null && typeof input === 'object' && !Array.isArray(input); } catch { return false; } };
+const boundedInteger = (input, maximum) => integer(input) !== null && input <= maximum ? input : null;
+
+function fragment(input) {
+  if (!object(input)) return null;
+  return {
+    sn: value(input, 'sn') === 'initSegment' ? 'initSegment' : integer(value(input, 'sn')),
+    cc: integer(value(input, 'cc')),
+    type: choice(value(input, 'type'), ['main', 'audio', 'subtitle']),
+  };
+}
+
+function startupBuffer(input) {
+  if (!object(input)) return null;
+  return {
+    enabled: boolean(value(input, 'enabled')),
+    state: choice(value(input, 'state'), ['off', 'idle', 'buffering', 'ready', 'failed', 'cancelled']),
+    reason: choice(value(input, 'reason'), ['cleared', 'context-changed', 'target-threw', 'target-unavailable',
+      'invalid-target', 'not-allowed', 'invalid-recovery', 'coverage-evicted', 'authority-changed', 'deadline',
+      'commit-refused', 'authority-refused', 'unsupported-context', 'superseded', 'progressive-unsupported',
+      'reservation-refused', 'first-authority-refused', 'first-integrity', 'first-oversize',
+      'origin-abort', 'origin-error', 'caller-abort']),
+    // The SDK barrier is one-shot for this engine. Do not clamp malformed
+    // counters into a plausible result or copy its private owner/context.
+    released: boundedInteger(value(input, 'released'), 1),
+    failures: boundedInteger(value(input, 'failures'), 1),
+    cancellations: boundedInteger(value(input, 'cancellations'), 1),
+    commitStarted: boolean(value(input, 'commitStarted')),
+    commitCompleted: boolean(value(input, 'commitCompleted')),
+  };
+}
+
+function hlsState(input) {
+  if (!object(input)) return null;
+  const main = value(input, 'main');
+  return {
+    loadingEnabled: boolean(value(input, 'loadingEnabled')),
+    bufferingEnabled: boolean(value(input, 'bufferingEnabled')),
+    main: object(main) ? {
+      state: choice(value(main, 'state'), ['STOPPED', 'IDLE', 'KEY_LOADING', 'FRAG_LOADING',
+        'FRAG_LOADING_WAITING_RETRY', 'PARSING', 'PARSED', 'ENDED', 'ERROR', 'WAITING_LEVEL']),
+      ...fragment(main),
+    } : null,
+  };
+}
+
+function mediaSource(input) {
+  if (!object(input)) return null;
+  return {
+    readyState: choice(value(input, 'readyState'), ['closed', 'open', 'ended']),
+    streaming: boolean(value(input, 'streaming')),
+  };
+}
 
 function playerError(input) {
   if (!input || typeof input !== 'object') return null;
@@ -23,6 +76,7 @@ function playerError(input) {
       'bufferNudgeOnStall', 'internalException', 'aborted', 'attachMediaError', 'mediaSourceRequiresReset', 'unknown']),
     fatal: boolean(value(input, 'fatal')),
     mediaErrorCode: choice(value(input, 'mediaErrorCode'), [1, 2, 3, 4]),
+    fragment: fragment(value(input, 'fragment')),
   };
 }
 
@@ -80,6 +134,9 @@ function sample(input, elapsedMs) {
     lastPlayerError: playerError(value(input, 'lastPlayerError')),
     playbackFailed: boolean(value(input, 'playbackFailed')),
     playbackFallback: choice(value(input, 'playbackFallback'), ['stalls', 'unexpected-end', 'decode-error', 'player-error']),
+    startupPending: boolean(value(input, 'startupPending')), playbackWanted: boolean(value(input, 'playbackWanted')),
+    startupBuffer: startupBuffer(value(input, 'startupBuffer')),
+    hls: hlsState(value(input, 'hls')), mediaSource: mediaSource(value(input, 'mediaSource')),
     visibility: choice(value(input, 'visibility'), ['visible', 'hidden', 'prerender']),
     quality: choice(value(input, 'quality'), ['full', 'preview']),
     engine: choice(value(input, 'engine'), ['hls.js', 'hls.js · ManagedMediaSource', 'hls.js · MediaSource', 'Native HLS', 'Native MP4']),
@@ -102,6 +159,7 @@ function sample(input, elapsedMs) {
     sourceTimingCoverage,
     peerEnabled: boolean(value(input, 'peerEnabled')), connectedPeers: integer(value(input, 'connectedPeers')),
     transferWorkerState: choice(value(input, 'transferWorkerState'), ['off', 'waiting-core', 'loading', 'ready', 'failed', 'stopped']),
+    roomPrepared: boolean(value(input, 'roomPrepared')), roomReady: boolean(value(input, 'roomReady')),
     roomListeners: integer(value(input, 'roomListeners')), connections: connections(value(input, 'connections')),
   };
 }

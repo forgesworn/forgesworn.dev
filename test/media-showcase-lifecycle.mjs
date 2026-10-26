@@ -10,18 +10,21 @@ const origin = 'https://forgesworn.dev';
 const fixtures = {
   '/vendor/hls.light.min.mjs': `window.fixture.imported = true; class Loader { load(){} abort(){} destroy(){} }
   export default class Hls {
-    static Events = { MEDIA_ATTACHED:'attached', MANIFEST_PARSED:'manifest', ERROR:'error', FRAG_LOADED:'fragment' };
+    static Events = { MEDIA_ATTACHED:'attached', MEDIA_DETACHING:'detaching', MANIFEST_PARSED:'manifest', ERROR:'error', FRAG_LOADED:'fragment' };
     static isSupported() { return fixture.engine === 'mse'; }
-    constructor(config) { this.config={loader:Loader,...config}; this.handlers=new Map(); fixture.players.push(this); }
+    constructor(config) { this.config={loader:Loader,...config}; this.handlers=new Map();
+      this.mediaSource={readyState:'open',streaming:true};this.loadingEnabled=false;this.bufferingEnabled=true;
+      this.inFlightFragments={main:{state:'IDLE',frag:null}};fixture.players.push(this); }
     on(event, handler) { this.handlers.set(event,handler); }
     off(event, handler) { if(this.handlers.get(event)===handler)this.handlers.delete(event); }
     attachMedia(video) { this.video=video; fixture.trace.push({kind:'attach'}); video.src='blob:fixture-pipeline'; video.load();
-      queueMicrotask(()=>this.handlers.get('attached')?.(null,{mediaSource:{}})); }
+      queueMicrotask(()=>this.handlers.get('attached')?.(null,{mediaSource:this.mediaSource})); }
     loadSource(url) { fixture.trace.push({kind:'source',url}); queueMicrotask(()=>this.handlers.get('manifest')?.()); }
     startLoad(position) { fixture.trace.push({kind:'startLoad',position,player:fixture.players.indexOf(this)});
+      this.loadingEnabled=true;this.inFlightFragments={main:{state:'FRAG_LOADING',frag:{sn:0,cc:0,type:'main'}}};
       fixture.duration=this.config.liveDurationInfinity?Infinity:fixture.sourceDuration; fixture.currentTime=position; }
-    stopLoad() { fixture.trace.push({kind:'stopLoad',player:fixture.players.indexOf(this)}); }
-    destroy() { this.destroyed=true; this.video?.pause(); }
+    stopLoad() { this.loadingEnabled=false;fixture.trace.push({kind:'stopLoad',player:fixture.players.indexOf(this)}); }
+    destroy() { this.handlers.get('detaching')?.();this.destroyed=true; this.video?.pause(); }
   }`,
   '/media-listener-session.mjs': `export function createListenerSession({onChange,room,duration}) {
     fixture.roomConfig={room,duration};
@@ -83,14 +86,14 @@ const fixtures = {
         if(peer.stopped||request!==peer.request)return;
         if(value&&fixture.rejectPeerEnable)throw new Error('Fixture peer preparation failed');
         peer.enabled=value;if(value)fixture.trace.push({kind:'peerReady',peer:fixture.peers.indexOf(peer)});
-      },metrics:()=>null,
+      },metrics:()=>fixture.peerMetrics??null,
         stop(){peer.stopped=true;peer.enabled=false}};fixture.peers.push(peer);return peer;}`,
 };
 const types = { '.html':'text/html','.mjs':'text/javascript','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml' };
 let browser;
 const checks=[];
 async function open({held=false,heldVisual=false,heldRoomCode=false,heldMetadata=false,engine='mse',reject=false,
-  recorded=false,quality='full',holdPeerEnable=false,frameWitness='rvfc',coldRoom=false,holdCommit=false}={}) {
+  recorded=false,quality='full',holdPeerEnable=false,frameWitness='rvfc',coldRoom=false,holdCommit=false,observeReport=false}={}) {
   const context=await browser.newContext(),page=await context.newPage(),errors=[],mediaRequests=[];
   page.setDefaultTimeout(8000);
   let release;const gate=new Promise(resolve=>{release=resolve});if(!held)release();
@@ -105,8 +108,15 @@ async function open({held=false,heldVisual=false,heldRoomCode=false,heldMetadata
     if(url.pathname==='/media-swarm-visual.mjs')await visualGate;
     if(url.pathname==='/media-listener-session.mjs')await roomCodeGate;
     if(url.pathname==='/media/dejavu-swarm/catalogue-v3.json')await metadataGate;
+    if(observeReport&&url.pathname==='/media-playback-report.mjs')return route.fulfill({contentType:'text/javascript',body:`
+      import {createPlaybackReport as real} from '/__actual-playback-report.mjs';
+      export function createPlaybackReport(options){const report=real(options);return{
+        record(input){const added=report.record(input);if(added)fixture.reportSample=report.snapshot().samples.at(-1);return added},
+        snapshot:()=>report.snapshot()
+      }};`});
     if(fixtures[url.pathname])return route.fulfill({contentType:'text/javascript',body:fixtures[url.pathname]});
-    const path=resolve(root,'.'+(url.pathname==='/'?'/index.html':url.pathname==='/__actual-public-swarm.mjs'?'/media-public-swarm.mjs':url.pathname));if(!path.startsWith(root+sep))return route.abort();
+    const path=resolve(root,'.'+(url.pathname==='/'?'/index.html':url.pathname==='/__actual-public-swarm.mjs'?'/media-public-swarm.mjs':
+      url.pathname==='/__actual-playback-report.mjs'?'/media-playback-report.mjs':url.pathname));if(!path.startsWith(root+sep))return route.abort();
     try{return await route.fulfill({contentType:types[extname(path)]??'application/octet-stream',body:await readFile(path)})}
     catch{return route.fulfill({status:404,body:''})}
   });
@@ -162,6 +172,12 @@ async function close(run){
   assert.equal(await run.page.evaluate(()=>fixture.players.every(p=>p.destroyed)),true);
   assert.equal(await run.page.evaluate(()=>fixture.peers.every(p=>p.stopped)),true);
   assert.deepEqual(run.errors,[]);await run.context.close();
+}
+async function report(page){
+  if(await page.locator('#public-stats-details').getAttribute('open')===null)await page.locator('#public-stats-details > summary').click();
+  const [download]=await Promise.all([page.waitForEvent('download'),page.locator('#public-save-report').click()]);
+  const stream=await download.createReadStream();let text='';for await(const chunk of stream)text+=chunk.toString();
+  await download.delete();return JSON.parse(text);
 }
 async function gestureOrder(page,native=false){
   // The join is asynchronous. Wait for its trace before comparing the actual
@@ -812,6 +828,56 @@ try {
     'an old replay priming barrier cannot suppress the replacement native demand');
   assert.equal(await primedFallback.page.locator('#public-play').getAttribute('disabled'),null);
   await close(primedFallback);checks.push('native handoff retires old replay priming before requesting replacement playback');
+  const diagnostics=await open({recorded:true,coldRoom:true,observeReport:true});
+  await diagnostics.page.locator('#public-play').click();await diagnostics.page.evaluate(()=>fixture.releaseRoom());
+  await diagnostics.page.waitForFunction(()=>fixture.brandedAdapters===1&&fixture.trace.some(x=>x.kind==='source'));
+  await diagnostics.page.evaluate(()=>{
+    fixture.peerMetrics={enabled:true,peerBytes:0,uploadedBytes:0,originBytes:0,connectedPeers:0,
+      topology:{connections:[]},startupBuffer:{enabled:true,state:'cancelled',reason:'caller-abort',released:0,
+        failures:0,cancellations:1,commitStarted:false,commitCompleted:false}};
+    const player=fixture.players[0];player.bufferingEnabled=false;player.mediaSource.streaming=false;
+    player.handlers.get('error')(null,{fatal:false,type:'networkError',details:'aborted',
+      frag:{type:'main',sn:'initSegment',cc:0,url:'https://private.invalid/secret'}});
+  });
+  // The passive fixture wrapper delegates to the real helper and observes an
+  // accepted existing-tick sample. It adds no product timer or media action.
+  await diagnostics.page.waitForFunction(()=>fixture.reportSample?.startupBuffer?.reason==='caller-abort');
+  let observed=(await report(diagnostics.page)).samples.at(-1);
+  assert.equal(observed.startupBuffer.state,'cancelled');assert.equal(observed.startupBuffer.reason,'caller-abort');
+  assert.equal(observed.startupPending,true);assert.equal(observed.playbackWanted,true);
+  assert.equal(observed.roomPrepared,true);assert.equal(observed.roomReady,false);
+  assert.equal(observed.hls.loadingEnabled,true);assert.equal(observed.hls.bufferingEnabled,false);
+  assert.deepEqual(observed.hls.main,{state:'FRAG_LOADING',sn:0,cc:0,type:'main'});
+  assert.deepEqual(observed.mediaSource,{readyState:'open',streaming:false});
+  assert.deepEqual(observed.lastPlayerError.fragment,{sn:'initSegment',cc:0,type:'main'});
+  assert.equal(await diagnostics.page.locator('#public-play').isDisabled(),true,'diagnostics alone do not introduce a recovery policy');
+  assert.doesNotMatch(JSON.stringify(observed),/private[.]invalid|secret/);
+  await diagnostics.page.evaluate(async()=>{
+    await fixture.peers[0].options.startupBufferCommit({signal:new AbortController().signal});
+    fixture.finishPlay();fixture.presentFrame();fixture.replaceEpoch();
+  });
+  await diagnostics.page.waitForFunction(()=>fixture.players.length===2&&fixture.brandedAdapters===2);
+  await diagnostics.page.evaluate(()=>{
+    const [old,current]=fixture.players;
+    current.inFlightFragments={main:{state:'PARSING',frag:{sn:12,cc:1,type:'main'}}};
+    old.handlers.get('attached')(null,{mediaSource:{readyState:'closed',streaming:false}});
+    fixture.peerMetrics=null;
+  });
+  await diagnostics.page.waitForFunction(()=>fixture.reportSample?.hls?.main?.sn===12&&fixture.reportSample.startupBuffer===null);
+  observed=(await report(diagnostics.page)).samples.at(-1);
+  assert.deepEqual(observed.hls.main,{state:'PARSING',sn:12,cc:1,type:'main'});
+  assert.deepEqual(observed.mediaSource,{readyState:'open',streaming:true},'a late old-player attachment cannot replace the current source observation');
+  assert.equal(observed.startupBuffer,null,'older or unavailable SDK metrics stay unknown');
+  assert.equal(observed.roomPrepared,false);assert.equal(observed.roomReady,true);
+  await diagnostics.page.evaluate(()=>{
+    fixture.finishPlay();fixture.presentFrame();fixture.nativeCapable=true;
+    fixture.players[1].handlers.get('error')(null,{fatal:true,type:'mediaError',details:'bufferAppendError'});
+  });
+  await diagnostics.page.waitForFunction(()=>fixture.reportSample?.engine==='Native HLS'&&fixture.reportSample.hls===null);
+  observed=(await report(diagnostics.page)).samples.at(-1);
+  assert.equal(observed.engine,'Native HLS');assert.equal(observed.hls,null);assert.equal(observed.mediaSource,null);
+  assert.equal(observed.startupBuffer,null,'retired peer or Hls state is not presented as the native pipeline');
+  await close(diagnostics);checks.push('stock report captures owned startup/Hls/MediaSource state, rejects stale attachments and preserves unavailable SDK/native observations');
   console.log(JSON.stringify({suite:'media-showcase-lifecycle',passed:true,checks,
     scope:'Real controller; explicit HLS/room/media fixtures. No decoded playback, physical-device or peer-delivery qualification.'}));
 } finally { await browser?.close(); }
