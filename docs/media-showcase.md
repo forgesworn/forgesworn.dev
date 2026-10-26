@@ -435,6 +435,29 @@ measurements, separate from this public replay.
 
 ## 4K delivery observations
 
+The current startup path adopts a verified active room even while another
+viewer is still preparing an unpublished start. It retires that viewer's empty
+old loader before acknowledgement and reuses the original player and Play
+request. The pinned RelaySwarm source `e910147` also rolls its bounded startup
+plan forward using verified future-load timing. Release still requires current
+verified coverage; the three-object, 24 MiB and eight-second limits are unchanged.
+
+The [room-adoption candidate receipt](evidence/prepared-adoption-staged-4k-20261026.json)
+records one 60-second run per viewer on the same M4 Max, with browser HTTP cache
+disabled and four candidate assets substituted. Both viewers had zero observed
+post-frame stalls or dropped frames; their maximum sampled clock offsets were
+0.307 and 0.265 seconds. The preselected receiver B accepted 62,784,300 peer
+bytes, 25.62% of its loaded media; A accepted 6,222,271 peer bytes, 2.61%.
+Their uploads were 74,103,412 and 6,222,271 bytes respectively. The actual paired
+observation overlap was 57.408 seconds. All 306 fresh, eligible room comparisons
+matched, including 294 during that overlap. B retained one nonfatal pre-frame
+`aborted` event while its old loader stopped for room adoption.
+
+This is staged evidence. It does not establish deployed 330-second continuity,
+physical-phone performance, public TURN or net network savings. The recorded
+listening room exercises peer-assisted HLS; it does not qualify KithMoot's
+interactive camera/microphone path or eight-person meetings.
+
 The [26 October prepared-room summary](evidence/prepared-room-4k-20261026.json)
 records staged 60.075-second and 330.213-second full-4K checks. Both viewers had
 **zero post-first-frame stalls and zero dropped frames**. Their maximum sampled

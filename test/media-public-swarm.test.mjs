@@ -19,6 +19,20 @@ const recordedManifests = {
   preview: await readFile(new URL('../site/media/dejavu-preview/rtmp/stream.m3u8', import.meta.url)),
 };
 
+test('public startup shares one recording brand and one SDK module across its helpers', async () => {
+  const [controller, listener, swarm] = await Promise.all(['media-lab.mjs', 'media-listener-session.mjs', 'media-public-swarm.mjs']
+    .map(name => readFile(new URL(`../site/${name}`, import.meta.url), 'utf8')));
+  // Separate module URLs create separate WeakSets for prepared recordings.
+  // The controller fixtures alias their real helper, so check the shipped
+  // graph too: preparing and consuming a recording must use one module.
+  const helpers = [...controller.matchAll(/import\('(\.\/media-public-swarm\.mjs[^']*)'\)/g)].map(match => match[1]);
+  assert.equal(helpers.length, 2);
+  assert.equal(new Set(helpers).size, 1, 'preparation and playback must share the recording brand');
+  const sdk = [listener, swarm].map(source => source.match(/from '(\.\/vendor\/media-peer-demo\.js[^']*)'/)?.[1]);
+  assert(sdk.every(Boolean));
+  assert.equal(new Set(sdk).size, 1, 'room and media helpers must not load duplicate SDK instances');
+});
+
 test('public VOD digest catalogue is pinned to reviewed source and matches every shipped preview segment', async () => {
   assert.equal(createHash('sha256').update(bytes).digest('hex'), PUBLIC_SWARM_CATALOGUE_SHA256);
   const plan = validatePublicSwarmCatalogue(catalogue, preview);

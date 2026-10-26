@@ -1,0 +1,200 @@
+{
+  "schema": 1,
+  "kind": "staged-recorded-4k-room-adoption",
+  "measuredAt": "2026-10-26T16:52:06Z",
+  "scope": "Two fresh cache-disabled Chromium155 viewers on one M4 Max; four candidate asset overrides; each60seconds at1x and unmuted. This is not a public deployment, physical-phone, independent-network, TURN or eight-person-call acceptance.",
+  "source": {
+    "sourceCommit": "e910147fe971b2a96327ded6a8e43e0647c41f3d",
+    "siteCommit": "4f84dc7975c741b24031da2038f651e21ab9ae62",
+    "controllerSha256": "6670a6800c2733cd039d74fd6a9fbb8f062e6c4f4b41ed69695f6ac0493c87aa",
+    "listenerSha256": "01acd6096d389b4de478ae4c95248251d65c4fb10579458af9ce7cc74665e7df",
+    "bundleSha256": "ae965a6dace9aff494161ced5f2f6e9dc515197d0871e5a666cf875ee7be598b",
+    "wasmSha256": "7767f54cbeac999bee42419394647fcd472544d5bad005350f83d8d4dce4dce9",
+    "wasmBytes": 457101
+  },
+  "protocolSha256": "e1942e1db33f49d7a4e7d0a44217c122ae31681ed0440ff45e15973925a5e653",
+  "selectedContributionReceiver": "M4B",
+  "contributionGate": {
+    "minimumAcceptedPeerBytes": 10485760,
+    "minimumAcceptedPeerShare": 0.1,
+    "selectedReceiverPassed": true,
+    "everyViewerPassed": false
+  },
+  "viewers": [
+    {
+      "viewer": "M4A",
+      "observationSeconds": 60.09,
+      "trustedPlay": true,
+      "acceptedPeerBytes": 6222271,
+      "acceptedLoadedMediaBytes": 238692649,
+      "acceptedPeerShare": 0.026068129982503147,
+      "uploadedMediaBytes": 74103412,
+      "receiverContributionGateMet": false,
+      "selectedReceiver": false,
+      "postFrameStalls": 0,
+      "postFrameDroppedFrames": 0,
+      "playerErrorsCumulative": 0,
+      "sync": {
+        "method": "fresh contemporaneous stock sharedDriftSeconds",
+        "eligibleKnownSamples": 50,
+        "eligibleUnknownSamples": 0,
+        "maxAbsSeconds": 0.30667199999999895,
+        "violations": 0,
+        "reportDroppedSamples": 0
+      },
+      "selectedRouteEnums": [
+        {
+          "localType": "host",
+          "protocol": "udp",
+          "relayProtocol": null,
+          "remoteType": "host"
+        }
+      ],
+      "videoElementDimensions": [
+        3842,
+        2160
+      ],
+      "presentedDimensionsFromReport": [
+        3840,
+        2160
+      ],
+      "hashes": {
+        "result.json": "715a082cb0b513718100a6de76583151de7484503cc839bae44e47afe5379d0d",
+        "stock-report.json": "2c84109a5596d33a25bf67f46e8379d5d5bc113ea2735a3fd606a426fe3f512d",
+        "startup-cause.jsonl": "682bbaa4a746205b652ae11ff5095a40898f87a4f73015173f4f9a94300d5343"
+      }
+    },
+    {
+      "viewer": "M4B",
+      "observationSeconds": 60.159,
+      "trustedPlay": true,
+      "acceptedPeerBytes": 62784300,
+      "acceptedLoadedMediaBytes": 245043958,
+      "acceptedPeerShare": 0.25621647851443863,
+      "uploadedMediaBytes": 6222271,
+      "receiverContributionGateMet": true,
+      "selectedReceiver": true,
+      "postFrameStalls": 0,
+      "postFrameDroppedFrames": 0,
+      "playerErrorsCumulative": 1,
+      "sync": {
+        "method": "fresh contemporaneous stock sharedDriftSeconds",
+        "eligibleKnownSamples": 50,
+        "eligibleUnknownSamples": 0,
+        "maxAbsSeconds": 0.2646450000000016,
+        "violations": 0,
+        "reportDroppedSamples": 0
+      },
+      "selectedRouteEnums": [
+        {
+          "localType": "host",
+          "protocol": "udp",
+          "relayProtocol": null,
+          "remoteType": "host"
+        }
+      ],
+      "videoElementDimensions": [
+        3842,
+        2160
+      ],
+      "presentedDimensionsFromReport": [
+        3840,
+        2160
+      ],
+      "hashes": {
+        "result.json": "3a420171932770c79b522a97cae4497964ac535232dbc8f1c488d0c1dda17e80",
+        "stock-report.json": "5ffcced4951e3c39ecdff414f76b0e3ec2c7baa481ad9980742a51d47b4dfa12",
+        "startup-cause.jsonl": "67ce9ea2c79b859a568d286f8f296ed343841becd0748b9e117c1deb1bbfd92d"
+      }
+    }
+  ],
+  "preframeEvent": {
+    "literal": {
+      "at": 5779.199999809265,
+      "wallAt": 1793033525872,
+      "kind": "hls-error",
+      "startupBuffer": null,
+      "warmAhead": null,
+      "warmLimits": null,
+      "resources": null,
+      "intent": {
+        "playbackWanted": true,
+        "startupPending": true,
+        "playbackFailed": null,
+        "finishing": null
+      },
+      "room": {
+        "prepared": false,
+        "ready": false,
+        "adoptingPrepared": true,
+        "boundEpochMatchesRoom": false,
+        "listeners": 1
+      },
+      "hls": {
+        "loadingEnabled": false,
+        "bufferingEnabled": true,
+        "main": {
+          "state": "STOPPED",
+          "fragment": null
+        }
+      },
+      "error": {
+        "type": "networkError",
+        "detail": "aborted",
+        "fatal": false,
+        "fragment": {
+          "sn": 0,
+          "cc": 0,
+          "type": "main"
+        },
+        "responseCode": null,
+        "responseStartupBufferReason": null,
+        "errorStartupBufferReason": null,
+        "networkStartupBufferReason": null
+      }
+    },
+    "msAfterFirstAdoptionObservation": 3.3000001907348633,
+    "msBeforeNodeConfirmedFirstFrame": 2851.0,
+    "firstReportErrorSampleHasPresentedFrame": false,
+    "classification": "Hls reports nonfatal aborted oldSN0 during automatic adoption. Timing/scope matches intentional old Hls stop; reason fields remain null. Event retained, no zero-player-error claim."
+  },
+  "cohortWitness": {
+    "method": "RAM-only salted bound-epoch comparison; only equality/readiness/ages/timestamps persisted",
+    "totalRows": 346,
+    "freshEligibleRows": 306,
+    "freshEligibleEqualRows": 306,
+    "freshEligibleFirstAt": "2026-10-26T16:52:06.031000+00:00",
+    "freshEligibleLastAt": "2026-10-26T16:53:06.082000+00:00",
+    "freshEligibleSpanSeconds": 60.051,
+    "maxGapBetweenEligibleReportsMs": 1001,
+    "bothObservationOverlapStart": "2026-10-26T16:52:08.723000+00:00",
+    "bothObservationOverlapEnd": "2026-10-26T16:53:06.131000+00:00",
+    "bothObservationOverlapSeconds": 57.408,
+    "reportsInsideOverlap": 294,
+    "ineligibleOrDifferentInsideOverlap": 0,
+    "freshnessBoundMs": 2250,
+    "invalidEnvelopes": 0,
+    "readerErrors": [],
+    "noRawIdsDigestsNonceRetained": true,
+    "limitation": "Sampled equality, not continuous proof; same source/quality/recording pins support cohort inference."
+  },
+  "rawSummarySha256": "2005eef30f991dc7a04a663802165d1bbed53d5a5ae9134e64aaf2ccefcb83ff",
+  "cleanup": {
+    "ownedBrowserProcesses": 0,
+    "profilesAbsent": true,
+    "ownedBrowserStageAbsent": true
+  },
+  "limits": [
+    "Accepted media includes prebuffered data; uploaded payload is not network wire cost.",
+    "HTTP cache was disabled; a cold CDN was not established.",
+    "Sampled same-host room equality and media-clock offsets do not qualify physical-phone or independent-network synchronisation.",
+    "One nonfatal preframe aborted old fragment is retained; this is not a zero-player-error claim.",
+    "No TURN credential was issued or relay configured in this test."
+  ],
+  "runtime": {
+    "nodeVersion": "v24.13.0",
+    "browserVersion": "155.0.8059.85",
+    "cpu": "Apple M4 Max",
+    "arch": "arm64"
+  }
+}
