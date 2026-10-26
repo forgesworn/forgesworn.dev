@@ -30,7 +30,8 @@ const fixtures = {
     fixture.roomConfig={room,duration};
     const position=()=>fixture.recorded?((Date.now()-fixture.startedAt)/1000)%fixture.sourceDuration:50;
     let joined=false,prepared=false,publishing=false,foreign=false,token=null,generation=0,cancelCommit=null;
-    const snapshot=()=>({ready:joined,prepared,observed:true,connectedRelays:1,joined:joined||publishing,
+    let adopting=false,committingToken=null,commitPromise=null;
+    const snapshot=()=>({ready:joined,prepared,adoptingPrepared:adopting,observed:true,connectedRelays:1,joined:joined||publishing,
       status:prepared?'prepared':publishing?'publishing':joined?'active':'observing',
       listeners:(joined?1:0)+(foreign?1:0),epochId:fixture.coldRoom&&!prepared&&!joined&&!publishing&&!foreign?null:fixture.epochId,
       position:prepared||fixture.coldRoom&&!joined&&!publishing&&!foreign?0:position(),startedAt:prepared?null:fixture.startedAt});
@@ -45,10 +46,10 @@ const fixtures = {
       if(request!==generation) throw new DOMException('Join cancelled','AbortError');
       publishing=true;notify();await Promise.resolve();
       if(request!==generation)throw new DOMException('Join cancelled','AbortError');publishing=false;joined=true;notify();
-    },leave:()=>{generation++;cancelCommit?.();joined=false;prepared=false;publishing=false;token=null;notify()},
-      stop(){generation++;cancelCommit?.();joined=false;prepared=false;publishing=false;token=null}};
+    },leave:()=>{generation++;cancelCommit?.();joined=false;prepared=false;publishing=false;adopting=false;token=null;notify()},
+      stop(){generation++;cancelCommit?.();joined=false;prepared=false;publishing=false;adopting=false;token=null}};
     if(fixture.coldRoom){
-      roomApi.prepareJoin=async()=>{
+      roomApi.prepareJoin=async({signal}={})=>{
         const request=++generation;fixture.trace.push({kind:'join'});
         if(fixture.holdJoin)await new Promise(resolve=>fixture.joinWaiters.push(resolve));
         if(request!==generation)throw new DOMException('Prepare cancelled','AbortError');
@@ -56,34 +57,42 @@ const fixtures = {
         if(foreign){await roomApi.join();return {...snapshot(),prepared:false,token:null};}
         fixture.preparations=(fixture.preparations||0)+1;
         if(fixture.preparations>1)fixture.epochId='3'.repeat(64);
-        prepared=true;token=Object.freeze({});notify();return {...snapshot(),token};
+        prepared=true;token=Object.freeze({});fixture.prepareSignal=signal;fixture.preparedEpoch=fixture.epochId;notify();return {...snapshot(),token};
       };
       roomApi.commitPreparedStart=async(value,{signal}={})=>{
+        if(publishing&&value&&value===committingToken)return commitPromise;
         const request=generation;fixture.trace.push({kind:'commit'});
         if(value!==token||!prepared||signal?.aborted)throw new DOMException('Invalid preparation','AbortError');
-        const candidate=fixture.epochId;
+        const candidate=fixture.preparedEpoch??fixture.epochId;committingToken=value;
         if(fixture.adoptOnCommit){foreign=true;fixture.epochId='2'.repeat(64);}
         fixture.startedAt=Date.now()-(foreign?10_000:0);prepared=false;token=null;publishing=true;
-        const result=new Promise((resolve,reject)=>{
+        let acknowledge;const result=new Promise((resolve,reject)=>{
           let settled=false;
           const aborted=()=>roomApi.leave();
           const cleanup=()=>{signal?.removeEventListener('abort',aborted);if(cancelCommit===cancel)cancelCommit=null};
-          const cancel=()=>{if(settled)return;settled=true;cleanup();reject(new DOMException('Commit cancelled','AbortError'))};
-          const acknowledge=()=>{
+          const cancel=()=>{if(settled)return;settled=true;cleanup();publishing=false;prepared=false;adopting=false;notify();reject(new DOMException('Commit cancelled','AbortError'))};
+          acknowledge=()=>{
             if(settled)return;
             if(request!==generation||signal?.aborted){cancel();return;}
             // The real actor removes its operation abort listener BEFORE it
             // notifies active: that callback may retire the losing SDK.
-            settled=true;cleanup();publishing=false;joined=true;notify();
+            settled=true;cleanup();publishing=false;adopting=false;joined=true;committingToken=null;notify();
             resolve({...snapshot(),adopted:fixture.epochId!==candidate});
           };
           cancelCommit=cancel;signal?.addEventListener('abort',aborted,{once:true});
           fixture.commitWaiters.push(acknowledge);
-          notify();
-          if(!fixture.holdCommit)queueMicrotask(acknowledge);
         });
+        commitPromise=result;notify();
+        if(!fixture.holdCommit)queueMicrotask(acknowledge);
         return result;
       };
+      fixture.autoAdoptPrepared=()=>{
+        if(!prepared)throw new Error('Expected private preparation');
+        const value=token;adopting=true;foreign=true;fixture.epochId='2'.repeat(64);
+        void roomApi.commitPreparedStart(value,{signal:fixture.prepareSignal})
+          .then(()=>fixture.autoAdoptionOutcome='ready',error=>fixture.autoAdoptionOutcome=error.name);
+      };
+      fixture.rejectCommit=()=>cancelCommit?.();
     }
     return roomApi;
   }`,
@@ -617,6 +626,67 @@ try {
   assert.deepEqual(await cold.page.evaluate(()=>[fixture.players.length,fixture.peers.length,fixture.trace.filter(x=>x.kind==='source').length]),[1,1,1],
     'same-epoch publication, ACK and repeated ready observations do not churn the recording scope');
   await close(cold);
+
+  for(const action of ['ack','pending-enable','pause','pagehide','ack-fail','deny-after-ack']){
+    const automatic=await open({recorded:true,coldRoom:true,holdCommit:true,holdPeerEnable:action==='pending-enable'});
+    await automatic.page.locator('#public-play').click();await automatic.page.evaluate(()=>fixture.releaseRoom());
+    await automatic.page.waitForFunction(()=>fixture.peers.length===1);
+    if(action!=='pending-enable')await automatic.page.waitForFunction(()=>fixture.trace.some(x=>x.kind==='startLoad'));
+    const before=await automatic.page.evaluate(()=>{
+      fixture.oldMetadata=fixture.metadataHandlers.at(-1);
+      fixture.oldManifest=fixture.players[0].handlers.get('manifest');
+      const sources=fixture.trace.filter(x=>x.kind==='source').length;
+      fixture.autoAdoptPrepared();
+      const loads=fixture.trace.filter(x=>x.kind==='startLoad').length;
+      fixture.oldManifest?.();fixture.oldMetadata?.();
+      return{state:fixture.listenerSnapshot(),sources,loads,afterLoads:fixture.trace.filter(x=>x.kind==='startLoad').length,
+        stopped:fixture.peers[0].stopped,views:fixture.views.length,oldTarget:fixture.peers[0].options.startupBufferTarget(),
+        players:fixture.players.length,attaches:fixture.trace.filter(x=>x.kind==='attach').length,
+        plays:fixture.trace.filter(x=>x.kind==='play').length};
+    });
+    assert.equal(before.state.adoptingPrepared,true);assert.equal(before.state.ready,false);
+    assert.equal(before.stopped,true,'AUTO publication stops the losing SDK before ACK');
+    assert.equal(before.oldTarget,null);assert.equal(before.views,1,'old recording binding is retained until ACK');
+    assert.equal(before.afterLoads,before.loads,'late old manifest/metadata cannot restart the stopped scope');
+    assert.deepEqual([before.players,before.attaches,before.plays],[1,1,1]);
+    if(action==='pause'||action==='pagehide'||action==='ack-fail'){
+      await automatic.page.evaluate(action=>{
+        if(action==='pause')document.getElementById('lab-video').pause();
+        else if(action==='pagehide')window.dispatchEvent(new PageTransitionEvent('pagehide'));
+        else fixture.rejectCommit();
+        fixture.releaseCommit();
+      },action);
+      await automatic.page.waitForFunction(()=>fixture.autoAdoptionOutcome==='AbortError');
+      assert.equal(await automatic.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='source').length),before.sources,
+        'failed or cancelled AUTO ACK cannot load a late source');
+      if(action==='ack-fail'){
+        await automatic.page.waitForFunction(()=>fixture.reportSample?.playbackFailed===true&&!document.getElementById('public-play').disabled);
+        assert.equal(await automatic.page.evaluate(()=>fixture.reportSample.playbackFailed),true,
+          'publication failure has an honest terminal retry owner');
+      }
+    }else{
+      await automatic.page.evaluate(()=>fixture.releaseCommit());
+      if(action==='pending-enable'){
+        await automatic.page.waitForTimeout(100);
+        assert.equal(await automatic.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='source').length),0,
+          'retired async setup cannot load after the new ACK');
+        await automatic.page.evaluate(()=>fixture.releasePeer());
+      }
+      await automatic.page.waitForFunction(expected=>fixture.peers.length===2&&fixture.trace.filter(x=>x.kind==='source').length===expected,before.sources+1);
+      const active=await automatic.page.evaluate(()=>({players:fixture.players.length,attaches:fixture.trace.filter(x=>x.kind==='attach').length,
+        plays:fixture.trace.filter(x=>x.kind==='play').length,epoch:fixture.peers[1].options.recordedLive.epochId,
+        target:fixture.peers[1].options.startupBufferTarget(),sources:fixture.trace.filter(x=>x.kind==='source').length}));
+      assert.deepEqual([active.players,active.attaches,active.plays],[1,1,1]);assert.equal(active.epoch,'2'.repeat(64));assert(active.target>0);
+      assert.equal(active.sources,before.sources+1);
+      if(action==='deny-after-ack'){
+        await automatic.page.evaluate(()=>{fixture.paused=true;for(const {reject}of fixture.playWaiters.splice(0))reject(new DOMException('Denied','NotAllowedError'))});
+        await automatic.page.waitForFunction(()=>document.getElementById('main').dataset.playbackPlayError==='NotAllowedError'&&!document.getElementById('public-play').disabled);
+        assert.equal(await automatic.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='play').length),1,
+          'setup-generation retirement retains ownership of the original pending Play rejection');
+      }
+    }
+    await close(automatic);checks.push('automatic prepared adoption '+action+' preserves one trusted pipeline and explicit ACK/cancellation ownership');
+  }
 
   for(const action of ['pause','adopt-at-commit','adopt-while-publishing','abort','pagehide']){
     const adopt=action.startsWith('adopt');

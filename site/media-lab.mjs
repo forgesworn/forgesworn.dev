@@ -424,7 +424,7 @@ async function initialise() {
     publicRoom?.stop(); publicRoom = null;
     const pending = (async () => {
       const [{ createListenerSession }, { PUBLIC_SWARM_SOURCE_SHA256, PUBLIC_SWARM_RELAYS }] = await Promise.all([
-        import('./media-listener-session.mjs?v=20261025-prepared-room'), import('./media-public-swarm.mjs?v=20261025-prepared-room'),
+        import('./media-listener-session.mjs?v=20261026-prepared-adoption'), import('./media-public-swarm.mjs?v=20261025-prepared-room'),
       ]);
       if (request !== publicRoomRequest || pageAbort.signal.aborted) return null;
       const clock = createListenerSession({ room: `forgesworn-dejavu-listening-v${quality === 'full' ? 2 : 1}-${quality}`, source: PUBLIC_SWARM_SOURCE_SHA256,
@@ -452,6 +452,22 @@ async function initialise() {
             // rather than that intervening unready notification.
             const boundEpoch = s.recordedEpochId ?? s.listenerState?.epochId;
             s.listenerState = state;
+            if (state.adoptingPrepared && !state.ready && boundEpoch && state.epochId !== boundEpoch &&
+                s.listenerPreparation && s.recordedView?.timelineOriginMs === null && !s.framePipeline?.seenFrame &&
+                s.playbackWanted !== false && s.listenerWanted && !s.recordedLoadStopped) {
+              // This ACK belongs to the session, not the losing SDK's commit.
+              // Stop the empty old scope, preserving the tap and epoch binding
+              // until the ready notification can install the acknowledged one.
+              const version = s.publicSetupVersion = (s.publicSetupVersion ?? 0) + 1;
+              const playVersion = s.playbackVersion ?? 0;
+              const peer = s.publicPeer; s.publicPeer = null;
+              s.recordedLoadStopped = true; s.publicSourceLoaded = false;
+              s.hls?.stopLoad(); try { peer?.stop(); } catch {}
+              void s.listener.commitPreparedStart(s.listenerPreparation).catch(() => {
+                if (session === s && !s.finishing && !s.abort.signal.aborted && s.playbackWanted !== false &&
+                    s.listenerWanted && s.publicSetupVersion === version && (s.playbackVersion ?? 0) === playVersion) publicStartupFailed(s);
+              });
+            }
             if (boundEpoch && state.ready && state.epochId !== boundEpoch) {
               s.followLive = true;
               if (s.listenerPreparation && s.recordedView?.timelineOriginMs === null && !s.framePipeline?.seenFrame) {
@@ -1346,6 +1362,7 @@ async function initialise() {
       // Start the real stream at the fresh room position without another play
       // call or a second media attachment that would cancel that request.
       const room = s.listener?.snapshot();
+      if (s.recordedView && room?.adoptingPrepared && !room.ready) return;
       const position = room?.ready || room?.prepared ? roomMediaTime(s) ?? -1 : s.invitedStart || -1;
       if (room?.ready && position >= 0) s.listenerAlignedEpoch = room.epochId;
       if (initialMetadataEpoch !== room?.epochId && s.quality === 'full' && s.recordedView && !hasPipelineFrame() &&
@@ -1442,6 +1459,7 @@ async function initialise() {
     const needsSetup = () => !s.publicSourceLoaded || Boolean(s.recordedView &&
       (s.recordedLoadStopped || s.recordedEpochId !== s.listener?.snapshot().epochId));
     if (!current()) return;
+    if (s.listener?.snapshot().adoptingPrepared && !s.listener.snapshot().ready) return;
     if (!s.publicSourceLoaded && s.recordedView && (s.recordedLoadStopped ||
         s.listener?.snapshot().ready && s.recordedEpochId !== s.listener.snapshot().epochId)) {
       // Before the first source, discard stale setup without replacing the
@@ -1454,13 +1472,19 @@ async function initialise() {
       return;
     }
     let version = s.playbackVersion ?? 0;
+    const setupVersion = s.publicSetupVersion ?? 0;
     let restartSetup = false;
-    const owns = () => current() && version === (s.playbackVersion ?? 0);
+    const owns = () => current() && version === (s.playbackVersion ?? 0) && setupVersion === (s.publicSetupVersion ?? 0);
     const pending = (async () => {
       const prepare = s.quality === 'full' && s.hls && !s.publicSourceLoaded && s.framePipeline?.observable && !s.framePipeline.seenFrame;
       await joinListener(s, !s.recordedView && Boolean(s.publicSourceLoaded), prepare);
       if (!owns() || !s.listenerWanted) return;
-      const room = s.listener?.snapshot();
+      let room = s.listener?.snapshot();
+      if (room?.adoptingPrepared) {
+        await s.listener.commitPreparedStart(s.listenerPreparation, { signal: s.abort.signal });
+        if (!owns() || !s.listenerWanted) return;
+        s.listenerPreparation = null; room = s.listener.snapshot();
+      }
       if (s.publicSourceLoaded && (!s.recordedView || s.recordedEpochId === room?.epochId)) {
         if (s.recordedView && s.recordedLoadStopped && room?.ready) {
           const player = s.hls, peer = s.publicPeer, view = s.recordedView, epoch = s.recordedEpochId;
@@ -1500,7 +1524,12 @@ async function initialise() {
             quality: s.quality, playlistUrl: s.publicUrl.href, signal: s.abort.signal,
           }).catch(() => null) : null;
           if (!owns() || s.hls !== player) return;
-          const latestRoom = s.listener?.snapshot();
+          let latestRoom = s.listener?.snapshot();
+          if (latestRoom?.adoptingPrepared) {
+            await s.listener.commitPreparedStart(s.listenerPreparation, { signal: s.abort.signal });
+            if (!owns() || s.hls !== player || !s.listenerWanted) return;
+            s.listenerPreparation = null; latestRoom = s.listener.snapshot();
+          }
           if (recording && (latestRoom?.ready || latestRoom?.prepared && s.listenerPreparation) && /^[a-f0-9]{64}$/.test(latestRoom.epochId) &&
               Math.abs(recording.durationSeconds - s.durationSeconds) < 0.05) {
             // Keep metadata available through a slow startup/recovery. A short
