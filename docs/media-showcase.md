@@ -16,12 +16,15 @@ The recording label sits with the source caption below the player. It does
 not cover the picture or Safari’s native fullscreen control when controls
 appear.
 
-The player pins RelaySwarm source `b75d71bde9aa836e45b27d26d569353530a955d2`
-([source change](https://github.com/forgesworn/relayswarm/commit/b75d71bde9aa836e45b27d26d569353530a955d2)).
+The player pins RelaySwarm source `59575d9c30b44fdf010ce382612224519cbd7ffc`
+([source change](https://github.com/forgesworn/relayswarm/commit/59575d9c30b44fdf010ce382612224519cbd7ffc)).
 It retains the successful peer receipt's stats when hls.js disposes of the
 losing HTTP loader, covered by ten regressions using the actual hls.js 1.7.3
-loaders. It also permits one extra contiguous startup fragment when the
-verified window is still short of measured recovery headroom. Startup remains
+loaders. It also retains a fully verified contiguous future prefix before considering
+its existing fourth startup slot, including after the held first fragment’s
+interval falls behind the room target. The original first response remains
+unchanged; releasing it still requires fresh verified coverage of the current
+target and measured recovery headroom. Startup remains
 bounded to four objects within the existing 24 MiB reservation; steady
 warm-ahead keeps its three-object limit. The eight-second deadline, authority
 checks and explicit refusal for insufficient capacity remain. The Rust/WASM
