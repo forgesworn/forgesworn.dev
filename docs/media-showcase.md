@@ -16,6 +16,15 @@ The recording label sits with the source caption below the player. It does
 not cover the picture or Safari’s native fullscreen control when controls
 appear.
 
+The player pins RelaySwarm source `e0423b9471553792f3acbee5137dc96a4907df55`
+([SDK change](https://github.com/forgesworn/relayswarm/pull/40)). This preserves
+the successful peer receipt's stats when hls.js disposes of the losing HTTP
+loader. Ten regressions using the actual hls.js 1.7.3 loaders cover the cleanup
+and abort paths. The update changes no transfer policy; the Rust/WASM binary
+is unchanged.
+Earlier playback measurements below retain their captured revisions; this
+update does not establish a bandwidth saving or a new physical-phone result.
+
 The [27 October public pair attempt](evidence/public-pair-startup-red-20261027.json)
 did not complete its planned observation: the first viewer presented 4K after
 4.629 seconds, but the second viewer reached the one-shot startup buffer's
