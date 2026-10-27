@@ -147,9 +147,9 @@ function lifecycleFixture(t, { turnCredentials, turnConfiguration, turnFactory, 
     close() { if (this.readyState === 3) return; this.readyState = 3; this.dispatchEvent(new Event('close')); }
   }
   class Connection extends EventTarget {
-    constructor(config) { super(); this.configuration = structuredClone(config); this.connectionState = 'connected'; this.iceConnectionState = 'connected'; connections.push(this); }
-    getStats() { return Promise.resolve(new Map()); }
-    createDataChannel() { return { send() {} }; }
+    constructor(config) { super(); this.configuration = structuredClone(config); this.connectionState = 'connected'; this.iceConnectionState = 'connected'; this.stats = new Map(); connections.push(this); }
+    getStats() { return Promise.resolve(this.stats); }
+    createDataChannel() { return { closeCalls: 0, send() {}, close() { this.closeCalls++; } }; }
     close() { if (this.connectionState === 'closed') return; this.connectionState = 'closed'; this.dispatchEvent(new Event('connectionstatechange')); }
   }
   class Loader { load(context, config, callbacks) { callbacks.onSuccess({ data: new ArrayBuffer(16) }, {}, context, null); } }
@@ -288,6 +288,70 @@ test('native peer construction uses the current automatic lease and pause cancel
   connection.close();
   fixture.adapter.setEnabled(false); assert.equal(stops, 1);
   assert.equal(fixture.pendingTimers(), 0);
+});
+
+for (const { name, local, remote, kind, retired } of [
+  { name: 'selected local relay', local: 'relay', remote: 'host', kind: 'relay', retired: true },
+  { name: 'selected remote relay only', local: 'host', remote: 'relay', kind: 'relay', retired: false },
+  { name: 'selected direct route', local: 'host', remote: 'srflx', kind: 'direct', retired: false },
+  { name: 'unknown selected route', local: null, remote: null, kind: null, retired: false },
+]) test(`automatic lease rotation retires only its local allocation: ${name}`, async t => {
+  let identity = 'initial-viewer';
+  const f = lifecycleFixture(t, { turnCredentials: {
+    async start() {}, stop() {},
+    servers: () => [{ urls: ['turns:relay.invalid:5349?transport=tcp'], username: identity, credential: 'fixture-only' }],
+    leaseIdentity: () => identity,
+    snapshot: () => ({ phase: 'ready', available: true, remainingMs: 90000, failures: 0 }),
+  } });
+  await f.adapter.setEnabled(true);
+  const pc = f.connections[0], channel = pc.createDataChannel('fixture');
+  if (local && remote) pc.stats = new Map([
+    ['transport', { id: 'transport', type: 'transport', selectedCandidatePairId: 'selected' }],
+    ['selected', { id: 'selected', type: 'candidate-pair', localCandidateId: 'local', remoteCandidateId: 'remote', bytesSent: 0, bytesReceived: 0 }],
+    ['local', { id: 'local', type: 'local-candidate', candidateType: local }],
+    ['remote', { id: 'remote', type: 'remote-candidate', candidateType: remote }],
+  ]);
+  // Use the adapter's ordinary stats sampling and original renewal timer.
+  f.advance(750); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(f.adapter.metrics().topology.connections[0].kind, kind, 'aggregate route reporting remains unchanged');
+  assert.equal(f.adapter.metrics().topology.connections[0].localCandidateType, local);
+  const loader = f.hls.config.fLoader, media = { ...f.video };
+  identity = 'renewed-viewer';
+  f.advance(30249);
+  assert.equal(channel.closeCalls, 0, 'the old lease is not retired before its scheduled boundary');
+  f.advance(1);
+  assert.equal(channel.closeCalls, Number(retired), 'only the selected local allocation belongs to the rotating lease');
+  assert.equal(f.cycles.length, 1); assert.equal(f.cycles[0].stopped, false);
+  assert.equal(f.hls.config.fLoader, loader); assert.deepEqual(f.video, media);
+  assert.equal(f.adapter.metrics().resources.heldBytes, 1024, 'transport retirement preserves the active media cache');
+  const next = new f.cycles[0].options.RTCPeerConnectionImpl({});
+  assert.equal(next.configuration.iceServers[1].username, 'renewed-viewer', 'a subsequent dial takes the current lease');
+  next.close();
+  await f.adapter.setEnabled(false);
+  assert.equal(f.pendingTimers(), 0, 'pause cancels all remaining sampling and lease timers');
+});
+
+test('pause cancels scheduled local relay retirement before a later lease rotation', async t => {
+  let identity = 'initial-viewer', stops = 0;
+  const f = lifecycleFixture(t, { turnCredentials: {
+    async start() {}, stop() { stops++; },
+    servers: () => [{ urls: ['turns:relay.invalid:5349?transport=tcp'], username: identity, credential: 'fixture-only' }],
+    leaseIdentity: () => identity,
+    snapshot: () => ({ phase: 'ready', available: true, remainingMs: 90000, failures: 0 }),
+  } });
+  await f.adapter.setEnabled(true);
+  const pc = f.connections[0], channel = pc.createDataChannel('fixture');
+  pc.stats = new Map([
+    ['selected', { id: 'selected', type: 'candidate-pair', state: 'succeeded', nominated: true, localCandidateId: 'local', remoteCandidateId: 'remote' }],
+    ['local', { id: 'local', type: 'local-candidate', candidateType: 'relay' }],
+    ['remote', { id: 'remote', type: 'remote-candidate', candidateType: 'host' }],
+  ]);
+  f.advance(750); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(f.adapter.metrics().topology.connections[0].localCandidateType, 'relay');
+  await f.adapter.setEnabled(false);
+  identity = 'renewed-viewer'; f.advance(90000);
+  assert.equal(channel.closeCalls, 0, 'a retired adapter cannot run its previous lease timer');
+  assert.equal(stops, 1); assert.equal(pc.connectionState, 'closed'); assert.equal(f.pendingTimers(), 0);
 });
 
 test('a completed empty ICE gather reports no browser route without crediting peer delivery', async t => {
