@@ -1,0 +1,183 @@
+{
+  "schema": 1,
+  "status": "completed-diagnostic-with-frame-drops",
+  "measuredAt": "2026-10-27T01:35:21.659Z",
+  "provenance": {
+    "websiteCommit": "03c9c95740a36983382ac7db7811421789a09ed7",
+    "entryTag": "20261027-startup-terminal",
+    "sdkSourceCommit": "e910147fe971b2a96327ded6a8e43e0647c41f3d",
+    "sdkVersion": "0.4.4",
+    "runtimeSha256": {
+      "media-lab.mjs": "17938eba212a3a58fade857d26e749245a277d774271d7664c9edd345f3a3c2a",
+      "media-public-swarm.mjs": "ecf3ee7fe9c37666412010e2d17511806301eef0e83df72b0353ce59cdb8a825",
+      "media-transfer-stats.mjs": "6c384706798d260636264c841c17ac7a2fc99e9f562c66687ceafa3e012b44f5",
+      "media-playback-report.mjs": "1fb6cdb30fd401fba7adcb901247931d7f9bcfe274e1bf8790f41614dddec9e5",
+      "media-swarm-visual.mjs": "b53453a88f8e83aa5d58383679648c4df6491a8108e34f5be78f70da1bcf6d06",
+      "media-showcase.css": "60fc58b504d99fd0cc4c65a52d8de698927f29d4101aebe1b59e30477ebfd17a",
+      "media-listener-session.mjs": "a8138683d3259699c9065ec4cacadc0a50014be5512666fa04d3c683b921ff7e",
+      "media-recorded-live.mjs": "ac20d4b824a3f12598cf0311b3e9dc06475e72b99621a8f9dc6a95cd9ba55052",
+      "vendor/media-peer-demo.js": "ae965a6dace9aff494161ced5f2f6e9dc515197d0871e5a666cf875ee7be598b",
+      "vendor/relayswarm-core.wasm": "7767f54cbeac999bee42419394647fcd472544d5bad005350f83d8d4dce4dce9",
+      "vendor/relayswarm-transfer-worker.js": "9b4db9c6998e3303197c047364b3eb9d15f45af5f825d1d2890827007ed7dfc4"
+    },
+    "matchedRuntimeAssetCountPerViewer": [
+      11,
+      11
+    ],
+    "rawSha256": {
+      "result": "4c2d9224a2f7f458d775c2befae01be0f24d532ecc54a2e60d8cab1897ebf3e5",
+      "baselineReportA": "9ec8be54f9e6a3d512d99eb56f0f02e2d0c385f2fcdaab403076a27c0f59090f",
+      "finalReportA": "9b67ac6031ee05a4bfc668cbfe0044ad4d0cbfb0582ff0f99c72957ec866b7b0",
+      "baselineReportB": "df02ac8a05fb5248e3da3f1aef1dec55c7a5c9139140fd0f3fc86296f3f0df6c",
+      "finalReportB": "b6e438786fab6d1c6a6d0fe9b91752658ae767ff95a55f79f0dc81be68d73633"
+    },
+    "rawReportsPublished": false
+  },
+  "scope": {
+    "host": "One M4 Mac",
+    "browser": "Chrome156",
+    "headless": true,
+    "freshProfiles": 2,
+    "visiblePlayersPerViewer": 1,
+    "browserHttpCacheDisabled": true,
+    "cdnOrOriginCacheColdAsserted": false,
+    "trustedPlayObservedForBoth": true,
+    "responseOrAdapterOverrides": false,
+    "httpThrottling": false,
+    "physicalAudibilityQualified": false,
+    "mediaOverrides": false,
+    "sdkOrDeadlineChanges": false
+  },
+  "observation": {
+    "firstFrameGateSeconds": 20,
+    "plannedSecondsAfterBFirstFrame": 90,
+    "maximumSecondsAfterAFirstFrame": 120,
+    "completed": true,
+    "actualSecondsAfterFirstFrame": {
+      "A": 98.129,
+      "B": 90.2
+    },
+    "zeroDropPass": false,
+    "terminalStartupFailureObserved": false,
+    "realTerminalFailureUiRetirementExercised": false,
+    "fullLoopOr330SecondQualification": false,
+    "nativePresentedFrameDimensions": [
+      3840,
+      2160
+    ],
+    "allSampledReady4VisibleUnpaused": true
+  },
+  "viewers": {
+    "A": {
+      "firstFrameSeconds": 3.679,
+      "observedAfterFirstFrameSeconds": 98.129,
+      "loadedSourceBytes": 348934013,
+      "acceptedPeerBytes": 6192595,
+      "loadedMediaBytes": 355126608,
+      "acceptedPeerSharePercent": 1.744,
+      "submittedUploadBytes": 205210011,
+      "cdpHttpBodyBytes": 358440921,
+      "sourceTiming": {
+        "coverage": "partial",
+        "completeNetworkBodyBytes": null,
+        "completeCacheBodyBytes": null,
+        "networkBodyBytesLowerBound": 348935387,
+        "cacheBodyBytesLowerBound": 0
+      },
+      "postFirstFrameStalls": 0,
+      "postFirstFrameStallSeconds": 0,
+      "postFirstFramePlayerErrors": 0,
+      "postFirstFrameDroppedFrames": 0,
+      "startup": {
+        "state": "ready",
+        "released": 1,
+        "commitStarted": true,
+        "commitCompleted": true,
+        "lastObservedGeometry": {
+          "targetTime": 0.082,
+          "verifiedStart": 0,
+          "verifiedEnd": 4,
+          "requiredHeadroomMs": 2000,
+          "heldObjects": 0,
+          "heldBytes": 0
+        }
+      },
+      "currentSdkCounterSnapshot": {
+        "multiHolderDelivered": 1,
+        "verifiedMultiHolderPieceBytes": 23002579
+      }
+    },
+    "B": {
+      "firstFrameSeconds": 7.884,
+      "observedAfterFirstFrameSeconds": 90.2,
+      "loadedSourceBytes": 177677674,
+      "acceptedPeerBytes": 159192757,
+      "loadedMediaBytes": 336870431,
+      "acceptedPeerSharePercent": 47.256,
+      "submittedUploadBytes": 23707969,
+      "cdpHttpBodyBytes": 309767574,
+      "sourceTiming": {
+        "coverage": "partial",
+        "completeNetworkBodyBytes": null,
+        "completeCacheBodyBytes": null,
+        "networkBodyBytesLowerBound": 183402921,
+        "cacheBodyBytesLowerBound": 0
+      },
+      "postFirstFrameStalls": 0,
+      "postFirstFrameStallSeconds": 0,
+      "postFirstFramePlayerErrors": 0,
+      "postFirstFrameDroppedFrames": 8,
+      "startup": {
+        "state": "ready",
+        "released": 1,
+        "commitStarted": false,
+        "commitCompleted": false,
+        "lastObservedGeometry": {
+          "targetTime": 6.005,
+          "verifiedStart": 6,
+          "verifiedEnd": 10.64,
+          "requiredHeadroomMs": 3005,
+          "heldObjects": 0,
+          "heldBytes": 0
+        }
+      },
+      "currentSdkCounterSnapshot": {
+        "multiHolderDelivered": 26,
+        "verifiedMultiHolderPieceBytes": 203478709
+      }
+    }
+  },
+  "cohort": {
+    "sameKnownEpochWithinEachViewerObserved": true,
+    "samePlayerAndSourceWithinEachViewerObserved": true,
+    "exactCrossViewerEpochEqualityCaptured": false,
+    "publicRoomWasNotIsolated": true,
+    "sdkGenerationIdentifierCaptured": false
+  },
+  "reportCoverage": {
+    "sampleCounts": [
+      85,
+      82
+    ],
+    "ringDroppedSampleCounts": [
+      0,
+      0
+    ]
+  },
+  "qualifications": [
+    "All eight B drops were post-frame; no zero-drop or 330-second pass.",
+    "Share = acceptedPeerBytes / loadedMediaBytes. Total loadedMediaBytes = loadedSourceBytes + acceptedPeerBytes; playback credit does not mean every buffered byte was watched.",
+    "Uploads, verified pieces and accepted media differ. SDK counters can reset; no cross-generation delta or waste attribution.",
+    "HTTP body bytes include partial/aborted responses; Resource Timing is classified coverage. No wire/billing saving or upstream-cold claim.",
+    "Geometry is last observed; zero held counts follow release, not present residency proof. B joined an active room and needed no new start-time commit.",
+    "No terminal failure occurred. This does not exercise failure-UI retirement, explain the earlier failure or attribute success to the UI patch.",
+    "Earlier RED evidence remains valid. Current-revision phones, separate-network NAT, public TURN, calls and competitor advantage remain unqualified."
+  ],
+  "earlierFailedAttempt": "public-pair-startup-red-20261027.json",
+  "cleanup": {
+    "ownedBrowsersClosed": true,
+    "ownedProfilesRemoved": true,
+    "ownedRemoteScratchRemoved": true,
+    "verifiedPrivateArtifactCount": 8
+  }
+}
