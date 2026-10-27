@@ -16,16 +16,20 @@ The recording label sits with the source caption below the player. It does
 not cover the picture or Safari’s native fullscreen control when controls
 appear.
 
-The player pins RelaySwarm source `45616b8141987f88e6054e2fdfbeae34710e714b`
-([source change](https://github.com/forgesworn/relayswarm/commit/45616b8141987f88e6054e2fdfbeae34710e714b)).
+The player pins RelaySwarm source `25354e3cb843b606fc51cdb47a548e9d90d0d091`
+([source change](https://github.com/forgesworn/relayswarm/commit/25354e3cb843b606fc51cdb47a548e9d90d0d091)).
 It retains the successful peer receipt's stats when hls.js disposes of the
 losing HTTP loader, covered by ten regressions using the actual hls.js 1.7.3
 loaders. It also retains a fully verified contiguous future prefix before considering
 its existing fourth startup slot, including after the held first fragment’s
 interval falls behind the room target. The original first response remains
 unchanged; releasing it still requires fresh verified coverage of the current
-target and measured recovery headroom. Startup remains
-bounded to four objects within the existing 24 MiB reservation; steady
+target and measured recovery headroom. The full-recording startup explicitly
+reserves a 32 MiB encoded reservoir including that original response, within
+the existing shared 64 MiB held budget. Its pinned original plus three future
+fragments can exceed 24 MiB; the conservative catalogue maximum is
+30,602,204 bytes. Future bytes alone remain capped at 24 MiB. This is not total
+browser memory. Startup stays bounded to four objects; steady
 warm-ahead keeps its three-object limit. Startup now has twelve seconds from
 the original first-fragment load entry, clipped to a shorter parent load
 deadline; ordinary speculative requests keep their eight-second expiry.
@@ -36,6 +40,10 @@ playlist revisions. Startup now accepts that difference within a bounded machine
 tolerance, capped at one nanosecond, instead of falsely cancelling a matching context; sequence,
 continuity, level, key, size and duration checks remain authoritative. This
 correction does not establish stall-free or sustained 4K playback.
+Once the current target reaches two verified future fragments, their next
+contiguous successor keeps its fourth-slot admission instead of being skipped
+by the previous fragment's service-time lead. Recovery and deadline checks
+still govern release; this fixes selection rather than proving field playback.
 When an owned whole-source response finishes and its key is already known,
 eligible retained bytes are announced with HAVE before its FETCH claim is
 withdrawn, including synchronous hls.js disposal. Unknown keys do not delay
