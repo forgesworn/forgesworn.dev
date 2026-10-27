@@ -23,6 +23,25 @@ deadline without presenting a frame. This is a retained failed attempt, not a
 90-second or full-loop qualification. Joining an existing room does not require
 a new start-time commit; the second viewer's unstarted commit hook was expected.
 
+A later [90.2-second pair diagnostic](evidence/public-pair-startup-diagnostic-20261027.json)
+on `03c9c95` started both fresh Chrome profiles on the same M4. Both reported
+zero post-frame stalls and player errors:
+
+| Viewer | First frame | Accepted peer video | Peer share | Dropped frames |
+| --- | ---: | ---: | ---: | ---: |
+| A | 3.679 s | 6,192,595 B | 1.74% | 0 |
+| B | 7.884 s | 159,192,757 B | 47.26% | 8 |
+
+Peer share divides accepted peer bytes by accepted source plus peer bytes,
+including buffered video and possible cached source loads. It is not a wire
+saving: B's HTTP observer still counted 309,767,574 body bytes, including
+partial or aborted downloads. Accepted peer share therefore does not establish
+an equivalent reduction in source traffic. All eight dropped frames occurred
+after B's first frame; this is not a clean-frame or full-loop qualification.
+This short passing capture does not
+erase the earlier failed join or establish that its cause was fixed. Phones,
+separate networks and public TURN were not exercised.
+
 A terminal, unreleased startup barrier now stops that current pipeline and
 restores an explicit Play retry instead of leaving HLS to retry a permanently
 failed loader. Cancelled or retired setups and ordinary retryable HLS errors
