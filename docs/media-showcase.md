@@ -16,8 +16,8 @@ The recording label sits with the source caption below the player. It does
 not cover the picture or Safari’s native fullscreen control when controls
 appear.
 
-The player pins RelaySwarm source `d2bc7be4e5e7374af0e04aae45b1f1d2f0e890c4`
-([source change](https://github.com/forgesworn/relayswarm/commit/d2bc7be4e5e7374af0e04aae45b1f1d2f0e890c4)).
+The player pins RelaySwarm source `7cef698203e03b2a1038d135590375caacfed922`
+([source change](https://github.com/forgesworn/relayswarm/commit/7cef698203e03b2a1038d135590375caacfed922)).
 It retains the successful peer receipt's stats when hls.js disposes of the
 losing HTTP loader, covered by ten regressions using the actual hls.js 1.7.3
 loaders. It also retains a fully verified contiguous future prefix before considering
@@ -26,8 +26,10 @@ interval falls behind the room target. The original first response remains
 unchanged; releasing it still requires fresh verified coverage of the current
 target and measured recovery headroom. Startup remains
 bounded to four objects within the existing 24 MiB reservation; steady
-warm-ahead keeps its three-object limit. The eight-second deadline, authority
-checks and explicit refusal for insufficient capacity remain. The Rust/WASM
+warm-ahead keeps its three-object limit. Startup now has twelve seconds from
+the original first-fragment load entry, clipped to a shorter parent load
+deadline; ordinary speculative requests keep their eight-second expiry.
+Authority checks and explicit refusal for insufficient capacity remain. The Rust/WASM
 binary is unchanged.
 When an owned whole-source response finishes and its key is already known,
 eligible retained bytes are announced with HAVE before its FETCH claim is
@@ -75,8 +77,8 @@ separate networks and public TURN were not exercised.
 A terminal, unreleased startup barrier now stops that current pipeline and
 restores an explicit Play retry instead of leaving HLS to retry a permanently
 failed loader. Cancelled or retired setups and ordinary retryable HLS errors
-retain their existing ownership rules. This handling does not fix the cause of
-the eight-second startup deadline or extend its deadline. Saved reports retain
+retain their existing ownership rules. That terminal-error handling alone did not fix the cause of
+the then-eight-second startup deadline or extend its deadline. Saved reports retain
 the last observed target, verified interval and required headroom, plus held
 object/byte counts. These are diagnostic snapshots, not proof that those bytes
 remain resident after a failed barrier has been cleared.
@@ -189,8 +191,8 @@ For a new full-recording room, discovery reserves a local candidate identity
 without publishing an active listener or starting its clock. The original HLS
 pipeline prepares verified encoded media at raw position zero. Its SDK startup
 barrier holds the first callback until contiguous media covers measured source
-recovery headroom, within four startup objects, 24 MiB and the original
-eight-second deadline. It then acknowledges the room start over the existing relays, anchors
+recovery headroom, within four startup objects, 24 MiB and a twelve-second
+budget from the original load entry, clipped to a shorter parent deadline. It then acknowledges the room start over the existing relays, anchors
 that same timeline once, and repeats fresh target, authority and coverage checks
 before releasing the callback. Preparation is not decoded playback or an active
 watcher. The trusted play request and visible player remain the same.
