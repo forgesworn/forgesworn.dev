@@ -449,6 +449,8 @@ integrity failures, and peer eligibility. Each count is a nonnegative safe
 integer or `null`; missing values are not inferred as zero. Raw SDK records,
 keys, tickets and transfer objects are excluded. Submitted uploads and verified
 pieces in a losing race do not become accepted peer-media credit.
+These attempt counters describe the current SDK generation and may reset after
+peer sharing restarts; compare them only within a continuous generation.
 Missing readings, retired pipelines and unsupported properties remain `null`. It excludes addresses,
 SDP, peer identities, credentials and source URLs or filesystem paths. Nothing
 is uploaded by the page; sharing requires the viewer's action. Export handlers
