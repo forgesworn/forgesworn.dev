@@ -3,7 +3,7 @@
 // A receiver's ephemeral key wraps that digest for the existing live-commitment
 // verifier; this is local attestation, not a live broadcaster signing service.
 import { createHlsSwarm, commitmentContent, commitmentPieceSize, segmentMediaContext, KIND_SEGMENT_COMMITMENT, finalizeEvent,
-  generateSecretKey, relayswarmBuild } from './vendor/media-peer-demo.js?v=20261026-prepared-adoption';
+  generateSecretKey, relayswarmBuild } from './vendor/media-peer-demo.js?v=20261027-accepted-peer-disposal';
 import { observeOriginLoader } from './media-transfer-stats.mjs?v=20261027-visual-provenance';
 import { createPublicTurnCredentials } from './media-turn-credentials.mjs?v=20261025-prepared-room';
 import { parseRecordedManifest, createRecordedLive } from './media-recorded-live.mjs?v=20261025-prepared-room';
