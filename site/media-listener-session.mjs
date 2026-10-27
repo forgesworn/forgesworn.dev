@@ -1,7 +1,7 @@
 // Signed, short-lived observations of a shared listening clock. This is an
 // experimental public addressable event (NIP-01), not NIP-78 private app storage.
 // Relay partitions and dishonest clients prevent an authoritative audience count.
-import { finalizeEvent, generateSecretKey, verifyEvent } from './vendor/media-peer-demo.js?v=20261027-peer-framing';
+import { finalizeEvent, generateSecretKey, verifyEvent } from './vendor/media-peer-demo.js?v=20261027-startup-budget';
 
 export const LISTENER_SESSION_KIND = 30378;
 export const LISTENER_TELEMETRY_KIND = 20378;
