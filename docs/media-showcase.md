@@ -185,6 +185,15 @@ with the recording's bound epoch, so the intervening notification cannot hide
 the required handoff. A losing unpresented candidate retires its view and peer
 scope on the same empty player and original pending Play; a presented pipeline
 keeps its existing replacement path. Same-epoch ACKs do not reload the source.
+An already-observing `prepareJoin()` can skip the additional 1,250 ms discovery
+window only when every configured current relay socket is open with a matching
+EOSE, observation is not truncated, and a fresh verified active epoch remains
+available at the immediate recheck. Publication still requires ACK and preserves
+that epoch's start time. Truncation remains known across join/leave cycles while
+the same observation records are retained. Cold, incomplete, stale or reconnecting observation
+retains the full window; completion arriving after join entry does not shorten
+it. This removes a redundant local wait under those conditions, without claiming
+a measured end-to-end startup improvement.
 Controller fixtures cover both notification stages and stale callbacks. They
 do not establish a cause for every cold-start failure or qualify fresh playback.
 The M4 checks below qualify their recorded source revision for two fresh browser contexts
