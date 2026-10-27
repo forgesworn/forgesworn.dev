@@ -16,6 +16,24 @@ The recording label sits with the source caption below the player. It does
 not cover the picture or Safari’s native fullscreen control when controls
 appear.
 
+The [prepared-adoption phone trace](evidence/physical-safari-prepared-adoption-20261026.json)
+recorded 330.527 seconds and 135 foreground observations on physical iPhone
+Safari at site `4489e74` (controller `8f30da43`, RelaySwarm `e910147`). All
+samples were unpaused and readyState 4 on ManagedMediaSource, with zero displayed
+stalls/player errors and no raw-clock backtracking through two programme wraps.
+Observation continued for 283.87 seconds after the first wrap and 17.07 after
+the second. The owner described iPhone playback as perfect for this interval,
+while separately reporting poor desktop Chrome playback. Frame/drop counts,
+HTTP errors, first tap, source-object identity and phone cache state were not
+established. The element reported 3841×2160, unmuted at 1×.
+
+This qualifies that phone interval on the captured runtime. It does not transfer
+physical acceptance to later controller changes. Both the phone and a fresh M4
+companion accepted zero peer media in this field check despite reporting uploads;
+the companion also recorded six dropped frames. Those uploads do not establish
+recipient acceptance or savings. Useful peer delivery in this case remains under
+investigation, separately from the successful fresh-M4 pair below.
+
 A [physical Safari trace](evidence/physical-safari-playback-20261026.json) on
 26 October recorded 330 seconds of advancing ManagedMediaSource playback,
 including an actual programme wrap and 178 seconds afterwards. Observed
@@ -434,6 +452,12 @@ also use bandwidth.  Published origin CPU/RSS results are dated native
 measurements, separate from this public replay.
 
 ## 4K delivery observations
+
+An asynchronous setup rejection belongs to the setup that started it. Pausing or
+replacing that setup retires its failure authority, so a late room-publication
+rejection cannot mark a later Play request unplayable. Genuine current setup
+failures still restore an explicit retry. The lifecycle fixture reproduces the
+old failure and covers pause, immediate resume and current publication failure.
 
 The current startup path adopts a verified active room even while another
 viewer is still preparing an unpublished start. It retires that viewer's empty

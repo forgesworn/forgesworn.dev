@@ -1615,7 +1615,11 @@ async function initialise() {
         s.listenerAlignedEpoch = s.listener?.snapshot().epochId;
         followListener(s, true);
       }
-    })();
+    })().catch(error => {
+      // A paused or replaced setup can reject after a newer Play has begun.
+      // Shared waiters must receive only the current setup's failure.
+      if (owns()) throw error;
+    });
     s.publicSourceSetup = pending;
     try { await pending; }
     finally { if (s.publicSourceSetup === pending) s.publicSourceSetup = null; }

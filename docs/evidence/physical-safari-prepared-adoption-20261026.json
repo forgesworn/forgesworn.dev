@@ -1,0 +1,189 @@
+{
+  "schema": 1,
+  "kind": "physical-safari-prepared-adoption-observation",
+  "publicationStatus": "recorded-evidence",
+  "observedAt": "2026-10-26T23:25:08.199872+00:00",
+  "scope": "Passive observations of an existing foreground physical iPhone Safari page. This is bounded phone playback evidence, not a desktop, cold-start, peer-benefit, public-NAT, TURN or eight-person-call qualification.",
+  "source": {
+    "siteCommit": "4489e74a4a92b9a5e670d7dc505e54beb7636741",
+    "controllerSha256": "8f30da43ae54add9f93ae70c14d829b81452d87a583cb25188da85f22b64e0f8",
+    "sdkSourceCommit": "e910147fe971b2a96327ded6a8e43e0647c41f3d",
+    "sdkBundleSha256": "ae965a6dace9aff494161ced5f2f6e9dc515197d0871e5a666cf875ee7be598b",
+    "coreWasmSha256": "7767f54cbeac999bee42419394647fcd472544d5bad005350f83d8d4dce4dce9",
+    "entryTag": "20261026-prepared-adoption",
+    "allSamplesExpectedEntryTag": true,
+    "identityMethod": "The phone reported the expected entry query. Commit and artifact hashes identify the separately verified published release; the observer did not hash fetched phone module bytes.",
+    "futureRuntimeAcceptanceTransferred": false
+  },
+  "observation": {
+    "actualSeconds": 330.5269669997506,
+    "sampledWindowSeconds": 330.0829222910106,
+    "sampleCount": 135,
+    "maximumSampleGapSeconds": 3.905832333955914,
+    "allForeground": true,
+    "allUnpaused": true,
+    "allReadyState4": true,
+    "allRecordedLiveManagedMediaSource": true,
+    "fallbackObserved": false,
+    "sameObservedDomEpoch": true,
+    "sampledRoomListenerRange": [
+      1.0,
+      2.0
+    ],
+    "rawFirst": 757.6127294403178,
+    "rawLast": 1087.7078236656184,
+    "rawProgressSeconds": 330.0950942253006,
+    "rawBacktracks": 0,
+    "queryErrors": 0,
+    "optionalQueryErrors": 0
+  },
+  "programme": {
+    "durationSeconds": 267.32,
+    "observedPhaseWrapCount": 2,
+    "wraps": [
+      {
+        "crossingSampleIntervalSeconds": [
+          43.60479204216972,
+          46.26774495886639
+        ],
+        "programmePhaseBefore": 266.3164182329862,
+        "programmePhaseAfter": 1.4824014116042576,
+        "rawTimeBefore": 801.1409989666196,
+        "rawTimeAfter": 803.8249232419647,
+        "sameObservedDomEpochBeforeAndAfter": true,
+        "observationAfterCrossingUpperBoundSeconds": 283.87272841623053
+      },
+      {
+        "crossingSampleIntervalSeconds": [
+          310.79817279195413,
+          313.06595970876515
+        ],
+        "programmePhaseBefore": 266.2459794349796,
+        "programmePhaseAfter": 1.2428857246929965,
+        "rawTimeBefore": 1068.3390469476503,
+        "rawTimeAfter": 1070.6343552846288,
+        "sameObservedDomEpochBeforeAndAfter": true,
+        "observationAfterCrossingUpperBoundSeconds": 17.074513666331768
+      }
+    ],
+    "atLeast20SecondsAfterFirstWrap": true,
+    "atLeast20SecondsAfterSecondWrap": false,
+    "observerForcedSeekOrWrap": false
+  },
+  "observedCounters": {
+    "literalStallText": "0",
+    "literalStalledSecondsText": "0.00 s",
+    "literalPlayerAndHttpErrorText": "0 / \u2014",
+    "allSamplesSameLiteralLabels": true,
+    "stalls": 0,
+    "stalledSeconds": 0,
+    "playerErrors": 0,
+    "httpErrors": null,
+    "httpErrorsReason": "The displayed HTTP-error component was an em dash in every sample.",
+    "frameCount": null,
+    "droppedFrames": null,
+    "frameCounterMethod": "webkitDecodedFrameCount and webkitDroppedFrameCount queried; both returned null in every sample. getVideoPlaybackQuality was not queried.",
+    "getVideoPlaybackQualityQueried": false
+  },
+  "audioAndVideoProperties": {
+    "allUnmuted": true,
+    "allVolume1": true,
+    "allPlaybackRate1": true,
+    "knownSamples": 135,
+    "observedVideoIntrinsicDimensions": [
+      3841,
+      2160
+    ],
+    "presentedFrameDimensions": null,
+    "physicalAudioOutputMeasured": false
+  },
+  "controllerDriftReading": {
+    "method": "Sampled controller DOM sharedDrift reading, not an independently fresh listener/view comparison",
+    "knownSamples": 135,
+    "unknownSamples": 0,
+    "minimumSeconds": 0.4847221430952686,
+    "maximumSeconds": 0.49166278471045644,
+    "independentSynchronisationQualification": false
+  },
+  "phoneMediaCounters": {
+    "acceptedPeerBytes": {
+      "first": 0,
+      "last": 0,
+      "delta": 0,
+      "knownSamples": 135
+    },
+    "uploadedPayloadBytes": {
+      "first": 12914016,
+      "last": 19418464,
+      "delta": 6504448,
+      "knownSamples": 135
+    },
+    "originMediaCounterBytes": {
+      "first": 2365888571,
+      "last": 3375705452,
+      "delta": 1009816881,
+      "knownSamples": 135
+    }
+  },
+  "peerBenefit": {
+    "phoneAcceptedPeerBytesDelta": 0,
+    "phoneUploadedPayloadBytesDelta": 6504448,
+    "phoneOriginMediaCounterDeltaBytes": 1009816881,
+    "recipientAcceptedPhoneUploadsProved": false,
+    "netNetworkSavingsProved": false,
+    "limitation": "Uploaded payload is not proof of recipient-accepted playback, wire traffic or net savings."
+  },
+  "ownerFeedback": {
+    "phoneAcceptedForObservedInterval": true,
+    "phoneDescription": "The owner described iPhone playback as perfect for this just-observed interval.",
+    "desktopAccepted": false,
+    "desktopDescription": "The owner separately reported poor desktop Chrome playback. The reply does not identify which desktop context.",
+    "privateFeedbackReceiptSha256": "c4ae48a5dd950c8ad46837a17468d6e1deeadd52209ee58eee2a7c2691a57a46",
+    "acceptanceLimitedToCapturedRuntime": true
+  },
+  "companionDiagnostic": {
+    "scope": "One fresh M4 Chrome companion on actual public assets; diagnostic only, not desktop or peer-benefit qualification. It covered part, not all, of the phone observation window.",
+    "browserVersion": "156.0.8078.48",
+    "browserHttpCacheDisabled": true,
+    "coldCdnEstablished": false,
+    "actualObservationSeconds": 330.623,
+    "allSixActualPublicAssetsVerified": true,
+    "samePublishedControllerAndSdk": true,
+    "routeRtcClockOverrides": 0,
+    "acceptedPeerBytes": 0,
+    "acceptedPeerShare": 0,
+    "observedStalls": 0,
+    "droppedFrames": 6,
+    "desktopAcceptanceClaimed": false,
+    "peerBenefitOrSavingsClaimed": false,
+    "thirdListenerObservedAfterPhoneTrace": true,
+    "uploadRecipientAttributionExclusive": false,
+    "diagnosticSummarySha256": "84776798626d8a4112ad60593f8775ba51e1269940c294a78915866b1ce03b25"
+  },
+  "unknowns": {
+    "firstGestureAndStartup": "Preceded attachment; not observed.",
+    "videoAndSourceObjectIdentity": "Not queried.",
+    "seekingEndedEventTrace": "Not queried.",
+    "phoneHttpCacheState": null,
+    "coldOriginOrCdn": null,
+    "phoneBrowserOsVersion": null,
+    "decodedPresentedFrames": null,
+    "droppedFrames": null,
+    "physicalAudioOutputSignal": null,
+    "thermalState": null,
+    "independentNetworkNat": null,
+    "publicTurnRoute": null,
+    "eightPersonInteractiveAudioVideo": null
+  },
+  "cleanup": {
+    "ownerPageAndPlaybackPreserved": true,
+    "inspectorClosed": true,
+    "lockdownClosed": true,
+    "ownedSshTransportClosed": true,
+    "ownedConnectionsRemaining": 0
+  },
+  "rawReceiptSha256": "baa852574cfd18028718d46f24c03710b16d97fc451e5421a2dfea025bc61e6e",
+  "analysisSummarySha256": "ae5693f75ec15da3736fb8a9e8f983d62da843a3d495755348f7d86a91034ea0",
+  "observerSha256": "62ead5183d4095bbaa58969f85123d981fc4c163f1b139c49298d9bf0b0be748",
+  "recoveredHelperSha256": "4f6bd3aa97df86f3945170bbb07ab06765c9bf01abe12013444ec22684443411"
+}
