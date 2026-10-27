@@ -1,0 +1,244 @@
+{
+  "schema": 1,
+  "status": "failed",
+  "title": "Public full4K pair: second viewer did not start",
+  "measuredAt": "2026-10-27T00:58:16.487Z",
+  "provenance": {
+    "websiteRepository": "forgesworn/forgesworn.dev",
+    "websiteCommit": "cce9807311ed2757ae771256ce287017e49a29d4",
+    "entryTag": "20261027-visual-provenance",
+    "sdkRepository": "forgesworn/relayswarm",
+    "sdkSourceCommit": "e910147fe971b2a96327ded6a8e43e0647c41f3d",
+    "sdkVersion": "0.4.4",
+    "runtimeSha256": {
+      "media-lab.mjs": "dc63064bb7198fb29294436cecb95cfbc1a9d6c5da98e800f1c6c5e3b6df34e6",
+      "media-public-swarm.mjs": "ecf3ee7fe9c37666412010e2d17511806301eef0e83df72b0353ce59cdb8a825",
+      "media-transfer-stats.mjs": "6c384706798d260636264c841c17ac7a2fc99e9f562c66687ceafa3e012b44f5",
+      "media-playback-report.mjs": "b18f49fa104cae8544b1258075cd2e159419fb0d67cc0e82c1d56d1401a87a43",
+      "media-swarm-visual.mjs": "b53453a88f8e83aa5d58383679648c4df6491a8108e34f5be78f70da1bcf6d06",
+      "media-showcase.css": "60fc58b504d99fd0cc4c65a52d8de698927f29d4101aebe1b59e30477ebfd17a",
+      "media-listener-session.mjs": "a8138683d3259699c9065ec4cacadc0a50014be5512666fa04d3c683b921ff7e",
+      "media-recorded-live.mjs": "ac20d4b824a3f12598cf0311b3e9dc06475e72b99621a8f9dc6a95cd9ba55052",
+      "vendor/media-peer-demo.js": "ae965a6dace9aff494161ced5f2f6e9dc515197d0871e5a666cf875ee7be598b",
+      "vendor/relayswarm-core.wasm": "7767f54cbeac999bee42419394647fcd472544d5bad005350f83d8d4dce4dce9",
+      "vendor/relayswarm-transfer-worker.js": "9b4db9c6998e3303197c047364b3eb9d15f45af5f825d1d2890827007ed7dfc4"
+    },
+    "expectedRuntimeAssetsVerifiedInEachViewer": 11,
+    "rawEvidenceSha256": {
+      "result": "94599c120486dca701ca98d2d85b5f46a957e972206b97e96a7126adc058526e",
+      "normalReportA": "1201c13597af83ff2add33bf102389f7770476f686894c1d6254b5b532a999a8",
+      "normalReportB": "f358e85d70c882f900101a0682a1a3bfbd69a8968cc47ac4b2fcc2297986bd14"
+    },
+    "rawReportsPublished": false
+  },
+  "scope": {
+    "device": "One M4 Mac",
+    "browser": "Chrome",
+    "browserMajor": 156,
+    "headless": true,
+    "freshBrowserProfiles": 2,
+    "visiblePlayersPerViewer": 1,
+    "browserHttpCacheDisabled": true,
+    "cdnOrOriginCacheColdAsserted": false,
+    "actualMediaAttempts": 1,
+    "trustedPlayObservedForBoth": true,
+    "responseOrAdapterInstrumentation": false,
+    "httpThrottling": false,
+    "mediaBytesModified": false,
+    "autoplayPolicyOrIceOverrides": false,
+    "permissionChanges": false,
+    "stockPageAudioRoute": true,
+    "physicalAudibilityQualified": false
+  },
+  "plannedDiagnostic": {
+    "secondsAfterSecondViewerFirstFrame": 90,
+    "maximumSecondsAfterFirstViewerFirstFrame": 120,
+    "completed": false,
+    "failureStage": "second-viewer-first-frame",
+    "firstFrameObserverTimeoutSeconds": 20,
+    "fullLoopObserved": false,
+    "is330SecondQualification": false
+  },
+  "viewers": {
+    "A": {
+      "firstFrameSeconds": 4.629,
+      "nativePresentedFrameDimensions": [
+        3840,
+        2160
+      ],
+      "observedAfterFirstPresentedFrameSeconds": 20.066,
+      "postFirstFrameStallCount": 0,
+      "postFirstFrameStallSeconds": 0,
+      "droppedVideoFrames": 0,
+      "finalReadyState": 4,
+      "finalPaused": false,
+      "startupState": "ready",
+      "startupReleased": 1,
+      "acceptedPeerPlaybackBytes": 0,
+      "submittedUploadBytes": 884736,
+      "logicalSourcePlaybackBytes": 93100522,
+      "cdpObservedHttpBodyBytes": 98812703,
+      "sourceResourceTiming": {
+        "coverage": "partial",
+        "completeNetworkBodyBytes": null,
+        "completeCacheBodyBytes": null,
+        "networkBodyBytesLowerBound": 93101896,
+        "cacheBodyBytesLowerBound": 0
+      },
+      "fixedPeerAttemptDiagnostics": {
+        "zeroBudgetPeerRaces": 0,
+        "zeroBudgetPeerRaceWins": 0,
+        "multiHolderTransfers": 0,
+        "multiHolderDelivered": 0,
+        "multiHolderFailed": 0,
+        "multiHolderBans": 0,
+        "multiHolderAbandoned": 0,
+        "multiHolderPeerBytes": 0,
+        "multiHolderUnusedBytes": 0,
+        "multiHolderOriginRangesIgnored": 0,
+        "commitmentUnavailable": 0,
+        "integrityRejected": 0,
+        "commitmentRejected": 0,
+        "peerCorrupt": 0,
+        "peerNoFit": 0,
+        "noHaveNoWait": 0,
+        "haveAtEntry": 0,
+        "noBudget": 17
+      }
+    },
+    "B": {
+      "firstFrameSeconds": null,
+      "presentedFrameObserved": false,
+      "firstFrameObserverTimeoutSeconds": 20,
+      "secondsFromTrustedPlayToFailureSnapshot": 20.012,
+      "startupState": "failed",
+      "startupReason": "deadline",
+      "configuredOneShotStartupDeadlineSeconds": 8,
+      "exactStartupDeadlineArmTimeCaptured": false,
+      "startupReleased": 0,
+      "startupCommitStarted": false,
+      "startupPendingStillTrue": true,
+      "literalSpinnerOrButtonTextCaptured": false,
+      "lastPlayerError": {
+        "type": "networkError",
+        "detail": "fragLoadError",
+        "fatal": false,
+        "mediaErrorCode": null,
+        "fragment": {
+          "sn": 7,
+          "cc": 0,
+          "type": "main"
+        }
+      },
+      "reportedStallCount": 0,
+      "reportedStallSeconds": 0,
+      "postFirstFrameStallAssessment": null,
+      "droppedVideoFrames": 0,
+      "zeroStallsOrDropsQualifyPlayback": false,
+      "finalReadyState": 0,
+      "finalBufferedRanges": [],
+      "acceptedPeerPlaybackBytes": 0,
+      "submittedUploadBytes": 0,
+      "verifiedMultiHolderPieceBytes": 491520,
+      "completedMultiHolderDeliveries": 0,
+      "logicalSourcePlaybackBytes": 0,
+      "cdpObservedHttpBodyBytes": 22942120,
+      "sourceResourceTiming": {
+        "coverage": "complete",
+        "completeNetworkBodyBytes": 20801273,
+        "completeCacheBodyBytes": 0,
+        "networkBodyBytesLowerBound": 20801273,
+        "cacheBodyBytesLowerBound": 0
+      },
+      "fixedPeerAttemptDiagnostics": {
+        "zeroBudgetPeerRaces": 3,
+        "zeroBudgetPeerRaceWins": 0,
+        "multiHolderTransfers": 1,
+        "multiHolderDelivered": 0,
+        "multiHolderFailed": 0,
+        "multiHolderBans": 0,
+        "multiHolderAbandoned": 0,
+        "multiHolderPeerBytes": 491520,
+        "multiHolderUnusedBytes": 0,
+        "multiHolderOriginRangesIgnored": 0,
+        "commitmentUnavailable": 0,
+        "integrityRejected": 0,
+        "commitmentRejected": 0,
+        "peerCorrupt": 0,
+        "peerNoFit": 2,
+        "noHaveNoWait": 0,
+        "haveAtEntry": 3,
+        "noBudget": 4
+      },
+      "roomReady": true,
+      "roomPrepared": false,
+      "startupCommitHookRequiredForThisAlreadyActiveJoin": false
+    }
+  },
+  "observations": {
+    "javaScriptExceptions": [
+      0,
+      0
+    ],
+    "mediaHttpResponsesWithErrorStatus": [
+      0,
+      0
+    ],
+    "mediaHttpLoadingFailures": [
+      1,
+      1
+    ],
+    "httpLoadingFailureReasonsCaptured": false,
+    "normalReportSampleCounts": [
+      21,
+      17
+    ],
+    "normalReportDroppedSampleCounts": [
+      0,
+      0
+    ],
+    "normalReportWindowEndElapsedMs": [
+      24169.8,
+      19335.5
+    ],
+    "startupTargetCoverageRecoveryOrHeldGeometryCaptured": false,
+    "exactCrossViewerEpochEqualityCaptured": false
+  },
+  "interpretation": [
+    "Viewer A started; viewer B never presented a frame. This is a failed pair diagnostic, not a completed 90-second observation.",
+    "Viewer B reported a one-shot startup deadline and retained startupPending=true with a nonfatal fragLoadError. The visible spinner/button state was not directly captured.",
+    "Viewer B joined an already-active room. Its startup commit hook was not supplied, so commitStarted=false is expected and does not identify a publication or adoption bottleneck. Failed/deadline with released=0 establishes that its startup barrier did not release.",
+    "A submitted 884,736 bytes; B verified 491,520 piece bytes but completed zero multi-holder deliveries. Both accepted-peer playback counters stayed zero.",
+    "Submitted uploads and verified partial pieces are not accepted playback credit. These results do not establish that bytes were wasted or that HTTP won a race.",
+    "The 18 attempt counters are current SDK-generation snapshots. Nulls and resets must remain explicit; they do not independently identify the failure cause.",
+    "multiHolderUnusedBytes includes origin and peer received-minus-fresh bytes. It is not a peer-waste measurement.",
+    "Logical playback bytes, classified Resource Timing bodies and CDP HTTP body bytes measure different things. CDP body counts include partial aborted responses and are not wire or billing totals.",
+    "The pending startup window did not reach a successful release for B. Internal target, coverage and recovery geometry was not captured, so the underlying cause remains unresolved."
+  ],
+  "harnessSetupFailure": {
+    "beforeBrowsersAndMedia": true,
+    "countedAsMediaAttempt": false,
+    "reason": "The first private launcher rejected macOS temporary-directory canonicalisation before opening a browser.",
+    "retainedLogSha256": "b3bbbac2ed6f6c2c6b35a792a31aa849d81fd9c998fce0e18af9ae6d862c5ec7",
+    "correction": "Only the exact owned temporary directory and its canonical macOS counterpart were accepted; application bytes and measurement gates were unchanged."
+  },
+  "qualification": {
+    "priorSuccessfulMeasurementsUnchanged": true,
+    "newSustainedOrLoopPass": false,
+    "firstTapReliabilityNotQualified": true,
+    "phonesNotExercised": true,
+    "separateNetworkNatNotExercised": true,
+    "publicTurnNotConfiguredOrExercised": true,
+    "callsNotExercised": true,
+    "netHttpWireBillingSavingsNotEstablished": true,
+    "competitorAdvantageNotEstablished": true,
+    "laterUiOrDiagnosticPatchesDoNotConvertThisMeasurementToAPass": true
+  },
+  "cleanup": {
+    "ownedBrowserProcessesRemaining": 0,
+    "ownedProfilesRemoved": true,
+    "ownedRemoteScratchRemoved": true,
+    "normalReportDownloadsRemovedAfterVerifiedCopy": true,
+    "noServerOrForwardCreated": true
+  }
+}

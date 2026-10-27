@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createPlaybackReport } from '../site/media-playback-report.mjs';
+import { createPlaybackReport, projectStartupBuffer } from '../site/media-playback-report.mjs';
 
 function fixture(options = {}) {
   let at = 0;
@@ -162,7 +162,8 @@ test('startup diagnostics distinguish a cancelled barrier, suspended buffering a
       fragment: { sn: 'initSegment', cc: 0, type: 'main', url: 'https://private.invalid' } } });
   const row = p.report.snapshot().samples[0];
   assert.deepEqual(row.startupBuffer, { enabled: true, state: 'cancelled', reason: 'caller-abort',
-    released: 0, failures: 0, cancellations: 1, commitStarted: false, commitCompleted: false });
+    released: 0, failures: 0, cancellations: 1, commitStarted: false, commitCompleted: false,
+    targetTime: null, verifiedStart: null, verifiedEnd: null, requiredHeadroomMs: null, heldObjects: null, heldBytes: null });
   assert.deepEqual(row.hls, { loadingEnabled: true, bufferingEnabled: false,
     main: { state: 'FRAG_LOADING', sn: 0, cc: 0, type: 'main' } });
   assert.deepEqual(row.mediaSource, { readyState: 'open', streaming: false });
@@ -199,7 +200,8 @@ test('diagnostic enums, one-shot counters and fragment numbers cannot carry arbi
     lastPlayerError: { fragment: { sn: Number.MAX_SAFE_INTEGER + 1, cc: -1, type: 'private-type' } } });
   const row = p.report.snapshot().samples[0];
   assert.deepEqual(row.startupBuffer, { enabled: null, state: null, reason: null, released: null,
-    failures: null, cancellations: null, commitStarted: null, commitCompleted: null });
+    failures: null, cancellations: null, commitStarted: null, commitCompleted: null,
+    targetTime: null, verifiedStart: null, verifiedEnd: null, requiredHeadroomMs: null, heldObjects: null, heldBytes: null });
   assert.deepEqual(row.hls, { loadingEnabled: null, bufferingEnabled: null,
     main: { state: null, sn: null, cc: null, type: null } });
   assert.deepEqual(row.mediaSource, { readyState: null, streaming: null });
@@ -311,4 +313,35 @@ test('invalid values and clock readings cannot fabricate measurements', () => {
   assert.equal(row.peerBytes, null); assert.equal(row.uploadedBytes, null); assert.equal(row.width, null); assert.equal(row.visibility, null);
   assert.deepEqual(row.library, { version: null, sourceCommit: null });
   for (const maxSamples of [0, 241, Infinity, 1.5]) assert.throws(() => fixture({ maxSamples }), TypeError);
+});
+
+
+test('last observed startup geometry survives terminal cleanup without proving present residency', () => {
+  const p = fixture();
+  const input = { enabled: true, state: 'failed', reason: 'deadline', released: 0, failures: 1,
+    targetTime: 3.5, verifiedStart: 2, verifiedEnd: 6, requiredHeadroomMs: 3000,
+    heldObjects: 0, heldBytes: 0, owner: 'private-owner', response: { credential: 'private-secret' } };
+  const captured = projectStartupBuffer(input);
+  input.verifiedEnd = 99;
+  p.report.record({ startupBuffer: captured });
+  const row = p.report.snapshot().samples[0].startupBuffer;
+  assert.equal(row.state, 'failed'); assert.equal(row.targetTime, 3.5);
+  assert.equal(row.verifiedStart, 2); assert.equal(row.verifiedEnd, 6); assert.equal(row.requiredHeadroomMs, 3000);
+  assert.equal(row.heldObjects, 0); assert.equal(row.heldBytes, 0);
+  assert.doesNotMatch(JSON.stringify(p.report.snapshot()), /private|secret|"(?:owner|response|credential)"\s*:/);
+});
+
+test('unsafe or unreadable startup geometry stays unknown without dropping valid observations', () => {
+  const input = { state: 'failed', targetTime: -1, verifiedStart: NaN, verifiedEnd: '6',
+    requiredHeadroomMs: Infinity, heldObjects: 0.5, heldBytes: Number.MAX_SAFE_INTEGER + 1,
+    key: 'secret-key', url: 'https://private.invalid' };
+  const p = fixture();p.report.record({ position: 4, startupBuffer: input });
+  const row = p.report.snapshot().samples[0];
+  assert.equal(row.position, 4);
+  for (const key of ['targetTime','verifiedStart','verifiedEnd','requiredHeadroomMs','heldObjects','heldBytes']) assert.equal(row.startupBuffer[key], null, key);
+  Object.defineProperty(input, 'targetTime', { get() { throw new Error('private getter'); } });
+  input.heldObjects = 0; input.heldBytes = 0;
+  const captured = projectStartupBuffer(input);
+  assert.equal(captured.targetTime, null); assert.equal(captured.heldObjects, 0); assert.equal(captured.heldBytes, 0);
+  assert.doesNotMatch(JSON.stringify(p.report.snapshot()), /secret|private|https?:/);
 });
