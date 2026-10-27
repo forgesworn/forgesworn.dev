@@ -407,7 +407,7 @@ export function createListenerSession(options, runtime = {}) {
     for (const entry of entries) { cancel(entry.retry); entry.retry = null; disposeSocket(entry); }
     entries.length = 0;
     clearActor(nextPhase, error);
-    records.clear(); reports.clear();
+    records.clear(); reports.clear(); truncated = false;
     notify();
   }
   function clearActor(nextPhase, error) {
@@ -461,12 +461,12 @@ export function createListenerSession(options, runtime = {}) {
       return prepared && !prepareMode ? joinPromise.then(value => ({ ...value, prepared: false, token: null })) : joinPromise;
     }
     if (typeof Socket !== 'function') return Promise.reject(new Error('Listening relays are unavailable.'));
-    // Preserve the pre-join truncation state before starting a fresh discovery
-    // window. Only already-observing prepare callers may skip that window.
+    // Retained records keep their truncation history across join/leave cycles.
+    // Only already-observing prepare callers may skip the discovery window.
     const observedPreparation = prepared && phase === 'observing' && observedActiveEpoch() !== null ? generation : null;
     prepareMode = prepared; candidateId = null; adoptingPrepared = false;
     bindOperationSignal(operation.signal);
-    phase = 'discovering'; lastCreatedAt = 0; lastPublishedAt = -Infinity; truncated = false;
+    phase = 'discovering'; lastCreatedAt = 0; lastPublishedAt = -Infinity;
     key = generateSecretKey();
     id = finalizeEvent({ kind: LISTENER_SESSION_KIND, created_at: Math.floor(now() / 1000), tags: [], content: '' }, key).pubkey;
     const actor = id;

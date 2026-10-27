@@ -589,6 +589,24 @@ test('EOSE completed after prepare entry retains the original discovery timer', 
   session.stop(); assert.equal(f.activeTimers(), 0);
 });
 
+test('truncated observation stays incomplete across acknowledged join, leave and reprepare on the same subscriptions', async () => {
+  const f = fixture(), session = f.create({ maxRecords: 2 });
+  for (let i = 0; i < 3; i++) f.inject('wss://one.test/', f.signed());
+  session.observe(); f.advance(0); assert.equal(session.snapshot().truncated, true);
+  const sockets = [...f.sockets];
+  const first = session.prepareJoin(); f.advance(1249);
+  assert.equal(session.snapshot().status, 'discovering');
+  f.advance(1); assert.equal((await first).ready, true);
+  session.leave(); f.advance(0);
+  const second = session.prepareJoin();
+  assert.equal(session.snapshot().status, 'discovering', 'retaining the same incomplete records cannot qualify a later shortcut');
+  assert.equal(session.snapshot().truncated, true);
+  assert.deepEqual(f.sockets, sockets, 'join/leave did not rebuild the observation subscriptions');
+  f.advance(1249); assert.equal(session.snapshot().status, 'discovering');
+  f.advance(1); assert.equal((await second).ready, true);
+  session.stop(); assert.equal(f.activeTimers(), 0); assert.equal(session.snapshot().truncated, false);
+});
+
 test('active observation is freshly revalidated before fast preparation can publish', async () => {
   const f = fixture(), active = f.signed(); f.inject('wss://one.test/', active);
   const runtime = f.runtime(); let armed = false, reads = 0, offset = 0;
