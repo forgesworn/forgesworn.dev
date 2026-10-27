@@ -513,6 +513,7 @@ test('recorded mode signs actual global sequence and discontinuity against the u
     const options = f.cycles[0].options;
     assert.equal(options.warmAhead, false, 'steady speculative downloads cannot compete with playback');
     assert.equal(options.startupBufferTarget, null, 'startup buffering requires an explicit current-player target');
+    assert.equal(options.startupBufferMaxBytes, 24 * 1024 * 1024, 'non-startup playback keeps the SDK default');
     assert.equal(options.uploadPacing, quality === 'full', 'bounded upload admission is enabled for full 4K only');
     assert.equal(options.latePeerRace, quality === 'full', 'a newly available peer may race only for the full 4K player');
     assert.equal(options.maxUploadBytesPerSecond, 4 * 1024 * 1024, 'pacing does not increase the existing upload rate');
@@ -542,10 +543,13 @@ test('startup buffering is confined to the recorded full player and its live ada
   } });
   await f.adapter.setEnabled(true);
   assert.equal(f.cycles[0].options.startupBufferTarget, null, 'plain VOD has no shared room target');
+  assert.equal(f.cycles[0].options.startupBufferMaxBytes, 24 * 1024 * 1024);
   const recording = await f.prepare();
   f.useRecorded({ recording, epochId: 'a'.repeat(64) });
   await f.adapter.setEnabled(true);
   const first = f.cycles[1].options.startupBufferTarget;
+  assert.equal(f.cycles[1].options.startupBufferMaxBytes, 32 * 1024 * 1024, 'the 4K reservoir includes the retained original');
+  assert.equal(f.cycles[1].options.maxHeldBytes, 64 * 1024 * 1024, 'startup remains inside the existing shared budget');
   assert.equal(first(), 1.25);
   target = 3.75;
   assert.equal(first(), 3.75, 'the callback reads fresh programme time');

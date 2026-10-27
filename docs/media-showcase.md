@@ -16,16 +16,20 @@ The recording label sits with the source caption below the player. It does
 not cover the picture or Safari’s native fullscreen control when controls
 appear.
 
-The player pins RelaySwarm source `badbee6fd4ccc645565843c534cb80210d9ea26f`
-([source change](https://github.com/forgesworn/relayswarm/commit/badbee6fd4ccc645565843c534cb80210d9ea26f)).
+The player pins RelaySwarm source `25354e3cb843b606fc51cdb47a548e9d90d0d091`
+([source change](https://github.com/forgesworn/relayswarm/commit/25354e3cb843b606fc51cdb47a548e9d90d0d091)).
 It retains the successful peer receipt's stats when hls.js disposes of the
 losing HTTP loader, covered by ten regressions using the actual hls.js 1.7.3
 loaders. It also retains a fully verified contiguous future prefix before considering
 its existing fourth startup slot, including after the held first fragment’s
 interval falls behind the room target. The original first response remains
 unchanged; releasing it still requires fresh verified coverage of the current
-target and measured recovery headroom. Startup remains
-bounded to four objects within the existing 24 MiB reservation; steady
+target and measured recovery headroom. The full-recording startup explicitly
+reserves a 32 MiB encoded reservoir including that original response, within
+the existing shared 64 MiB held budget. Its pinned original plus three future
+fragments can exceed 24 MiB; the conservative catalogue maximum is
+30,602,204 bytes. Future bytes alone remain capped at 24 MiB. This is not total
+browser memory. Startup stays bounded to four objects; steady
 warm-ahead keeps its three-object limit. Startup now has twelve seconds from
 the original first-fragment load entry, clipped to a shorter parent load
 deadline; ordinary speculative requests keep their eight-second expiry.
