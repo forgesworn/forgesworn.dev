@@ -823,9 +823,10 @@ new peer connections. The supported public service contract freshly mints one-ho
 credentials. The client keeps a conservative monotonic lifetime, charging
 request/body time and a rounding margin; a wall-clock correction can only
 shorten it. Renewal starts after two thirds of the remaining lifetime.
-New peer connections use the latest credential. Relayed connections retire
-shortly before their old credential expires so the SDK can reconnect while
-the playing HLS instance and verified cache survive. Pause cancels renewal.
+New peer connections use the latest credential. Connections using this viewer's
+local relay allocation retire shortly before its old credential expires so the
+SDK can reconnect while the playing HLS instance and verified cache survive.
+Pause cancels renewal.
 Diagnostics expose availability and expiry duration, never the credential.
 
 An unconfigured public relay causes no request, timer or startup delay;

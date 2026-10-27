@@ -437,9 +437,10 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
             const renew = () => {
               if (!enabled || stopped || this.connectionState === 'closed' || !record.identity) return;
               const current = turn.leaseIdentity();
-              if (current && current !== record.identity && peerObservations.get(this)?.kind === 'relay') {
-                // Retire just this expiring transport. The SDK reconnects with
-                // the latest lease; the playing HLS instance and cache survive.
+              if (current && current !== record.identity && peerObservations.get(this)?.localCandidateType === 'relay') {
+                // Retire only this viewer's expiring local relay allocation.
+                // The SDK reconnects with the latest lease; the playing HLS
+                // instance and cache survive.
                 for (const channel of record.channels) { try { channel.close(); } catch {} }
                 return;
               }
