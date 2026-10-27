@@ -16,8 +16,8 @@ The recording label sits with the source caption below the player. It does
 not cover the picture or Safari’s native fullscreen control when controls
 appear.
 
-The player pins RelaySwarm source `a27c1804455699e9d8c8e5d48928680a3b6ba458`
-([source change](https://github.com/forgesworn/relayswarm/commit/a27c1804455699e9d8c8e5d48928680a3b6ba458)).
+The player pins RelaySwarm source `b75d71bde9aa836e45b27d26d569353530a955d2`
+([source change](https://github.com/forgesworn/relayswarm/commit/b75d71bde9aa836e45b27d26d569353530a955d2)).
 It retains the successful peer receipt's stats when hls.js disposes of the
 losing HTTP loader, covered by ten regressions using the actual hls.js 1.7.3
 loaders. It also permits one extra contiguous startup fragment when the
@@ -26,8 +26,14 @@ bounded to four objects within the existing 24 MiB reservation; steady
 warm-ahead keeps its three-object limit. The eight-second deadline, authority
 checks and explicit refusal for insufficient capacity remain. The Rust/WASM
 binary is unchanged.
+When an owned whole-source response finishes and its key is already known,
+eligible retained bytes are announced with HAVE before its FETCH claim is
+withdrawn, including synchronous hls.js disposal. Unknown keys do not delay
+playback for another hash; cache limits, serving permission and receiver
+verification remain unchanged. No new peer-wait policy is enabled.
 Earlier playback measurements below retain their captured revisions; this
-update does not establish a bandwidth saving or a new physical-phone result.
+update does not establish a bandwidth saving, smoother playback or a new
+physical-phone result.
 
 The [27 October public pair attempt](evidence/public-pair-startup-red-20261027.json)
 did not complete its planned observation: the first viewer presented 4K after
