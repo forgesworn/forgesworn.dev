@@ -16,8 +16,8 @@ The recording label sits with the source caption below the player. It does
 not cover the picture or Safari’s native fullscreen control when controls
 appear.
 
-The player pins RelaySwarm source `45616b8141987f88e6054e2fdfbeae34710e714b`
-([source change](https://github.com/forgesworn/relayswarm/commit/45616b8141987f88e6054e2fdfbeae34710e714b)).
+The player pins RelaySwarm source `badbee6fd4ccc645565843c534cb80210d9ea26f`
+([source change](https://github.com/forgesworn/relayswarm/commit/badbee6fd4ccc645565843c534cb80210d9ea26f)).
 It retains the successful peer receipt's stats when hls.js disposes of the
 losing HTTP loader, covered by ten regressions using the actual hls.js 1.7.3
 loaders. It also retains a fully verified contiguous future prefix before considering
@@ -36,6 +36,10 @@ playlist revisions. Startup now accepts that difference within a bounded machine
 tolerance, capped at one nanosecond, instead of falsely cancelling a matching context; sequence,
 continuity, level, key, size and duration checks remain authoritative. This
 correction does not establish stall-free or sustained 4K playback.
+Once the current target reaches two verified future fragments, their next
+contiguous successor keeps its fourth-slot admission instead of being skipped
+by the previous fragment's service-time lead. Recovery and deadline checks
+still govern release; this fixes selection rather than proving field playback.
 When an owned whole-source response finishes and its key is already known,
 eligible retained bytes are announced with HAVE before its FETCH claim is
 withdrawn, including synchronous hls.js disposal. Unknown keys do not delay
