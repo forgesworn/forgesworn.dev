@@ -1,5 +1,5 @@
 RelaySwarm 0.4.4
-https://github.com/forgesworn/relayswarm/tree/e0423b9471553792f3acbee5137dc96a4907df55
+https://github.com/forgesworn/relayswarm/tree/a27c1804455699e9d8c8e5d48928680a3b6ba458
 
 MIT License
 

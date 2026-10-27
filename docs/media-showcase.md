@@ -16,12 +16,16 @@ The recording label sits with the source caption below the player. It does
 not cover the picture or Safari’s native fullscreen control when controls
 appear.
 
-The player pins RelaySwarm source `e0423b9471553792f3acbee5137dc96a4907df55`
-([SDK change](https://github.com/forgesworn/relayswarm/pull/40)). This preserves
-the successful peer receipt's stats when hls.js disposes of the losing HTTP
-loader. Ten regressions using the actual hls.js 1.7.3 loaders cover the cleanup
-and abort paths. The update changes no transfer policy; the Rust/WASM binary
-is unchanged.
+The player pins RelaySwarm source `a27c1804455699e9d8c8e5d48928680a3b6ba458`
+([source change](https://github.com/forgesworn/relayswarm/commit/a27c1804455699e9d8c8e5d48928680a3b6ba458)).
+It retains the successful peer receipt's stats when hls.js disposes of the
+losing HTTP loader, covered by ten regressions using the actual hls.js 1.7.3
+loaders. It also permits one extra contiguous startup fragment when the
+verified window is still short of measured recovery headroom. Startup remains
+bounded to four objects within the existing 24 MiB reservation; steady
+warm-ahead keeps its three-object limit. The eight-second deadline, authority
+checks and explicit refusal for insufficient capacity remain. The Rust/WASM
+binary is unchanged.
 Earlier playback measurements below retain their captured revisions; this
 update does not establish a bandwidth saving or a new physical-phone result.
 
@@ -168,11 +172,13 @@ For a new full-recording room, discovery reserves a local candidate identity
 without publishing an active listener or starting its clock. The original HLS
 pipeline prepares verified encoded media at raw position zero. Its SDK startup
 barrier holds the first callback until contiguous media covers measured source
-recovery headroom, within three objects, 24 MiB and the original eight-second
-deadline. It then acknowledges the room start over the existing relays, anchors
+recovery headroom, within four startup objects, 24 MiB and the original
+eight-second deadline. It then acknowledges the room start over the existing relays, anchors
 that same timeline once, and repeats fresh target, authority and coverage checks
 before releasing the callback. Preparation is not decoded playback or an active
 watcher. The trusted play request and visible player remain the same.
+Steady warm-ahead remains bounded to three objects; the additional startup
+slot does not increase the byte reservation or extend the deadline.
 
 Existing rooms retain their advancing clock. If another starter publishes first,
 the unpublished candidate cohort is retired before any held body reaches HLS;
@@ -537,12 +543,14 @@ rejection cannot mark a later Play request unplayable. Genuine current setup
 failures still restore an explicit retry. The lifecycle fixture reproduces the
 old failure and covers pause, immediate resume and current publication failure.
 
-The current startup path adopts a verified active room even while another
-viewer is still preparing an unpublished start. It retires that viewer's empty
+The earlier prepared-adoption startup path adopts a verified active room even
+while another viewer is still preparing an unpublished start. It retires that viewer's empty
 old loader before acknowledgement and reuses the original player and Play
-request. The pinned RelaySwarm source `e910147` also rolls its bounded startup
-plan forward using verified future-load timing. Release still requires current
-verified coverage; the three-object, 24 MiB and eight-second limits are unchanged.
+request. At the captured RelaySwarm source `e910147`, it also rolls its bounded
+startup plan forward using verified future-load timing. Release still requires current
+verified coverage; that revision retained three objects, 24 MiB and an
+eight-second deadline. The current four-object startup bound is described above;
+these earlier measurements retain their original source and limits.
 
 The [deployed public receipt](evidence/public-prepared-adoption-4k-20261026.json)
 records two fresh, HTTP-cache-disabled Chrome profiles on one M4 Max using the
