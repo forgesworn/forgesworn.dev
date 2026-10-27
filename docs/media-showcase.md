@@ -32,8 +32,8 @@ deadline; ordinary speculative requests keep their eight-second expiry.
 Authority checks and explicit refusal for insufficient capacity remain. The Rust/WASM
 binary is unchanged.
 Parsed fragment start positions can differ by floating-point roundoff between
-playlist revisions. Startup now accepts that difference within its existing
-tolerance instead of falsely cancelling an otherwise matching context; sequence,
+playlist revisions. Startup now accepts that difference within a bounded machine-precision
+tolerance, capped at one nanosecond, instead of falsely cancelling a matching context; sequence,
 continuity, level, key, size and duration checks remain authoritative. This
 correction does not establish stall-free or sustained 4K playback.
 When an owned whole-source response finishes and its key is already known,
