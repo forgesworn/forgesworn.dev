@@ -112,6 +112,43 @@ function connections(input) {
   }));
 }
 
+function peerAttemptDiagnostics(input) {
+  if (!object(input)) return null;
+  const count = (...path) => {
+    let current = input;
+    for (const key of path) {
+      if (!object(current)) return null;
+      current = value(current, key);
+    }
+    return integer(current);
+  };
+  const commitmentRejected = count('diagnostics', 'commitmentRejected');
+  const peerCorrupt = count('diagnostics', 'peerCorrupt');
+  // The adapter's older combined counter coerces missing inputs to zero.
+  // Require its two underlying counters before treating it as observed.
+  const integrityRejected = commitmentRejected === null || peerCorrupt === null ? null : count('integrityRejected');
+  // These are attempts and verified pieces, not additional playback credit.
+  // Never enumerate SDK objects: records can contain peer/key/transport data.
+  return {
+    zeroBudgetPeerRaces: count('diagnostics', 'zeroBudgetPeerRaces'),
+    zeroBudgetPeerRaceWins: count('diagnostics', 'zeroBudgetPeerRaceWins'),
+    multiHolderTransfers: count('core', 'multiHolder', 'transfers'),
+    multiHolderDelivered: count('core', 'multiHolder', 'delivered'),
+    multiHolderFailed: count('core', 'multiHolder', 'failed'),
+    multiHolderBans: count('core', 'multiHolder', 'bans'),
+    multiHolderAbandoned: count('core', 'multiHolder', 'abandoned'),
+    multiHolderPeerBytes: count('core', 'multiHolder', 'peerBytes'),
+    multiHolderUnusedBytes: count('core', 'multiHolder', 'unusedBytes'),
+    multiHolderOriginRangesIgnored: count('core', 'multiHolder', 'originRangesIgnored'),
+    commitmentUnavailable: count('diagnostics', 'commitmentUnavailable'),
+    integrityRejected, commitmentRejected, peerCorrupt,
+    peerNoFit: count('diagnostics', 'peerNoFit'),
+    noHaveNoWait: count('diagnostics', 'eligibility', 'no-have-no-wait'),
+    haveAtEntry: count('diagnostics', 'eligibility', 'have-at-entry'),
+    noBudget: count('diagnostics', 'eligibility', 'no-budget'),
+  };
+}
+
 function sample(input, elapsedMs) {
   const position = number(value(input, 'position')), buffered = ranges(value(input, 'buffered'));
   const sourceDuration = number(value(input, 'recordingDuration'));
@@ -158,6 +195,7 @@ function sample(input, elapsedMs) {
     sourceCacheBodyBytes: sourceTimingCoverage === 'complete' ? integer(value(input, 'sourceCacheBodyBytes')) : null,
     sourceTimingCoverage,
     peerEnabled: boolean(value(input, 'peerEnabled')), connectedPeers: integer(value(input, 'connectedPeers')),
+    peerAttemptDiagnostics: peerAttemptDiagnostics(value(input, 'peerAttemptDiagnostics')),
     transferWorkerState: choice(value(input, 'transferWorkerState'), ['off', 'waiting-core', 'loading', 'ready', 'failed', 'stopped']),
     roomPrepared: boolean(value(input, 'roomPrepared')), roomReady: boolean(value(input, 'roomReady')),
     roomListeners: integer(value(input, 'roomListeners')), connections: connections(value(input, 'connections')),

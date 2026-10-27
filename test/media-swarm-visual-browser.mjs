@@ -57,6 +57,26 @@ try {
     return { cachedFlights, networkFlight, unavailable };
   });
   assert.deepEqual(receipt.checks.cachedSource, { cachedFlights: 0, networkFlight: '4096', unavailable: true });
+  receipt.checks.partialSource = await page.evaluate(() => {
+    observations.playing = false;
+    Object.assign(observations, { sourceCacheBytes: null, sourceNetworkBodyBytesLowerBound: 4096,
+      sourceCacheBodyBytesLowerBound: 12_412_820 }); render();
+    observations.playing = true; render();
+    observations.originBytes += 6206410; observations.sourceCacheBodyBytesLowerBound += 6206410; render();
+    const cacheFlights = document.querySelectorAll('[data-flight-source="origin"]').length;
+    observations.sourceNetworkBodyBytesLowerBound += 8192; render();
+    const path = document.querySelector('[data-edge-kind="origin"] [data-direction="forward"]');
+    return { cacheFlights, networkFlight: document.querySelector('[data-flight-source="origin"]')?.dataset.bytes,
+      basis: path.dataset.measurementBasis, lowerBound: path.dataset.lowerBound,
+      sourceText: document.querySelector('[data-swarm-source-provenance]').textContent,
+      completeTotal: observations.sourceNetworkBytes };
+  });
+  assert.equal(receipt.checks.partialSource.cacheFlights, 0);
+  assert.equal(receipt.checks.partialSource.networkFlight, '8192');
+  assert.equal(receipt.checks.partialSource.basis, 'network-body');
+  assert.equal(receipt.checks.partialSource.lowerBound, 'true');
+  assert.equal(receipt.checks.partialSource.completeTotal, null);
+  assert.match(receipt.checks.partialSource.sourceText, /partial timing.*at least.*browser cache/);
   receipt.checks.media = await page.evaluate(() => {
     Object.assign(observations.topology.connections[0], { mediaBytesSent: 918, verifiedMediaBytesReceived: 6206410 });
     Object.assign(observations, { uploadedBytes: 918, peerBytes: 6206410 }); render();
@@ -226,6 +246,44 @@ try {
     return { inviting: document.getElementById('map').dataset.inviting, flights: document.querySelectorAll('[data-flight-source]').length };
   });
   assert.deepEqual(receipt.checks.unknownInvitation, { inviting: 'false', flights: 0 });
+  receipt.checks.ownerCombination = await page.evaluate(() => {
+    const self = 'a'.repeat(64), remote = 'b'.repeat(64), selfSdk = '1'.repeat(64), remoteSdk = '2'.repeat(64);
+    observations = { active: true, playing: false, originBytes: 1_000_000_000, peerBytes: 0, uploadedBytes: 0,
+      sourceNetworkBytes: null, sourceCacheBytes: null, viewerId: selfSdk,
+      topology: { connections: [{ id: 'owner-remote', peerId: remoteSdk, state: 'connected', mediaBytesSent: 0, verifiedMediaBytesReceived: 0 }] },
+      room: { id: self, observed: true, ready: true, listeners: 2, members: [
+        { id: self, isSelf: true, expiresAt: graphNow + 30_000 },
+        { id: remote, expiresAt: graphNow + 30_000, telemetryExpiresAt: graphNow + 12_000,
+          telemetry: { peerId: remoteSdk, sampledAt: graphNow, originBytes: 0, peerBytes: 0, uploadedBytes: 0 } },
+      ] } };
+    render(); observations.playing = true; render();
+    observations.originBytes += 6206410;
+    observations.uploadedBytes = 6504448; observations.topology.connections[0].mediaBytesSent = 6504448;
+    const remoteReport = observations.room.members[1].telemetry;
+    remoteReport.originBytes = 6206410; remoteReport.sampledAt = graphNow + 1000; render();
+    return { incomingSourceFlights: document.querySelectorAll('[data-flight-source="origin"]').length,
+      incomingPeerFlights: document.querySelectorAll('[data-flight-source="peer-download"]').length,
+      upload: document.querySelector('[data-flight-source="peer-upload"]')?.dataset.bytes,
+      remoteSourceFlight: document.querySelector('[data-flight-source="reported-origin"]')?.dataset.bytes,
+      sourceText: document.querySelector('[data-swarm-source-provenance]').textContent,
+      note: document.querySelector('.swarm-provenance').textContent,
+      uploadBasis: document.querySelector('[data-edge-kind="native-peer"] [data-direction="upload"]').dataset.measurementBasis,
+      incomingBasis: document.querySelector('[data-edge-kind="native-peer"] [data-direction="download"]').dataset.measurementBasis,
+      remoteBasis: document.querySelector('[data-edge-kind="reported-origin"] [data-direction="forward"]').dataset.measurementBasis,
+      self: document.querySelector('[data-swarm-node="self"]').dataset.roomMemberId,
+      strength: document.querySelector('[data-swarm-strength-value]').textContent };
+  });
+  assert.equal(receipt.checks.ownerCombination.incomingSourceFlights, 0);
+  assert.equal(receipt.checks.ownerCombination.incomingPeerFlights, 0);
+  assert.equal(receipt.checks.ownerCombination.upload, '6504448');
+  assert.equal(receipt.checks.ownerCombination.remoteSourceFlight, '6206410');
+  assert.equal(receipt.checks.ownerCombination.uploadBasis, 'submitted-upload');
+  assert.equal(receipt.checks.ownerCombination.incomingBasis, 'accepted-peer-media');
+  assert.equal(receipt.checks.ownerCombination.remoteBasis, 'reported-source-load');
+  assert.equal(receipt.checks.ownerCombination.self, 'a'.repeat(64));
+  assert.equal(receipt.checks.ownerCombination.strength, '0%');
+  assert.match(receipt.checks.ownerCombination.sourceText, /unavailable/);
+  assert.match(receipt.checks.ownerCombination.note, /uploads are submitted.*peer video is accepted.*reported loads and may include cache/);
   receipt.checks.proportionalBatches = await page.evaluate(() => {
     observations = { active: true, playing: false, enabled: true, serving: true, originBytes: 0, peerBytes: 0, uploadedBytes: 0,
       topology: { connections: [{ id: 'batch-a', state: 'connected', mediaBytesSent: 0, verifiedMediaBytesReceived: 0 }] } };

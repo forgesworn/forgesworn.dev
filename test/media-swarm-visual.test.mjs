@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { MAX_VISUAL_PEERS, observedTopology, observedRoomTopology, createTrafficWindow, peerDeliveryShare, swarmLayout } from '../site/media-swarm-visual.mjs';
+import { createSourceResponseStats } from '../site/media-transfer-stats.mjs';
 
 const NOW = 1_800_000_000_000;
 const authors = ['a', 'b', 'c'].map(value => value.repeat(64));
@@ -30,6 +31,67 @@ test('cached source loads do not become measured network flow and concealed timi
   assert.equal(observedRoomTopology(metrics, NOW + 2000).edges[0].forward.value, 4096);
   metrics.sourceNetworkBytes = null;
   assert.equal(observedRoomTopology(metrics, NOW + 3000).edges[0].forward.value, null);
+});
+
+test('unknown local source timing does not hide submitted upload semantics or invent accepted media', () => {
+  const metrics = roomFixture();
+  Object.assign(metrics, { originBytes: 1_000_000_000, peerBytes: 0, uploadedBytes: 6504448,
+    sourceNetworkBytes: null, sourceCacheBytes: null, sourceTimingCoverage: 'unavailable' });
+  for (const peer of metrics.topology.connections) { peer.mediaBytesSent = 6504448; peer.verifiedMediaBytesReceived = 0; }
+  const model = observedRoomTopology(metrics, NOW);
+  assert.equal(model.self.id, authors[0]);
+  assert.equal(model.edges.find(edge => edge.kind === 'origin').forward.value, null);
+  const outbound = model.edges.find(edge => edge.kind === 'native-peer');
+  assert.equal(outbound.forward.value, 6504448);
+  assert.equal(outbound.forward.basis, 'submitted-upload');
+  assert.equal(outbound.reverse.value, 0);
+  assert.equal(outbound.reverse.basis, 'accepted-peer-media');
+  const reportedSource = model.edges.find(edge => edge.kind === 'reported-origin');
+  assert.equal(reportedSource.forward.basis, 'reported-source-load');
+  assert.match(model.source.text, /unavailable/i);
+  assert.equal(peerDeliveryShare(metrics.originBytes, metrics.peerBytes), 0, 'queued uploads are not peer delivery');
+});
+
+test('partial classified network deltas animate without treating cache or logical loads as network', () => {
+  const responses = createSourceResponseStats();
+  responses.add({ encodedBodySize: 0, transferSize: 0 });
+  responses.add({ encodedBodySize: 6_000_000, transferSize: 0 });
+  const metrics = { originBytes: 6_000_000 };
+  const update = () => {
+    const timing = responses.snapshot();
+    Object.assign(metrics, { sourceNetworkBytes: timing.networkBodyBytes, sourceCacheBytes: timing.cacheBodyBytes,
+      sourceNetworkBodyBytesLowerBound: timing.networkBodyBytesLowerBound,
+      sourceCacheBodyBytesLowerBound: timing.cacheBodyBytesLowerBound, sourceTimingCoverage: timing.coverage });
+  };
+  update();
+  const traffic = createTrafficWindow();
+  const source = () => observedRoomTopology(metrics, NOW).edges[0].forward;
+  let reading = source();
+  traffic.observe(reading.sourceId, reading.value, NOW, NOW);
+  metrics.originBytes += 6_000_000;
+  responses.add({ encodedBodySize: 6_000_000, transferSize: 0 }); update();
+  reading = source();
+  assert.equal(traffic.observe(reading.sourceId, reading.value, NOW + 1000, NOW + 1000).delta, 0);
+  responses.add({ encodedBodySize: 4096, transferSize: 4396 }); update();
+  const model = observedRoomTopology(metrics, NOW + 2000); reading = model.edges[0].forward;
+  assert.equal(traffic.observe(reading.sourceId, reading.value, NOW + 2000, NOW + 2000).delta, 4096);
+  assert.equal(reading.lowerBound, true);
+  assert.equal(metrics.sourceNetworkBytes, null, 'the complete total is still unavailable');
+  assert.equal(model.source.coverage, 'partial');
+  assert.match(model.source.text, /at least/i);
+  assert.match(model.source.text, /partial/i);
+});
+
+test('complete cache-only timing shows cache provenance and no incoming network or accepted peer flow', () => {
+  const metrics = { originBytes: 6_000_000, peerBytes: 0, sourceNetworkBytes: 0, sourceCacheBytes: 6_000_000 };
+  const model = observedRoomTopology(metrics, NOW);
+  assert.equal(model.source.coverage, 'complete');
+  assert.equal(model.source.networkLowerBound, false);
+  assert.equal(model.source.cacheLowerBound, false);
+  assert.match(model.source.text, /0 B network/);
+  assert.match(model.source.text, /6 MB browser cache/);
+  assert.equal(model.edges[0].forward.value, 0);
+  assert.equal(peerDeliveryShare(metrics.originBytes, metrics.peerBytes), 0);
 });
 
 test('the connection picture uses observed connections rather than aggregate or invented viewer counts', () => {

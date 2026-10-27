@@ -253,6 +253,8 @@ body.showcase-home{background:#10110f}
 .media-showcase .swarm-key .key-reported{border-top-style:dashed;border-color:#748269}
 .media-showcase .swarm-key .key-music{width:12px;height:12px;border:1px solid #c5ad7c;border-radius:50%;box-shadow:0 0 0 3px #c5ad7c08}
 .media-showcase .swarm-picture-note{text-align:center;margin:12px auto 0;color:#78896d;font-size:.61rem;line-height:1.8}
+.media-showcase .swarm-provenance{max-width:60rem;color:#97a68a;font-size:.66rem;line-height:1.7}
+.media-showcase .swarm-provenance>span{display:block;margin-top:3px}
 .media-showcase .swarm-statistics{margin-top:30px;padding-top:27px;border-top:1px solid #d2ed9120}
 .media-showcase .swarm-summary{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:60px;align-items:start}
 .media-showcase .swarm-summary .delivery-path{font-size:.85rem;color:#d7e1cb;line-height:1.8;text-align:left;max-width:54ch}

@@ -34,6 +34,14 @@ the companion also recorded six dropped frames. Those uploads do not establish
 recipient acceptance or savings. Useful peer delivery in this case remains under
 investigation, separately from the successful fresh-M4 pair below.
 
+After the desktop startup correction in PR #68 (`2e8e376`), the owner confirmed
+that Chrome starts playing and is “Smooth now” when viewed in front or fullscreen.
+The partial M1 trace recorded a 2.780-second first frame and no app stalls or
+player errors through programme position 244 seconds. Dropped frames were also
+recorded; foreground presentation was not verified throughout, and the tab
+disappeared before a complete observation. This is owner acceptance of current playback, not a new
+full-loop or clean-frame benchmark.
+
 A [physical Safari trace](evidence/physical-safari-playback-20261026.json) on
 26 October recorded 330 seconds of advancing ManagedMediaSource playback,
 including an actual programme wrap and 178 seconds afterwards. Observed
@@ -311,8 +319,11 @@ listener reports and are labelled as reports. A connection without traffic
 can remain visible with zero delivery. Missing or expired reports do not
 produce remote transfer animation.
 
-Moving points represent media contributions.  Origin movement follows its
-share of media accepted for playback.  Peer upload movement counts binary media
+Moving points represent measured media batches. Local source movement follows
+classified network response bodies, with partial coverage labelled below the
+picture. Known browser-cache loads do not animate a local network feed. Dashed
+source feeds use listeners' reported logical loads and may include cache.
+Peer upload movement counts binary media
 successfully submitted to that connection's native data channel.  Download
 movement uses RelaySwarm's `onPeerDelivery` callback, after size/hash
 verification and acceptance within the playback deadline.  That callback
@@ -389,9 +400,13 @@ The counters distinguish:
   totals trail completed source-loader bodies, or dropped observer records are
   reported. The coverage row gives classified and observed response counts.
   Native HLS cannot guarantee this timing coverage and leaves the readings
-  unavailable. The graph receives `sourceNetworkBytes` only with complete
-  observed classification coverage; logical `originBytes` keeps its original
-  loaded-video meaning.
+  unavailable. The graph can retain the known network/cache subset as explicit
+  lower bounds, labelled “at least” and “partial timing”. Only positive changes
+  in classified network bodies animate its local source feed; complete totals
+  stay `null` while coverage is incomplete. With no classified responses, even
+  the lower bounds remain unknown. Already loaded or cached video can still be
+  uploaded when no new source traffic is observed. Logical `originBytes` keeps
+  its original loaded-video meaning.
 - **Verified from viewers:** peer pieces that won verification and contributed
   to a complete segment accepted for playback.  Partial failed objects and
   duplicate losing copies do not increment this counter.
@@ -428,6 +443,12 @@ fragment enums/numbers, the attached MediaSource's state/streaming flag, and
 playback intent and room preparation/readiness. The last player error retains
 only its fixed codes and fragment type/sequence/discontinuity, without a URL.
 These observations do not retry, resume or otherwise change startup policy.
+The optional `peerAttemptDiagnostics` observation contains 18 fixed counters
+for zero-budget peer races, multi-holder delivery/unused pieces, commitment and
+integrity failures, and peer eligibility. Each count is a nonnegative safe
+integer or `null`; missing values are not inferred as zero. Raw SDK records,
+keys, tickets and transfer objects are excluded. Submitted uploads and verified
+pieces in a losing race do not become accepted peer-media credit.
 Missing readings, retired pipelines and unsupported properties remain `null`. It excludes addresses,
 SDP, peer identities, credentials and source URLs or filesystem paths. Nothing
 is uploaded by the page; sharing requires the viewer's action. Export handlers

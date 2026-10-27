@@ -14,7 +14,7 @@
   <meta property="og:image" content="https://forgesworn.dev/media/dejavu-preview/poster.jpg">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/media-showcase.css?v=20261026-video-caption">
+  <link rel="stylesheet" href="/media-showcase.css?v=20261027-visual-provenance">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"ForgeSworn 4K listening room","url":"https://forgesworn.dev/media-lab.html","description":"Licensed 4K playback, observed peer-assisted delivery and open-source media libraries.","isPartOf":{"@type":"WebSite","name":"ForgeSworn","url":"https://forgesworn.dev/"},"potentialAction":{"@type":"DonateAction","target":"https://github.com/sponsors/TheCryptoDonkey"}}</script>
 </head>
 <body class="media-page">
@@ -55,9 +55,9 @@
       <p class="session-note public-only">The first listener starts the room.  New arrivals join at its live position.  After the last listener leaves, it closes following a short grace period.  The 1080p excerpt has its own room.</p>
       <section class="swarm-stage public-only" aria-labelledby="swarm-title">
         <div class="swarm-heading"><div><p class="eyebrow">This is happening in your browser</p><h2 id="swarm-title">Watch the stream <em>move.</em></h2></div></div>
-        <div id="public-swarm-map" class="swarm-map" data-statistics="public-swarm-statistics" role="img" aria-label="Observed connections between this browser, the media origin and other viewers"></div>
+        <div id="public-swarm-map" class="swarm-map" data-statistics="public-swarm-statistics" data-provenance="public-swarm-provenance" role="img" aria-label="Observed connections between this browser, the media origin and other viewers"></div>
         <div class="swarm-key" aria-label="How to read the picture"><span><i class="key-measured" aria-hidden="true"></i>Measured here</span><span><i class="key-reported" aria-hidden="true"></i>Listener report</span><span><i class="key-music" aria-hidden="true"></i>Glow follows the music</span></div>
-        <p class="swarm-picture-note">Moving dots carry video.  Larger dots carry more.</p>
+        <p id="public-swarm-provenance" class="swarm-picture-note swarm-provenance"><span data-swarm-source-provenance>Source network/cache split unavailable. Already loaded video can still be shared.</span><span>Your uploads are submitted data; incoming peer video is accepted here.</span><span>Dashed source feeds are listener-reported loads and may include cache.</span></p>
         <div id="public-swarm-statistics" class="swarm-statistics" data-swarm-statistics>
           <div class="swarm-summary"><div class="swarm-summary-copy"><p id="public-delivery" class="delivery-path" role="status">Ready to play.  The origin gets you started.</p><p id="public-share-status" class="share-status" role="status">Play to join.  Media-host delivery and verified peer delivery are counted separately.</p></div><div data-swarm-strength-slot></div></div>
         <dl class="delivery-counters" aria-label="Actual RelaySwarm delivery in this browser">
@@ -123,6 +123,6 @@
   </main>
   <!-- SHOWCASE_END -->
   <footer class="site-footer"><div class="page-wrap"><div class="footer-inner"><a class="brand" href="/">Forge<span>Sworn</span></a><div class="footer-links"><a href="https://github.com/forgesworn">GitHub</a><a href="/live-media-benchmarks.html">Measured results</a><a href="https://github.com/sponsors/TheCryptoDonkey">Support the work ↗</a></div></div><p class="footer-note">Open-source media software, yours to run.  The supplied mix is licensed for this demonstration; its media rights are separate from the MIT code.  <a href="/media/dejavu-preview/NOTICE.txt">Media permission</a> · <a href="/llms.txt">For developers and LLMs</a></p></div></footer>
-  <script type="module" src="/media-lab.mjs?v=20261026-startup-ownership"></script>
+  <script type="module" src="/media-lab.mjs?v=20261027-visual-provenance"></script>
 </body>
 </html>
