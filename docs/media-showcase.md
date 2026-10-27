@@ -16,8 +16,8 @@ The recording label sits with the source caption below the player. It does
 not cover the picture or Safari’s native fullscreen control when controls
 appear.
 
-The player pins RelaySwarm source `167b1c971c94456983da28d32dede00cd4c3123b`
-([source change](https://github.com/forgesworn/relayswarm/commit/167b1c971c94456983da28d32dede00cd4c3123b)).
+The player pins RelaySwarm source `f923058503778dea2427a81330da04cce80a95c2`
+([source change](https://github.com/forgesworn/relayswarm/commit/f923058503778dea2427a81330da04cce80a95c2)).
 It retains the successful peer receipt's stats when hls.js disposes of the
 losing HTTP loader, covered by ten regressions using the actual hls.js 1.7.3
 loaders. It also permits one extra contiguous startup fragment when the
