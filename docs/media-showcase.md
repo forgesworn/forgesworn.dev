@@ -16,8 +16,8 @@ The recording label sits with the source caption below the player. It does
 not cover the picture or Safari’s native fullscreen control when controls
 appear.
 
-The player pins RelaySwarm source `59575d9c30b44fdf010ce382612224519cbd7ffc`
-([source change](https://github.com/forgesworn/relayswarm/commit/59575d9c30b44fdf010ce382612224519cbd7ffc)).
+The player pins RelaySwarm source `d2bc7be4e5e7374af0e04aae45b1f1d2f0e890c4`
+([source change](https://github.com/forgesworn/relayswarm/commit/d2bc7be4e5e7374af0e04aae45b1f1d2f0e890c4)).
 It retains the successful peer receipt's stats when hls.js disposes of the
 losing HTTP loader, covered by ten regressions using the actual hls.js 1.7.3
 loaders. It also retains a fully verified contiguous future prefix before considering
@@ -34,6 +34,14 @@ eligible retained bytes are announced with HAVE before its FETCH claim is
 withdrawn, including synchronous hls.js disposal. Unknown keys do not delay
 playback for another hash; cache limits, serving permission and receiver
 verification remain unchanged. No new peer-wait policy is enabled.
+
+Peers exchange object-framing support in their existing authenticated SDP
+offers and answers. The SDK accepts explicit version 2 only after the current
+admitted remote SDP has been installed, allowing an eligible new channel to
+use verified range transfers without waiting for a periodic presence
+announcement. Missing or unsupported values retain the conservative
+presence-derived behaviour. Peer admission, verification, upload limits and
+HTTP deadlines remain unchanged.
 Earlier playback measurements below retain their captured revisions; this
 update does not establish a bandwidth saving, smoother playback or a new
 physical-phone result.
