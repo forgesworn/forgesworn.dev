@@ -587,6 +587,46 @@ try {
   }
   checks.push('fatal HLS/media errors clear Loading and fence old promise rejection');
 
+  for(const action of ['pause','resume','current-failure']){
+    // Unsupported recording metadata uses the real direct-source publication
+    // path. Its old ACK rejection must not fail a later playback intent.
+    const direct=await open({coldRoom:true,holdCommit:true,observeReport:true});
+    await direct.page.locator('#public-play').click();await direct.page.evaluate(()=>fixture.releaseRoom());
+    await direct.page.waitForFunction(()=>fixture.listenerSnapshot().status==='publishing');
+    assert.equal(await direct.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='source').length),0);
+    await direct.page.evaluate(action=>{
+      fixture.directActionBaseline=fixture.reportSample?.elapsedMs??-1;
+      if(action==='current-failure')fixture.rejectCommit();
+      else{
+        const video=document.getElementById('lab-video');video.pause();
+        if(action==='resume')void video.play();
+      }
+    },action);
+    await direct.page.waitForFunction(()=>fixture.reportSample?.elapsedMs>fixture.directActionBaseline);
+    if(action!=='current-failure')assert.equal(await direct.page.evaluate(()=>fixture.reportSample.playbackFailed),false,
+      'a cancelled direct-source ACK cannot fail a paused or resumed playback intent');
+    if(action==='resume'){
+      await direct.page.waitForFunction(()=>fixture.trace.filter(x=>x.kind==='commit').length===2);
+      await direct.page.evaluate(()=>fixture.releaseCommit());
+      await direct.page.waitForFunction(()=>fixture.trace.filter(x=>x.kind==='source').length===1);
+      await direct.page.evaluate(()=>{fixture.finishPlay();fixture.presentFrame()});
+      await direct.page.waitForFunction(()=>fixture.reportSample?.hasPresentedFrame===true);
+      assert.equal(await direct.page.evaluate(()=>fixture.reportSample.playbackFailed),false,
+        'a cancelled earlier direct-source ACK cannot fail the resumed intent');
+      assert.deepEqual(await direct.page.evaluate(()=>[fixture.players.length,fixture.trace.filter(x=>x.kind==='attach').length]),[1,1]);
+    }else if(action==='pause'){
+      await direct.page.waitForFunction(()=>fixture.reportSample?.paused===true);
+      assert.equal(await direct.page.evaluate(()=>fixture.reportSample.playbackFailed),false,
+        'intentional pause is not a terminal source failure');
+      assert.equal(await direct.page.locator('#public-play').isEnabled(),true);
+    }else{
+      await direct.page.waitForFunction(()=>fixture.reportSample?.playbackFailed===true);
+      assert.equal(await direct.page.locator('#public-play').isEnabled(),true,
+        'a current direct-source ACK failure retains an honest retry');
+    }
+    await close(direct);checks.push('direct-source publication '+action+' preserves playback intent and current failures');
+  }
+
   const cold=await open({recorded:true,coldRoom:true,holdCommit:true});
   await cold.page.locator('#public-play').click();await cold.page.evaluate(()=>fixture.releaseRoom());
   await cold.page.waitForFunction(()=>fixture.trace.some(x=>x.kind==='startLoad'));
