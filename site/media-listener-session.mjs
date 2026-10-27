@@ -113,6 +113,11 @@ export function createListenerSession(options, runtime = {}) {
     } catch {}
   }
   function bestEpoch(activeOnly = false) { return freshRows().filter(row => !activeOnly || row.status === 'active').map(row => row.epoch).sort(compareEpoch)[0] ?? null; }
+  function observedActiveEpoch() {
+    if (truncated || entries.length !== relays.length ||
+        !entries.every(entry => entry.ws?.readyState === 1 && entry.observed)) return null;
+    return bestEpoch(true);
+  }
   function clearOperationSignal() {
     operationSignal?.removeEventListener('abort', operationAbort);
     operationSignal = operationAbort = null;
@@ -277,14 +282,19 @@ export function createListenerSession(options, runtime = {}) {
     publishTelemetry();
     if (phase === 'active') heartbeatTimer = later(heartbeat, heartbeatMs);
   }
-  function finishDiscovery() {
+  function finishDiscovery(observedOnly = false) {
     if (phase !== 'discovering') return;
+    // Entry-qualified preparation can reuse completed observation, but a
+    // disconnected or expired view must still take the full discovery path.
+    const observed = observedOnly ? observedActiveEpoch() : null;
+    if (observedOnly && (!prepareMode || !observed)) return;
+    cancel(discoveryTimer);
     discoveryTimer = null;
     if (!entries.some(entry => entry.ws?.readyState === 1)) {
       failJoin(new Error('Listening relays disconnected during discovery.'));
       return;
     }
-    const existing = bestEpoch(prepareMode);
+    const existing = observed ?? bestEpoch(prepareMode);
     if (prepareMode && !existing) {
       epoch = { id, startedAt: null }; candidateId = id; preparedToken = Object.freeze({});
       phase = 'prepared';
@@ -451,11 +461,15 @@ export function createListenerSession(options, runtime = {}) {
       return prepared && !prepareMode ? joinPromise.then(value => ({ ...value, prepared: false, token: null })) : joinPromise;
     }
     if (typeof Socket !== 'function') return Promise.reject(new Error('Listening relays are unavailable.'));
+    // Preserve the pre-join truncation state before starting a fresh discovery
+    // window. Only already-observing prepare callers may skip that window.
+    const observedPreparation = prepared && phase === 'observing' && observedActiveEpoch() !== null ? generation : null;
     prepareMode = prepared; candidateId = null; adoptingPrepared = false;
     bindOperationSignal(operation.signal);
     phase = 'discovering'; lastCreatedAt = 0; lastPublishedAt = -Infinity; truncated = false;
     key = generateSecretKey();
     id = finalizeEvent({ kind: LISTENER_SESSION_KIND, created_at: Math.floor(now() / 1000), tags: [], content: '' }, key).pubkey;
+    const actor = id;
     joinPromise = new Promise((resolve, reject) => { pendingJoin = { resolve, reject }; });
     const result = joinPromise;
     openTimer = later(() => failJoin(new Error('No listening relay became available.')), openTimeoutMs);
@@ -464,6 +478,7 @@ export function createListenerSession(options, runtime = {}) {
       cancel(openTimer); openTimer = null;
       discoveryTimer = later(finishDiscovery, discoveryMs);
     }
+    if (observedPreparation !== null && observedPreparation === generation && id === actor && prepareMode) finishDiscovery(true);
     notify();
     return result;
   }

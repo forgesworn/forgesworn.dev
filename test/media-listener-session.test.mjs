@@ -509,6 +509,125 @@ test('prepare joins an existing active room immediately and does not freeze or r
   f.advance(1000); assert.equal(follower.position(), 7.25); follower.stop(); starter.stop();
 });
 
+test('fully observed active-room preparation publishes without another discovery delay but still requires ACK', async () => {
+  const f = fixture(), active = f.signed(), epoch = JSON.parse(active.content).epoch;
+  const urls = ['wss://one.test/', 'wss://two.test/', 'wss://three.test/'];
+  for (const url of urls) { f.inject(url, active); f.acks.set(url, null); }
+  const session = f.create({ relays: urls }); session.observe(); f.advance(0);
+  const at = f.now(), pending = session.prepareJoin();
+  assert.equal(session.snapshot().status, 'publishing', 'completed discovery of an active room must not wait another 1250 ms');
+  assert.equal(session.snapshot().ready, false); assert.equal(session.snapshot().epochId, epoch.id);
+  assert.equal(session.snapshot().startedAt, epoch.startedAt);
+  const publication = f.published[0].event;
+  assert.equal(f.published.length, 3);
+  f.advance(1249); assert.equal(session.snapshot().ready, false, 'time alone cannot replace publication ACK');
+  f.sockets[0].respond(['OK', publication.id, true]); f.advance(0);
+  const result = await pending;
+  assert.equal(result.ready, true); assert.equal(result.prepared, false); assert.equal(result.token, null);
+  assert.equal(result.epochId, epoch.id); assert.equal(result.startedAt, epoch.startedAt);
+  assert.equal(result.position, (f.now() - epoch.startedAt) / 1000);
+  f.advance(1); assert.equal(f.now() - at, 1250);
+  assert.equal(f.published.length, 3, 'the cancelled discovery timer cannot publish a second initial claim');
+  session.stop(); assert.equal(f.activeTimers(), 0);
+});
+
+test('fast active-room preparation aborts before ACK and late ACK cannot revive its actor', async () => {
+  const f = fixture(), operation = new AbortController();
+  f.inject('wss://one.test/', f.signed());
+  for (const url of ['wss://one.test/', 'wss://two.test/']) f.acks.set(url, null);
+  const session = f.create(); session.observe(); f.advance(0);
+  const pending = session.prepareJoin({ signal: operation.signal }), rejected = assert.rejects(pending, { name: 'AbortError' });
+  assert.equal(session.snapshot().status, 'publishing');
+  const event = f.published[0].event;
+  operation.abort(); await rejected;
+  assert.equal(JSON.parse(f.published.at(-1).event.content).status, 'left');
+  f.sockets[0].respond(['OK', event.id, true]); f.advance(0);
+  assert.equal(session.snapshot().status, 'observing'); assert.equal(session.snapshot().ready, false);
+  session.stop(); assert.equal(f.activeTimers(), 0);
+});
+
+test('active-room fast preparation requires every configured current matching EOSE and preserves incomplete discovery', async () => {
+  for (const condition of ['no-observe', 'one-eose', 'wrong-subscription', 'closed', 'reconnecting', 'cold', 'left', 'invalid', 'expired', 'truncated', 'legacy']) {
+    const f = fixture(), session = f.create(condition === 'truncated' ? { maxRecords: 2 } : {});
+    if (condition !== 'cold') {
+      const active = f.signed(condition === 'left' ? { status: 'left' } : {});
+      f.inject('wss://one.test/', condition === 'invalid' ? { ...active, sig: '0'.repeat(128) } : active);
+    }
+    if (condition === 'truncated') for (let i = 0; i < 3; i++) f.inject('wss://one.test/', f.signed());
+    if (['one-eose', 'wrong-subscription', 'reconnecting'].includes(condition)) f.eose.set('wss://two.test/', false);
+    if (condition !== 'no-observe') { session.observe(); f.advance(0); }
+    if (condition === 'wrong-subscription') { f.sockets[1].respond(['EOSE', 'unrelated']); f.advance(0); }
+    if (condition === 'closed' || condition === 'reconnecting') {
+      f.sockets[1].close();
+      if (condition === 'reconnecting') {
+        f.advance(1000);
+        assert.equal(f.sockets.at(-1).readyState, 1);
+        // An obsolete connection's completion cannot qualify the replacement.
+        f.sockets[1].dispatchEvent(new MessageEvent('message', { data: JSON.stringify(['EOSE', f.sockets[1].sub]) }));
+      }
+    }
+    if (condition === 'expired') f.advance(25000);
+    if (condition === 'truncated') assert.equal(session.snapshot().truncated, true);
+    const pending = condition === 'legacy' ? session.join() : session.prepareJoin();
+    f.advance(1249);
+    assert.equal(session.snapshot().status, 'discovering', `${condition} retains the complete discovery window`);
+    assert.equal(f.published.length, 0);
+    f.advance(1); const result = await pending;
+    assert.equal(result.ready || result.prepared, true);
+    session.stop(); assert.equal(f.activeTimers(), 0);
+  }
+});
+
+test('EOSE completed after prepare entry retains the original discovery timer', async () => {
+  const f = fixture(); f.eose.set('wss://two.test/', false);
+  f.inject('wss://one.test/', f.signed());
+  const session = f.create(); session.observe(); f.advance(0);
+  const pending = session.prepareJoin();
+  f.sockets[1].respond(['EOSE', f.sockets[1].sub]); f.advance(0);
+  f.advance(1249); assert.equal(session.snapshot().status, 'discovering'); assert.equal(f.published.length, 0);
+  f.advance(1); assert.equal((await pending).ready, true);
+  session.stop(); assert.equal(f.activeTimers(), 0);
+});
+
+test('active observation is freshly revalidated before fast preparation can publish', async () => {
+  const f = fixture(), active = f.signed(); f.inject('wss://one.test/', active);
+  const runtime = f.runtime(); let armed = false, reads = 0, offset = 0;
+  runtime.now = () => {
+    // Entry sees a fresh lease; the subsequent actor-creation clock read
+    // advances past expiry before the immediate finish revalidates it.
+    if (armed && ++reads === 2) offset = 25000;
+    return f.now() + offset;
+  };
+  const session = createListenerSession(defaults, runtime); session.observe(); f.advance(0);
+  assert.equal(session.snapshot().listeners, 1);
+  armed = true; const pending = session.prepareJoin();
+  assert.ok(offset > 0); assert.equal(session.snapshot().status, 'discovering'); assert.equal(f.published.length, 0);
+  f.advance(1249); assert.equal(session.snapshot().status, 'discovering');
+  f.advance(1); assert.equal((await pending).prepared, true);
+  session.stop(); assert.equal(f.activeTimers(), 0);
+});
+
+test('fast preparation keeps epoch convergence and actor ownership while its ACK is pending', async () => {
+  const f = fixture(), first = f.signed(); f.inject('wss://one.test/', first);
+  for (const url of ['wss://one.test/', 'wss://two.test/']) f.acks.set(url, null);
+  const session = f.create(); session.observe(); f.advance(0);
+  const pending = session.prepareJoin(), rejected = assert.rejects(pending, { name: 'AbortError' });
+  assert.equal(session.snapshot().status, 'publishing'); const oldEvent = f.published[0].event;
+  const older = f.signed({ epoch: { id: 'c'.repeat(64), startedAt: f.now() - 20000 } });
+  f.inject('wss://one.test/', older); f.advance(0);
+  assert.equal(session.snapshot().epochId, JSON.parse(older.content).epoch.id);
+  session.leave(); await rejected;
+  const current = session.prepareJoin(); assert.equal(session.snapshot().status, 'publishing');
+  const actor = session.snapshot().id, event = f.published.at(-1).event;
+  f.sockets[0].respond(['OK', oldEvent.id, true]); f.advance(0);
+  assert.equal(session.snapshot().ready, false); assert.equal(session.snapshot().id, actor);
+  f.sockets[0].respond(['OK', event.id, true]); f.advance(0);
+  const result = await current;
+  assert.equal(result.startedAt, JSON.parse(older.content).epoch.startedAt);
+  assert.equal(result.epochId, JSON.parse(older.content).epoch.id);
+  session.stop(); assert.equal(f.activeTimers(), 0);
+});
+
 test('prepared listener adopts a newly observed active epoch before its buffer commit', async () => {
   const f = fixture(), a = f.create(), pending = a.prepareJoin(); f.advance(1250); const candidate = await pending;
   const b = f.create(), live = await f.join(b); f.advance(0);
