@@ -20,7 +20,7 @@ function fragment(input) {
   };
 }
 
-function startupBuffer(input) {
+export function projectStartupBuffer(input) {
   if (!object(input)) return null;
   return {
     enabled: boolean(value(input, 'enabled')),
@@ -37,6 +37,12 @@ function startupBuffer(input) {
     cancellations: boundedInteger(value(input, 'cancellations'), 1),
     commitStarted: boolean(value(input, 'commitStarted')),
     commitCompleted: boolean(value(input, 'commitCompleted')),
+    targetTime: number(value(input, 'targetTime')),
+    verifiedStart: number(value(input, 'verifiedStart')),
+    verifiedEnd: number(value(input, 'verifiedEnd')),
+    requiredHeadroomMs: number(value(input, 'requiredHeadroomMs')),
+    heldObjects: integer(value(input, 'heldObjects')),
+    heldBytes: integer(value(input, 'heldBytes')),
   };
 }
 
@@ -172,7 +178,7 @@ function sample(input, elapsedMs) {
     playbackFailed: boolean(value(input, 'playbackFailed')),
     playbackFallback: choice(value(input, 'playbackFallback'), ['stalls', 'unexpected-end', 'decode-error', 'player-error']),
     startupPending: boolean(value(input, 'startupPending')), playbackWanted: boolean(value(input, 'playbackWanted')),
-    startupBuffer: startupBuffer(value(input, 'startupBuffer')),
+    startupBuffer: projectStartupBuffer(value(input, 'startupBuffer')),
     hls: hlsState(value(input, 'hls')), mediaSource: mediaSource(value(input, 'mediaSource')),
     visibility: choice(value(input, 'visibility'), ['visible', 'hidden', 'prerender']),
     quality: choice(value(input, 'quality'), ['full', 'preview']),

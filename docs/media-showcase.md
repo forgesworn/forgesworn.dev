@@ -16,6 +16,22 @@ The recording label sits with the source caption below the player. It does
 not cover the picture or Safari’s native fullscreen control when controls
 appear.
 
+The [27 October public pair attempt](evidence/public-pair-startup-red-20261027.json)
+did not complete its planned observation: the first viewer presented 4K after
+4.629 seconds, but the second viewer reached the one-shot startup buffer's
+deadline without presenting a frame. This is a retained failed attempt, not a
+90-second or full-loop qualification. Joining an existing room does not require
+a new start-time commit; the second viewer's unstarted commit hook was expected.
+
+A terminal, unreleased startup barrier now stops that current pipeline and
+restores an explicit Play retry instead of leaving HLS to retry a permanently
+failed loader. Cancelled or retired setups and ordinary retryable HLS errors
+retain their existing ownership rules. This handling does not fix the cause of
+the eight-second startup deadline or extend its deadline. Saved reports retain
+the last observed target, verified interval and required headroom, plus held
+object/byte counts. These are diagnostic snapshots, not proof that those bytes
+remain resident after a failed barrier has been cleared.
+
 The [prepared-adoption phone trace](evidence/physical-safari-prepared-adoption-20261026.json)
 recorded 330.527 seconds and 135 foreground observations on physical iPhone
 Safari at site `4489e74` (controller `8f30da43`, RelaySwarm `e910147`). All
@@ -450,7 +466,9 @@ integer or `null`; missing values are not inferred as zero. Raw SDK records,
 keys, tickets and transfer objects are excluded. Submitted uploads and verified
 pieces in a losing race do not become accepted peer-media credit.
 These attempt counters describe the current SDK generation and may reset after
-peer sharing restarts; compare them only within a continuous generation.
+peer sharing restarts; compare them only within a continuous generation. Terminal
+handling retains the projected startup flags and geometry; these other current
+SDK counters may become unavailable after retirement, with prior samples retained.
 Missing readings, retired pipelines and unsupported properties remain `null`. It excludes addresses,
 SDP, peer identities, credentials and source URLs or filesystem paths. Nothing
 is uploaded by the page; sharing requires the viewer's action. Export handlers

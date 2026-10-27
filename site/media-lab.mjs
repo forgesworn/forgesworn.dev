@@ -2,7 +2,7 @@ import { readInitialLiveStart } from './media-live-start.mjs';
 import { createSourceResponseStats, publicSourceResource, transferBytes } from './media-transfer-stats.mjs?v=20261027-visual-provenance';
 import { createNativePlaybackFallback } from './media-playback-fallback.mjs?v=20261025-prepared-room';
 import { createPlaybackPrime } from './media-playback-prime.mjs?v=20261025-prepared-room';
-import { createPlaybackReport } from './media-playback-report.mjs?v=20261027-visual-provenance';
+import { createPlaybackReport, projectStartupBuffer } from './media-playback-report.mjs?v=20261027-startup-terminal';
 
 const DASH = '—';
 export const observed = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
@@ -979,7 +979,7 @@ async function initialise() {
         lastPlayerError: b.lastPlayerError, playbackFailed: Boolean(s.playbackFailed),
         playbackFallback: root.dataset.playbackFallback ?? null,
         startupPending: s.startupPending, playbackWanted: s.playbackWanted,
-        startupBuffer: s.publicPeer && !s.nativeHls ? metrics?.startupBuffer : null,
+        startupBuffer: s.failedStartupBuffer ?? (s.publicPeer && !s.nativeHls ? metrics?.startupBuffer : null),
         hls: player ? { loadingEnabled: read(player, 'loadingEnabled'), bufferingEnabled: read(player, 'bufferingEnabled'),
           main: main ? { state: read(main, 'state'), sn: read(frag, 'sn'), cc: read(frag, 'cc'), type: read(frag, 'type') } : null } : null,
         mediaSource: mediaSource ? { readyState: read(mediaSource, 'readyState'), streaming: read(mediaSource, 'streaming') } : null,
@@ -1073,7 +1073,8 @@ async function initialise() {
       }, { signal: s.abort.signal });
     }
     video.addEventListener('pause', () => {
-      if (s.priming) return;
+      // Native pause events are queued; a later Play may already own intent.
+      if (!video.paused || s.priming) return;
       endStall();
       s.nativeFallbackPolicy.reset();
       if (s.switchingPlayback) {
@@ -1087,7 +1088,7 @@ async function initialise() {
       if (!local) {
         s.playbackWanted = false; s.startupPending = false;
         s.playbackVersion = (s.playbackVersion ?? 0) + 1;
-        if (s.recordedView && s.hls) { s.hls.stopLoad(); s.recordedLoadStopped = true; }
+        if (s.recordedView && s.hls && !s.recordedLoadStopped) { s.hls.stopLoad(); s.recordedLoadStopped = true; }
       }
       if (!local && !s.finishing) { leaveListener(s); shareWhilePlaying(s, false); }
       if (!local) controls();
@@ -1342,6 +1343,7 @@ async function initialise() {
       s.browser.playerErrors++;
       s.browser.lastPlayerError = { type: data.type, detail: data.details, fatal: data.fatal,
         fragment: data.frag ? { sn: data.frag.sn, cc: data.frag.cc, type: data.frag.type } : null };
+      if (!local && failTerminalStartup(s, player, framePipeline, s.publicPeer)) return;
       if (data.fatal && !local && !s.browser.seenFrame) { publicStartupFailed(s); return; }
       if (data.fatal && !local && s.browser.seenFrame && video.canPlayType('application/vnd.apple.mpegurl')) {
         switchPublicToNative(s, 'player-error'); return;
@@ -1583,7 +1585,10 @@ async function initialise() {
             turnConfiguration: { endpoint: root.dataset.turnCredentialEndpoint ?? null, turnUrl: root.dataset.turnUrl ?? null },
             ...(s.recordedView ? { recordedLive: { recording: s.recording, epochId: s.recordedEpochId } } : {}),
             signal: s.abort.signal, onStats: metrics => {
-              if (peer && session === s && s.publicPeer === peer && !s.nativeHls && !s.finishing) publicDelivery(s, metrics);
+              if (peer && session === s && s.publicPeer === peer && !s.nativeHls && !s.finishing) {
+                publicDelivery(s, metrics);
+                failTerminalStartup(s, player, startupPipeline, peer, metrics);
+              }
             } });
           s.publicPeer = peer;
           if (s.quality === 'full') {
@@ -1631,10 +1636,29 @@ async function initialise() {
     if (restartSetup && current() && needsSetup()) return completePublicStartup(s);
   }
 
+  function failTerminalStartup(s, player, pipeline, peer, metrics) {
+    if (session !== s || s.finishing || s.playbackFailed || s.abort.signal.aborted ||
+        s.playbackWanted === false || !s.listenerWanted || video.paused || video.ended ||
+        !peer || s.publicPeer !== peer || s.hls !== player || s.framePipeline !== pipeline ||
+        pipeline?.player !== player || pipeline.seenFrame || !s.recordedView || s.nativeHls) return false;
+    let barrier, room;
+    try { barrier = (metrics ?? peer.metrics())?.startupBuffer; room = s.listener?.snapshot(); }
+    catch { return false; }
+    if (room?.epochId !== s.recordedEpochId || barrier?.enabled !== true ||
+        barrier.state !== 'failed' || barrier.released !== 0) return false;
+    // The one-shot SDK cannot recover through HLS fragment retries. Keep only
+    // vetted diagnostics before retiring it, then require a fresh trusted Play.
+    s.failedStartupBuffer = projectStartupBuffer(barrier);
+    publicStartupFailed(s);
+    return true;
+  }
+
   function publicStartupFailed(s) {
-    if (session !== s || s.finishing || s.abort.signal.aborted) return;
+    if (session !== s || s.finishing || s.playbackFailed || s.abort.signal.aborted) return;
     s.startupPending = false; s.playbackWanted = false; s.playbackFailed = true;
     s.playbackVersion = (s.playbackVersion ?? 0) + 1;
+    s.hls?.stopLoad();
+    if (s.recordedView) s.recordedLoadStopped = true;
     leaveListener(s); shareWhilePlaying(s, false); video.pause();
     status('This source could not be played. Try the preview or open the reproduction guide.', true);
     controls();

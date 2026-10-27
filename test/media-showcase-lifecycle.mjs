@@ -119,7 +119,7 @@ const fixtures = {
         if(peer.stopped||request!==peer.request)return;
         if(value&&fixture.rejectPeerEnable)throw new Error('Fixture peer preparation failed');
         peer.enabled=value;if(value)fixture.trace.push({kind:'peerReady',peer:fixture.peers.indexOf(peer)});
-      },metrics:()=>fixture.peerMetrics??null,
+      },metrics:()=>peer.currentMetrics??fixture.peerMetrics??null,
         stop(){peer.stopped=true;peer.enabled=false}};fixture.peers.push(peer);return peer;}`,
 };
 const types = { '.html':'text/html','.mjs':'text/javascript','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml' };
@@ -143,6 +143,7 @@ async function open({held=false,heldVisual=false,heldRoomCode=false,heldMetadata
     if(url.pathname==='/media/dejavu-swarm/catalogue-v3.json')await metadataGate;
     if(observeReport&&url.pathname==='/media-playback-report.mjs')return route.fulfill({contentType:'text/javascript',body:`
       import {createPlaybackReport as real} from '/__actual-playback-report.mjs';
+      export {projectStartupBuffer} from '/__actual-playback-report.mjs';
       export function createPlaybackReport(options){const report=real(options);return{
         record(input){const added=report.record(input);if(added)fixture.reportSample=report.snapshot().samples.at(-1);return added},
         snapshot:()=>report.snapshot()
@@ -571,6 +572,142 @@ try {
   assert.equal(await departing.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='source').length),0);
   assert.equal(await departing.page.evaluate(()=>fixture.peers.length),0);
   await close(departing);checks.push('pagehide during decorative import aborts pending startup and destroys its engine');
+
+  const failedStartupMetrics = { enabled:true, startupBuffer:{enabled:true,state:'failed',reason:'deadline',
+    released:0,failures:1,cancellations:0,commitStarted:false,commitCompleted:false,
+    targetTime:3.5,verifiedStart:2,verifiedEnd:6,requiredHeadroomMs:3000,heldObjects:0,heldBytes:0} };
+  for(const notification of ['stats','hls']){
+    const failed=await open({recorded:true,observeReport:true});
+    await failed.page.locator('#public-play').click();await failed.page.evaluate(()=>fixture.releaseRoom());
+    await failed.page.waitForFunction(()=>fixture.trace.some(x=>x.kind==='source'));
+    await failed.page.evaluate(({metrics,notification})=>{
+      fixture.terminalBaseline=fixture.reportSample?.elapsedMs??-1;
+      const peer=fixture.peers.at(-1);peer.currentMetrics=metrics;
+      if(notification==='stats')peer.options.onStats(metrics);
+      else fixture.players.at(-1).handlers.get('error')(null,{type:'networkError',details:'fragLoadError',fatal:false,
+        response:{startupBufferReason:'deadline'},frag:{sn:7,cc:0,type:'main'}});
+    },{metrics:failedStartupMetrics,notification});
+    await failed.page.waitForFunction(()=>fixture.reportSample?.elapsedMs>fixture.terminalBaseline);
+    const terminal=await failed.page.evaluate(()=>({failed:fixture.reportSample.playbackFailed,
+      pending:fixture.reportSample.startupPending,wanted:fixture.reportSample.playbackWanted,
+      enabled:fixture.peers.at(-1).enabled,joined:fixture.listenerSnapshot().joined,
+      loading:fixture.players.at(-1).loadingEnabled,paused:document.getElementById('lab-video').paused,
+      sources:fixture.trace.filter(x=>x.kind==='source').length,barrier:fixture.reportSample.startupBuffer}));
+    assert.equal(terminal.failed,true,'a terminal one-shot startup failure must restore an explicit retry');
+    assert.equal(terminal.pending,false);assert.equal(terminal.wanted,false);assert.equal(terminal.enabled,false);
+    assert.equal(terminal.joined,false);assert.equal(terminal.loading,false);assert.equal(terminal.paused,true);
+    assert.equal(terminal.sources,1,'a failed barrier must not silently restart its deadline');
+    assert.equal(terminal.barrier.state,'failed');assert.equal(terminal.barrier.reason,'deadline');
+    assert.deepEqual(['targetTime','verifiedStart','verifiedEnd','requiredHeadroomMs','heldObjects','heldBytes'].map(key=>terminal.barrier[key]),
+      [3.5,2,6,3000,0,0],'last observed diagnostic geometry survives peer retirement without claiming residency');
+    assert.notEqual(await failed.page.locator('#public-play').innerText(),'Loading the mix…');
+    assert.equal(await failed.page.locator('#public-play').isEnabled(),true);
+    await failed.page.evaluate(()=>{fixture.terminalStops=fixture.trace.filter(x=>x.kind==='stopLoad').length;
+      const peer=fixture.peers.at(-1);peer.options.onStats(peer.currentMetrics)});
+    assert.equal(await failed.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='stopLoad').length),
+      await failed.page.evaluate(()=>fixture.terminalStops),'duplicate failed metrics cannot repeatedly retire playback');
+    if(notification==='stats'){
+      await failed.page.locator('#public-play').click();
+      await failed.page.waitForFunction(()=>fixture.peers.length===2&&fixture.trace.filter(x=>x.kind==='source').length===2);
+      assert.equal(await failed.page.evaluate(()=>fixture.peers.at(-1).enabled),true,'a fresh trusted retry retains peer eligibility');
+    }
+    await close(failed);checks.push('terminal startup barrier '+notification+' restores one honest retry without restarting its deadline');
+  }
+  const nonterminal=await open({recorded:true,observeReport:true});
+  await nonterminal.page.locator('#public-play').click();await nonterminal.page.evaluate(()=>fixture.releaseRoom());
+  await nonterminal.page.waitForFunction(()=>fixture.trace.some(x=>x.kind==='source'));
+  await nonterminal.page.evaluate(()=>{fixture.controlBaseline=fixture.reportSample?.elapsedMs??-1;
+    const peer=fixture.peers.at(-1);peer.currentMetrics={startupBuffer:{enabled:true,state:'buffering',released:0}};
+    fixture.players.at(-1).handlers.get('error')(null,{type:'networkError',details:'fragLoadError',fatal:false});
+    peer.options.onStats({startupBuffer:{enabled:true,state:'cancelled',released:0,reason:'caller-abort'}});
+  });
+  await nonterminal.page.waitForFunction(()=>fixture.reportSample?.elapsedMs>fixture.controlBaseline);
+  assert.equal(await nonterminal.page.evaluate(()=>fixture.reportSample.playbackFailed),false,'ordinary retryable errors and cancellation are not terminal barrier failures');
+  await nonterminal.page.evaluate(metrics=>{document.getElementById('lab-video').pause();
+    fixture.controlBaseline=fixture.reportSample?.elapsedMs??-1;fixture.peers.at(-1).options.onStats(metrics)},failedStartupMetrics);
+  await nonterminal.page.waitForFunction(()=>fixture.reportSample?.elapsedMs>fixture.controlBaseline);
+  assert.equal(await nonterminal.page.evaluate(()=>fixture.reportSample.playbackFailed),false,'a paused intent rejects old failed metrics');
+  await close(nonterminal);checks.push('ordinary nonfatal errors, cancelled barriers and paused old metrics remain nonterminal');
+
+  const stale=await open({recorded:true,observeReport:true});
+  await stale.page.locator('#public-play').click();await stale.page.evaluate(()=>fixture.releaseRoom());
+  await stale.page.waitForFunction(()=>fixture.peers.length===1&&fixture.trace.some(x=>x.kind==='source'));
+  await stale.page.evaluate(()=>{fixture.oldPeer=fixture.peers[0];fixture.oldPlayer=fixture.players[0];fixture.replaceEpoch()});
+  await stale.page.waitForFunction(()=>fixture.peers.length===2&&fixture.players.length===2);
+  await stale.page.evaluate(metrics=>{fixture.controlBaseline=fixture.reportSample?.elapsedMs??-1;
+    fixture.oldPeer.currentMetrics=metrics;fixture.oldPeer.options.onStats(metrics);
+    fixture.oldPlayer.handlers.get('error')(null,{type:'networkError',details:'fragLoadError',fatal:false});
+  },failedStartupMetrics);
+  await stale.page.waitForFunction(()=>fixture.reportSample?.elapsedMs>fixture.controlBaseline);
+  assert.equal(await stale.page.evaluate(()=>fixture.reportSample.playbackFailed),false,'retired epoch peer/player failures cannot fail the replacement');
+  await close(stale);checks.push('retired epoch peer and player failures cannot poison the current pipeline');
+
+  const presented=await open({recorded:true,observeReport:true});
+  await presented.page.locator('#public-play').click();await presented.page.evaluate(()=>fixture.releaseRoom());
+  await presented.page.waitForFunction(()=>fixture.trace.some(x=>x.kind==='source'));
+  await presented.page.evaluate(()=>{fixture.finishPlay();fixture.presentFrame()});
+  await presented.page.waitForFunction(()=>fixture.reportSample?.hasPresentedFrame===true);
+  await presented.page.evaluate(metrics=>{fixture.controlBaseline=fixture.reportSample.elapsedMs;
+    const peer=fixture.peers.at(-1);peer.currentMetrics=metrics;peer.options.onStats(metrics);
+    fixture.players.at(-1).handlers.get('error')(null,{type:'networkError',details:'fragLoadError',fatal:false});
+  },failedStartupMetrics);
+  await presented.page.waitForFunction(()=>fixture.reportSample?.elapsedMs>fixture.controlBaseline);
+  assert.equal(await presented.page.evaluate(()=>fixture.reportSample.playbackFailed),false,'a presented pipeline retains normal nonfatal HLS recovery');
+  await close(presented);checks.push('post-frame nonfatal HLS errors retain ordinary recovery authority');
+
+  const queuedOldPause=await open({recorded:true,observeReport:true});
+  await queuedOldPause.page.locator('#public-play').click();await queuedOldPause.page.evaluate(()=>fixture.releaseRoom());
+  await queuedOldPause.page.waitForFunction(()=>fixture.trace.some(x=>x.kind==='source'));
+  await queuedOldPause.page.evaluate(()=>{fixture.finishPlay();fixture.presentFrame();
+    HTMLMediaElement.prototype.pause=function(){fixture.paused=true;
+      for(const {reject}of fixture.playWaiters.splice(0))reject(new DOMException('Paused','AbortError'));
+      fixture.deliverQueuedPause=()=>this.dispatchEvent(new Event('pause'));
+    };
+    document.getElementById('lab-video').pause();
+  });
+  // A native-controls resume can precede delivery of the queued pause event.
+  await queuedOldPause.page.evaluate(()=>{void document.getElementById('lab-video').play().catch(()=>{})});
+  await queuedOldPause.page.waitForFunction(()=>fixture.paused===false);
+  await queuedOldPause.page.evaluate(()=>{fixture.controlBaseline=fixture.reportSample.elapsedMs;fixture.deliverQueuedPause()});
+  await queuedOldPause.page.waitForFunction(()=>fixture.reportSample?.elapsedMs>fixture.controlBaseline);
+  assert.deepEqual(await queuedOldPause.page.evaluate(()=>({wanted:fixture.reportSample.playbackWanted,
+    failed:fixture.reportSample.playbackFailed,paused:fixture.paused})),{wanted:true,failed:false,paused:false},
+    'a queued old pause cannot cancel a newer unpaused Play intent');
+  await queuedOldPause.page.evaluate(()=>{fixture.controlBaseline=fixture.reportSample.elapsedMs;
+    document.getElementById('lab-video').pause();fixture.deliverQueuedPause()});
+  await queuedOldPause.page.waitForFunction(()=>fixture.reportSample?.elapsedMs>fixture.controlBaseline);
+  assert.equal(await queuedOldPause.page.evaluate(()=>fixture.reportSample.playbackWanted),false,
+    'a genuine currently paused element still withdraws playback intent');
+  await close(queuedOldPause);checks.push('queued old pause cannot cancel a newer Play while a genuine pause still leaves');
+
+  const laterPipeline=await open({recorded:true,observeReport:true});
+  await laterPipeline.page.locator('#public-play').click();await laterPipeline.page.evaluate(()=>fixture.releaseRoom());
+  await laterPipeline.page.waitForFunction(()=>fixture.trace.some(x=>x.kind==='source'));
+  await laterPipeline.page.evaluate(()=>{fixture.finishPlay();fixture.presentFrame()});
+  await laterPipeline.page.waitForFunction(()=>fixture.reportSample?.hasPresentedFrame===true);
+  await laterPipeline.page.evaluate(()=>{fixture.priorFrames=fixture.reportSample.presentedFrames;fixture.replaceEpoch()});
+  await laterPipeline.page.waitForFunction(()=>fixture.players.length===2&&fixture.peers.length===2);
+  assert.equal(await laterPipeline.page.evaluate(()=>fixture.peers.at(-1).options.startupBufferNeeded()),true,
+    'the replacement pipeline has not presented a frame despite cumulative prior frames');
+  await laterPipeline.page.evaluate(metrics=>{
+    // Native pause changes state synchronously but queues its notification.
+    // This case keeps that ordering instead of the fixture's usual sync event.
+    HTMLMediaElement.prototype.pause=function(){fixture.paused=true;
+      for(const {reject}of fixture.playWaiters.splice(0))reject(new DOMException('Paused','AbortError'));
+      setTimeout(()=>{fixture.queuedTerminalPauses=(fixture.queuedTerminalPauses??0)+1;this.dispatchEvent(new Event('pause'))},0);
+    };
+    fixture.controlBaseline=fixture.reportSample.elapsedMs;
+    const peer=fixture.peers.at(-1);peer.currentMetrics=metrics;peer.options.onStats(metrics);
+  },failedStartupMetrics);
+  await laterPipeline.page.waitForFunction(()=>fixture.queuedTerminalPauses===1&&fixture.reportSample?.elapsedMs>fixture.controlBaseline);
+  assert.match(await laterPipeline.page.locator('#lab-status').innerText(),/could not be played/,
+    'a queued pause from a failed replacement cannot overwrite its terminal retry message');
+  assert.equal(await laterPipeline.page.locator('#public-play').isEnabled(),true);
+  assert.deepEqual(await laterPipeline.page.evaluate(()=>({failed:fixture.reportSample.playbackFailed,
+    pending:fixture.reportSample.startupPending,wanted:fixture.reportSample.playbackWanted,
+    framesPreserved:fixture.reportSample.presentedFrames===fixture.priorFrames})),
+    {failed:true,pending:false,wanted:false,framesPreserved:true});
+  await close(laterPipeline);checks.push('terminal replacement failure keeps its retry message after queued pause without resetting prior frames');
 
   for(const kind of ['hls','media']){
     const failed=await open();await failed.page.locator('#public-play').click();await failed.page.evaluate(()=>fixture.releaseRoom());
