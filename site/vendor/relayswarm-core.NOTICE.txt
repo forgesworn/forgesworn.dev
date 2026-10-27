@@ -1,5 +1,5 @@
 RelaySwarm Rust/WebAssembly core
-https://github.com/forgesworn/relayswarm/tree/f923058503778dea2427a81330da04cce80a95c2
+https://github.com/forgesworn/relayswarm/tree/b75d71bde9aa836e45b27d26d569353530a955d2
 
 MIT License
 
