@@ -1,6 +1,6 @@
 // A bounded picture of local video measurements and fresh listener reports.
 // Reported links stay visually distinct from transfers observed in this browser.
-import { transferBytes as bytes } from './media-transfer-stats.mjs?v=20261025-prepared-room';
+import { transferBytes as bytes } from './media-transfer-stats.mjs?v=20261027-visual-provenance';
 const NS = 'http://www.w3.org/2000/svg';
 export const MAX_VISUAL_PEERS = 10;
 export const TRAFFIC_WINDOW_MS = 10_000;
@@ -39,6 +39,23 @@ function freshReport(member, now) {
   }
   return { peerId: report.peerId, sampledAt: report.sampledAt, expiresAt,
     originBytes: report.originBytes, peerBytes: report.peerBytes, uploadedBytes: report.uploadedBytes, connections };
+}
+
+export function sourceProvenance(metrics = {}) {
+  const completeNetwork = counter(metrics.sourceNetworkBytes), completeCache = counter(metrics.sourceCacheBytes);
+  const network = completeNetwork ?? counter(metrics.sourceNetworkBodyBytesLowerBound);
+  const cached = completeCache ?? counter(metrics.sourceCacheBodyBytesLowerBound);
+  const networkLowerBound = completeNetwork === null && network !== null;
+  const cacheLowerBound = completeCache === null && cached !== null;
+  const coverage = completeNetwork !== null && completeCache !== null ? 'complete' :
+    network !== null || cached !== null ? 'partial' : 'unavailable';
+  const classified = (value, lowerBound, label) => value === null ? `${label} unavailable` : `${lowerBound ? 'at least ' : ''}${bytes(value)} ${label}`;
+  let text = 'Source network/cache split unavailable. Already loaded video can still be shared.';
+  if (coverage !== 'unavailable') text = `Source bodies${coverage === 'partial' ? ' (partial timing)' : ''}: ` +
+    `${classified(network, networkLowerBound, 'network')} · ${classified(cached, cacheLowerBound, 'browser cache')}.`;
+  else if (!Object.hasOwn(metrics, 'sourceNetworkBytes') && !Object.hasOwn(metrics, 'sourceNetworkBodyBytesLowerBound') && counter(metrics.originBytes) !== null)
+    text = `${bytes(metrics.originBytes)} loaded from source; network/cache split unavailable.`;
+  return { networkBytes: network, cacheBytes: cached, networkLowerBound, cacheLowerBound, coverage, text };
 }
 
 // Presence identifies a room member. Its optional telemetry claims an SDK key;
@@ -87,10 +104,12 @@ export function observedRoomTopology(metrics = {}, now = Date.now(), remembered 
   const byId = new Map(visible.map(item => [item.id, item]));
   // Logical source loads include browser cache hits. New players supply the
   // separately observed network body count; null means timing is unavailable.
-  const networkSource = Object.hasOwn(metrics, 'sourceNetworkBytes');
+  const source = sourceProvenance(metrics);
+  const networkSource = Object.hasOwn(metrics, 'sourceNetworkBytes') || Object.hasOwn(metrics, 'sourceNetworkBodyBytesLowerBound');
   const edges = [{ id: 'origin-self', kind: 'origin', from: 'origin', to: self.id, fromPeerId: null, toPeerId: viewerId,
     forward: { sourceId: networkSource ? 'local-network' : 'local-origin',
-      value: counter(networkSource ? metrics.sourceNetworkBytes : metrics.originBytes), sampledAt: now }, reverse: null }];
+      value: networkSource ? source.networkBytes : counter(metrics.originBytes), sampledAt: now,
+      basis: networkSource ? 'network-body' : 'source-load', lowerBound: networkSource && source.networkLowerBound }, reverse: null }];
   let unmappedConnections = 0;
   for (const peer of peers) {
     const memberId = roomAvailable ? resolveMember(peer.peerId) : `connection-${peer.id}`;
@@ -99,8 +118,8 @@ export function observedRoomTopology(metrics = {}, now = Date.now(), remembered 
     member.connected = true; member.connectionId = peer.id; member.peerId = peer.peerId ?? member.peerId;
     edges.push({ id: `native-${peer.id}`, kind: 'native-peer', from: self.id, to: member.id,
       fromPeerId: viewerId, toPeerId: peer.peerId ?? null, connectionId: peer.id, relay: peer.kind === 'relay',
-      forward: { sourceId: `local-${peer.id}-sent`, value: peer.mediaBytesSent, sampledAt: now },
-      reverse: { sourceId: `local-${peer.id}-received`, value: peer.verifiedMediaBytesReceived, sampledAt: now } });
+      forward: { sourceId: `local-${peer.id}-sent`, value: peer.mediaBytesSent, sampledAt: now, basis: 'submitted-upload' },
+      reverse: { sourceId: `local-${peer.id}-received`, value: peer.verifiedMediaBytesReceived, sampledAt: now, basis: 'accepted-peer-media' } });
   }
   const reportedPairs = new Map();
   for (const member of visible) {
@@ -108,7 +127,7 @@ export function observedRoomTopology(metrics = {}, now = Date.now(), remembered 
     if (!report || ambiguous.has(report.peerId) || resolveMember(report.peerId) !== member.id) continue;
     edges.push({ id: `origin-${member.id}`, kind: 'reported-origin', from: 'origin', to: member.id,
       fromPeerId: null, toPeerId: report.peerId,
-      forward: { sourceId: `reported-origin-${member.id}-${report.peerId}`, value: report.originBytes, sampledAt: report.sampledAt }, reverse: null });
+      forward: { sourceId: `reported-origin-${member.id}-${report.peerId}`, value: report.originBytes, sampledAt: report.sampledAt, basis: 'reported-source-load' }, reverse: null });
     for (const connection of report.connections) {
       const otherId = resolveMember(connection.peerId), other = byId.get(otherId);
       if (!other || otherId === member.id || otherId === self.id) continue;
@@ -125,7 +144,8 @@ export function observedRoomTopology(metrics = {}, now = Date.now(), remembered 
       const ownForward = member.id === from;
       const sentDirection = ownForward ? 'forward' : 'reverse', receivedDirection = ownForward ? 'reverse' : 'forward';
       const observation = (value, direction, verified) => ({ value, sampledAt: report.sampledAt,
-        sourceId: `reported-${member.id}-${report.peerId}-${direction}`, verified });
+        sourceId: `reported-${member.id}-${report.peerId}-${direction}`, verified,
+        basis: verified ? 'reported-accepted-peer-media' : 'reported-submitted-upload' });
       if (!pair[sentDirection]?.verified) pair[sentDirection] = observation(connection.sentBytes, 'sent', false);
       pair[receivedDirection] = observation(connection.receivedBytes, 'received', true);
       pair[ownForward ? 'fromPeerId' : 'toPeerId'] = report.peerId;
@@ -133,7 +153,7 @@ export function observedRoomTopology(metrics = {}, now = Date.now(), remembered 
     }
   }
   edges.push(...reportedPairs.values());
-  return { self, members: visible, edges, roomAvailable, roomMemberCount: members.length, unmappedConnections, ambiguousClaims: ambiguous.size,
+  return { self, members: visible, edges, source, roomAvailable, roomMemberCount: members.length, unmappedConnections, ambiguousClaims: ambiguous.size,
     connectedPeers: peers.length };
 }
 
@@ -209,6 +229,18 @@ export function swarmLayout(availableWidth, peerCount) {
 }
 
 function createStatistics(container) {
+  let provenance = container.dataset.provenance ? document.getElementById(container.dataset.provenance) : null;
+  const ownProvenance = !provenance;
+  if (!provenance) {
+    provenance = document.createElement('p'); provenance.className = 'swarm-picture-note swarm-provenance';
+    container.insertAdjacentElement('afterend', provenance);
+  }
+  const sourceNote = document.createElement('span'); sourceNote.dataset.swarmSourceProvenance = '';
+  const peerNote = document.createElement('span');
+  peerNote.textContent = 'Your uploads are submitted data; incoming peer video is accepted here.';
+  const reportNote = document.createElement('span');
+  reportNote.textContent = 'Dashed source feeds are listener-reported loads and may include cache.';
+  provenance.replaceChildren(sourceNote, peerNote, reportNote);
   let root = container.dataset.statistics ? document.getElementById(container.dataset.statistics) : null;
   const owned = !root;
   if (!root) {
@@ -229,6 +261,7 @@ function createStatistics(container) {
   const value = strength.querySelector('[data-swarm-strength-value]'), meter = strength.querySelector('[data-swarm-strength-meter]'), note = strength.querySelector('[data-swarm-strength-note]');
   const rows = new Map();
   return {
+    source(reading) { sourceNote.textContent = reading.text; provenance.dataset.timingCoverage = reading.coverage; },
     strength(share, originRate, peerRate) {
       const percentage = share === null ? null : Math.round(share * 100);
       value.textContent = percentage === null ? 'Waiting for video traffic' : `${percentage}%`;
@@ -251,9 +284,10 @@ function createStatistics(container) {
           element.append(route, forward, reverse); linkSlot.append(element); row = { element, name, scope, forward, reverse }; rows.set(edge.id, row);
         }
         row.name.textContent = `${names.get(edge.from)} ${edge.reverse ? '↔' : '→'} ${names.get(edge.to)}`;
-        row.scope.textContent = edge.kind === 'origin' ? edge.forward.sourceId === 'local-network' ? 'Network response bodies measured here' : 'Loaded source · may be cached' :
-          edge.kind === 'reported-origin' ? 'Listener report · loaded source may be cached' :
-          edge.kind.startsWith('reported') ? 'Listener report' : 'Measured here';
+        row.scope.textContent = edge.kind === 'origin' ? edge.forward.sourceId === 'local-network' ?
+          `Network response bodies measured here${edge.forward.lowerBound ? ' · partial timing' : ''}` : 'Loaded source · may be cached' :
+          edge.kind === 'reported-origin' ? 'Listener-reported source loads · may include cache' :
+          edge.kind.startsWith('reported') ? 'Listener report' : 'Submitted uploads / accepted peer video';
         for (const direction of ['forward', 'reverse']) {
           const reading = readings.find(item => item.edge === edge && item.direction === direction), cell = row[direction];
           cell.hidden = !reading;
@@ -262,10 +296,13 @@ function createStatistics(container) {
           const known = edge[direction]?.value !== null;
           cell.textContent = known ? `${bytes(rate)}/s ${direction === 'forward' ? '→' : '←'}` : 'Measurement unavailable';
           cell.dataset.bytesPerSecond = known ? String(rate) : '';
+          cell.dataset.measurementBasis = edge[direction].basis;
+          cell.dataset.lowerBound = String(edge[direction].lowerBound === true);
         }
       }
     },
-    destroy() { if (owned) root.remove(); else { strengthSlot.replaceChildren(); linkSlot.replaceChildren(); } },
+    destroy() { if (owned) root.remove(); else { strengthSlot.replaceChildren(); linkSlot.replaceChildren(); }
+      if (ownProvenance) provenance.remove(); },
   };
 }
 
@@ -273,7 +310,7 @@ function drawSwarmVisual(container, context) {
   const reduced = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)');
   const svg = make('svg', { role: 'img', class: 'swarm-canvas', preserveAspectRatio: 'xMidYMid meet' });
   const title = make('title', {}, 'Your view of the listening room');
-  const description = make('desc', {}, 'Short names identify the real room members. Solid links are measured here; dashed links are listener reports. Moving dots represent measured video batches. The broad glow around Broadcast follows the music and does not represent network traffic. Rates and delivery statistics are below the picture.');
+  const description = make('desc', {}, 'Short names identify the real room members. Local source dots count classified network response bodies; timing gaps remain unknown. Outgoing peer dots count submitted uploads, incoming peer dots count accepted video. Dashed links are listener reports; their source loads may include cache. The broad glow around Broadcast follows the music and does not represent network traffic. Coverage and delivery statistics are below the picture.');
   const style = make('style', {}, `
     .swarm-node text{font-family:Inter,system-ui,sans-serif;fill:#dfe6d6}
     .swarm-label{font-size:12px;font-weight:500;letter-spacing:-.12px}
@@ -439,7 +476,8 @@ function drawSwarmVisual(container, context) {
         path.setAttribute('stroke-opacity', rate > 0 ? reported ? .28 : .62 : 0);
         path.setAttribute('stroke-dasharray', reported ? '3 7' : edge.relay ? '2 4' : '');
         Object.assign(path.dataset, { direction: edge.kind === 'native-peer' ? reverse ? 'download' : 'upload' : direction,
-          bytesPerSecond: String(rate), cumulativeBytes: String(edge[direction].value ?? '') });
+          bytesPerSecond: String(rate), cumulativeBytes: String(edge[direction].value ?? ''),
+          measurementBasis: edge[direction].basis, lowerBound: String(edge[direction].lowerBound === true) });
         record.group.dataset[reverse ? 'receivedBps' : 'sentBps'] = String(rate);
         if (playing && !silent) fly(shape, colour, reading.delta, source, edge.id);
       }
@@ -454,14 +492,15 @@ function drawSwarmVisual(container, context) {
       peerRate = context.strength.observe('peer', peerValue, now, now).rate;
     } else context.strength.clear();
     const share = playing && originValue !== null && peerValue !== null ? peerDeliveryShare(originRate, peerRate) : null;
-    context.statistics.strength(share, originRate, peerRate); context.statistics.links(model, readings, playing);
+    context.statistics.source(model.source); context.statistics.strength(share, originRate, peerRate); context.statistics.links(model, readings, playing);
     container.dataset.peerSharePercent = share === null ? '' : String(Math.round(share * 100));
     container.dataset.strengthScope = 'local-verified-video-share-10s';
     container.dataset.connectedPeers = String(model.connectedPeers); container.dataset.observedPeers = String(model.members.length);
     container.dataset.roomMembers = String(model.roomMemberCount); container.dataset.unmappedConnections = String(model.unmappedConnections);
     container.dataset.originBytes = String(number(metrics.originBytes)); container.dataset.peerBytes = String(number(metrics.peerBytes));
     container.dataset.uploadedBytes = String(number(metrics.uploadedBytes));
-    svg.setAttribute('aria-label', `Broadcast, your browser and ${model.members.length} other observed listener${model.members.length === 1 ? '' : 's'}. Solid links are measured here; dashed links are listener reports. Rates and delivery statistics follow below.`);
+    container.dataset.sourceTimingCoverage = model.source.coverage;
+    svg.setAttribute('aria-label', `Broadcast, your browser and ${model.members.length} other observed listener${model.members.length === 1 ? '' : 's'}. Local source timing is ${model.source.coverage}. Uploads are submitted data; incoming peer video is accepted here. Dashed source feeds are listener-reported loads and may include cache. Statistics follow below.`);
   }
   return { update, setAudioPulse, stopMotion,
     destroy() { stopMotion(); destroyed = true; members.clear(); edges.clear(); container.replaceChildren(); } };

@@ -30,6 +30,93 @@ test('unavailable observations stay null while genuine measured zeros survive', 
   assert.equal(sample.totalVideoFrames, null); assert.equal(sample.connections, null);
 });
 
+test('peer attempts distinguish verified pieces lost to HTTP from commitment refusal without crediting playback', () => {
+  const p = fixture();
+  p.report.record({ peerBytes: 0, peerAttemptDiagnostics: {
+    integrityRejected: 0,
+    diagnostics: { zeroBudgetPeerRaces: 3, zeroBudgetPeerRaceWins: 0, commitmentUnavailable: 0,
+      commitmentRejected: 0, peerCorrupt: 0, peerNoFit: 1,
+      eligibility: { 'no-have-no-wait': 2, 'have-at-entry': 3, 'no-budget': 4 } },
+    core: { multiHolder: { transfers: 3, delivered: 0, failed: 1, bans: 0, abandoned: 2,
+      peerBytes: 131072, unusedBytes: 65536, originRangesIgnored: 0 } },
+  } });
+  p.at(1200);
+  p.report.record({ peerBytes: 0, peerAttemptDiagnostics: {
+    integrityRejected: 7, diagnostics: { commitmentRejected: 7, peerCorrupt: 0, commitmentUnavailable: 1 },
+    core: { multiHolder: { transfers: 0, delivered: 0, peerBytes: 0 } },
+  } });
+  const [partial, rejected] = p.report.snapshot().samples;
+  assert.equal(partial.peerBytes, 0, 'attempted verified pieces are not accepted playback bytes');
+  assert.deepEqual(partial.peerAttemptDiagnostics, {
+    zeroBudgetPeerRaces: 3, zeroBudgetPeerRaceWins: 0,
+    multiHolderTransfers: 3, multiHolderDelivered: 0, multiHolderFailed: 1, multiHolderBans: 0,
+    multiHolderAbandoned: 2, multiHolderPeerBytes: 131072, multiHolderUnusedBytes: 65536,
+    multiHolderOriginRangesIgnored: 0, commitmentUnavailable: 0, integrityRejected: 0,
+    commitmentRejected: 0, peerCorrupt: 0, peerNoFit: 1,
+    noHaveNoWait: 2, haveAtEntry: 3, noBudget: 4,
+  });
+  assert.equal(rejected.peerAttemptDiagnostics.commitmentRejected, 7);
+  assert.equal(rejected.peerAttemptDiagnostics.multiHolderTransfers, 0);
+  assert.equal(rejected.peerAttemptDiagnostics.multiHolderPeerBytes, 0);
+  assert.equal(rejected.peerBytes, 0);
+});
+
+test('peer diagnostics keep missing or invalid counters unknown and never serialize SDK payloads', () => {
+  const p = fixture(); p.report.record({});
+  p.at(1200); p.report.record({ peerAttemptDiagnostics: { integrityRejected: 0, diagnostics: {} } });
+  p.at(2400); p.report.record({ peerAttemptDiagnostics: [] });
+  const missing = p.report.snapshot().samples;
+  assert.equal(missing[0].peerAttemptDiagnostics, null);
+  assert.equal(missing[2].peerAttemptDiagnostics, null);
+  assert.equal(Object.keys(missing[1].peerAttemptDiagnostics).length, 18);
+  assert.ok(Object.values(missing[1].peerAttemptDiagnostics).every(value => value === null),
+    'an older SDK cannot manufacture zero diagnostics');
+  let serializedUnknown = false;
+  const secret = { toJSON() { serializedUnknown = true; return 'credential-secret'; } };
+  const poisoned = { integrityRejected: 8, diagnostics: {
+    zeroBudgetPeerRaces: '0', zeroBudgetPeerRaceWins: -1, commitmentUnavailable: NaN,
+    commitmentRejected: Number.MAX_SAFE_INTEGER + 1, peerCorrupt: Infinity, peerNoFit: 0.5,
+    eligibility: { 'no-have-no-wait': 0, 'have-at-entry': Number.MAX_SAFE_INTEGER, 'no-budget': secret,
+      'private-key': secret }, records: [secret], ticket: 'ticket-secret', credential: 'credential-secret',
+  }, core: { multiHolder: { transfers: 0, delivered: 0, failed: null, bans: false, abandoned: {},
+    peerBytes: -1, unusedBytes: 0, originRangesIgnored: '1', holder: secret, key: secret,
+    url: 'https://private.invalid/credential-secret' } },
+    topology: secret, sdp: 'sdp-secret', addresses: '192.0.2.1', owner: secret };
+  p.at(3600); p.report.record({ peerAttemptDiagnostics: poisoned });
+  const row = p.report.snapshot().samples.at(-1), d = row.peerAttemptDiagnostics;
+  assert.equal(d.multiHolderTransfers, 0); assert.equal(d.multiHolderUnusedBytes, 0);
+  assert.equal(d.noHaveNoWait, 0); assert.equal(d.haveAtEntry, Number.MAX_SAFE_INTEGER);
+  for (const name of ['zeroBudgetPeerRaces', 'zeroBudgetPeerRaceWins', 'commitmentUnavailable',
+    'commitmentRejected', 'peerCorrupt', 'peerNoFit', 'multiHolderFailed', 'multiHolderBans',
+    'multiHolderAbandoned', 'multiHolderPeerBytes', 'multiHolderOriginRangesIgnored', 'integrityRejected', 'noBudget']) {
+    assert.equal(d[name], null, name);
+  }
+  const output = JSON.stringify(p.report.snapshot());
+  assert.equal(serializedUnknown, false);
+  assert.doesNotMatch(output, /secret|private-key|private\.invalid|192\.0\.2\.1|"(?:records|ticket|credential|topology|sdp|addresses|owner)"\s*:/);
+  assert.equal(p.report.snapshot().maxSamples, 240);
+  p.at(4800); p.report.record({ peerAttemptDiagnostics: {
+    core: { multiHolder: Object.assign([], { transfers: 3 }) },
+  } });
+  assert.equal(p.report.snapshot().samples.at(-1).peerAttemptDiagnostics.multiHolderTransfers, null);
+});
+
+test('unreadable peer diagnostics remain unknown without discarding or aliasing playback observations', () => {
+  const p = fixture();
+  const input = { position: 3, peerAttemptDiagnostics: { core: {}, diagnostics: {
+    commitmentRejected: 0, peerCorrupt: 0, peerNoFit: 2 }, integrityRejected: 0 } };
+  Object.defineProperty(input.peerAttemptDiagnostics.core, 'multiHolder', { get() { throw new Error('private getter'); } });
+  Object.defineProperty(input.peerAttemptDiagnostics.diagnostics, 'commitmentUnavailable', { get() { throw new Error('private getter'); } });
+  assert.equal(p.report.record(input), true);
+  input.peerAttemptDiagnostics.diagnostics.peerNoFit = 99;
+  const first = p.report.snapshot().samples[0];
+  assert.equal(first.position, 3); assert.equal(first.peerAttemptDiagnostics.multiHolderTransfers, null);
+  assert.equal(first.peerAttemptDiagnostics.commitmentUnavailable, null);
+  assert.equal(first.peerAttemptDiagnostics.peerNoFit, 2);
+  first.peerAttemptDiagnostics.peerNoFit = 100;
+  assert.equal(p.report.snapshot().samples[0].peerAttemptDiagnostics.peerNoFit, 2);
+});
+
 test('skipped ticks do not invoke native observation work', () => {
   const p = fixture(); let reads = 0;
   const observe = () => { reads++; return { position: reads }; };

@@ -4,7 +4,7 @@
 // verifier; this is local attestation, not a live broadcaster signing service.
 import { createHlsSwarm, commitmentContent, commitmentPieceSize, segmentMediaContext, KIND_SEGMENT_COMMITMENT, finalizeEvent,
   generateSecretKey, relayswarmBuild } from './vendor/media-peer-demo.js?v=20261026-prepared-adoption';
-import { observeOriginLoader } from './media-transfer-stats.mjs?v=20261025-prepared-room';
+import { observeOriginLoader } from './media-transfer-stats.mjs?v=20261027-visual-provenance';
 import { createPublicTurnCredentials } from './media-turn-credentials.mjs?v=20261025-prepared-room';
 import { parseRecordedManifest, createRecordedLive } from './media-recorded-live.mjs?v=20261025-prepared-room';
 export { createRecordedLive };
@@ -38,6 +38,10 @@ const RECORDED_MANIFESTS = Object.freeze({
 });
 const preparedRecordings = new WeakSet(), recordingMetadata = new WeakMap(), recordedSources = new Map();
 const MAX_RECORDED_MANIFEST_BYTES = 65_536;
+const diagnosticCount = (input, key) => {
+  try { const counter = input?.[key]; return Number.isSafeInteger(counter) && counter >= 0 ? counter : null; }
+  catch { return null; }
+};
 const n = value => Number.isFinite(value) && value >= 0 ? value : 0;
 const hex = bytes => Array.from(bytes, value => value.toString(16).padStart(2, '0')).join('');
 const digest = async value => hex(new Uint8Array(await crypto.subtle.digest('SHA-256', value)));
@@ -253,12 +257,16 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
         signallingConnections: [...sockets].filter(socket => socket.readyState < 2).length,
         heldBytes: n(live?.bytes.held), heldHighWaterBytes: highWaterBytes },
       diagnostics: { signalErrors, noLocalRoutes, turn: turn.snapshot(), dialling: n(live?.peers.dialling), dialsStarted: n(live?.peers.dialsStarted),
-        disabledReason: live?.disabledReason ?? null, commitmentUnavailable: n(live?.segments.commitmentUnavailable),
+        disabledReason: live?.disabledReason ?? null, commitmentUnavailable: diagnosticCount(live?.segments, 'commitmentUnavailable'),
+        commitmentRejected: diagnosticCount(live?.segments, 'commitmentRejected'),
+        peerCorrupt: diagnosticCount(live?.segments, 'peerCorrupt'),
+        peerNoFit: diagnosticCount(live?.segments, 'peerNoFit'),
         signallingConnected: n(live?.relays.connected), signallingPublished: n(live?.relays.published),
         signallingPublishErrors: n(live?.relays.publishErrors), relayRejected: n(live?.relays.rejected),
         eligibility: live?.peerEligibilityDiagnostics?.counters, requests: live?.peerRequestDiagnostics?.counters,
         uploadRefusals: live?.uploadRefusalDiagnostics?.counters,
-        zeroBudgetPeerRaces: n(live?.segments.zeroBudgetPeerRaces), zeroBudgetPeerRaceWins: n(live?.segments.zeroBudgetPeerRaceWins) },
+        zeroBudgetPeerRaces: diagnosticCount(live?.segments, 'zeroBudgetPeerRaces'),
+        zeroBudgetPeerRaceWins: diagnosticCount(live?.segments, 'zeroBudgetPeerRaceWins') },
       topology: { connections: acceptedConnections.filter(connection => peerObservations.has(connection)).map(connection => {
         const observation = peerObservations.get(connection);
         return { id: observation.id, peerId: identities.get(connection), state: connection.connectionState, iceState: connection.iceConnectionState,

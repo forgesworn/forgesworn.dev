@@ -1,8 +1,8 @@
 import { readInitialLiveStart } from './media-live-start.mjs';
-import { createSourceResponseStats, publicSourceResource, transferBytes } from './media-transfer-stats.mjs?v=20261025-prepared-room';
+import { createSourceResponseStats, publicSourceResource, transferBytes } from './media-transfer-stats.mjs?v=20261027-visual-provenance';
 import { createNativePlaybackFallback } from './media-playback-fallback.mjs?v=20261025-prepared-room';
 import { createPlaybackPrime } from './media-playback-prime.mjs?v=20261025-prepared-room';
-import { createPlaybackReport } from './media-playback-report.mjs?v=20261026-startup-diagnostics';
+import { createPlaybackReport } from './media-playback-report.mjs?v=20261027-visual-provenance';
 
 const DASH = '—';
 export const observed = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
@@ -424,7 +424,7 @@ async function initialise() {
     publicRoom?.stop(); publicRoom = null;
     const pending = (async () => {
       const [{ createListenerSession }, { PUBLIC_SWARM_SOURCE_SHA256, PUBLIC_SWARM_RELAYS }] = await Promise.all([
-        import('./media-listener-session.mjs?v=20261026-prepared-adoption'), import('./media-public-swarm.mjs?v=20261026-prepared-adoption'),
+        import('./media-listener-session.mjs?v=20261026-prepared-adoption'), import('./media-public-swarm.mjs?v=20261027-visual-provenance'),
       ]);
       if (request !== publicRoomRequest || pageAbort.signal.aborted) return null;
       const clock = createListenerSession({ room: `forgesworn-dejavu-listening-v${quality === 'full' ? 2 : 1}-${quality}`, source: PUBLIC_SWARM_SOURCE_SHA256,
@@ -590,6 +590,8 @@ async function initialise() {
     const timingCovered = Boolean(timing?.covered && !s?.nativeHls);
     const sourceNetworkBytes = timingCovered ? timing.networkBodyBytes : null;
     const sourceCacheBytes = timingCovered ? timing.cacheBodyBytes : null;
+    const sourceNetworkBodyBytesLowerBound = s?.nativeHls ? null : timing?.networkBodyBytesLowerBound ?? null;
+    const sourceCacheBodyBytesLowerBound = s?.nativeHls ? null : timing?.cacheBodyBytesLowerBound ?? null;
     const sourceTimingCoverage = s?.nativeHls ? 'unavailable' : timing?.coverage ?? 'unavailable';
     for (const [id, bytes] of [['browser-source-network-bytes', sourceNetworkBytes], ['browser-source-cache-bytes', sourceCacheBytes]]) {
       optionalText(id, transferBytes(bytes));
@@ -635,13 +637,15 @@ async function initialise() {
     root.dataset.cacheHighWaterBytes = String(metrics?.resources?.heldHighWaterBytes ?? 0);
     root.dataset.sourceNetworkBytes = sourceNetworkBytes === null ? '' : String(sourceNetworkBytes);
     root.dataset.sourceCacheBytes = sourceCacheBytes === null ? '' : String(sourceCacheBytes);
+    root.dataset.sourceNetworkBodyBytesLowerBound = sourceNetworkBodyBytesLowerBound === null ? '' : String(sourceNetworkBodyBytesLowerBound);
+    root.dataset.sourceCacheBodyBytesLowerBound = sourceCacheBodyBytesLowerBound === null ? '' : String(sourceCacheBodyBytesLowerBound);
     root.dataset.sourceTimingCoverage = sourceTimingCoverage;
     root.dataset.sourceTimingResponses = String(timing?.responses ?? 0);
     root.dataset.sourceTimingKnownResponses = String(timing?.knownResponses ?? 0);
     root.dataset.sourceTimingUnknownResponses = String(timing?.unknownResponses ?? 0);
     root.dataset.sourceTimingMissing = String(timing?.missing ?? false);
     swarmVisual?.update({ ...metrics, active: Boolean(s), playing: Boolean(playing), originBytes,
-      sourceNetworkBytes, sourceCacheBytes, sourceTimingCoverage,
+      sourceNetworkBytes, sourceCacheBytes, sourceNetworkBodyBytesLowerBound, sourceCacheBodyBytesLowerBound, sourceTimingCoverage,
       room: s?.listener?.snapshot() ?? publicRoom?.snapshot() ?? null });
     listenerStatus(s);
   }
@@ -986,6 +990,7 @@ async function initialise() {
         sourceNetworkBodyBytes: timing?.covered ? timing.networkBodyBytes : null,
         sourceCacheBodyBytes: timing?.covered ? timing.cacheBodyBytes : null, sourceTimingCoverage: timing?.coverage ?? 'unavailable',
         peerEnabled: metrics?.enabled, connectedPeers: metrics?.connectedPeers,
+        peerAttemptDiagnostics: metrics,
         roomPrepared: room?.prepared, roomReady: room?.ready, roomListeners: room?.listeners,
         transferWorkerState: metrics?.core?.transferWorker?.state,
         connections: metrics?.topology?.connections,
@@ -1515,7 +1520,7 @@ async function initialise() {
       if (player) {
         let peer, setupEpoch;
         try {
-          const { createPublicSwarm, prepareRecordedSource, createRecordedLive } = await import('./media-public-swarm.mjs?v=20261026-prepared-adoption');
+          const { createPublicSwarm, prepareRecordedSource, createRecordedLive } = await import('./media-public-swarm.mjs?v=20261027-visual-provenance');
           if (!owns() || s.hls !== player) return;
           // These two exports share the exact helper module/recording brand.
           // A cold first room prepares locally before publishing its clock.
@@ -1852,7 +1857,7 @@ async function initialise() {
     }, { signal: pageAbort.signal });
     controls();
     try {
-      const { createSwarmVisual } = await import('./media-swarm-visual.mjs?v=20261025-prepared-room');
+      const { createSwarmVisual } = await import('./media-swarm-visual.mjs?v=20261027-visual-provenance');
       if (!pageAbort.signal.aborted && $('public-swarm-map')) {
         swarmVisual = createSwarmVisual($('public-swarm-map'));
         publicDelivery(session);

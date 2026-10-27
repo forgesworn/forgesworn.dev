@@ -63,7 +63,11 @@ export function createSourceResponseStats() {
       const covered = responses > 0 && unknownResponses === 0 && !missing && (!expectedKnown || body >= expectedBodyBytes);
       return { responses, knownResponses, unknownResponses, missing, covered,
         coverage: covered ? 'complete' : knownResponses > 0 ? 'partial' : 'unavailable',
-        bodyBytes: covered ? body : null, networkBodyBytes: covered ? network : null, cacheBodyBytes: covered ? cached : null };
+        bodyBytes: covered ? body : null, networkBodyBytes: covered ? network : null, cacheBodyBytes: covered ? cached : null,
+        // A missing/concealed response prevents a complete total, but does not
+        // erase already classified bodies. No observations supply no zero.
+        networkBodyBytesLowerBound: knownResponses ? network : null,
+        cacheBodyBytesLowerBound: knownResponses ? cached : null };
     },
   };
 }

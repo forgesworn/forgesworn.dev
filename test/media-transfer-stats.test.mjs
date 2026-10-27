@@ -92,7 +92,8 @@ test('aggregate timing totals stay unavailable before observations and classify 
   stats.add({ encodedBodySize: sourceBody, transferSize: sourceBody + 300 });
   stats.add({ encodedBodySize: sourceBody, transferSize: 0, deliveryType: 'cache' });
   assert.deepEqual(stats.snapshot(), { responses: 2, knownResponses: 2, unknownResponses: 0, missing: false,
-    covered: true, coverage: 'complete', bodyBytes: sourceBody * 2, networkBodyBytes: sourceBody, cacheBodyBytes: sourceBody });
+    covered: true, coverage: 'complete', bodyBytes: sourceBody * 2, networkBodyBytes: sourceBody, cacheBodyBytes: sourceBody,
+    networkBodyBytesLowerBound: sourceBody, cacheBodyBytesLowerBound: sourceBody });
 });
 
 test('a concealed response invalidates complete totals rather than publishing the known subset', () => {
@@ -102,6 +103,26 @@ test('a concealed response invalidates complete totals rather than publishing th
   const result = stats.snapshot();
   assert.equal(result.coverage, 'partial'); assert.equal(result.knownResponses, 1); assert.equal(result.unknownResponses, 1);
   assert.equal(result.bodyBytes, null); assert.equal(result.networkBodyBytes, null); assert.equal(result.cacheBodyBytes, null);
+});
+
+test('classified source body lower bounds survive concealed responses without becoming complete totals', () => {
+  const stats = createSourceResponseStats();
+  assert.equal(stats.snapshot().networkBodyBytesLowerBound, null);
+  assert.equal(stats.snapshot().cacheBodyBytesLowerBound, null);
+  stats.add({ encodedBodySize: 0, transferSize: 0 });
+  assert.equal(stats.snapshot().networkBodyBytesLowerBound, null, 'concealed sizes supply no measured zero');
+  stats.add({ encodedBodySize: 4096, transferSize: 4396 });
+  stats.add({ encodedBodySize: sourceBody, transferSize: 0 });
+  stats.add({ encodedBodySize: 8192, transferSize: 8492 });
+  const partial = stats.snapshot();
+  assert.equal(partial.networkBodyBytes, null);
+  assert.equal(partial.cacheBodyBytes, null);
+  assert.equal(partial.networkBodyBytesLowerBound, 12288);
+  assert.equal(partial.cacheBodyBytesLowerBound, sourceBody);
+  assert.equal(partial.coverage, 'partial');
+  stats.invalidate();
+  assert.equal(stats.snapshot().networkBodyBytesLowerBound, 12288, 'a missing record cannot erase already classified bodies');
+  assert.equal(stats.snapshot().networkBodyBytes, null);
 });
 
 test('missing observer records and pending loader response bytes prevent complete coverage', () => {
