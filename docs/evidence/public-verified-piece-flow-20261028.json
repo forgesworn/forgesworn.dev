@@ -1,0 +1,106 @@
+{
+  "schema": 1,
+  "measuredAt": "2026-10-28",
+  "status": "RED",
+  "provenance": {
+    "sdkSourceCommit": "d4a1235b035b4244ea73b55b1da0d4f88f64c376",
+    "websiteCommit": "46f714264a5631c5ba67949c0ff9de951e6b988c",
+    "analysisSha256": "87e3f2a3aa9ded9fdf2cd820fe565be8da4492e409acf056d7f7ebeafc9a7942",
+    "resultSha256": "c8c77fa197e98ca6d0bac1c0c90fcd2b894a1125014d78134ca5fa5d0b4fe022"
+  },
+  "scope": {
+    "host": "One M4 Max Mac",
+    "browser": "Chrome 156.0.8078.48",
+    "headless": true,
+    "freshProfiles": 2,
+    "browserHttpCacheDisabled": true,
+    "signalling": "Controlled signalling on the same host; not public rendezvous qualification",
+    "publicAssetsMatchedForBothViewers": true,
+    "privateSdkOverride": false,
+    "adapterOverride": false,
+    "factoryInstrumentation": false,
+    "fullyVisibleAtAllDeclaredBoundaries": true
+  },
+  "observation": {
+    "requiredWallSpanMs": 330000,
+    "recordedWallSpanMs": 329993,
+    "monotonicSpanMs": 330002.347833,
+    "failureReasons": [
+      "less-than-330-seconds-observed"
+    ],
+    "verdict": "RED solely because recorded wall span is below 330000 ms; monotonic duration does not replace this gate. No rescore."
+  },
+  "viewers": {
+    "A": {
+      "firstFrameMs": 3511.2,
+      "nativeFirstFrameDimensions": [
+        3840,
+        2160
+      ],
+      "observedPostFrameStalls": 0,
+      "observedPostFramePlayerErrors": 0,
+      "observedPostFrameDroppedFrames": 0,
+      "acceptedPeerBytes": 253697256,
+      "loadedSourceBytes": 833669668,
+      "acceptedPeerSharePercent": 23.331,
+      "httpCapture": {
+        "complete": true,
+        "requests": 183,
+        "inclusiveBodyBytes": 1004986003,
+        "completedBodyBytes": 839793194,
+        "partialFailedOrCancelledBodyBytes": 165192809,
+        "redirectBodyBytes": 0
+      },
+      "guaranteedSecondsAfterObservedWrap": 71.665,
+      "sdkReportRing": {
+        "retained": 240,
+        "total": 284,
+        "evicted": 44
+      }
+    },
+    "B": {
+      "firstFrameMs": 9346.5,
+      "nativeFirstFrameDimensions": [
+        3840,
+        2160
+      ],
+      "observedPostFrameStalls": 0,
+      "observedPostFramePlayerErrors": 0,
+      "observedPostFrameDroppedFrames": 0,
+      "acceptedPeerBytes": 74560956,
+      "loadedSourceBytes": 1001068971,
+      "acceptedPeerSharePercent": 6.932,
+      "httpCapture": {
+        "complete": true,
+        "requests": 185,
+        "inclusiveBodyBytes": 1053045042,
+        "completedBodyBytes": 1001204636,
+        "partialFailedOrCancelledBodyBytes": 51840406,
+        "redirectBodyBytes": 0
+      },
+      "guaranteedSecondsAfterObservedWrap": 71.665,
+      "sdkReportRing": {
+        "retained": 240,
+        "total": 281,
+        "evicted": 41
+      }
+    }
+  },
+  "accounting": {
+    "acceptedPeerShare": "accepted peer bytes / (accepted peer bytes + completed loaded source bytes); includes buffered media and is not HTTP, wire or billing savings",
+    "httpBodyUnits": "CDP dataReceived.dataLength; inclusive bytes include completed, partial, failed and cancelled response bodies; not encoded wire bytes",
+    "healthBasis": "Existing native snapshots, cumulative counters and complete native events; retained normal report rows checked separately",
+    "earlySdkAndHlsDetail": "UNKNOWN: early rich rows evicted from ring240, not reconstructed"
+  },
+  "cleanup": {
+    "allCopiedEvidenceHashVerified": true,
+    "browserContextsClosed": true,
+    "ownedStageRemoved": true,
+    "profilesAbsent": true,
+    "metadataReverifiedBeforeRemoval": true
+  },
+  "limits": [
+    "One same-host headless diagnostic, not a causal performance comparison; prior results remain unchanged.",
+    "No physical-phone, independent-network/NAT, public TURN, synchronisation, competitor advantage or traffic-saving qualification."
+  ]
+}
