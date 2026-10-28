@@ -16,8 +16,17 @@ The recording label sits with the source caption below the player. It does
 not cover the picture or Safari’s native fullscreen control when controls
 appear.
 
-The player pins RelaySwarm source `94bc0d2ae5464f5f63f7f5b7fcf28d229b77aa8f`
-([source change](https://github.com/forgesworn/relayswarm/commit/94bc0d2ae5464f5f63f7f5b7fcf28d229b77aa8f)).
+The player pins RelaySwarm source `b9a3b20a47c02a1548ba0f246dc1e65714c8dcde`
+([source change](https://github.com/forgesworn/relayswarm/commit/b9a3b20a47c02a1548ba0f246dc1e65714c8dcde)).
+Cancelled warm jobs now keep their speculative slot and any reserved bytes
+while an awaited authorisation or verifier still owns the work. Settlement
+releases that ownership; cancelled data cannot be published, delivered, reused
+by a new load or counted as current seek coverage. Existing byte/object limits,
+request deadlines and the host's `warmAhead: false` setting remain unchanged.
+This source also inherits main's exact `nostr-tools` 2.24.1 dependency pin;
+the generated bundle receipt and notices identify the included dependencies.
+This is a resource-ownership correction, not a measured playback or traffic gain.
+
 It retains the successful peer receipt's stats when hls.js disposes of the
 losing HTTP loader, covered by ten regressions using the actual hls.js 1.7.3
 loaders. It also retains a fully verified contiguous future prefix before considering
