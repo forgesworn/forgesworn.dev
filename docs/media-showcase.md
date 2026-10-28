@@ -75,6 +75,21 @@ wrap, but fewer than 60 seconds were observed afterwards. This failed
 sustained-playback check remains failed; the estimator correction needs a
 new check on its actual published assets.
 
+The subsequent [28 October public check](evidence/public-verified-piece-flow-20261028.json)
+on RelaySwarm `d4a1235` and site `46f7142` remains **RED**: its recorded wall
+span was 329,993 ms against the strict 330,000 ms requirement. The monotonic
+span was 330,002.347833 ms; it does not replace that gate or rescore the run.
+Both fresh headless Chrome profiles on one M4, using controlled signalling
+and the published assets without source overrides, recorded zero post-frame
+stalls, player errors and dropped frames, including 71.665 seconds after a
+programme wrap. First frames took 3.5112 and 9.3465 seconds. Accepted peer media
+was 253,697,256 and 74,560,956 bytes (23.331% and 6.932% of accepted peer plus
+loaded-source bytes); these shares are not traffic savings. Complete HTTP
+body counts include partial or cancelled responses in the linked evidence.
+Early rich SDK/Hls rows are unknown after 44 and 41 ring evictions. This is
+no physical-phone, NAT/public TURN, synchronisation, competitor or causal
+performance qualification; earlier results remain unchanged.
+
 The [27 October public pair attempt](evidence/public-pair-startup-red-20261027.json)
 did not complete its planned observation: the first viewer presented 4K after
 4.629 seconds, but the second viewer reached the one-shot startup buffer's
