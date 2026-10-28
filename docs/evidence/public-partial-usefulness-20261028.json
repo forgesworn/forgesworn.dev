@@ -1,0 +1,207 @@
+{
+  "schema": 1,
+  "date": "2026-10-28",
+  "status": "RED",
+  "scope": "One independent public-asset cold-cache two-viewer check on one M4 Max using headless installed Chrome and controlled signalling",
+  "sdkSource": "096ac0ecdf74df7c6a1e3348e690a8f41fe607e6",
+  "siteCommit": "d265ea04af9cb1553e471a79f8368e8513df166d",
+  "sdkPr": "https://github.com/forgesworn/relayswarm/pull/51",
+  "sitePr": "https://github.com/forgesworn/forgesworn.dev/pull/85",
+  "sourceOverrides": false,
+  "adapterOverrides": false,
+  "attempts": 1,
+  "qualification": {
+    "monotonicObservedMs": 340000.8225,
+    "wallObservedMs": 339998,
+    "minimumEachMs": 330000,
+    "timerTargetMs": 340000,
+    "zeroHealthRequired": true,
+    "durationPassed": true,
+    "allSevenRuntimeAssetsMatchedPerViewer": true,
+    "fullyVisibleAllDeclaredBoundaries": true,
+    "nativeSampleRows": 345,
+    "skippedSamples": 0,
+    "maximumSampleGapMs": [
+      1009.3,
+      1015
+    ],
+    "programmeWrapAndAtLeast60SecondsAfterPassed": true,
+    "playbackPassed": false
+  },
+  "viewers": [
+    {
+      "viewer": 0,
+      "firstFrameMs": 3464.0999994277954,
+      "nativeFirstFrame": {
+        "width": 3840,
+        "height": 2160
+      },
+      "stalls": 5,
+      "stallSeconds": 12.301999999046325,
+      "playerErrors": 5,
+      "droppedFrames": 40,
+      "acceptedPeerBytes": 248225626,
+      "loadedSourceBytes": 763219981,
+      "uploadedBytes": 198297479,
+      "acceptedPeerFraction": 0.2454166830940618,
+      "peerFractionMeaning": "accepted peer bytes / (accepted peer bytes + completed loaded source bytes); not HTTP/wire savings",
+      "capturedHTTP": {
+        "complete": true,
+        "requests": 169,
+        "inclusiveBodyBytes": 925417050,
+        "completedBodyBytes": 763221355,
+        "partialFailedOrCancelledBodyBytes": 162195695,
+        "redirectBodyBytes": 0,
+        "units": "CDP dataReceived.dataLength, inclusive of incomplete/cancelled bodies; encoded counts not labelled media/wire savings"
+      },
+      "wraps": [
+        {
+          "beforeWallMs": 1793181969227,
+          "observedAfterWallMs": 1793181970227,
+          "recordingPositionBefore": 267.290329,
+          "recordingPositionAfter": 0.5318639999999846,
+          "currentTimeBefore": 267.290329,
+          "currentTimeAfter": 268.175331,
+          "guaranteedSecondsAfterObservedWrap": 67.998
+        }
+      ],
+      "reportCoverage": {
+        "retained": 240,
+        "total": 287,
+        "evicted": 47,
+        "firstRetainedElapsedMs": 56817,
+        "earlyRichSDKAndHlsRows": "UNKNOWN: evicted, not reconstructed",
+        "fullWindowHealthBasis": "all existing native snapshots/cumulative counters and complete native events; retained normal report rows checked separately"
+      },
+      "qualified": false,
+      "failures": [
+        "postframe-nonzero-stall-error-or-drop",
+        "postframe-playback-state-not-qualified",
+        "postframe-native-wait-seek-pause-error-or-unknown",
+        "report-nonzero-health-or-wait"
+      ],
+      "partialUsefulnessPreservedFinal": 0,
+      "latestHlsError": {
+        "type": "mediaError",
+        "detail": "bufferStalledError",
+        "fatal": false,
+        "mediaErrorCode": null
+      }
+    },
+    {
+      "viewer": 1,
+      "firstFrameMs": 2664,
+      "nativeFirstFrame": {
+        "width": 3840,
+        "height": 2160
+      },
+      "stalls": 5,
+      "stallSeconds": 9.301699999809266,
+      "playerErrors": 5,
+      "droppedFrames": 49,
+      "acceptedPeerBytes": 150163029,
+      "loadedSourceBytes": 867369808,
+      "uploadedBytes": 280182444,
+      "acceptedPeerFraction": 0.14757560988668122,
+      "peerFractionMeaning": "accepted peer bytes / (accepted peer bytes + completed loaded source bytes); not HTTP/wire savings",
+      "capturedHTTP": {
+        "complete": true,
+        "requests": 172,
+        "inclusiveBodyBytes": 959369595,
+        "completedBodyBytes": 867371182,
+        "partialFailedOrCancelledBodyBytes": 91998413,
+        "redirectBodyBytes": 0,
+        "units": "CDP dataReceived.dataLength, inclusive of incomplete/cancelled bodies; encoded counts not labelled media/wire savings"
+      },
+      "wraps": [
+        {
+          "beforeWallMs": 1793181968225,
+          "observedAfterWallMs": 1793181969227,
+          "recordingPositionBefore": 266.31933,
+          "recordingPositionAfter": 0.0016310000000316904,
+          "currentTimeBefore": 266.429047,
+          "currentTimeAfter": 267.431494,
+          "guaranteedSecondsAfterObservedWrap": 68.998
+        }
+      ],
+      "reportCoverage": {
+        "retained": 240,
+        "total": 284,
+        "evicted": 44,
+        "firstRetainedElapsedMs": 53205.79999923706,
+        "earlyRichSDKAndHlsRows": "UNKNOWN: evicted, not reconstructed",
+        "fullWindowHealthBasis": "all existing native snapshots/cumulative counters and complete native events; retained normal report rows checked separately"
+      },
+      "qualified": false,
+      "failures": [
+        "postframe-nonzero-stall-error-or-drop",
+        "postframe-playback-state-not-qualified",
+        "postframe-native-wait-seek-pause-error-or-unknown",
+        "report-nonzero-health-or-wait"
+      ],
+      "partialUsefulnessPreservedFinal": 0,
+      "latestHlsError": {
+        "type": "mediaError",
+        "detail": "bufferStalledError",
+        "fatal": false,
+        "mediaErrorCode": null
+      }
+    }
+  ],
+  "accounting": {
+    "uploadedBytes": "Binary media bytes successfully submitted to native channel.send, not recipient acceptance or wire cost",
+    "loadedSourceBytes": "Completed source loads, not inclusive HTTP traffic",
+    "capturedHTTP": "CDP dataReceived.dataLength including incomplete/cancelled bodies; not wire cost",
+    "partialUsefulnessPreservedFinal": "Final retained diagnostic is zero; does not establish guard eligibility or cause of stalls"
+  },
+  "evidence": {
+    "analysisSha256": "a541ea740231e60aeaa7e7bd262a1e41ad504fec788c1ab324051c06cd008918",
+    "inputs": {
+      "result.json": {
+        "bytes": 1596523,
+        "sha256": "4e5f2afb477c4b30539c21091d57c2aefd28e35097eba99d968312dd0920906d"
+      },
+      "protocol.json": {
+        "bytes": 5576,
+        "sha256": "7bcee5a7508078203ea3b344c883b5a748e4a0e63a004d641f61b14a7d4d4de6"
+      },
+      "expected-assets.json": {
+        "bytes": 2770,
+        "sha256": "f58d39cdf43564de07db1b6778d574de9f91b0e38e9c5b812d2b273688fec267"
+      },
+      "review-manifest.json": {
+        "bytes": 1924,
+        "sha256": "b9b0d7080e3270b5cc773cf2a104dcf3beaaae47fe0177d605e65d17d0dc987e"
+      },
+      "viewer-0-final-normal-report.json": {
+        "bytes": 1108789,
+        "sha256": "1b205e36de9fab2f1f257f3a3e7dd613f327ed55ef427eb785845c41a72ced31"
+      },
+      "viewer-0-origin-capture.json": {
+        "bytes": 159649,
+        "sha256": "896aa453baa61ff769749229588c6f2f86e461207b738fdfaf087f36261f8bf0"
+      },
+      "viewer-1-final-normal-report.json": {
+        "bytes": 1129060,
+        "sha256": "537c6521e2bba0907645cb3aa005fc32c831a22f7a2a476267d61339226724a4"
+      },
+      "viewer-1-origin-capture.json": {
+        "bytes": 162432,
+        "sha256": "8eab72d39801858f82c14460b3aad8f273c65c7a34852c0ee05dcc6457551047"
+      }
+    }
+  },
+  "cleanup": {
+    "all23CopiedFilesHashVerified": true,
+    "nodeTerminal": true,
+    "ownedChromeRemaining": 0,
+    "profilesAbsent": true,
+    "exactOwnedRemoteStageRemoved": true
+  },
+  "limits": [
+    "Early rich SDK/Hls rows were evicted and remain unknown; native health and HTTP capture have separate full-window evidence.",
+    "Independent review confirmed this RED without retry or rescore.",
+    "No patch causality, competitor advantage, traffic savings, physical-phone, NAT/public TURN or synchronisation qualification.",
+    "Earlier runs and failures remain unchanged."
+  ]
+}
