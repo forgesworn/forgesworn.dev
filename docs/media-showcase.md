@@ -16,8 +16,8 @@ The recording label sits with the source caption below the player. It does
 not cover the picture or Safari’s native fullscreen control when controls
 appear.
 
-The player pins RelaySwarm source `25354e3cb843b606fc51cdb47a548e9d90d0d091`
-([source change](https://github.com/forgesworn/relayswarm/commit/25354e3cb843b606fc51cdb47a548e9d90d0d091)).
+The player pins RelaySwarm source `d4a1235b035b4244ea73b55b1da0d4f88f64c376`
+([source change](https://github.com/forgesworn/relayswarm/commit/d4a1235b035b4244ea73b55b1da0d4f88f64c376)).
 It retains the successful peer receipt's stats when hls.js disposes of the
 losing HTTP loader, covered by ten regressions using the actual hls.js 1.7.3
 loaders. It also retains a fully verified contiguous future prefix before considering
@@ -35,6 +35,12 @@ the original first-fragment load entry, clipped to a shorter parent load
 deadline; ordinary speculative requests keep their eight-second expiry.
 Authority checks and explicit refusal for insufficient capacity remain. The Rust/WASM
 binary is unchanged.
+Verified short peer pieces can now refresh an older throughput estimate by
+forming a batch within the same transfer and connection. Both the existing
+300 ms and 32 KiB observation floors still apply. The interval includes gaps
+and verification time; origin bytes, duplicate credit, rejected responses
+and other links cannot train it. This adds no requests or first-byte timing
+sample. It corrects estimator inputs rather than proving faster playback.
 Parsed fragment start positions can differ by floating-point roundoff between
 playlist revisions. Startup now accepts that difference within a bounded machine-precision
 tolerance, capped at one nanosecond, instead of falsely cancelling a matching context; sequence,
@@ -60,6 +66,14 @@ HTTP deadlines remain unchanged.
 Earlier playback measurements below retain their captured revisions; this
 update does not establish a bandwidth saving, smoother playback or a new
 physical-phone result.
+
+The 27 October 330-second public check on RelaySwarm `25354e3` and site
+`acd26cd` started both fresh M4 Chrome profiles, then recorded 9 and 11
+post-frame stalls respectively. Accepted peer shares were 30.96% and 15.98%;
+these are not source traffic savings. Playback continued across a programme
+wrap, but fewer than 60 seconds were observed afterwards. This failed
+sustained-playback check remains failed; the estimator correction needs a
+new check on its actual published assets.
 
 The [27 October public pair attempt](evidence/public-pair-startup-red-20261027.json)
 did not complete its planned observation: the first viewer presented 4K after
