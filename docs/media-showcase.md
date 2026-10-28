@@ -16,8 +16,8 @@ The recording label sits with the source caption below the player. It does
 not cover the picture or Safari’s native fullscreen control when controls
 appear.
 
-The player pins RelaySwarm source `d4a1235b035b4244ea73b55b1da0d4f88f64c376`
-([source change](https://github.com/forgesworn/relayswarm/commit/d4a1235b035b4244ea73b55b1da0d4f88f64c376)).
+The player pins RelaySwarm source `c8120c5bf8c117e334a37a072b3bd6f3de46cc3a`
+([source change](https://github.com/forgesworn/relayswarm/commit/c8120c5bf8c117e334a37a072b3bd6f3de46cc3a)).
 It retains the successful peer receipt's stats when hls.js disposes of the
 losing HTTP loader, covered by ten regressions using the actual hls.js 1.7.3
 loaders. It also retains a fully verified contiguous future prefix before considering
@@ -569,6 +569,17 @@ integrity failures, and peer eligibility. Each count is a nonnegative safe
 integer or `null`; missing values are not inferred as zero. Raw SDK records,
 keys, tickets and transfer objects are excluded. Submitted uploads and verified
 pieces in a losing race do not become accepted peer-media credit.
+The separate `peerFlowDiagnostics` observation retains only the SDK's fixed
+short-flow batch counts, bytes and latest span, plus model-evaluation counters
+and the latest numeric model inputs. Decisions distinguish a fitting measured
+piece, useful unknown flow, an allowed refresh, a cooldown-blocked unknown
+model and a retained known slow model. Evaluations are not request counts.
+The no-model counter records attempts rejected before transfer creation; its
+snapshot describes only the latest candidate from that attempt, alongside
+the candidate count. Rates, timing and previous snapshots remain `null` when
+unobserved. This projection adds no timers, requests, playback credit or
+selection policy. It is diagnostic evidence for choosing subsequent tuning,
+not a throughput or sustained-playback qualification.
 These attempt counters describe the current SDK generation and may reset after
 peer sharing restarts; compare them only within a continuous generation. Terminal
 handling retains the projected startup flags and geometry; these other current

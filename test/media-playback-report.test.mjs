@@ -117,6 +117,59 @@ test('unreadable peer diagnostics remain unknown without discarding or aliasing 
   assert.equal(p.report.snapshot().samples[0].peerAttemptDiagnostics.peerNoFit, 2);
 });
 
+test('peer flow observations preserve measured models without awarding playback or sharing mutable state', () => {
+  const p = fixture();
+  const model = { decision: 'cooldown-blocked', availableMs: 1800, pieceSize: 65536,
+    firstByteMs: 7, rateBytesPerSecond: null, probeAgeMs: 500, usefulAgeMs: null };
+  const flow = { verifiedShortBatches: 2, verifiedShortBytes: 786432,
+    lastVerifiedShortBatch: { bytes: 393216, spanMs: 350 },
+    modelEvaluations: { fit: 2, 'useful-unknown': 3, refresh: 1, 'cooldown-blocked': 1, 'known-slow': 0 },
+    lastModel: model, noModelTransfers: 1, lastNoModel: { candidateCount: 1, model } };
+  p.report.record({ position: 4, peerBytes: 0, peerAttemptDiagnostics: { core: { multiHolder: { peerFlow: flow } } } });
+  flow.lastVerifiedShortBatch.bytes = 1; model.firstByteMs = 100; flow.modelEvaluations.fit = 99;
+  const row = p.report.snapshot().samples[0], d = row.peerFlowDiagnostics;
+  assert.equal(row.position, 4); assert.equal(row.peerBytes, 0);
+  assert.equal(d.verifiedShortBatches, 2); assert.equal(d.verifiedShortBytes, 786432);
+  assert.deepEqual(d.lastVerifiedShortBatch, { bytes: 393216, spanMs: 350 });
+  assert.deepEqual(d.modelEvaluations, { fit: 2, 'useful-unknown': 3, refresh: 1, 'cooldown-blocked': 1, 'known-slow': 0 });
+  assert.equal(d.lastModel.firstByteMs, 7); assert.equal(d.lastModel.rateBytesPerSecond, null);
+  assert.equal(d.lastNoModel.model.firstByteMs, 7); assert.equal(d.lastNoModel.candidateCount, 1);
+  d.lastNoModel.model.firstByteMs = 999;
+  assert.equal(p.report.snapshot().samples[0].peerFlowDiagnostics.lastNoModel.model.firstByteMs, 7);
+});
+
+test('peer flow reporting rejects unknown types and private payloads while retaining unreadable fields as unknown', () => {
+  const p = fixture(); p.report.record({});
+  p.at(1200); p.report.record({ peerAttemptDiagnostics: { core: { multiHolder: { peerFlow: [] } } } });
+  assert.equal(p.report.snapshot().samples[0].peerFlowDiagnostics, null);
+  assert.equal(p.report.snapshot().samples[1].peerFlowDiagnostics, null);
+  let serialized = false, privateRead = false;
+  const secret = { toJSON() { serialized = true; return 'credential-secret'; } };
+  const model = { decision: 'https://private.invalid/credential-secret', availableMs: Infinity, pieceSize: '65536',
+    firstByteMs: -1, rateBytesPerSecond: secret, probeAgeMs: NaN, usefulAgeMs: 0, owner: secret };
+  Object.defineProperty(model, 'privateKey', { get() { privateRead = true; throw new Error('private'); } });
+  const flow = { verifiedShortBatches: 0, verifiedShortBytes: Number.MAX_SAFE_INTEGER + 1,
+    lastVerifiedShortBatch: secret, modelEvaluations: { fit: 0, 'useful-unknown': '0', refresh: -1,
+      'cooldown-blocked': secret, 'known-slow': 0.5, credential: secret }, lastModel: model,
+    noModelTransfers: 0, lastNoModel: { candidateCount: false, model, pubkey: secret }, records: [secret], toJSON: secret.toJSON };
+  Object.defineProperty(flow, 'lastVerifiedShortBatch', { get() { throw new Error('unreadable'); } });
+  p.at(2400); assert.equal(p.report.record({ position: 8, peerAttemptDiagnostics: { core: { multiHolder: { peerFlow: flow } } } }), true);
+  const row = p.report.snapshot().samples.at(-1), d = row.peerFlowDiagnostics;
+  assert.equal(row.position, 8); assert.equal(d.verifiedShortBatches, 0); assert.equal(d.verifiedShortBytes, null);
+  assert.equal(d.lastVerifiedShortBatch, null); assert.equal(d.lastModel.decision, null);
+  for (const name of ['availableMs', 'pieceSize', 'firstByteMs', 'rateBytesPerSecond', 'probeAgeMs']) assert.equal(d.lastModel[name], null);
+  assert.equal(d.lastModel.usefulAgeMs, 0); assert.equal(d.lastNoModel.candidateCount, null);
+  assert.deepEqual(d.modelEvaluations, { fit: 0, 'useful-unknown': null, refresh: null, 'cooldown-blocked': null, 'known-slow': null });
+  const invalidCore = [];
+  Object.defineProperty(invalidCore, 'multiHolder', { get() { privateRead = true; return secret; } });
+  p.at(3600); p.report.record({ peerAttemptDiagnostics: { core: invalidCore } });
+  assert.equal(p.report.snapshot().samples.at(-1).peerFlowDiagnostics, null);
+  const output = JSON.stringify(p.report.snapshot());
+  assert.equal(serialized, false); assert.equal(privateRead, false);
+  assert.doesNotMatch(output, /secret|private\.invalid|privateKey|"(?:owner|pubkey|records|credential)"\s*:/);
+  assert.equal(p.report.snapshot().maxSamples, 240);
+});
+
 test('skipped ticks do not invoke native observation work', () => {
   const p = fixture(); let reads = 0;
   const observe = () => { reads++; return { position: reads }; };
