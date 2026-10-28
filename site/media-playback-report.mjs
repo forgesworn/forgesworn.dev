@@ -140,6 +140,7 @@ function peerFlowDiagnostics(input) {
   return {
     verifiedShortBatches: integer(value(flow, 'verifiedShortBatches')),
     verifiedShortBytes: integer(value(flow, 'verifiedShortBytes')),
+    partialUsefulnessPreserved: integer(value(flow, 'partialUsefulnessPreserved')),
     lastVerifiedShortBatch: object(batch) ? { bytes: positiveInteger(value(batch, 'bytes')), spanMs: number(value(batch, 'spanMs')) } : null,
     modelEvaluations: object(evaluations) ? {
       fit: integer(value(evaluations, 'fit')), 'useful-unknown': integer(value(evaluations, 'useful-unknown')),

@@ -121,7 +121,7 @@ test('peer flow observations preserve measured models without awarding playback 
   const p = fixture();
   const model = { decision: 'cooldown-blocked', availableMs: 1800, pieceSize: 65536,
     firstByteMs: 7, rateBytesPerSecond: null, probeAgeMs: 500, usefulAgeMs: null };
-  const flow = { verifiedShortBatches: 2, verifiedShortBytes: 786432,
+  const flow = { verifiedShortBatches: 2, verifiedShortBytes: 786432, partialUsefulnessPreserved: 1,
     lastVerifiedShortBatch: { bytes: 393216, spanMs: 350 },
     modelEvaluations: { fit: 2, 'useful-unknown': 3, refresh: 1, 'cooldown-blocked': 1, 'known-slow': 0 },
     lastModel: model, noModelTransfers: 1, lastNoModel: { candidateCount: 1, model } };
@@ -130,12 +130,19 @@ test('peer flow observations preserve measured models without awarding playback 
   const row = p.report.snapshot().samples[0], d = row.peerFlowDiagnostics;
   assert.equal(row.position, 4); assert.equal(row.peerBytes, 0);
   assert.equal(d.verifiedShortBatches, 2); assert.equal(d.verifiedShortBytes, 786432);
+  assert.equal(d.partialUsefulnessPreserved, 1);
   assert.deepEqual(d.lastVerifiedShortBatch, { bytes: 393216, spanMs: 350 });
   assert.deepEqual(d.modelEvaluations, { fit: 2, 'useful-unknown': 3, refresh: 1, 'cooldown-blocked': 1, 'known-slow': 0 });
   assert.equal(d.lastModel.firstByteMs, 7); assert.equal(d.lastModel.rateBytesPerSecond, null);
   assert.equal(d.lastNoModel.model.firstByteMs, 7); assert.equal(d.lastNoModel.candidateCount, 1);
   d.lastNoModel.model.firstByteMs = 999;
   assert.equal(p.report.snapshot().samples[0].peerFlowDiagnostics.lastNoModel.model.firstByteMs, 7);
+  delete flow.partialUsefulnessPreserved;
+  p.at(1200); p.report.record({ peerAttemptDiagnostics: { core: { multiHolder: { peerFlow: flow } } } });
+  assert.equal(p.report.snapshot().samples.at(-1).peerFlowDiagnostics.partialUsefulnessPreserved, null);
+  flow.partialUsefulnessPreserved = 0;
+  p.at(2400); p.report.record({ peerAttemptDiagnostics: { core: { multiHolder: { peerFlow: flow } } } });
+  assert.equal(p.report.snapshot().samples.at(-1).peerFlowDiagnostics.partialUsefulnessPreserved, 0);
 });
 
 test('peer flow reporting rejects unknown types and private payloads while retaining unreadable fields as unknown', () => {
@@ -149,6 +156,7 @@ test('peer flow reporting rejects unknown types and private payloads while retai
     firstByteMs: -1, rateBytesPerSecond: secret, probeAgeMs: NaN, usefulAgeMs: 0, owner: secret };
   Object.defineProperty(model, 'privateKey', { get() { privateRead = true; throw new Error('private'); } });
   const flow = { verifiedShortBatches: 0, verifiedShortBytes: Number.MAX_SAFE_INTEGER + 1,
+    partialUsefulnessPreserved: -1,
     lastVerifiedShortBatch: secret, modelEvaluations: { fit: 0, 'useful-unknown': '0', refresh: -1,
       'cooldown-blocked': secret, 'known-slow': 0.5, credential: secret }, lastModel: model,
     noModelTransfers: 0, lastNoModel: { candidateCount: false, model, pubkey: secret }, records: [secret], toJSON: secret.toJSON };
@@ -156,6 +164,7 @@ test('peer flow reporting rejects unknown types and private payloads while retai
   p.at(2400); assert.equal(p.report.record({ position: 8, peerAttemptDiagnostics: { core: { multiHolder: { peerFlow: flow } } } }), true);
   const row = p.report.snapshot().samples.at(-1), d = row.peerFlowDiagnostics;
   assert.equal(row.position, 8); assert.equal(d.verifiedShortBatches, 0); assert.equal(d.verifiedShortBytes, null);
+  assert.equal(d.partialUsefulnessPreserved, null);
   assert.equal(d.lastVerifiedShortBatch, null); assert.equal(d.lastModel.decision, null);
   for (const name of ['availableMs', 'pieceSize', 'firstByteMs', 'rateBytesPerSecond', 'probeAgeMs']) assert.equal(d.lastModel[name], null);
   assert.equal(d.lastModel.usefulAgeMs, 0); assert.equal(d.lastNoModel.candidateCount, null);

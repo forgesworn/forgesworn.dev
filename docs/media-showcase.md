@@ -16,8 +16,8 @@ The recording label sits with the source caption below the player. It does
 not cover the picture or Safari’s native fullscreen control when controls
 appear.
 
-The player pins RelaySwarm source `c8120c5bf8c117e334a37a072b3bd6f3de46cc3a`
-([source change](https://github.com/forgesworn/relayswarm/commit/c8120c5bf8c117e334a37a072b3bd6f3de46cc3a)).
+The player pins RelaySwarm source `096ac0ecdf74df7c6a1e3348e690a8f41fe607e6`
+([source change](https://github.com/forgesworn/relayswarm/commit/096ac0ecdf74df7c6a1e3348e690a8f41fe607e6)).
 It retains the successful peer receipt's stats when hls.js disposes of the
 losing HTTP loader, covered by ten regressions using the actual hls.js 1.7.3
 loaders. It also retains a fully verified contiguous future prefix before considering
@@ -569,6 +569,14 @@ integrity failures, and peer eligibility. Each count is a nonnegative safe
 integer or `null`; missing values are not inferred as zero. Raw SDK records,
 keys, tickets and transfer objects are excluded. Submitted uploads and verified
 pieces in a losing race do not become accepted peer-media credit.
+For a cached or late peer race, the owning HTTP winner can retain the current
+link's usefulness from fresh verified pieces in that same transfer. The
+timestamp remains the actual verification time, so cancellation cannot renew
+it. This can admit a subsequent genuine demand through the existing unknown
+flow probe bound; it does not grant playback credit or invent a throughput
+sample. A new attempt without fresh credit keeps its ordinary abort cooldown.
+Stopped, seeking, expired, rejected or replaced work does not receive this
+preservation. Original deadlines and authority checks remain in force.
 The separate `peerFlowDiagnostics` observation retains only the SDK's fixed
 short-flow batch counts, bytes and latest span, plus model-evaluation counters
 and the latest numeric model inputs. Decisions distinguish a fitting measured
@@ -580,6 +588,9 @@ the candidate count. Rates, timing and previous snapshots remain `null` when
 unobserved. This projection adds no timers, requests, playback credit or
 selection policy. It is diagnostic evidence for choosing subsequent tuning,
 not a throughput or sustained-playback qualification.
+`partialUsefulnessPreserved` counts only actual guarded preservation at the
+owning transfer's lease release, once per link. Older SDKs report this field
+as `null`, rather than a manufactured zero.
 These attempt counters describe the current SDK generation and may reset after
 peer sharing restarts; compare them only within a continuous generation. Terminal
 handling retains the projected startup flags and geometry; these other current
