@@ -2,7 +2,7 @@ import { readInitialLiveStart } from './media-live-start.mjs';
 import { createSourceResponseStats, publicSourceResource, transferBytes } from './media-transfer-stats.mjs?v=20261027-visual-provenance';
 import { createNativePlaybackFallback } from './media-playback-fallback.mjs?v=20261025-prepared-room';
 import { createPlaybackPrime } from './media-playback-prime.mjs?v=20261025-prepared-room';
-import { createPlaybackReport, projectStartupBuffer } from './media-playback-report.mjs?v=20261028-peer-fit-models';
+import { createPlaybackReport, projectStartupBuffer } from './media-playback-report.mjs?v=20261028-partial-usefulness';
 
 const DASH = '—';
 export const observed = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
@@ -424,7 +424,7 @@ async function initialise() {
     publicRoom?.stop(); publicRoom = null;
     const pending = (async () => {
       const [{ createListenerSession }, { PUBLIC_SWARM_SOURCE_SHA256, PUBLIC_SWARM_RELAYS }] = await Promise.all([
-        import('./media-listener-session.mjs?v=20261028-peer-fit-models'), import('./media-public-swarm.mjs?v=20261028-peer-fit-models'),
+        import('./media-listener-session.mjs?v=20261028-partial-usefulness'), import('./media-public-swarm.mjs?v=20261028-partial-usefulness'),
       ]);
       if (request !== publicRoomRequest || pageAbort.signal.aborted) return null;
       const clock = createListenerSession({ room: `forgesworn-dejavu-listening-v${quality === 'full' ? 2 : 1}-${quality}`, source: PUBLIC_SWARM_SOURCE_SHA256,
@@ -1522,7 +1522,7 @@ async function initialise() {
       if (player) {
         let peer, setupEpoch;
         try {
-          const { createPublicSwarm, prepareRecordedSource, createRecordedLive } = await import('./media-public-swarm.mjs?v=20261028-peer-fit-models');
+          const { createPublicSwarm, prepareRecordedSource, createRecordedLive } = await import('./media-public-swarm.mjs?v=20261028-partial-usefulness');
           if (!owns() || s.hls !== player) return;
           // These two exports share the exact helper module/recording brand.
           // A cold first room prepares locally before publishing its clock.
