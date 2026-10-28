@@ -118,6 +118,40 @@ function connections(input) {
   }));
 }
 
+function peerFlowModel(input) {
+  if (!object(input)) return null;
+  return {
+    decision: choice(value(input, 'decision'), ['fit', 'useful-unknown', 'refresh', 'cooldown-blocked', 'known-slow']),
+    availableMs: number(value(input, 'availableMs')), pieceSize: positiveInteger(value(input, 'pieceSize')),
+    firstByteMs: number(value(input, 'firstByteMs')), rateBytesPerSecond: number(value(input, 'rateBytesPerSecond')),
+    probeAgeMs: number(value(input, 'probeAgeMs')), usefulAgeMs: number(value(input, 'usefulAgeMs')),
+  };
+}
+
+function peerFlowDiagnostics(input) {
+  if (!object(input)) return null;
+  const core = value(input, 'core'); if (!object(core)) return null;
+  const multi = value(core, 'multiHolder'); if (!object(multi)) return null;
+  const flow = value(multi, 'peerFlow'); if (!object(flow)) return null;
+  const batch = value(flow, 'lastVerifiedShortBatch'), evaluations = value(flow, 'modelEvaluations');
+  const noModel = value(flow, 'lastNoModel');
+  // Fixed scalar projection only: evaluations are not requests or playback
+  // credit, and the latest model is not a record of every candidate.
+  return {
+    verifiedShortBatches: integer(value(flow, 'verifiedShortBatches')),
+    verifiedShortBytes: integer(value(flow, 'verifiedShortBytes')),
+    lastVerifiedShortBatch: object(batch) ? { bytes: positiveInteger(value(batch, 'bytes')), spanMs: number(value(batch, 'spanMs')) } : null,
+    modelEvaluations: object(evaluations) ? {
+      fit: integer(value(evaluations, 'fit')), 'useful-unknown': integer(value(evaluations, 'useful-unknown')),
+      refresh: integer(value(evaluations, 'refresh')), 'cooldown-blocked': integer(value(evaluations, 'cooldown-blocked')),
+      'known-slow': integer(value(evaluations, 'known-slow')),
+    } : null,
+    lastModel: peerFlowModel(value(flow, 'lastModel')), noModelTransfers: integer(value(flow, 'noModelTransfers')),
+    lastNoModel: object(noModel) ? { candidateCount: integer(value(noModel, 'candidateCount')),
+      model: peerFlowModel(value(noModel, 'model')) } : null,
+  };
+}
+
 function peerAttemptDiagnostics(input) {
   if (!object(input)) return null;
   const count = (...path) => {
@@ -202,6 +236,7 @@ function sample(input, elapsedMs) {
     sourceTimingCoverage,
     peerEnabled: boolean(value(input, 'peerEnabled')), connectedPeers: integer(value(input, 'connectedPeers')),
     peerAttemptDiagnostics: peerAttemptDiagnostics(value(input, 'peerAttemptDiagnostics')),
+    peerFlowDiagnostics: peerFlowDiagnostics(value(input, 'peerAttemptDiagnostics')),
     transferWorkerState: choice(value(input, 'transferWorkerState'), ['off', 'waiting-core', 'loading', 'ready', 'failed', 'stopped']),
     roomPrepared: boolean(value(input, 'roomPrepared')), roomReady: boolean(value(input, 'roomReady')),
     roomListeners: integer(value(input, 'roomListeners')), connections: connections(value(input, 'connections')),
