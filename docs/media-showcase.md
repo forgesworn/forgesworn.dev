@@ -1031,3 +1031,25 @@ establish its eligibility or the cause of the stalls. Early rich report rows
 were evicted and remain unknown. Independent review verified the saved evidence
 and cleanup. No retry, rescore, physical-device, public TURN, competitor or
 causal performance qualification follows from this run.
+
+## 28 October XHR compatibility playback check
+
+The [new public record](evidence/public-xhr-progress-playback-20261028.json)
+passes the declared playback check. Two fresh headless Chrome viewers on one M4
+used public source `94bc0d2` and site `b88ab1e`, with controlled signalling and
+no source overrides. Original first frames took 4.328 and 1.799 seconds. The
+observation spanned 339,999.90275 ms on the monotonic clock and 339,996 ms on
+the wall clock, meeting the unchanged 330,000 ms minimum on both. Both viewers
+recorded zero post-frame stalls, player errors and dropped frames, crossed the
+programme wrap, and remained observed for another 74.041 seconds.
+
+Accepted peer media was 146,871,266 and 513,312,867 bytes (13.431% and 46.943%
+of accepted peer plus completed loaded-source bytes). The guarded usefulness
+preservation counter reached 10 and 13 actual applications. This confirms use
+of that path without establishing that it caused healthy playback. Inclusive
+HTTP bodies were 1,064,774,653 and 941,565,703 bytes, including cancelled/partial
+responses; accepted peer share is not source or wire savings. Early rich report
+rows were evicted and remain unknown. Independent review verified the evidence
+and cleanup. This is one controlled same-host result, not physical-phone,
+independent-network, public TURN, synchronisation or competitor qualification.
+Earlier failed records remain unchanged.
