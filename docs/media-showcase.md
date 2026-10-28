@@ -1001,3 +1001,24 @@ record the precise boundary and retain relay failures.
 The [dated functional receipt](evidence/media-showcase-4k-visitors-20261024.json)
 retains the two-browser 4K transfer and actual homepage graph observations,
 including failed public-relay attempts and the same-machine boundary.
+
+## 28 October partial-usefulness playback check
+
+The [public record](evidence/public-partial-usefulness-20261028.json) is **RED**.
+Two fresh headless Chrome viewers on one M4 used public source `096ac0e` and
+site `d265ea0`, with controlled signalling and no source overrides. Both started
+4K within 3.465 seconds; the observation lasted 340,000.8225 ms on the monotonic
+clock and 339,998 ms on the wall clock. Both crossed the programme wrap with more
+than 67 seconds observed afterwards. Duration, visibility, asset and capture
+checks passed, but each viewer recorded five stalls and five nonfatal
+`bufferStalledError` reports, with 40 and 49 dropped frames.
+
+Accepted peer media was 248,225,626 and 150,163,029 bytes (24.542% and 14.758%
+of accepted peer plus completed loaded-source bytes). Inclusive HTTP bodies
+were 925,417,050 and 959,369,595 bytes, including cancelled/partial responses.
+Accepted peer share is not source or wire savings. The final
+`partialUsefulnessPreserved` counter was zero in both reports; this does not
+establish its eligibility or the cause of the stalls. Early rich report rows
+were evicted and remain unknown. Independent review verified the saved evidence
+and cleanup. No retry, rescore, physical-device, public TURN, competitor or
+causal performance qualification follows from this run.
