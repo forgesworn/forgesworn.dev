@@ -3,7 +3,7 @@
 // A receiver's ephemeral key wraps that digest for the existing live-commitment
 // verifier; this is local attestation, not a live broadcaster signing service.
 import { createHlsSwarm, commitmentContent, commitmentPieceSize, segmentMediaContext, KIND_SEGMENT_COMMITMENT, finalizeEvent,
-  generateSecretKey, relayswarmBuild } from './vendor/media-peer-demo.js?v=20261028-xhr-progress-winner';
+  generateSecretKey, relayswarmBuild } from './vendor/media-peer-demo.js?v=20261028-relay-first-candidate';
 import { observeOriginLoader } from './media-transfer-stats.mjs?v=20261027-visual-provenance';
 import { createPublicTurnCredentials } from './media-turn-credentials.mjs?v=20261025-prepared-room';
 import { parseRecordedManifest, createRecordedLive } from './media-recorded-live.mjs?v=20261025-prepared-room';
@@ -479,7 +479,7 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
         swarm = createSwarm({ mode: 'peer-first', swarmId: plan.swarmId, relays: [...PUBLIC_SWARM_RELAYS],
           streamEvent, getCommitment, serve: true, serveOnCellular: false,
           coreWasm: new URL('./vendor/relayswarm-core.wasm?v=20261026-prepared-adoption', import.meta.url), multiHolder: true,
-          transferWorkerUrl: new URL('./vendor/relayswarm-transfer-worker.js?v=20261028-xhr-progress-winner', import.meta.url),
+          transferWorkerUrl: new URL('./vendor/relayswarm-transfer-worker.js?v=20261028-relay-first-candidate', import.meta.url),
           zeroBudgetPeerRace: true, lateHaveRace: true, sustainablePeerWait: true,
           warmAhead: false,
           startupBufferMaxBytes: (needsStartupBuffer ? 32 : 24) * 1024 * 1024,

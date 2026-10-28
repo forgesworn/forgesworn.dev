@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const SOURCE = '94bc0d2ae5464f5f63f7f5b7fcf28d229b77aa8f';
+const SOURCE = '995383b6a3149177bd92e855deac06ec13b5d284';
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const root = fileURLToPath(new URL('../', import.meta.url));
 
