@@ -16,8 +16,8 @@ The recording label sits with the source caption below the player. It does
 not cover the picture or Safari’s native fullscreen control when controls
 appear.
 
-The player pins RelaySwarm source `096ac0ecdf74df7c6a1e3348e690a8f41fe607e6`
-([source change](https://github.com/forgesworn/relayswarm/commit/096ac0ecdf74df7c6a1e3348e690a8f41fe607e6)).
+The player pins RelaySwarm source `94bc0d2ae5464f5f63f7f5b7fcf28d229b77aa8f`
+([source change](https://github.com/forgesworn/relayswarm/commit/94bc0d2ae5464f5f63f7f5b7fcf28d229b77aa8f)).
 It retains the successful peer receipt's stats when hls.js disposes of the
 losing HTTP loader, covered by ten regressions using the actual hls.js 1.7.3
 loaders. It also retains a fully verified contiguous future prefix before considering
@@ -577,6 +577,15 @@ flow probe bound; it does not grant playback credit or invent a throughput
 sample. A new attempt without fresh credit keeps its ordinary abort cooldown.
 Stopped, seeking, expired, rejected or replaced work does not receive this
 preservation. Original deadlines and authority checks remain in force.
+The hls.js XHR loader emits its final progress callback before success. Positive
+progress claims the HTTP response immediately so a peer cannot win afterwards.
+For an ArrayBuffer or view, one guarded microtask retires the losing peer arm;
+success before that retirement can apply the existing ownership proof. Positive
+nonbinary progress retains immediate cancellation, including after an earlier
+binary callback. Binary progress without success before retirement cancels normally. Progress alone never preserves
+usefulness, and later success cannot restore a released lease. Stop, replacement,
+errors and the original deadlines remain authoritative. This callback-order
+correction does not establish improved sustained playback.
 The separate `peerFlowDiagnostics` observation retains only the SDK's fixed
 short-flow batch counts, bytes and latest span, plus model-evaluation counters
 and the latest numeric model inputs. Decisions distinguish a fitting measured
