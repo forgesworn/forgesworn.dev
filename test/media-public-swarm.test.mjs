@@ -195,11 +195,12 @@ function lifecycleFixture(t, { turnCredentials, turnConfiguration, turnFactory, 
       segments: {}, peers: {}, relays: {} };
     const ownedSockets = options.relays.map(url => new options.WebSocketImpl(new URL(url).href));
     const pc = new options.RTCPeerConnectionImpl({});
-    const cycle = { options, live, stopped: false,
+    const cycle = { options, live, stopped: false, localRetries: 0,
       upload(amount) { live.bytes.uploaded += amount; } };
     let originalLoader, installedLoader;
     cycles.push(cycle);
-    return {
+    const api = {
+      retryLocalCandidates() { assert.equal(this, api); cycle.localRetries++; return 1; },
       metrics() { return { ...live, serving: live.bytes.uploadRemaining !== 0 }; },
       peerConnectionDetails() { return cycle.stopped ? [] : [{ connection: pc, pubkey: 'f'.repeat(64) }]; },
       attach(player) { originalLoader = player.config.fLoader; installedLoader = class extends originalLoader {}; player.config.fLoader = installedLoader; },
@@ -209,6 +210,8 @@ function lifecycleFixture(t, { turnCredentials, turnConfiguration, turnFactory, 
         live.bytes.held = 0; ownedSockets.forEach(socket => socket.close()); pc.close();
       },
     };
+    cycle.sdk = api;
+    return api;
   };
   const turnConfigurations = [];
   const createTurnCredentials = configuration => {
@@ -261,7 +264,9 @@ test('adapter transport metrics reach only the latest report root and retain a l
 
 test('an omitted operator configuration leaves the real TURN provider unconfigured during peer playback', async t => {
   const f = lifecycleFixture(t, { turnFactory: createPublicTurnCredentials });
-  assert.deepEqual(f.turnConfigurations, [{ endpoint: null, turnUrl: null }]);
+  assert.deepEqual(Object.keys(f.turnConfigurations[0]).sort(), ['endpoint', 'onChange', 'turnUrl']);
+  assert.deepEqual(f.turnConfigurations.map(({ endpoint, turnUrl }) => ({ endpoint, turnUrl })), [{ endpoint: null, turnUrl: null }]);
+  assert.equal(typeof f.turnConfigurations[0].onChange, 'function');
   assert.equal(f.fetches.length, 0);
   await f.adapter.setEnabled(true);
   assert(f.fetches.length > 0, 'ordinary pinned catalogue metadata still loads');
@@ -282,14 +287,136 @@ test('explicit operator configuration is captured before caller mutation and bou
       { headers: { 'content-type': 'application/json' } });
     },
   }) });
-  assert.deepEqual(f.turnConfigurations, [expected]); assert.notEqual(f.turnConfigurations[0], configuration);
+  assert.deepEqual(f.turnConfigurations.map(({ endpoint, turnUrl }) => ({ endpoint, turnUrl })), [expected]);
+  assert.notEqual(f.turnConfigurations[0], configuration);
   configuration.endpoint = 'https://changed.test/v1/public/credentials'; configuration.turnUrl = 'turns:changed.test:443?transport=tcp';
   assert.equal(requests.length, 0, 'constructing the adapter does not issue credentials');
   await f.adapter.setEnabled(true);
   assert.deepEqual(requests, [{ url: expected.endpoint, method: 'POST' }]);
   assert.deepEqual(f.connections[0].configuration.iceServers[1].urls, [expected.turnUrl]);
-  assert.deepEqual(f.turnConfigurations, [expected], 'later caller changes cannot retarget the active provider');
+  assert.equal(f.cycles[0].localRetries, 0, 'a lease accepted before SDK creation needs no retry');
+  assert.deepEqual(f.turnConfigurations.map(({ endpoint, turnUrl }) => ({ endpoint, turnUrl })), [expected],
+    'later caller changes cannot retarget the active provider');
   await f.adapter.setEnabled(false); assert.equal(f.pendingTimers(), 0);
+});
+
+// Real credential client and adapter; the SDK retry method below is a call-shape
+// fixture. Actual SDK failure eligibility and redial are tested separately.
+test('TURN lease retry: real four-second failure and fifteen-second retry notify the active SDK once', async t => {
+  const epoch = 2_000_000_000_000, turnUrl = 'turns:relay.test:5350?transport=tcp';
+  let requests = 0, provider, accepted;
+  const f = lifecycleFixture(t, { turnConfiguration: { endpoint: 'https://operator.test/credentials', turnUrl },
+    turnFactory: configuration => provider = createPublicTurnCredentials({ ...configuration,
+      wallNow: () => epoch + performance.now(), fetchImpl: async (_url, options) => {
+        if (++requests === 1) return new Promise((_, reject) => options.signal.addEventListener('abort',
+          () => reject(new DOMException('Fixture deadline', 'AbortError')), { once: true }));
+        const expiresAt = Math.floor((epoch + performance.now()) / 1000) + 3600;
+        accepted = { urls: [turnUrl], username: `${expiresAt}:pub-${'a'.repeat(24)}`,
+          credential: `${'b'.repeat(26)}I=`, expiresAt };
+        return new Response(JSON.stringify(accepted), { headers: { 'content-type': 'application/json' } });
+      },
+    }) });
+  let enabled = false;
+  const enabling = f.adapter.setEnabled(true).then(() => { enabled = true; });
+  f.advance(3999); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(requests, 1); assert.equal(enabled, false); assert.equal(f.cycles.length, 0);
+  f.advance(1); await enabling;
+  assert.equal(provider.snapshot().failures, 1); assert.equal(provider.snapshot().available, false);
+  assert.deepEqual(f.connections[0].configuration.iceServers, PUBLIC_SWARM_ICE);
+  assert.equal(f.cycles[0].localRetries, 0);
+  const loader = f.hls.config.fLoader, video = { ...f.video };
+  f.advance(14999); await new Promise(resolve => setImmediate(resolve)); assert.equal(requests, 1);
+  f.advance(1); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(requests, 2); assert.equal(provider.snapshot().available, true);
+  assert.equal(f.cycles[0].localRetries, 1, 'a newly accepted lease notifies the existing SDK');
+  f.turnConfigurations[0].onChange(provider.snapshot());
+  assert.equal(f.cycles[0].localRetries, 1, 'the same accepted identity cannot trigger twice');
+  assert.equal(f.hls.config.fLoader, loader); assert.deepEqual(f.video, video);
+  assert.equal(f.cycles.length, 1); assert.equal(f.cycles[0].stopped, false);
+  assert.deepEqual(f.connections[0].configuration.iceServers, PUBLIC_SWARM_ICE,
+    'the host does not mutate an existing PC configuration');
+  assert.equal(JSON.stringify(f.adapter.metrics()).includes(accepted.username), false);
+  assert.equal(JSON.stringify(f.adapter.metrics()).includes(accepted.credential), false);
+  await f.adapter.setEnabled(false); assert.equal(f.pendingTimers(), 0);
+});
+
+test('TURN lease retry: same-lease refresh failure is inert and every newly usable identity notifies once', async t => {
+  let identity = null;
+  const f = lifecycleFixture(t, { turnFactory: () => ({
+    async start() {}, stop() { identity = null; }, servers: () => [], leaseIdentity: () => identity,
+    snapshot: () => ({ phase: identity ? 'ready' : 'unavailable', available: Boolean(identity), remainingMs: identity ? 90000 : 0, failures: 0 }),
+  }) });
+  await f.adapter.setEnabled(true); const notify = f.turnConfigurations[0].onChange;
+  notify({ available: true }); assert.equal(f.cycles[0].localRetries, 0, 'availability alone is not an accepted identity');
+  identity = 'first-private-lease'; notify({ available: true });
+  assert.equal(f.cycles[0].localRetries, 1);
+  notify({ available: true, failures: 1 }); notify({ available: true });
+  assert.equal(f.cycles[0].localRetries, 1, 'a failed refresh retaining the same lease does not retry');
+  identity = 'next-private-lease'; notify({ available: false });
+  assert.equal(f.cycles[0].localRetries, 1);
+  notify({ available: true }); notify({ available: true });
+  assert.equal(f.cycles[0].localRetries, 2);
+  assert(!JSON.stringify(f.adapter.metrics()).includes('private-lease'));
+});
+
+test('TURN lease retry: pause, resumed generation and replaced adapter fence old SDKs', async t => {
+  const providers = [];
+  const f = lifecycleFixture(t, { turnFactory: ({ onChange }) => {
+    const state = { identity: null, onChange }; providers.push(state);
+    return { async start() { state.identity = null; }, stop() { state.identity = null; }, servers: () => [],
+      leaseIdentity: () => state.identity, snapshot: () => ({ available: Boolean(state.identity) }) };
+  } });
+  await f.adapter.setEnabled(true);
+  providers[0].identity = 'same-private-lease'; providers[0].onChange({ available: true });
+  assert.equal(f.cycles[0].localRetries, 1);
+  await f.adapter.setEnabled(false);
+  providers[0].identity = 'retired-private-lease'; providers[0].onChange({ available: true });
+  assert.equal(f.cycles[0].localRetries, 1); assert.equal(f.cycles[0].stopped, true);
+  await f.adapter.setEnabled(true);
+  providers[0].onChange({ available: true }); assert.equal(f.cycles[1].localRetries, 0);
+  providers[0].identity = 'same-private-lease'; providers[0].onChange({ available: true });
+  assert.equal(f.cycles[1].localRetries, 1, 'a newly usable lease in the resumed generation is observed');
+  assert.equal(f.cycles[0].localRetries, 1);
+  f.useRecorded(undefined); await f.adapter.setEnabled(true);
+  providers[0].identity = 'stale-old-adapter'; providers[0].onChange({ available: true });
+  assert.equal(f.cycles[1].localRetries, 1); assert.equal(f.cycles[2].localRetries, 0);
+  providers[1].identity = 'current-private-lease'; providers[1].onChange({ available: true });
+  assert.equal(f.cycles[2].localRetries, 1);
+  f.adapter.stop(); providers[1].identity = 'stale-stop'; providers[1].onChange({ available: true });
+  assert.equal(f.cycles[2].localRetries, 1); assert.equal(f.cycles.length, 3);
+  assert.equal(f.pendingTimers(), 0);
+});
+
+for (const reentry of ['identity', 'retry-method']) test(`TURN lease retry: reentrant ${reentry} cannot notify a retired SDK`, async t => {
+  let identity = null, onIdentity;
+  const f = lifecycleFixture(t, { turnFactory: () => ({
+    async start() {}, stop() { identity = null; }, servers: () => [],
+    leaseIdentity() { const value = identity; onIdentity?.(); return value; },
+    snapshot: () => ({ available: Boolean(identity) }),
+  }) });
+  await f.adapter.setEnabled(true); identity = 'ready-private-lease';
+  if (reentry === 'identity') onIdentity = () => { onIdentity = null; void f.adapter.setEnabled(false); };
+  else Object.defineProperty(f.cycles[0].sdk, 'retryLocalCandidates', { get() {
+    f.adapter.stop(); return () => { f.cycles[0].localRetries++; };
+  } });
+  f.turnConfigurations[0].onChange({ available: true });
+  assert.equal(f.cycles[0].localRetries, 0); assert.equal(f.cycles[0].stopped, true);
+  assert.equal(f.pendingTimers(), 0);
+});
+
+test('TURN lease retry: older SDK and a throwing optional method preserve playback', async t => {
+  let identity = null;
+  const f = lifecycleFixture(t, { turnFactory: () => ({
+    async start() {}, stop() {}, servers: () => [], leaseIdentity: () => identity,
+    snapshot: () => ({ available: Boolean(identity) }),
+  }) });
+  await f.adapter.setEnabled(true); const notify = f.turnConfigurations[0].onChange, loader = f.hls.config.fLoader;
+  delete f.cycles[0].sdk.retryLocalCandidates;
+  identity = 'old-sdk-lease'; assert.doesNotThrow(() => notify({ available: true }));
+  let throws = 0; f.cycles[0].sdk.retryLocalCandidates = () => { throws++; throw new Error('Fixture SDK method'); };
+  identity = 'new-sdk-lease'; assert.doesNotThrow(() => notify({ available: true })); notify({ available: true });
+  assert.equal(throws, 1); assert.equal(f.cycles[0].stopped, false); assert.equal(f.cycles.length, 1);
+  assert.equal(f.hls.config.fLoader, loader);
 });
 
 test('native peer construction uses the current automatic lease and pause cancels its lifecycle', async t => {
