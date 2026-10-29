@@ -156,8 +156,12 @@ try {
       return source.set.call(this, value);
     } });
     Object.defineProperty(HTMLMediaElement.prototype, 'currentTime', { ...position, set(value) {
-      if (this.id === 'lab-video' && q.positions.length < 64) q.positions.push({ at: Date.now(), value, source: this.src,
-        native: q.players.at(-1)?.session.nativeHls === true });
+      if (this.id === 'lab-video' && q.positions.length < 64) {
+        const owner = q.players.at(-1)?.session, room = owner?.listener?.snapshot();
+        q.positions.push({ at: Date.now(), value, source: this.src, native: owner?.nativeHls === true,
+          roomPhase: owner?.listener?.position() ?? null, roomReady: room?.ready === true,
+          following: owner?.listenerWanted === true && owner?.followLive !== false });
+      }
       return position.set.call(this, value);
     } });
     document.addEventListener('click', event => { if (event.target.closest?.('#public-play') && q.trustedClicks.length < 8)
@@ -230,6 +234,8 @@ try {
     const q = window.__nativeFallbackQa, { Hls, player, session } = q.players[0], v = document.getElementById('lab-video');
     if (!v.canPlayType('application/vnd.apple.mpegurl')) throw new Error('The actual browser does not advertise native HLS.');
     if (session.nativeHls || q.faultCount) throw new Error('Expected one active Hls engine and no previous fault injection.');
+    if (!session.listenerWanted || session.followLive === false || !session.listener?.snapshot().ready)
+      throw new Error('The real recorded room must still be followed before the handover.');
     q.oldPeer = session.publicPeer;
     if (!q.oldPeer) throw new Error('A real public peer adapter is required before native recovery.');
     const phase = session.recordedView.recordingPosition(v.currentTime), at = Date.now(); q.faultCount++;
@@ -256,10 +262,12 @@ try {
   const selected = observed.sourceSelections.find(row => row.at >= receipt.injection.at && row.value === PLAYLIST);
   assert(selected, 'Native selection must use the original approved VOD playlist.'); assert.equal(selected.crossOrigin, 'anonymous', 'anonymous must precede native manifest selection.');
   const position = observed.timeAssignments.find(row => row.at >= receipt.injection.at && row.native && row.source === PLAYLIST);
-  const expected = Math.min(receipt.injection.phase, 267.22);
-  assert(position || expected < 0.05, 'Native metadata must restore the captured programme phase.');
-  if (position) assert(Math.abs(position.value - expected) < 0.11, 'Raw continuous time must not replace programme phase.');
-  receipt.phaseRestoration = { expected, actual: position?.value ?? 0, firstNativeFrame: end.nativeFirstFrame,
+  assert(position && position.roomReady && position.following && Number.isFinite(position.roomPhase),
+    'The owned native handover must observe the actual still-following room.');
+  const expected = Math.max(0, Math.min(position.roomPhase, 267.27));
+  assert(Math.abs(position.value - expected) < 0.11, 'Native metadata must use the fresh room phase rather than the lagged pre-load capture.');
+  receipt.phaseRestoration = { basis: 'fresh-room-phase-at-owned-native-handover', previousPhase: receipt.injection.phase,
+    expected, actual: position.value, firstNativeFrame: end.nativeFirstFrame,
     transitionMs: end.nativeFirstFrame.at - receipt.injection.at };
   assert.equal(end.crossOrigin, 'anonymous'); assert.equal(end.currentSrc, PLAYLIST); assert.equal(end.engine, 'Native HLS');
   assert.equal(end.mode, 'recorded-vod'); assert(Math.abs(end.duration - 267.32) < 0.05);

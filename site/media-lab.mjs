@@ -1259,9 +1259,11 @@ async function initialise() {
     if (local || session !== s || s.finishing || s.nativeHls || !s.hls || s.abort.signal.aborted) return;
     // Capture the programme phase while the immutable timeline still exists.
     // Raw continuous media time may already be many recordings long.
-    const position = recordingPosition(s);
+    const position = recordingPosition(s), nativeSource = s.playlistUrl;
+    const recordedEpoch = s.recordedView ? s.recordedEpochId : null;
+    const followRecordedRoom = Boolean(recordedEpoch && s.followLive !== false && s.listenerWanted && s.listener?.snapshot().ready);
     const previous = s.publicPeer?.metrics();
-    s.playbackVersion = (s.playbackVersion ?? 0) + 1;
+    const playbackVersion = s.playbackVersion = (s.playbackVersion ?? 0) + 1;
     s.switchingPlayback = true;
     s.playbackTransitionStartedAt = performance.now();
     s.playbackPrime?.cancel(); s.priming = false; s.mediaReady = true;
@@ -1284,7 +1286,21 @@ async function initialise() {
     s.publicSharingFailed = false;
     s.playbackEngine = 'Native HLS';
     video.addEventListener('loadedmetadata', () => {
-      if (session !== s || s.finishing || s.abort.signal.aborted) return;
+      if (session !== s || s.finishing || s.abort.signal.aborted || s.playbackFailed || s.playbackWanted === false ||
+          s.playbackVersion !== playbackVersion || !s.nativeHls || s.hls || video.src !== nativeSource || video.currentSrc !== nativeSource) return;
+      const room = s.listener?.snapshot();
+      if (recordedEpoch && room?.epochId !== recordedEpoch) return;
+      if (followRecordedRoom) {
+        if (!s.listenerWanted || s.followLive === false || !room?.ready || !Number.isFinite(video.duration) || video.duration <= 0) return;
+        // This replacement has no continuous timeline. Read its fresh room
+        // phase now; metadata may arrive seconds after the old Hls playhead.
+        const target = roomMediaTime(s);
+        if (target !== null) {
+          s.playbackSync.align(target, s.durationSeconds, true);
+          s.listenerAlignedEpoch = room.epochId;
+        }
+        return;
+      }
       if (Number.isFinite(position) && position > 0 && Number.isFinite(video.duration)) {
         s.roomSeekAt = performance.now();
         video.currentTime = Math.min(position, Math.max(0, video.duration - 0.1));
@@ -1293,7 +1309,7 @@ async function initialise() {
     // The same-origin manifest contains approved cross-origin media. Native
     // HLS must fetch those children in CORS mode too, before selecting source.
     video.crossOrigin = 'anonymous';
-    video.src = s.playlistUrl;
+    video.src = nativeSource;
     status('Switching to your browser’s native player to recover playback.');
     // Demand the replacement source now, as for normal native startup. Waiting
     // for metadata before play() can leave Safari paused without ever starting

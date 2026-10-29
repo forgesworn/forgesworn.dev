@@ -23,7 +23,7 @@ window.__nativeFixture.hlsImports++;
 export default class Hls {
   static Events={MANIFEST_PARSED:'manifest',MEDIA_ATTACHED:'attached',FRAG_LOADED:'fragment',ERROR:'hls-error'};
   static isSupported(){return true;}
-  constructor(config){this.config=config;this.handlers=new Map();this.mediaSource={constructor:{name:'MediaSource'}};window.__nativeFixture.hls.push(this);}
+  constructor(config){this.config=config;if(window.__nativeFixture.recordedLive)this.config.loader=class {};this.handlers=new Map();this.mediaSource={constructor:{name:'MediaSource'}};window.__nativeFixture.hls.push(this);}
   on(name,fn){this.handlers.set(name,fn);} off(name){this.handlers.delete(name);}
   loadSource(url){this.url=url;}
   startLoad(position){this.startPosition=position;}
@@ -36,9 +36,15 @@ export default class Hls {
 const peerModule = `
 export const PUBLIC_SWARM_SOURCE_SHA256='76d90719a756c77d1008088c58ca6b28a74eb0ef01e5337906cfb68d3e2b13aa';
 export const PUBLIC_SWARM_RELAYS=['wss://fixture.invalid'];
-// This fixture exercises the approved VOD-to-native recovery path. Continuous
-// recording metadata and media are deliberately absent from its mock boundary.
-export async function prepareRecordedSource(){return null;}
+// Both axes remain explicit controller mocks; no media is decoded or fetched.
+export async function prepareRecordedSource({quality}){return quality==='full'&&window.__nativeFixture.recordedLive?
+ {durationSeconds:Number(document.getElementById('main').dataset.fullDurationSeconds)}:null;}
+export function createRecordedLive({recording,epochMs}){
+ const s=window.__nativeFixture;
+ return {timelineOriginMs:epochMs,mediaTimeAt:()=>s.roomPosition,
+  recordingPosition:time=>((time%recording.durationSeconds)+recording.durationSeconds)%recording.durationSeconds,
+  createPlaylistLoader:Parent=>class extends Parent{},anchor:()=>true,stop(){s.recordedStopped++;}};
+}
 export function createPublicSwarm({onStats}){
  const s=window.__nativeFixture;s.peerCreated++;let enabled=false,stopped=false;
  const metrics=()=>({enabled,phase:stopped?'stopped':enabled?'peer':'origin',reason:stopped?'stopped':'opted-in',serving:enabled,
@@ -55,11 +61,11 @@ const listenerModule = `
 export function createListenerSession({onChange}){
  const s=window.__nativeFixture;s.listenerCreated++;let joined=false;
  const snapshot=()=>({id:joined?'b'.repeat(64):null,joined,ready:joined,observed:true,status:joined?'active':'observing',
-  epochId:'e'.repeat(64),startedAt:Date.now()-12500,position:s.roomPosition,listeners:joined?2:1,role:'joined',connectedRelays:3,members:[]});
+  epochId:s.epoch,startedAt:Date.now()-12500,position:s.roomPosition,listeners:joined?2:1,role:'joined',connectedRelays:3,members:[]});
  const clock={snapshot,position:()=>s.roomPosition,observe(){s.observe++;onChange(snapshot());return snapshot();},
  async join(){s.join++;joined=true;onChange(snapshot());return snapshot();},
  leave(){s.leave++;joined=false;onChange(snapshot());},stop(){s.listenerStop++;joined=false;onChange(snapshot());}};
- s.listener=clock;return clock;
+ s.listener=clock;s.notifyRoom=()=>onChange(snapshot());return clock;
 }
 `;
 const visualModule = `export function createSwarmVisual(){return {update(){},pulse(){},destroy(){}};}`;
@@ -85,9 +91,10 @@ const server = createServer(async (request, response) => {
 await new Promise((done, fail) => { server.once('error', fail); server.listen(0, '127.0.0.1', done); });
 let browser;
 
-function mockMedia() {
+function mockMedia(options = {}) {
   const state = window.__nativeFixture = { hls: [], hlsImports: 0, hlsDestroy: 0, peerCreated: 0, peerStop: 0, peerEnabled: [],
     listenerCreated: 0, observe: 0, join: 0, leave: 0, listenerStop: 0, source: '', nativeAssignments: 0,
+    recordedLive: options.recordedLive === true, recordedStopped: 0, epoch: 'e'.repeat(64), holdNativeMetadata: options.holdNativeMetadata === true,
     nativeMetadata: 0, nativePlay: 0, stalePlayRejected: 0, deferNextPlay: false, pendingPlay: null, unreadyFirstFrame: false,
     readyState: 0, paused: true, ended: false, seeking: false, error: null,
     time: 12.5, roomPosition: 12.5, frames: 0, ranges: [[0, 268.6]], callbacks: new Map(), nextFrame: 0, setters: [],
@@ -115,7 +122,12 @@ function mockMedia() {
     // A queued event from the detached source has no current MediaError.
     // A genuine non-null error from the new native source must stay actionable.
     if (state.hlsDestroy) this.dispatchEvent(new Event('error'));
-    queueMicrotask(() => { state.readyState = 4; state.error = null; state.nativeMetadata++; this.dispatchEvent(new Event('loadedmetadata')); });
+    const metadata = (playing = true) => {
+      state.readyState = 4; state.error = null; state.nativeMetadata++; this.dispatchEvent(new Event('loadedmetadata'));
+      if (playing && !state.paused) { this.dispatchEvent(new Event('playing')); state.present(this); }
+    };
+    if (state.holdNativeMetadata) state.releaseNativeMetadata = metadata;
+    else queueMicrotask(() => metadata(false));
   } });
   proto.canPlayType = type => /(?:mpegurl|mp2t)/i.test(type) ? 'probably' : '';
   proto.play = function () {
@@ -126,6 +138,7 @@ function mockMedia() {
     const wasPaused = state.paused; state.paused = false;
     if (state.nativeAssignments) state.nativePlay++;
     if (wasPaused) queueMicrotask(() => {
+      if (state.holdNativeMetadata && state.nativeAssignments > 0 && state.nativeMetadata === 0) return;
       if (state.unreadyFirstFrame) {
         state.readyState = 1; state.seeking = true;
         state.present(this); this.dispatchEvent(new Event('waiting'));
@@ -164,7 +177,8 @@ async function waitFor(page, predicate, label) {
     await page.clock.runFor(100);
     await new Promise(done => setTimeout(done, 20));
   }
-  throw new Error(`Controller fixture did not reach ${label}`);
+  const context = await page.evaluate(() => { const s=window.__nativeFixture,r=document.getElementById('main'); return {frames:s.frames,recordedLive:s.recordedLive,peerCreated:s.peerCreated,peerEnabled:s.peerEnabled,hls:s.hls.length,mode:r.dataset.playbackMode,engine:r.dataset.playbackEngine,status:document.getElementById('lab-status').textContent,ready:s.readyState}; });
+  throw new Error(`Controller fixture did not reach ${label}: ${JSON.stringify(context)}`);
 }
 async function state(page) {
   return page.evaluate(() => {
@@ -194,9 +208,54 @@ try {
     try { await access(chrome); executablePath = chrome; } catch { /* Use an already installed Playwright browser. */ }
   }
   browser = await chromium.launch({ headless: true, executablePath, timeout: 15000 });
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  for (const ending of ['fresh-room', 'manual-position', 'pause', 'epoch-replaced', 'source-replaced', 'session-replaced']) {
+    const recorded = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    recorded.setDefaultTimeout(3000); recorded.on('pageerror', error => receipt.pageErrors.push(error.message));
+    await recorded.route('**/*', route => new URL(route.request().url()).origin === origin ? route.continue() : route.abort());
+    await recorded.addInitScript(mockMedia, { recordedLive: true, holdNativeMetadata: true });
+    await recorded.clock.install();
+    await recorded.goto(origin, { waitUntil: 'domcontentloaded', timeout: 10000 });
+    await waitFor(recorded, () => !document.getElementById('public-play').disabled && window.__nativeFixture.listener, 'recorded ready landing');
+    await recorded.evaluate(() => document.getElementById('public-play').click());
+    await waitFor(recorded, () => window.__nativeFixture.frames > 0 && window.__nativeFixture.peerEnabled.includes(true) &&
+      document.getElementById('main').dataset.playbackMode === 'recorded-live', 'recorded first frame');
+    await recorded.evaluate(manual => {
+      const s=window.__nativeFixture,v=document.getElementById('lab-video');
+      s.time=22.25;s.roomPosition=52.25;s.readyState=2;s.ranges=[];
+      if(manual){v.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowLeft'}));v.dispatchEvent(new Event('seeking'));v.dispatchEvent(new Event('seeked'));}
+      v.dispatchEvent(new Event('waiting'));
+    }, ending === 'manual-position');
+    await recorded.clock.runFor(8400);
+    await waitFor(recorded, () => window.__nativeFixture.nativeAssignments === 1, 'recorded native replacement');
+    const replacement = await state(recorded);
+    assert.equal(replacement.nativeMetadata,0);assert(replacement.nativePlay>=1,'Safari playback demand precedes delayed metadata');
+    assert.equal(replacement.peerStopped,1);assert.equal(replacement.hlsDestroyed,1);assert.equal(replacement.leaves,0);
+    await recorded.clock.runFor(2000);
+    await recorded.evaluate(() => {window.__nativeFixture.roomPosition=63.25;});
+    if(ending==='pause')await recorded.evaluate(()=>{const v=document.getElementById('lab-video');v.dispatchEvent(new Event('pointerdown'));v.pause();});
+    if(ending==='epoch-replaced')await recorded.evaluate(()=>{const s=window.__nativeFixture;s.epoch='f'.repeat(64);s.notifyRoom();});
+    if(ending==='source-replaced')await recorded.evaluate(()=>{const s=window.__nativeFixture;s.staleMetadata=s.releaseNativeMetadata;document.getElementById('lab-video').src='/replacement.m3u8';});
+    if(ending==='session-replaced'){
+      await recorded.evaluate(()=>{const s=window.__nativeFixture;s.staleMetadata=s.releaseNativeMetadata;document.getElementById('lab-quality').value='preview';document.getElementById('lab-quality').dispatchEvent(new Event('change'));});
+      await waitFor(recorded,()=>window.__nativeFixture.peerCreated===2,'replacement session');
+    }
+    const boundary=await recorded.evaluate(()=>{const s=window.__nativeFixture;return{setters:s.setters.length,nativePlay:s.nativePlay,time:s.time};});
+    await recorded.evaluate(stale=>{const s=window.__nativeFixture;(stale?s.staleMetadata:s.releaseNativeMetadata)(false);},['source-replaced','session-replaced'].includes(ending));
+    const final=await recorded.evaluate(()=>{const s=window.__nativeFixture,v=document.getElementById('lab-video');return{time:v.currentTime,paused:v.paused,
+      setters:s.setters.length,nativePlay:s.nativePlay,peerCreated:s.peerCreated,peerStopped:s.peerStop,recordedStopped:s.recordedStopped,source:s.source};});
+    if(ending==='fresh-room')assert.equal(final.time,63.25,'recorded room handover uses the fresh phase at delayed metadata, not the lagged22.25s capture');
+    else if(ending==='manual-position')assert.equal(final.time,22.25,'a viewer who left room following retains their chosen programme position');
+    else assert.equal(final.setters,boundary.setters,ending+' retires the old metadata seek');
+    assert.equal(final.nativePlay,boundary.nativePlay,'metadata never creates another autoplay attempt');
+    if(ending==='pause')assert.equal(final.paused,true);
+    receipt.simulatedCases.push({trigger:'recorded-native-handover',ending,recordingAndNativeMediaSimulated:true,replacement,boundary,final});
+    await recorded.close();
+  }
+  assert.deepEqual(receipt.pageErrors, []); assert.deepEqual(receipt.forbiddenRequests, []);
+
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   page.setDefaultTimeout(3000); page.on('pageerror', error => receipt.pageErrors.push(error.message));
-  const origin = `http://127.0.0.1:${server.address().port}`;
   await page.route('**/*', route => new URL(route.request().url()).origin === origin ? route.continue() : route.abort());
   await page.addInitScript(mockMedia);
   await page.clock.install();
@@ -261,6 +320,9 @@ try {
   });
   await page.clock.runFor(1200);
   await page.evaluate(() => window.__nativeFixture.present(document.getElementById('lab-video')));
+  await page.clock.runFor(400);
+  // Observe one next existing400ms UI publication; the ongoing-stall
+  // threshold/counter and the controller's eight-second fallback stay exact.
   await page.clock.runFor(400);
   const unreadyDuringStall = await state(page);
   assert.equal(unreadyDuringStall.stallCount, 1);
