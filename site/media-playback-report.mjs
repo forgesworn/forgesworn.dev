@@ -11,6 +11,60 @@ const protocol = input => choice(input, ['udp', 'tcp', 'tls']);
 const object = input => { try { return input !== null && typeof input === 'object' && !Array.isArray(input); } catch { return false; } };
 const boundedInteger = (input, maximum) => integer(input) !== null && input <= maximum ? input : null;
 
+// Exact public SDK transport vocabulary. Never enumerate diagnostic input.
+const TRANSPORT_EVENTS = {
+  created: ['outgoing', 'incoming'], gathering: ['new', 'gathering', 'complete', 'unknown'],
+  ice: ['new', 'checking', 'connected', 'completed', 'failed', 'disconnected', 'closed', 'unknown'],
+  connection: ['new', 'connecting', 'connected', 'disconnected', 'failed', 'closed', 'unknown'],
+  'local-offer': ['complete', 'capped', 'aborted', 'unknown'], 'local-answer': ['complete', 'capped', 'aborted', 'unknown'],
+  'offer-received': ['authenticated'], 'answer-received': ['authenticated'],
+  'offer-admitted': ['accepted'], 'answer-admitted': ['accepted'], 'remote-installed': ['offer', 'answer'],
+  'signal-send': ['offer', 'answer'], 'signal-failed': ['offer', 'answer'],
+  'channel-open': ['accepted', 'stale'], negotiation: ['glare-yield'],
+  'dial-end': ['timeout', 'failed', 'rejected', 'superseded', 'admission', 'host-stop'],
+  'link-close': ['host', 'host-stop', 'admission', 'rotation', 'integrity', 'request-timeout', 'request-abort',
+    'native-failed', 'native-closed', 'native-disconnected', 'channel-close', 'channel-error',
+    'protocol', 'send-error', 'serve-error', 'upload-queue', 'upload-drain-timeout'],
+};
+
+function transportDiagnostics(input) {
+  if (!object(input)) return null;
+  const source = value(input, 'records'); let array = false;
+  try { array = Array.isArray(source); } catch {}
+  const length = array ? integer(value(source, 'length')) : null;
+  if (length === null) return null;
+  let unknownFields = 0;
+  const known = result => { if (result === null) unknownFields++; return result; };
+  const sdkCapacity = known(choice(value(input, 'capacity'), [64]));
+  const dropped = known(integer(value(input, 'dropped'))), rawCounters = value(input, 'counters');
+  let counters = null;
+  if (object(rawCounters)) {
+    counters = {};
+    for (const [event, details] of Object.entries(TRANSPORT_EVENTS)) {
+      const raw = value(rawCounters, event);
+      counters[event] = {};
+      for (const detail of details) counters[event][detail] = known(integer(object(raw) ? value(raw, detail) : null));
+    }
+  } else unknownFields++;
+  const records = [];
+  for (let i = 0; i < Math.min(length, 64); i++) {
+    const raw = value(source, i), row = object(raw) ? raw : null;
+    const rawEvent = value(row, 'event');
+    const event = known(typeof rawEvent === 'string' && Object.hasOwn(TRANSPORT_EVENTS, rawEvent) ? rawEvent : null);
+    const detail = known(event === null ? null : choice(value(row, 'detail'), TRANSPORT_EVENTS[event]));
+    let candidates = null, candidatesCapped = null;
+    if (event === 'local-offer' || event === 'local-answer') {
+      candidates = known(boundedInteger(value(row, 'candidates'), 256));
+      const capped = boolean(value(row, 'candidatesCapped'));
+      candidatesCapped = known(candidates !== null && capped === (candidates === 256) ? capped : null);
+    }
+    records.push({ id: known(integer(value(row, 'id'))), atMs: known(integer(value(row, 'atMs'))),
+      event, detail, candidates, candidatesCapped });
+  }
+  return { capacity: 64, sdkCapacity, dropped, counters, records,
+    truncated: length > 64, omittedRecords: Math.max(0, length - 64), unknownFields };
+}
+
 function fragment(input) {
   if (!object(input)) return null;
   return {
@@ -190,7 +244,7 @@ function peerAttemptDiagnostics(input) {
   };
 }
 
-function sample(input, elapsedMs) {
+function sample(input, elapsedMs, metrics) {
   const position = number(value(input, 'position')), buffered = ranges(value(input, 'buffered'));
   const sourceDuration = number(value(input, 'recordingDuration'));
   const recordingDuration = sourceDuration > 0 ? sourceDuration : null;
@@ -236,8 +290,8 @@ function sample(input, elapsedMs) {
     sourceCacheBodyBytes: sourceTimingCoverage === 'complete' ? integer(value(input, 'sourceCacheBodyBytes')) : null,
     sourceTimingCoverage,
     peerEnabled: boolean(value(input, 'peerEnabled')), connectedPeers: integer(value(input, 'connectedPeers')),
-    peerAttemptDiagnostics: peerAttemptDiagnostics(value(input, 'peerAttemptDiagnostics')),
-    peerFlowDiagnostics: peerFlowDiagnostics(value(input, 'peerAttemptDiagnostics')),
+    peerAttemptDiagnostics: peerAttemptDiagnostics(metrics),
+    peerFlowDiagnostics: peerFlowDiagnostics(metrics),
     transferWorkerState: choice(value(input, 'transferWorkerState'), ['off', 'waiting-core', 'loading', 'ready', 'failed', 'stopped']),
     roomPrepared: boolean(value(input, 'roomPrepared')), roomReady: boolean(value(input, 'roomReady')),
     roomListeners: integer(value(input, 'roomListeners')), connections: connections(value(input, 'connections')),
@@ -252,6 +306,7 @@ export function createPlaybackReport({ now = () => performance.now(), startedAt 
     throw new TypeError('Invalid playback report bounds');
   }
   let origin = number(startedAt), lastAt = null, totalSamples = 0;
+  let latestTransport = null, transportObservation = null;
   const samples = [];
   return {
     record(input) {
@@ -261,7 +316,16 @@ export function createPlaybackReport({ now = () => performance.now(), startedAt 
       if (at < origin) return false;
       // Expensive observations can be supplied lazily; skipped ticks do not
       // perform another native query or build another SDK metrics snapshot.
-      try { samples.push(sample(typeof input === 'function' ? input() : input, at - origin)); }
+      try {
+        const observed = typeof input === 'function' ? input() : input;
+        const elapsedMs = at - origin, rawMetrics = value(observed, 'peerAttemptDiagnostics');
+        const metrics = object(rawMetrics) ? rawMetrics : null;
+        const projected = transportDiagnostics(value(metrics, 'transportDiagnostics'));
+        const generation = integer(value(metrics, 'transportGeneration'));
+        samples.push(sample(observed, elapsedMs, metrics));
+        transportObservation = { currentAvailable: projected !== null, observedAtElapsedMs: elapsedMs, observedGeneration: generation };
+        if (projected !== null) latestTransport = { capturedAtElapsedMs: elapsedMs, generation, summary: projected };
+      }
       catch { return false; }
       totalSamples++; lastAt = at;
       if (samples.length > maxSamples) samples.shift();
@@ -273,6 +337,12 @@ export function createPlaybackReport({ now = () => performance.now(), startedAt 
         totalSamples, droppedSamples: totalSamples - samples.length,
         captureElapsedMs: lastAt === null || origin === null ? null : lastAt - origin,
         retainedWindowMs: samples.length < 2 ? 0 : samples.at(-1).elapsedMs - samples[0].elapsedMs,
+        transportDiagnostics: latestTransport === null ? null : {
+          ...transportObservation, ...structuredClone(latestTransport),
+          ageAtObservationMs: transportObservation.observedAtElapsedMs - latestTransport.capturedAtElapsedMs,
+          timeBasis: 'atMs is SDK-instance elapsed time, not report elapsed; availability and age are as of observedAtElapsedMs, not export time.',
+          instanceScope: 'Adapter-local generation; no cross-adapter or cross-engine identity, chronology or cause correlation.',
+        },
         notes: [
           'Samples describe this browser playback, not a controlled benchmark or proof of a cold cache.',
           'Loaded source includes browser cache. Network/cache figures are completed response bodies, not total wire traffic.',

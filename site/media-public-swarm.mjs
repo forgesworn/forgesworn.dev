@@ -227,6 +227,8 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
 
   const metrics = () => {
     const live = swarm?.metrics();
+    let transportDiagnostics = null;
+    try { transportDiagnostics = live?.transportDiagnostics ?? null; } catch {}
     const acceptedDetails = (swarm?.peerConnectionDetails?.() ?? []).filter(({ connection }) => connection.connectionState === 'connected');
     const acceptedConnections = acceptedDetails.map(({ connection }) => connection);
     const identities = new Map(acceptedDetails.map(({ connection, pubkey }) => [connection, pubkey]));
@@ -253,6 +255,7 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
       peerAdmission: live?.peerAdmission ?? null,
       latePeerRace: live?.latePeerRace ?? null,
       startupBuffer: live?.startupBuffer ?? null,
+      transportDiagnostics, transportGeneration: generation,
       resources: { activePeerConnections: [...connections].filter(connection => connection.connectionState !== 'closed').length,
         signallingConnections: [...sockets].filter(socket => socket.readyState < 2).length,
         heldBytes: n(live?.bytes.held), heldHighWaterBytes: highWaterBytes },

@@ -8,6 +8,113 @@ function fixture(options = {}) {
   return { report, at(value) { at = value; } };
 }
 
+function transportTrace(id = 1) {
+  return { capacity: 64, dropped: 0, counters: { created: { outgoing: 1, incoming: 0 },
+    'link-close': { 'native-failed': 1 } }, records: [
+    { id, atMs: 7, event: 'created', detail: 'outgoing' },
+    { id, atMs: 15, event: 'link-close', detail: 'native-failed' },
+  ] };
+}
+
+test('latest root transport trace survives sample eviction and pause without merging replacement generations', () => {
+  const p = fixture();
+  for (let i = 0; i <= 241; i++) {
+    p.at(i * 1000); p.report.record({ peerAttemptDiagnostics: { transportGeneration: 1, transportDiagnostics: transportTrace() } });
+  }
+  let root = p.report.snapshot();
+  assert.equal(root.samples.length, 240); assert.equal(root.droppedSamples, 2);
+  assert(root.samples.every(row => !Object.hasOwn(row, 'transportDiagnostics')));
+  assert.equal(root.transportDiagnostics.capturedAtElapsedMs, 241000);
+  assert.equal(root.transportDiagnostics.generation, 1);
+  assert.equal(root.transportDiagnostics.summary.records[1].detail, 'native-failed');
+  p.at(242000); p.report.record({ peerAttemptDiagnostics: { transportGeneration: 2, transportDiagnostics: null } });
+  root = p.report.snapshot();
+  assert.equal(root.transportDiagnostics.currentAvailable, false);
+  assert.equal(root.transportDiagnostics.observedAtElapsedMs, 242000);
+  assert.equal(root.transportDiagnostics.observedGeneration, 2);
+  assert.equal(root.transportDiagnostics.capturedAtElapsedMs, 241000);
+  assert.equal(root.transportDiagnostics.ageAtObservationMs, 1000);
+  p.at(243000); p.report.record({ peerAttemptDiagnostics: { transportGeneration: 3, transportDiagnostics: transportTrace(2) } });
+  root = p.report.snapshot();
+  assert.equal(root.transportDiagnostics.currentAvailable, true);
+  assert.equal(root.transportDiagnostics.generation, 3);
+  assert.deepEqual(root.transportDiagnostics.summary.records.map(row => row.id), [2, 2]);
+  root.transportDiagnostics.summary.records[0].id = 999;
+  assert.equal(p.report.snapshot().transportDiagnostics.summary.records[0].id, 2);
+  assert.match(root.transportDiagnostics.timeBasis, /SDK.*report elapsed/i);
+  assert.match(root.transportDiagnostics.instanceScope, /adapter.*cross/i);
+  assert(Buffer.byteLength(JSON.stringify(p.report.snapshot())) < 700000);
+});
+
+test('transport projection caps records and keeps invalid fields unknown without reading private properties', () => {
+  const p = fixture(); let touched = false;
+  const trace = transportTrace(); trace.dropped = '0';
+  trace.records = Array.from({ length: 70 }, (_, i) => ({ id: i, atMs: i, event: 'ice', detail: 'connected',
+    privateKey: { toJSON() { touched = true; return 'private-secret'; } } }));
+  trace.records[0].detail = 'https://private.invalid/secret';
+  Object.defineProperty(trace.records[1], 'atMs', { get() { throw Error('private-secret'); } });
+  Object.defineProperty(trace.counters, 'privateKey', { get() { touched = true; throw Error('private-secret'); } });
+  p.report.record({ peerAttemptDiagnostics: { transportGeneration: -1, transportDiagnostics: trace } });
+  const projected = p.report.snapshot().transportDiagnostics;
+  assert.equal(projected.generation, null);
+  assert.equal(projected.summary.records.length, 64);
+  assert.equal(projected.summary.truncated, true); assert.equal(projected.summary.omittedRecords, 6);
+  assert.equal(projected.summary.dropped, null); assert(projected.summary.unknownFields > 0);
+  assert.equal(projected.summary.records[0].detail, null); assert.equal(projected.summary.records[1].atMs, null);
+  assert.equal(projected.summary.counters.created.outgoing, 1);
+  assert.equal(projected.summary.counters.ice.failed, null);
+  const text = JSON.stringify(p.report.snapshot());
+  assert.equal(touched, false); assert.doesNotMatch(text, /private-secret|private\.invalid|privateKey/);
+});
+
+test('transport observation uses accepted lazy input once and leaves absent or unreadable traces unavailable', () => {
+  const p = fixture(); let calls = 0, reads = 0;
+  const metrics = { transportGeneration: 1 };
+  Object.defineProperty(metrics, 'transportDiagnostics', { get() { reads++; return transportTrace(); } });
+  const input = () => { calls++; return { peerAttemptDiagnostics: metrics }; };
+  assert.equal(p.report.snapshot().transportDiagnostics, null);
+  p.report.record(input); p.at(400); p.report.record(input); p.at(800); p.report.record(input);
+  assert.equal(calls, 1); assert.equal(reads, 1);
+  p.at(1000); p.report.record({ peerAttemptDiagnostics: { transportGeneration: 1,
+    get transportDiagnostics() { throw Error('secret'); } } });
+  const root = p.report.snapshot().transportDiagnostics;
+  assert.equal(root.currentAvailable, false); assert.equal(root.capturedAtElapsedMs, 0);
+  assert.equal(root.summary.records.length, 2);
+});
+
+test('transport projection rejects nested arrays and revoked proxies without discarding playback', () => {
+  const p = fixture(); let read = false;
+  const invalid = [];
+  Object.defineProperty(invalid, 'transportDiagnostics', { get() { read = true; throw Error('private'); } });
+  assert.equal(p.report.record({ position: 4, peerAttemptDiagnostics: invalid }), true);
+  assert.equal(p.report.snapshot().transportDiagnostics, null);
+  assert.equal(read, false);
+  const { proxy, revoke } = Proxy.revocable([], {}); revoke();
+  p.at(1000); assert.equal(p.report.record({ position: 5, peerAttemptDiagnostics: proxy }), true);
+  assert.equal(p.report.snapshot().samples.at(-1).position, 5);
+  assert.equal(p.report.snapshot().transportDiagnostics, null);
+});
+
+test('transport candidate counts and full64 records stay bounded in a240sample report', () => {
+  const p = fixture(), trace = transportTrace();
+  trace.dropped = 18;
+  trace.records = Array.from({ length: 64 }, (_, id) => ({ id, atMs: Number.MAX_SAFE_INTEGER,
+    event: 'local-answer', detail: 'capped', candidates: 256, candidatesCapped: true }));
+  for (let i = 0; i < 241; i++) {
+    p.at(i * 1000); p.report.record({ position: i, peerAttemptDiagnostics: { transportGeneration: 1, transportDiagnostics: trace } });
+  }
+  trace.records[0].id = 99;
+  const root = p.report.snapshot(), d = root.transportDiagnostics.summary;
+  assert.equal(root.samples.length, 240); assert.equal(root.droppedSamples, 1);
+  assert.equal(d.capacity, 64); assert.equal(d.sdkCapacity, 64); assert.equal(d.dropped, 18);
+  assert.equal(d.truncated, false); assert.equal(d.omittedRecords, 0); assert.equal(d.records[0].id, 0);
+  assert.equal(d.records[0].candidates, 256); assert.equal(d.records[0].candidatesCapped, true);
+  assert(Buffer.byteLength(JSON.stringify(root)) < 800000, 'one root trace must not multiply by240');
+  p.at(241000); trace.records[0].candidatesCapped = false;
+  p.report.record({ peerAttemptDiagnostics: { transportDiagnostics: trace } });
+  assert.equal(p.report.snapshot().transportDiagnostics.summary.records[0].candidatesCapped, null);
+});
+
 test('a bounded history samples the existing tick at one-second intervals and exposes truncation', () => {
   const p = fixture({ maxSamples: 3 });
   for (let at = 0; at <= 5_600; at += 400) { p.at(at); p.report.record({ position: at / 1000 }); }

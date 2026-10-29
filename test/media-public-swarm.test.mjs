@@ -6,6 +6,7 @@ import { createPublicSwarm, validatePublicSwarmCatalogue, catalogueSegment, PUBL
   PUBLIC_SWARM_LIMITS, PUBLIC_SWARM_RELAYS, PUBLIC_SWARM_ICE, prepareRecordedSource, createRecordedLive } from '../site/media-public-swarm.mjs';
 import { verifyEvent } from '../site/vendor/media-peer-demo.js';
 import { createPublicTurnCredentials } from '../site/media-turn-credentials.mjs';
+import { createPlaybackReport } from '../site/media-playback-report.mjs';
 
 const bytes = await readFile(new URL('../site/media/dejavu-swarm/catalogue-v3.json', import.meta.url));
 const catalogue = JSON.parse(bytes);
@@ -237,6 +238,26 @@ function lifecycleFixture(t, { turnCredentials, turnConfiguration, turnFactory, 
       at = end;
     } };
 }
+
+test('adapter transport metrics reach only the latest report root and retain a labelled trace after disable', async t => {
+  const f = lifecycleFixture(t); await f.adapter.setEnabled(true);
+  const trace = { capacity: 64, dropped: 0, counters: { 'link-close': { 'request-timeout': 1 } },
+    records: [{ id: 1, atMs: 23, event: 'link-close', detail: 'request-timeout' }] };
+  f.cycles[0].live.transportDiagnostics = trace;
+  const metrics = f.adapter.metrics();
+  assert.equal(metrics.transportDiagnostics, trace);
+  assert.equal(metrics.transportGeneration, 1);
+  let at = 0; const report = createPlaybackReport({ now: () => at });
+  report.record(() => ({ peerAttemptDiagnostics: metrics, peerBytes: metrics.peerBytes }));
+  assert.equal(report.snapshot().transportDiagnostics.summary.records[0].detail, 'request-timeout');
+  await f.adapter.setEnabled(false); at = 1000;
+  report.record(() => ({ peerAttemptDiagnostics: f.adapter.metrics() }));
+  assert.equal(report.snapshot().transportDiagnostics.currentAvailable, false);
+  assert.equal(report.snapshot().transportDiagnostics.observedGeneration, 2);
+  assert.equal(report.snapshot().transportDiagnostics.generation, 1);
+  assert.equal(report.snapshot().samples.at(-1).peerBytes, null);
+  assert(f.cycles[0].stopped);
+});
 
 test('an omitted operator configuration leaves the real TURN provider unconfigured during peer playback', async t => {
   const f = lifecycleFixture(t, { turnFactory: createPublicTurnCredentials });
