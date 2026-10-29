@@ -572,6 +572,16 @@ fragment enums/numbers, the attached MediaSource's state/streaming flag, and
 playback intent and room preparation/readiness. The last player error retains
 only its fixed codes and fragment type/sequence/discontinuity, without a URL.
 These observations do not retry, resume or otherwise change startup policy.
+The report root also retains one latest projected SDK transport snapshot, with at
+most 64 fixed event/detail records and allowlisted numeric counters. It is not
+copied into each playback sample. Missing fields remain unknown; SDK ring drops,
+local truncation and invalid projected fields stay explicit. A saved trace may
+survive pause or unavailable metrics: its capture elapsed time and adapter-local
+generation remain separate from availability, generation and age at the latest
+accepted report tick. These fields do not claim availability at download time.
+Record IDs and `atMs` are local to an SDK instance, not identities or report
+elapsed time; generations do not correlate different adapters or engines. No
+URLs, addresses, SDP, peer keys or arbitrary messages enter this projection.
 The optional `peerAttemptDiagnostics` observation contains 18 fixed counters
 for zero-budget peer races, multi-holder delivery/unused pieces, commitment and
 integrity failures, and peer eligibility. Each count is a nonnegative safe
