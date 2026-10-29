@@ -268,6 +268,14 @@ starts before Play. A read-only room subscription keeps the live listener
 ticker current before Play and after Pause; those observers do not count.
 See [the showcase guide](media-showcase.md).
 
+If recovery replaces Hls playback with the browser's native HLS engine, peer
+delivery stops because native loading cannot use the SDK fragment loader.
+For a still-following shared recording, the owned handover reads the current
+room phase when native metadata arrives; it does not restore a position saved
+before that asynchronous load. Paused or replaced playback cannot be resumed
+by the old metadata callback. Active ordinary VOD recovery preserves its prior position.
+This alignment rule does not establish uninterrupted playback or peer savings.
+
 The 1080p excerpt is captured from actual Sapflow publishing.  The full 4K
 playback artefact is static HLS made by FFmpeg packet copy: its original
 H.264/AAC tracks are retained without re-encoding.  Its manifest explicitly
