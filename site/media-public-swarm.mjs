@@ -221,8 +221,24 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
   let highWaterBytes = 0, signalErrors = 0, lastSnapshot = null, nextPeer = 1, observing = false, request = 0;
   let sentMediaBytes = 0, noLocalRoutes = 0;
   const { endpoint = null, turnUrl = null } = turnConfiguration ?? {};
-  const turn = createTurnCredentials({ endpoint: typeof endpoint === 'string' ? endpoint : null,
-    turnUrl: typeof turnUrl === 'string' ? turnUrl : null });
+  let turn, lastUsableLease = null;
+  const leaseChanged = state => {
+    const owner = generation, current = swarm;
+    const owned = () => enabled && !stopped && !lifetime.signal.aborted && !signal?.aborted &&
+      owner === generation && current === swarm;
+    try {
+      if (state?.available !== true || !owned()) return;
+      const identity = turn?.leaseIdentity();
+      if (typeof identity !== 'string' || !identity || identity === lastUsableLease || !owned()) return;
+      lastUsableLease = identity;
+      // An initial lease needs no retry: the not-yet-created SDK will capture
+      // it when constructing its connections. Older SDKs keep their behaviour.
+      const retry = current?.retryLocalCandidates;
+      if (typeof retry === 'function' && owned() && lastUsableLease === identity) retry.call(current);
+    } catch {}
+  };
+  turn = createTurnCredentials({ endpoint: typeof endpoint === 'string' ? endpoint : null,
+    turnUrl: typeof turnUrl === 'string' ? turnUrl : null, onChange: leaseChanged });
   const connectionLeases = new Map();
 
   const metrics = () => {
@@ -349,6 +365,7 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
   };
   const disable = (reason = 'off') => {
     generation++; enabled = false; lastReason = reason;
+    lastUsableLease = null;
     clearInterval(tick); catalogueAbort?.abort(); turn.stop();
     for (const record of connectionLeases.values()) clearTimeout(record.timer);
     connectionLeases.clear();
