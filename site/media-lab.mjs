@@ -424,7 +424,7 @@ async function initialise() {
     publicRoom?.stop(); publicRoom = null;
     const pending = (async () => {
       const [{ createListenerSession }, { PUBLIC_SWARM_SOURCE_SHA256, PUBLIC_SWARM_RELAYS }] = await Promise.all([
-        import('./media-listener-session.mjs?v=20261028-warm-validation'), import('./media-public-swarm.mjs?v=20261029-transport-report'),
+        import('./media-listener-session.mjs?v=20261029-whole-fit'), import('./media-public-swarm.mjs?v=20261029-whole-fit'),
       ]);
       if (request !== publicRoomRequest || pageAbort.signal.aborted) return null;
       const clock = createListenerSession({ room: `forgesworn-dejavu-listening-v${quality === 'full' ? 2 : 1}-${quality}`, source: PUBLIC_SWARM_SOURCE_SHA256,
@@ -1522,7 +1522,7 @@ async function initialise() {
       if (player) {
         let peer, setupEpoch;
         try {
-          const { createPublicSwarm, prepareRecordedSource, createRecordedLive } = await import('./media-public-swarm.mjs?v=20261029-transport-report');
+          const { createPublicSwarm, prepareRecordedSource, createRecordedLive } = await import('./media-public-swarm.mjs?v=20261029-whole-fit');
           if (!owns() || s.hls !== player) return;
           // These two exports share the exact helper module/recording brand.
           // A cold first room prepares locally before publishing its clock.
