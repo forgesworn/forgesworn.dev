@@ -1413,6 +1413,9 @@ async function initialise() {
           if (video.seeking) video.addEventListener('seeked', alignInitialMetadata, { once: true, signal: s.abort.signal });
           else alignInitialMetadata();
         }, { once: true, signal: s.abort.signal });
+        // Metadata can precede decoder readiness. Refresh once on the same
+        // pipeline's first playing event, without queuing a post-frame seek.
+        video.addEventListener('playing', alignInitialMetadata, { once: true, signal: s.abort.signal });
       }
       s.roomSeekAt = performance.now();
       player.startLoad(position);

@@ -187,6 +187,7 @@ async function open({held=false,heldVisual=false,heldRoomCode=false,heldMetadata
       readyState:{get:()=>state.readyState},duration:{get:()=>state.duration},paused:{get:()=>state.paused},seeking:{get:()=>state.seeking},
       currentTime:{get:()=>state.currentTime,set:value=>{state.currentTime=value;state.trace.push({kind:'seek',position:value})}},
       src:{get:()=>state.source,set(value){state.source=value;if(!value.startsWith('blob:'))state.duration=state.sourceDuration;state.trace.push({kind:'src',value,crossOrigin:this.crossOrigin})}},
+      currentSrc:{get:()=>state.source},
       buffered:{get:()=>({length:state.ranges.length,start:i=>state.ranges[i][0],end:i=>state.ranges[i][1]})},
     });
     const canPlay=HTMLMediaElement.prototype.canPlayType;
@@ -264,6 +265,42 @@ try {
   assert.equal(installTrace.filter(x=>x.kind==='play').length,1,'loader readiness never repeats the trusted playback request');
   await close(installing);checks.push('first full 4K fragment waits for loader installation after same-gesture play');
 
+  const delayedPlaying=await open({recorded:true});
+  await delayedPlaying.page.locator('#public-play').click();await delayedPlaying.page.evaluate(()=>fixture.releaseRoom());
+  await delayedPlaying.page.waitForFunction(()=>fixture.trace.some(x=>x.kind==='startLoad'));
+  const playingAlignment=await delayedPlaying.page.evaluate(()=>{
+    const video=document.getElementById('lab-video');
+    // Metadata is already aligned, but the original play is still pending:
+    // no frame has been presented while the decoder catches up.
+    fixture.currentTime=fixture.views[0].mediaTimeAt(Date.now());
+    video.dispatchEvent(new Event('loadedmetadata'));
+    const metadataSeeks=fixture.trace.filter(x=>x.kind==='seek').length;
+    fixture.wallOffset+=1200;fixture.finishPlay();
+    const target=fixture.views[0].mediaTimeAt(Date.now()),current=fixture.currentTime;
+    const seeks=fixture.trace.filter(x=>x.kind==='seek').length;
+    // Neither another playing event nor a later presented frame may turn
+    // initial alignment into a queue of clock-chasing corrections.
+    fixture.wallOffset+=2000;video.dispatchEvent(new Event('playing'));
+    const repeatedSeeks=fixture.trace.filter(x=>x.kind==='seek').length;
+    fixture.presentFrame();fixture.wallOffset+=2000;video.dispatchEvent(new Event('playing'));
+    return {target,current,metadataSeeks,seeks,repeatedSeeks,
+      afterFrameSeeks:fixture.trace.filter(x=>x.kind==='seek').length,
+      plays:fixture.trace.filter(x=>x.kind==='play').length,
+      sources:fixture.trace.filter(x=>x.kind==='source').length,
+      attaches:fixture.trace.filter(x=>x.kind==='attach').length,
+      players:fixture.players.length,peers:fixture.peers.length,
+      rate:video.playbackRate,pendingPlays:fixture.playWaiters.length};
+  });
+  assert.equal(playingAlignment.metadataSeeks,0,'near-aligned metadata does not seek');
+  assert(Math.abs(playingAlignment.current-playingAlignment.target)<0.01,
+    `the original pipeline refreshes room alignment on first playing before its first frame: ${JSON.stringify(playingAlignment)}`);
+  assert.deepEqual([playingAlignment.seeks,playingAlignment.repeatedSeeks,playingAlignment.afterFrameSeeks],[1,1,1],
+    'initial playing alignment is one-shot and cannot force a post-frame correction');
+  assert.deepEqual([playingAlignment.plays,playingAlignment.sources,playingAlignment.attaches,
+    playingAlignment.players,playingAlignment.peers,playingAlignment.pendingPlays],[1,1,1,1,1,0]);
+  assert.equal(playingAlignment.rate,1);
+  await close(delayedPlaying);checks.push('near-aligned metadata followed by decoder delay refreshes once on original-pipeline playing before presentation, without another play or attachment');
+
   const freshMetadata=await open({recorded:true});
   await freshMetadata.page.locator('#public-play').click();await freshMetadata.page.evaluate(()=>fixture.releaseRoom());
   await freshMetadata.page.waitForFunction(()=>fixture.trace.some(x=>x.kind==='startLoad'));
@@ -340,19 +377,20 @@ try {
       const startupBefore=startup();
       if(guard==='paused')video.pause();
       else if(guard==='pagehide')window.dispatchEvent(new PageTransitionEvent('pagehide'));
-      else if(guard==='first-frame'){fixture.finishPlay();fixture.presentFrame()}
+      else if(guard==='first-frame'){fixture.readyState=4;fixture.presentFrame()}
       else fixture.epochId='2'.repeat(64);
       const before=fixture.trace.filter(x=>x.kind==='seek').length;
       fixture.wallOffset+=2200;fixture.readyState=1;fixture.ranges=[[0,2]];
       video.dispatchEvent(new Event('loadedmetadata'));
+      video.dispatchEvent(new Event('playing'));
       return {before,after:fixture.trace.filter(x=>x.kind==='seek').length,startupBefore,startupAfter:startup()};
     },guard);
-    assert.equal(guarded.after,guarded.before,`${guard} fences a late initial metadata seek`);
+    assert.equal(guarded.after,guarded.before,`${guard} fences late initial metadata and playing seeks`);
     assert(Number.isFinite(guarded.startupBefore),'the current player exposes a fresh startup target');
     assert.equal(guarded.startupAfter,null,`${guard} retires the startup buffer target`);
     await close(run);
   }
-  checks.push('paused, departed, already-presented and changed-epoch sessions reject late initial metadata alignment');
+  checks.push('paused, departed, already-presented and changed-epoch sessions reject late initial metadata and playing alignment');
 
   const replacedMetadata=await open({recorded:true});
   await replacedMetadata.page.locator('#public-play').click();await replacedMetadata.page.evaluate(()=>fixture.releaseRoom());
@@ -1094,11 +1132,19 @@ try {
   assert.equal(await fallback.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='play').length),nativePlayCalls+1,
     'native recovery requests playback before metadata arrives, so fetching does not depend on a future metadata event');
   assert.equal(await fallback.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='play').at(-1).source),origin+'/media/dejavu-4k/index.m3u8');
-  await fallback.page.evaluate(()=>{fixture.readyState=4;document.getElementById('lab-video').dispatchEvent(new Event('loadedmetadata'))});
+  const restoredNative=await fallback.page.evaluate(()=>{
+    fixture.wallOffset+=2200;fixture.readyState=4;
+    const video=document.getElementById('lab-video'),target=fixture.listenerSnapshot().position;
+    video.dispatchEvent(new Event('loadedmetadata'));
+    return {target,current:fixture.currentTime,source:video.currentSrc};
+  });
   assert.equal(await fallback.page.evaluate(()=>fixture.trace.filter(x=>x.kind==='play').length),nativePlayCalls+1,
     'metadata restores programme phase without issuing a second play request');
   assert.equal(await fallback.page.evaluate(()=>fixture.paused),false);
-  assert(Math.abs(await fallback.page.evaluate(()=>fixture.currentTime)-phase)<0.01,'native fallback restores phase, never the continuous raw offset');
+  assert.equal(restoredNative.source,origin+'/media/dejavu-4k/index.m3u8','metadata belongs to the selected native source');
+  assert(Math.abs(restoredNative.current-restoredNative.target)<0.01,'native fallback follows the fresh owned room phase at delayed metadata');
+  assert(Math.abs(restoredNative.current-phase)>1,'room following does not restore the obsolete captured programme phase');
+  assert(restoredNative.current<267.32,'native fallback never restores the continuous raw offset');
   assert.equal(await fallback.page.locator('#main').getAttribute('data-playback-mode'),'recorded-vod');
   await fallback.page.evaluate(()=>{fixture.finishPlay();fixture.presentFrame();document.getElementById('lab-video').dispatchEvent(new Event('error'))});
   assert.equal(await fallback.page.locator('#public-play').isVisible(),true,'a native failure restores the visible retry action');
