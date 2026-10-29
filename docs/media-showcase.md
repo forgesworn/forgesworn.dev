@@ -16,8 +16,8 @@ The recording label sits with the source caption below the player. It does
 not cover the picture or Safari’s native fullscreen control when controls
 appear.
 
-The player pins RelaySwarm source `b9a3b20a47c02a1548ba0f246dc1e65714c8dcde`
-([source change](https://github.com/forgesworn/relayswarm/commit/b9a3b20a47c02a1548ba0f246dc1e65714c8dcde)).
+The player pins RelaySwarm source `dad30d043ca5c51392f2de64ab66e721a1832e25`
+([source change](https://github.com/forgesworn/relayswarm/commit/dad30d043ca5c51392f2de64ab66e721a1832e25)).
 Cancelled warm jobs now keep their speculative slot and any reserved bytes
 while an awaited authorisation or verifier still owns the work. Settlement
 releases that ownership; cancelled data cannot be published, delivered, reused
