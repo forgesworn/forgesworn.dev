@@ -331,7 +331,7 @@ test('startup diagnostics distinguish a cancelled barrier, suspended buffering a
       fragment: { sn: 'initSegment', cc: 0, type: 'main', url: 'https://private.invalid' } } });
   const row = p.report.snapshot().samples[0];
   assert.deepEqual(row.startupBuffer, { enabled: true, state: 'cancelled', reason: 'caller-abort',
-    released: 0, failures: 0, cancellations: 1, commitStarted: false, commitCompleted: false,
+    released: 0, failures: 0, cancellations: 1, commitStarted: false, commitCompleted: false, releaseBasis: null, releases: null,
     targetTime: null, verifiedStart: null, verifiedEnd: null, requiredHeadroomMs: null, heldObjects: null, heldBytes: null });
   assert.deepEqual(row.hls, { loadingEnabled: true, bufferingEnabled: false,
     main: { state: 'FRAG_LOADING', sn: 0, cc: 0, type: 'main' } });
@@ -369,7 +369,7 @@ test('diagnostic enums, one-shot counters and fragment numbers cannot carry arbi
     lastPlayerError: { fragment: { sn: Number.MAX_SAFE_INTEGER + 1, cc: -1, type: 'private-type' } } });
   const row = p.report.snapshot().samples[0];
   assert.deepEqual(row.startupBuffer, { enabled: null, state: null, reason: null, released: null,
-    failures: null, cancellations: null, commitStarted: null, commitCompleted: null,
+    failures: null, cancellations: null, commitStarted: null, commitCompleted: null, releaseBasis: null, releases: null,
     targetTime: null, verifiedStart: null, verifiedEnd: null, requiredHeadroomMs: null, heldObjects: null, heldBytes: null });
   assert.deepEqual(row.hls, { loadingEnabled: null, bufferingEnabled: null,
     main: { state: null, sn: null, cc: null, type: null } });
@@ -514,3 +514,25 @@ test('unsafe or unreadable startup geometry stays unknown without dropping valid
   assert.equal(captured.targetTime, null); assert.equal(captured.heldObjects, 0); assert.equal(captured.heldBytes, 0);
   assert.doesNotMatch(JSON.stringify(p.report.snapshot()), /secret|private|https?:/);
 });
+
+test('a startup release reports which rule released it and keeps its one-shot counters bounded', () => {
+  const p = fixture();
+  const released = { enabled: true, state: 'ready', reason: null, released: 1, failures: 0, cancellations: 0,
+    commitStarted: true, commitCompleted: true, releaseBasis: 'capacity', releases: { headroom: 0, capacity: 1, lateWindow: 0 },
+    targetTime: 0, verifiedStart: 0, verifiedEnd: 8, requiredHeadroomMs: 8073.75, heldObjects: 0, heldBytes: 0, owner: 'private-owner' };
+  p.report.record({ startupBuffer: projectStartupBuffer(released) });
+  const row = p.report.snapshot().samples[0].startupBuffer;
+  assert.equal(row.state, 'ready'); assert.equal(row.released, 1); assert.equal(row.releaseBasis, 'capacity');
+  assert.deepEqual(row.releases, { headroom: 0, capacity: 1, lateWindow: 0 });
+  assert.equal(row.requiredHeadroomMs, 8073.75); assert.equal(row.verifiedEnd, 8);
+  for (const basis of ['headroom', 'late-window']) assert.equal(projectStartupBuffer({ ...released, releaseBasis: basis }).releaseBasis, basis);
+  // Unknown bases, oversized or malformed counters and a missing block stay unknown; older SDKs report neither field.
+  assert.equal(projectStartupBuffer({ ...released, releaseBasis: 'private-basis' }).releaseBasis, null);
+  assert.deepEqual(projectStartupBuffer({ ...released, releases: { headroom: 2, capacity: -1, lateWindow: 'one', key: 'secret' } }).releases,
+    { headroom: null, capacity: null, lateWindow: null });
+  assert.equal(projectStartupBuffer({ ...released, releases: [1] }).releases, null);
+  const legacy = projectStartupBuffer({ enabled: true, state: 'ready', released: 1 });
+  assert.equal(legacy.releaseBasis, null); assert.equal(legacy.releases, null);
+  assert.doesNotMatch(JSON.stringify(p.report.snapshot()), /private|secret|"(?:owner|key)"\s*:/);
+});
+

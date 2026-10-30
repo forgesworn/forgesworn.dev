@@ -91,12 +91,26 @@ export function projectStartupBuffer(input) {
     cancellations: boundedInteger(value(input, 'cancellations'), 1),
     commitStarted: boolean(value(input, 'commitStarted')),
     commitCompleted: boolean(value(input, 'commitCompleted')),
+    // Which release rule let the one-shot barrier hand its first body to HLS:
+    // the measured headroom, a full four-object reservoir, or the late window
+    // before the unchanged deadline. Null until a release, or for older SDKs.
+    releaseBasis: choice(value(input, 'releaseBasis'), ['headroom', 'capacity', 'late-window']),
+    releases: projectStartupReleases(value(input, 'releases')),
     targetTime: number(value(input, 'targetTime')),
     verifiedStart: number(value(input, 'verifiedStart')),
     verifiedEnd: number(value(input, 'verifiedEnd')),
     requiredHeadroomMs: number(value(input, 'requiredHeadroomMs')),
     heldObjects: integer(value(input, 'heldObjects')),
     heldBytes: integer(value(input, 'heldBytes')),
+  };
+}
+
+function projectStartupReleases(input) {
+  if (!object(input)) return null;
+  return {
+    headroom: boundedInteger(value(input, 'headroom'), 1),
+    capacity: boundedInteger(value(input, 'capacity'), 1),
+    lateWindow: boundedInteger(value(input, 'lateWindow'), 1),
   };
 }
 
