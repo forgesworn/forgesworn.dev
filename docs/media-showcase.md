@@ -38,7 +38,12 @@ later joiner and 1.9 % for the first. That is not a public-network, NAT, TURN
 or physical-device measurement. The public host now sets those two options,
 the configuration that was measured; until this change it kept
 `warmAhead: false`, so the adoption of the source alone did not carry the
-measured peer contribution. The previous pin was
+measured peer contribution. One later attempt of the same kind on the deployed
+page itself, with nothing swapped, gave trusted 4K first frames 3.3 s and
+6.1 s, 340 s without stalls or dropped frames, 8.5 % accepted peer media for
+the later joiner, 0.7 % for the first and 4.6 % for the room; most of the peer
+bytes moved during the later joiner's startup, and single readings vary with
+join timing. The previous pin was
 `dad30d043ca5c51392f2de64ab66e721a1832e25`
 ([source change](https://github.com/forgesworn/relayswarm/commit/dad30d043ca5c51392f2de64ab66e721a1832e25)).
 Cancelled warm jobs now keep their speculative slot and any reserved bytes
