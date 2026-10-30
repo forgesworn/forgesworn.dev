@@ -659,7 +659,8 @@ test('recorded mode signs actual global sequence and discontinuity against the u
     f.useRecorded({ recording, epochId: 'a'.repeat(64) }, quality);
     await f.adapter.setEnabled(true);
     const options = f.cycles[0].options;
-    assert.equal(options.warmAhead, false, 'steady speculative downloads cannot compete with playback');
+    assert.equal(options.warmAhead, true, 'bounded speculative loading of the next two whole main fragments, the configuration measured on 30 October 2026');
+    assert.equal(options.bufferedMixedRanges, true, 'zero-wait mixed ranges for genuine whole-fragment demand, measured with warm-ahead on');
     assert.equal(options.startupBufferTarget, null, 'startup buffering requires an explicit current-player target');
     assert.equal(options.startupBufferMaxBytes, 24 * 1024 * 1024, 'non-startup playback keeps the SDK default');
     assert.equal(options.uploadPacing, quality === 'full', 'bounded upload admission is enabled for full 4K only');

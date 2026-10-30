@@ -31,10 +31,14 @@ object-key/public-key rank. The Rust/WASM core changes once in this range
 (origin work partitioned for mixed peer transfers); the peer-link wire files
 are unchanged, so tabs still holding the previous bundle interoperate.
 Measured privately on one Mac as two headless viewers with host candidates and
-controlled signalling: trusted 4K first frames 3.9 s and 10.6 s, 340 s without
-stalls, errors or dropped frames, 13.6 % accepted peer media for the later
-joiner and 1.9 % for the first. That is not a public-network, NAT, TURN or
-physical-device measurement. The previous pin was
+controlled signalling, with the host options `warmAhead: true` and
+`bufferedMixedRanges: true`: trusted 4K first frames 3.9 s and 10.6 s, 340 s
+without stalls, errors or dropped frames, 13.6 % accepted peer media for the
+later joiner and 1.9 % for the first. That is not a public-network, NAT, TURN
+or physical-device measurement. The public host now sets those two options,
+the configuration that was measured; until this change it kept
+`warmAhead: false`, so the adoption of the source alone did not carry the
+measured peer contribution. The previous pin was
 `dad30d043ca5c51392f2de64ab66e721a1832e25`
 ([source change](https://github.com/forgesworn/relayswarm/commit/dad30d043ca5c51392f2de64ab66e721a1832e25)).
 Cancelled warm jobs now keep their speculative slot and any reserved bytes
