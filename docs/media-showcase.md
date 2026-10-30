@@ -16,10 +16,23 @@ The recording label sits with the source caption below the player. It does
 not cover the picture or Safari’s native fullscreen control when controls
 appear.
 
-The player pins RelaySwarm source `8418d66d221de3991b3c6f90db3214a3c61eb7f1`
-([main](https://github.com/forgesworn/relayswarm/commit/8418d66d221de3991b3c6f90db3214a3c61eb7f1)),
-the repository's main branch after its size-aware startup work. Startup
-admission now projects each candidate from the measured timing of the viewer's
+The player pins RelaySwarm source `9a7437da7712ee7d597ee4fff7057ccafe4a8368`
+([main](https://github.com/forgesworn/relayswarm/commit/9a7437da7712ee7d597ee4fff7057ccafe4a8368)),
+the repository's main branch after its size-aware startup work and the
+startup-reservoir release rules. Those rules answer a failed start observed on
+this page on 30 October 2026: one slow first read (5.4 s for the first 6.47 MB
+fragment) raised the startup buffer's measured recovery requirement to about
+8.07 s while the reservoir can hold at most four 2 s fragments, so the hold
+could never release, failed on its 12 s deadline, discarded the verified media
+and the page stopped with a source error. The reservoir now releases before
+that deadline when it is saturated (every held future inside the verified
+coverage of the fresh target and no slot free) or, within the last 3 s of the
+hold, when verified coverage includes the target; before the room-start hook
+either rule also needs more headroom than the time left, and the deadline
+itself is unchanged. The page report records which rule released
+(`startupBuffer.releaseBasis`). This revision has not yet been measured on the
+deployed page; a private two-viewer run with a synthetic slow first read is
+the next check. Startup admission projects each candidate from the measured timing of the viewer's
 own complete same-origin first response (first byte plus body time scaled by
 the signed object size) instead of a scalar sample, holds a candidate while a
 release check is in progress, and keeps the legacy rule where no profile
