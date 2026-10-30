@@ -501,7 +501,10 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
           coreWasm: new URL('./vendor/relayswarm-core.wasm?v=20261030-size-aware-startup', import.meta.url), multiHolder: true,
           transferWorkerUrl: new URL('./vendor/relayswarm-transfer-worker.js?v=20261030-size-aware-startup', import.meta.url),
           zeroBudgetPeerRace: true, lateHaveRace: true, sustainablePeerWait: true,
-          warmAhead: false,
+          // The configuration measured in the private LAN two-viewer attempts of
+          // 30 October 2026 with this SDK source: bounded speculative loading of
+          // the next two whole main fragments and zero-wait mixed ranges.
+          warmAhead: true, bufferedMixedRanges: true,
           startupBufferMaxBytes: (needsStartupBuffer ? 32 : 24) * 1024 * 1024,
           startupBufferTarget: needsStartupBuffer ? () => {
             if (!enabled || stopped || ownGeneration !== generation) return null;
