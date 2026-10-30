@@ -30,9 +30,16 @@ coverage of the fresh target and no slot free) or, within the last 3 s of the
 hold, when verified coverage includes the target; before the room-start hook
 either rule also needs more headroom than the time left, and the deadline
 itself is unchanged. The page report records which rule released
-(`startupBuffer.releaseBasis`). This revision has not yet been measured on the
-deployed page; a private two-viewer run with a synthetic slow first read is
-the next check. Startup admission projects each candidate from the measured timing of the viewer's
+(`startupBuffer.releaseBasis`). Measured privately on the deployed page on
+30 October 2026 as two headless viewers on one Mac with a synthetic 6 s hold on
+the first viewer's first segment (about 7 s seen): the requirement rose to
+8.8 s, the reservoir released in the late window with two verified fragments,
+the first frame came 10.9 s after the click, and 340 s followed without
+stalls, errors or dropped frames; the second viewer started in 2.8 s. Before
+this revision the same kind of slow first read produced no first frame and a
+stopped player. Accepted peer media in that run was 1.4 % and 5.6 %, 3.5 % for
+the room, so the per-viewer contribution picture is unchanged. Startup
+admission projects each candidate from the measured timing of the viewer's
 own complete same-origin first response (first byte plus body time scaled by
 the signed object size) instead of a scalar sample, holds a candidate while a
 release check is in progress, and keeps the legacy rule where no profile
