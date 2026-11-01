@@ -16,10 +16,37 @@ The recording label sits with the source caption below the player. It does
 not cover the picture or Safari’s native fullscreen control when controls
 appear.
 
-The player pins RelaySwarm source `9a7437da7712ee7d597ee4fff7057ccafe4a8368`
-([main](https://github.com/forgesworn/relayswarm/commit/9a7437da7712ee7d597ee4fff7057ccafe4a8368)),
-the repository's main branch after its size-aware startup work and the
-startup-reservoir release rules. Those rules answer a failed start observed on
+The player pins RelaySwarm source `6e05101220f9f3d70cd5e069b350efcaaffd35d1`
+([main](https://github.com/forgesworn/relayswarm/commit/6e05101220f9f3d70cd5e069b350efcaaffd35d1)),
+the repository's main branch after its size-aware startup work, the
+startup-reservoir release rules, the opt-in steady peer window
+([relayswarm#62](https://github.com/forgesworn/relayswarm/pull/62)) and its
+take-up rule R6a ([relayswarm#63](https://github.com/forgesworn/relayswarm/pull/63)).
+Steady-state sharing had been capped near 1 % per viewer by overlapping fetches
+and probe-plus-tail transfers; the steady peer window is a buffer-funded window
+for peer transfers, and the public host now sets `steadyPeerWindow: true` (the
+SDK accepts it only with peer-first mode, serving and multi-holder transfers,
+all of which the host already sets). The Rust/WASM core is byte-identical to the
+previous pin's, and the page report now carries the window's fourteen counters
+under `steadyPeerWindow`. The pin moved on from `6233ee4` because an earlier
+attempt on that source drained one viewer to a stall at the observation
+boundary: a take-up cut at its window end blanked the holder's link model for
+10 s. R6a keeps that model useful and records the flow the cut transfer moved,
+and no such blanking followed any of the nine cuts in the runs below.
+Readings, each from one LAN with two headless Chrome viewers at 4K and
+controlled signalling. Deployed bytes gave accepted peer shares of 0.24 % and
+6.22 % (0 ms join), and 1.75 % and 4.31 %, and 1.66 % and 3.46 % (25 s join, two
+baselines). On this source, with a 0 ms join, the shares were 29.75 % and
+35.52 % (room 32.63 %). With a 25 s join, three attempts gave 37.45 % and
+51.36 %, 18.21 % and 20.23 %, and 37.33 % and 51.06 % (rooms 44.16 %, 19.18 %
+and 43.95 %). All four runs had zero stalls, player errors and dropped frames,
+with buffers of 16 to 22 s to the end. Sharing tracked the link: the weakest
+attempt ran at 1.9 MB/s per origin request. These are single readings. This
+revision has not yet been measured on the deployed page, and none of this is
+public-network, NAT, physical-device or TLS-route evidence. The previous pin
+was `9a7437da7712ee7d597ee4fff7057ccafe4a8368`
+([source change](https://github.com/forgesworn/relayswarm/commit/9a7437da7712ee7d597ee4fff7057ccafe4a8368)),
+which added the startup-reservoir release rules. Those rules answer a failed start observed on
 this page on 30 October 2026: one slow first read (5.4 s for the first 6.47 MB
 fragment) raised the startup buffer's measured recovery requirement to about
 8.07 s while the reservoir can hold at most four 2 s fragments, so the hold

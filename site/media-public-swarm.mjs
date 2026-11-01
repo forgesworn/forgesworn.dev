@@ -3,7 +3,7 @@
 // A receiver's ephemeral key wraps that digest for the existing live-commitment
 // verifier; this is local attestation, not a live broadcaster signing service.
 import { createHlsSwarm, commitmentContent, commitmentPieceSize, segmentMediaContext, KIND_SEGMENT_COMMITMENT, finalizeEvent,
-  generateSecretKey, relayswarmBuild } from './vendor/media-peer-demo.js?v=20261030-startup-release';
+  generateSecretKey, relayswarmBuild } from './vendor/media-peer-demo.js?v=20261101-steady-peer-window-r6a';
 import { observeOriginLoader } from './media-transfer-stats.mjs?v=20261027-visual-provenance';
 import { createPublicTurnCredentials } from './media-turn-credentials.mjs?v=20261025-prepared-room';
 import { parseRecordedManifest, createRecordedLive } from './media-recorded-live.mjs?v=20261025-prepared-room';
@@ -499,12 +499,16 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
         swarm = createSwarm({ mode: 'peer-first', swarmId: plan.swarmId, relays: [...PUBLIC_SWARM_RELAYS],
           streamEvent, getCommitment, serve: true, serveOnCellular: false,
           coreWasm: new URL('./vendor/relayswarm-core.wasm?v=20261030-size-aware-startup', import.meta.url), multiHolder: true,
-          transferWorkerUrl: new URL('./vendor/relayswarm-transfer-worker.js?v=20261030-startup-release', import.meta.url),
+          transferWorkerUrl: new URL('./vendor/relayswarm-transfer-worker.js?v=20261101-steady-peer-window-r6a', import.meta.url),
           zeroBudgetPeerRace: true, lateHaveRace: true, sustainablePeerWait: true,
           // The configuration measured in the private LAN two-viewer attempts of
           // 30 October 2026 with this SDK source: bounded speculative loading of
           // the next two whole main fragments and zero-wait mixed ranges.
           warmAhead: true, bufferedMixedRanges: true,
+          // The configuration measured in the private LAN two-viewer attempts of
+          // 31 October and 1 November 2026 with this SDK source: a buffer-funded
+          // peer window that stops overlapping fetches capping steady sharing.
+          steadyPeerWindow: true,
           startupBufferMaxBytes: (needsStartupBuffer ? 32 : 24) * 1024 * 1024,
           startupBufferTarget: needsStartupBuffer ? () => {
             if (!enabled || stopped || ownGeneration !== generation) return null;
