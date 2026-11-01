@@ -28,7 +28,8 @@ for peer transfers, and the public host now sets `steadyPeerWindow: true` (the
 SDK accepts it only with peer-first mode, serving and multi-holder transfers,
 all of which the host already sets). The Rust/WASM core is byte-identical to the
 previous pin's, and the page report now carries the window's fourteen counters
-under `steadyPeerWindow`. The pin moved on from `6233ee4` because an earlier
+under `steadyPeerWindow` from this revision on (the previous revision
+projected the block but the host did not pass it through). The pin moved on from `6233ee4` because an earlier
 attempt on that source drained one viewer to a stall at the observation
 boundary: a take-up cut at its window end blanked the holder's link model for
 10 s. R6a keeps that model useful and records the flow the cut transfer moved,
