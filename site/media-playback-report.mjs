@@ -258,6 +258,18 @@ function peerAttemptDiagnostics(input) {
   };
 }
 
+const STEADY_PEER_WINDOW_COUNTERS = ['opened', 'closedHeadroom', 'leaseWaits', 'waitHave', 'waitLapsed', 'waitWindowEnd',
+  'takeUpWindowEnd', 'leasesIgnored', 'peerOnlyStarted', 'peerOnlyDelivered', 'peerOnlyFallback', 'fetchRenewalsSent'];
+
+// Exactly the twelve counters the SDK exposes when the opt-in steady peer
+// window is on. The block is absent for older SDKs or when the option is off.
+export function projectSteadyPeerWindow(input) {
+  if (!object(input)) return null;
+  const result = {};
+  for (const name of STEADY_PEER_WINDOW_COUNTERS) result[name] = integer(value(input, name));
+  return result;
+}
+
 function sample(input, elapsedMs, metrics) {
   const position = number(value(input, 'position')), buffered = ranges(value(input, 'buffered'));
   const sourceDuration = number(value(input, 'recordingDuration'));
@@ -306,6 +318,7 @@ function sample(input, elapsedMs, metrics) {
     peerEnabled: boolean(value(input, 'peerEnabled')), connectedPeers: integer(value(input, 'connectedPeers')),
     peerAttemptDiagnostics: peerAttemptDiagnostics(metrics),
     peerFlowDiagnostics: peerFlowDiagnostics(metrics),
+    steadyPeerWindow: projectSteadyPeerWindow(value(metrics, 'steadyPeerWindow')),
     transferWorkerState: choice(value(input, 'transferWorkerState'), ['off', 'waiting-core', 'loading', 'ready', 'failed', 'stopped']),
     roomPrepared: boolean(value(input, 'roomPrepared')), roomReady: boolean(value(input, 'roomReady')),
     roomListeners: integer(value(input, 'roomListeners')), connections: connections(value(input, 'connections')),

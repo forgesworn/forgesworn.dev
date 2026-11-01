@@ -536,3 +536,45 @@ test('a startup release reports which rule released it and keeps its one-shot co
   assert.doesNotMatch(JSON.stringify(p.report.snapshot()), /private|secret|"(?:owner|key)"\s*:/);
 });
 
+
+const STEADY_KEYS = ['opened', 'closedHeadroom', 'leaseWaits', 'waitHave', 'waitLapsed', 'waitWindowEnd',
+  'takeUpWindowEnd', 'leasesIgnored', 'peerOnlyStarted', 'peerOnlyDelivered', 'peerOnlyFallback', 'fetchRenewalsSent'];
+
+test('the twelve steady peer window counters are projected as non-negative safe integers', () => {
+  const p = fixture();
+  const steadyPeerWindow = Object.fromEntries(STEADY_KEYS.map((key, i) => [key, i + 1]));
+  p.at(1000); p.report.record({ peerAttemptDiagnostics: { steadyPeerWindow } });
+  assert.deepEqual(p.report.snapshot().samples[0].steadyPeerWindow, steadyPeerWindow);
+});
+
+test('a bad steady peer window counter becomes null without disturbing the others', () => {
+  const p = fixture();
+  const steadyPeerWindow = Object.fromEntries(STEADY_KEYS.map(key => [key, 3]));
+  Object.assign(steadyPeerWindow, { opened: -1, leaseWaits: 1.5, waitHave: '2', waitLapsed: Number.MAX_SAFE_INTEGER + 1,
+    waitWindowEnd: NaN, takeUpWindowEnd: Infinity, leasesIgnored: null, peerOnlyStarted: {} });
+  p.at(1000); p.report.record({ peerAttemptDiagnostics: { steadyPeerWindow } });
+  const row = p.report.snapshot().samples[0].steadyPeerWindow;
+  for (const key of ['opened', 'leaseWaits', 'waitHave', 'waitLapsed', 'waitWindowEnd', 'takeUpWindowEnd', 'leasesIgnored', 'peerOnlyStarted']) {
+    assert.equal(row[key], null, key);
+  }
+  for (const key of ['closedHeadroom', 'peerOnlyDelivered', 'peerOnlyFallback', 'fetchRenewalsSent']) assert.equal(row[key], 3, key);
+});
+
+test('the steady peer window block is absent when the SDK does not expose it or exposes a non-object', () => {
+  const p = fixture();
+  p.at(1000); p.report.record({ peerAttemptDiagnostics: { enabled: true } });
+  p.at(2000); p.report.record({ peerAttemptDiagnostics: { steadyPeerWindow: [1, 2, 3] } });
+  p.at(3000); p.report.record({ peerAttemptDiagnostics: { steadyPeerWindow: 'secret' } });
+  const rows = p.report.snapshot().samples;
+  assert.equal(rows.length, 3);
+  for (const row of rows) assert.equal(row.steadyPeerWindow, null);
+});
+
+test('an unknown steady peer window key is dropped', () => {
+  const p = fixture();
+  const steadyPeerWindow = { ...Object.fromEntries(STEADY_KEYS.map(key => [key, 0])), peer: 'secret', key: 'private', extra: 7 };
+  p.at(1000); p.report.record({ peerAttemptDiagnostics: { steadyPeerWindow } });
+  const row = p.report.snapshot().samples[0].steadyPeerWindow;
+  assert.deepEqual(Object.keys(row), STEADY_KEYS);
+  assert.doesNotMatch(JSON.stringify(p.report.snapshot()), /secret|private|"extra"/);
+});
