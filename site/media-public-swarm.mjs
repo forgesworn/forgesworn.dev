@@ -271,6 +271,7 @@ export function createPublicSwarm({ Hls, hls, video, playlistUrl, quality, signa
       peerAdmission: live?.peerAdmission ?? null,
       latePeerRace: live?.latePeerRace ?? null,
       startupBuffer: live?.startupBuffer ?? null,
+      steadyPeerWindow: live?.steadyPeerWindow ?? null,
       transportDiagnostics, transportGeneration: generation,
       resources: { activePeerConnections: [...connections].filter(connection => connection.connectionState !== 'closed').length,
         signallingConnections: [...sockets].filter(socket => socket.readyState < 2).length,

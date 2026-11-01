@@ -518,12 +518,24 @@ test('a completed empty ICE gather reports no browser route without crediting pe
   assert.equal(f.adapter.metrics().connectedPeers, 1);
 });
 
+test('the steady peer window block passes through the wrapper into the page report sample', async t => {
+  const f = lifecycleFixture(t); await f.adapter.setEnabled(true);
+  const steadyPeerWindow = { opened: 3, closedHeadroom: 1, leaseWaits: 2, waitHave: 4 };
+  f.cycles[0].live.steadyPeerWindow = steadyPeerWindow;
+  assert.equal(f.adapter.metrics().steadyPeerWindow, steadyPeerWindow);
+  let at = 0; const report = createPlaybackReport({ now: () => at });
+  at = 1000; report.record(() => ({ peerAttemptDiagnostics: f.adapter.metrics() }));
+  const row = report.snapshot().samples[0].steadyPeerWindow;
+  assert.equal(row.opened, 3); assert.equal(row.closedHeadroom, 1); assert.equal(row.leaseWaits, 2); assert.equal(row.waitHave, 4);
+});
+
 test('active peer delivery survives fifteen minutes and multi-GiB incoming totals until explicit pause', async t => {
   const f = lifecycleFixture(t);
   assert.equal(f.adapter.metrics().uploadPacing, null);
   assert.equal(f.adapter.metrics().peerAdmission, null);
   assert.equal(f.adapter.metrics().latePeerRace, null);
   assert.equal(f.adapter.metrics().startupBuffer, null);
+  assert.equal(f.adapter.metrics().steadyPeerWindow, null);
   await f.adapter.setEnabled(true);
   assert.equal(f.adapter.metrics().uploadPacing, null, 'older SDK snapshots remain unknown instead of reporting zero queue activity');
   assert.equal(f.adapter.metrics().peerAdmission, null);
