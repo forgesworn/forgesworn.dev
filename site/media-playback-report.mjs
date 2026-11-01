@@ -259,9 +259,10 @@ function peerAttemptDiagnostics(input) {
 }
 
 const STEADY_PEER_WINDOW_COUNTERS = ['opened', 'closedHeadroom', 'leaseWaits', 'waitHave', 'waitLapsed', 'waitWindowEnd',
-  'takeUpWindowEnd', 'leasesIgnored', 'peerOnlyStarted', 'peerOnlyDelivered', 'peerOnlyFallback', 'fetchRenewalsSent'];
+  'takeUpWindowEnd', 'leasesIgnored', 'peerOnlyStarted', 'peerOnlyDelivered', 'peerOnlyFallback', 'fetchRenewalsSent',
+  'leaseYields', 'leaseYieldsLapsed'];
 
-// Exactly the twelve counters the SDK exposes when the opt-in steady peer
+// Exactly the fourteen counters the SDK exposes when the opt-in steady peer
 // window is on. The block is absent for older SDKs or when the option is off.
 export function projectSteadyPeerWindow(input) {
   if (!object(input)) return null;

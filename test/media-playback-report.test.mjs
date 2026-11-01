@@ -538,9 +538,10 @@ test('a startup release reports which rule released it and keeps its one-shot co
 
 
 const STEADY_KEYS = ['opened', 'closedHeadroom', 'leaseWaits', 'waitHave', 'waitLapsed', 'waitWindowEnd',
-  'takeUpWindowEnd', 'leasesIgnored', 'peerOnlyStarted', 'peerOnlyDelivered', 'peerOnlyFallback', 'fetchRenewalsSent'];
+  'takeUpWindowEnd', 'leasesIgnored', 'peerOnlyStarted', 'peerOnlyDelivered', 'peerOnlyFallback', 'fetchRenewalsSent',
+  'leaseYields', 'leaseYieldsLapsed'];
 
-test('the twelve steady peer window counters are projected as non-negative safe integers', () => {
+test('the fourteen steady peer window counters are projected as non-negative safe integers', () => {
   const p = fixture();
   const steadyPeerWindow = Object.fromEntries(STEADY_KEYS.map((key, i) => [key, i + 1]));
   p.at(1000); p.report.record({ peerAttemptDiagnostics: { steadyPeerWindow } });
@@ -551,10 +552,11 @@ test('a bad steady peer window counter becomes null without disturbing the other
   const p = fixture();
   const steadyPeerWindow = Object.fromEntries(STEADY_KEYS.map(key => [key, 3]));
   Object.assign(steadyPeerWindow, { opened: -1, leaseWaits: 1.5, waitHave: '2', waitLapsed: Number.MAX_SAFE_INTEGER + 1,
-    waitWindowEnd: NaN, takeUpWindowEnd: Infinity, leasesIgnored: null, peerOnlyStarted: {} });
+    waitWindowEnd: NaN, takeUpWindowEnd: Infinity, leasesIgnored: null, peerOnlyStarted: {}, leaseYields: -2, leaseYieldsLapsed: '1' });
   p.at(1000); p.report.record({ peerAttemptDiagnostics: { steadyPeerWindow } });
   const row = p.report.snapshot().samples[0].steadyPeerWindow;
-  for (const key of ['opened', 'leaseWaits', 'waitHave', 'waitLapsed', 'waitWindowEnd', 'takeUpWindowEnd', 'leasesIgnored', 'peerOnlyStarted']) {
+  for (const key of ['opened', 'leaseWaits', 'waitHave', 'waitLapsed', 'waitWindowEnd', 'takeUpWindowEnd', 'leasesIgnored', 'peerOnlyStarted',
+    'leaseYields', 'leaseYieldsLapsed']) {
     assert.equal(row[key], null, key);
   }
   for (const key of ['closedHeadroom', 'peerOnlyDelivered', 'peerOnlyFallback', 'fetchRenewalsSent']) assert.equal(row[key], 3, key);
