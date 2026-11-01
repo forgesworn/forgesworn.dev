@@ -42,9 +42,18 @@ baselines). On this source, with a 0 ms join, the shares were 29.75 % and
 51.36 %, 18.21 % and 20.23 %, and 37.33 % and 51.06 % (rooms 44.16 %, 19.18 %
 and 43.95 %). All four runs had zero stalls, player errors and dropped frames,
 with buffers of 16 to 22 s to the end. Sharing tracked the link: the weakest
-attempt ran at 1.9 MB/s per origin request. These are single readings. This
-revision has not yet been measured on the deployed page, and none of this is
-public-network, NAT, physical-device or TLS-route evidence. The previous pin
+attempt ran at 1.9 MB/s per origin request. These are single readings. Measured on the deployed page on 1 November 2026,
+again as two headless viewers on one Mac with controlled signalling and no
+module override: with a 0 ms join, 52.90 % and 36.06 % (room 44.48 %) with one
+1.2 s stall on the joining viewer four seconds after its first frame, then
+34.63 % and 56.82 % (room 45.76 %) clean; with a 25 s join, 25.89 % and 45.85 %
+(room 35.51 %) clean, then one run in which the two viewers stayed connected but
+exchanged no media at all (0 % each, playback clean), then 35.58 % and 53.21 %
+(room 44.06 %) clean; two further attempts failed in the test harness before
+playback and observed nothing. The two anomalies are recorded and unexplained;
+neither recurred in the next observed run of its kind. These remain single
+readings on one home link, and none of this is public-network, NAT,
+physical-device or TLS-route evidence. The previous pin
 was `9a7437da7712ee7d597ee4fff7057ccafe4a8368`
 ([source change](https://github.com/forgesworn/relayswarm/commit/9a7437da7712ee7d597ee4fff7057ccafe4a8368)),
 which added the startup-reservoir release rules. Those rules answer a failed start observed on
