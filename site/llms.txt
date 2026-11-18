@@ -33,6 +33,7 @@
 
 ## Key libraries
 
+- [ForgeSworn QR](https://forgesworn.github.io/qr/): QR encoding and decoding for browsers, workers, Node, Kotlin/JVM and Rust, with a `no_std` encoder for embedded Rust. The docs include runnable examples and a browser demo.
 - [toll-booth](https://github.com/forgesworn/toll-booth): L402 middleware, any HTTP API becomes Lightning-payable in one line (npm: @forgesworn/toll-booth). Try `npx @forgesworn/toll-booth demo` or the live demo at https://jokes.forgesworn.dev
 - [402-mcp](https://github.com/forgesworn/402-mcp): MCP client so AI agents can discover, pay for, and consume L402/x402 APIs (npm: 402-mcp)
 - [nwc-kit](https://github.com/forgesworn/nwc-kit): small, security-focused NIP-47 Nostr Wallet Connect client (npm: @forgesworn/nwc-kit); site at https://nwc-kit.forgesworn.dev
