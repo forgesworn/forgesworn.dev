@@ -20,7 +20,7 @@ Start with the task and target runtime below. Follow the project’s documentati
 
 ## Nostr identity, signing and trust
 
-- [signet-login](https://github.com/forgesworn/signet-login): Add Nostr sign-in using browser extensions, remote signers or QR pairing. npm `signet-login`. Verify the login proof on your server.
+- [signet-login](https://github.com/forgesworn/signet-login): Add sign-in without a password to a website or app: visitors use the Signet app on this device or scan a QR code with their phone, or bring a Nostr browser extension or remote signer. npm `signet-login`. Verify the login proof on your server.
 - [signet-verify](https://github.com/forgesworn/signet-verify): Verify Signet age credentials in a browser integration. npm `signet-verify`.
 - [Signet Protocol](https://github.com/forgesworn/signet): Implement Signet auth and identity events. npm `signet-protocol`. See [signet-protocol-rs](https://github.com/forgesworn/signet-protocol-rs) for the supported Rust wire surface.
 - [nsec-tree](https://github.com/forgesworn/nsec-tree): Derive deterministic Nostr personas from one master secret. npm `nsec-tree`. See [nsec-tree-py](https://github.com/forgesworn/nsec-tree-py) for Python and [nsec-tree-cli](https://github.com/forgesworn/nsec-tree-cli) for command-line use.
