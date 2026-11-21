@@ -471,6 +471,23 @@
         clip-path: polygon(50% 4%, 94% 88%, 6% 88%);
       }
 
+      .start-matchup__crest[data-civilization="random"] {
+        --tribe-color: #4a4f43;
+        --tribe-trim: #f2d872;
+        border-radius: 6px;
+      }
+
+      .start-matchup__crest[data-civilization="random"]::after {
+        content: "?";
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        color: var(--tribe-trim);
+        font-size: 16px;
+        font-weight: 950;
+      }
+
       .start-matchup__crest[data-civilization="greek"] {
         --tribe-color: #315d9e;
         --tribe-trim: #f0efe4;
@@ -604,8 +621,15 @@
         display: none;
       }
 
-      .menu-screen.is-event .start-panel--home .menu-subtitle {
+      .menu-screen.is-event .start-panel--home .menu-subtitle,
+      .menu-screen.is-event .start-difficulty {
         display: none;
+      }
+
+      .start-tribe-card.start-difficulty-card {
+        --tribe-color: #7a6a3a;
+        flex-basis: 120px;
+        min-width: 112px;
       }
 
       .start-event__head {
@@ -686,10 +710,10 @@
         }
       }
     </style>
-    <script type="module" crossorigin src="/forge-realms/assets/game-DKwePmz4.js"></script>
+    <script type="module" crossorigin src="/forge-realms/assets/game-36UEjd1Z.js"></script>
     <link rel="modulepreload" crossorigin href="/forge-realms/assets/rolldown-runtime-ciTZEWaI.js">
     <link rel="modulepreload" crossorigin href="/forge-realms/assets/modulepreload-polyfill-Cf3xff8G.js">
-    <link rel="stylesheet" crossorigin href="/forge-realms/assets/game-CvEu7uRG.css">
+    <link rel="stylesheet" crossorigin href="/forge-realms/assets/game-D5vj43Qe.css">
   </head>
   <body>
     <div id="app">
@@ -723,7 +747,7 @@
                 </div>
                 <span class="start-matchup__versus">vs</span>
                 <div class="start-matchup__side start-matchup__side--rival">
-                  <span class="start-matchup__label"><strong data-start-matchup-rival-label>Egyptian</strong><span>Rival tribe</span></span>
+                  <span class="start-matchup__label"><strong data-start-matchup-rival-label>Egyptian</strong><span data-start-matchup-rival-note>Rival tribe</span></span>
                   <span class="start-matchup__crest" data-civilization="egyptian" data-start-matchup-rival-crest aria-hidden="true"></span>
                 </div>
               </div>
@@ -739,7 +763,7 @@
               <div class="start-setup-header">
                 <p class="start-identity__eyebrow">Realm Setup</p>
                 <h2>Choose your start</h2>
-                <p>Pick a tribe, link Signet if you want a persistent Forge identity, then begin.</p>
+                <p>Pick your tribe, your rival and how hard it plays, link Signet if you want a persistent Forge identity, then begin.</p>
               </div>
               <div class="start-tribe" role="group" aria-label="Choose tribe">
                 <p class="start-identity__eyebrow">Choose Tribe</p>
@@ -758,6 +782,56 @@
                     <span class="start-tribe-card__top"><span class="start-tribe-card__crest" aria-hidden="true"></span><strong>Greek</strong></span>
                     <span>Harder-hitting infantry and siege support.</span>
                     <span class="start-tribe-card__status" data-start-civilization-status>Choose</span>
+                  </button>
+                </div>
+              </div>
+              <div class="start-tribe start-difficulty start-rival" role="group" aria-label="Choose rival tribe">
+                <p class="start-identity__eyebrow">Rival Tribe</p>
+                <div class="start-tribe__grid">
+                  <button type="button" class="start-tribe-card start-difficulty-card" data-start-rival="auto" aria-pressed="true">
+                    <strong>Classic</strong>
+                    <span data-start-rival-detail>Classic pairing.</span>
+                    <span class="start-tribe-card__status" data-start-rival-status>Selected</span>
+                  </button>
+                  <button type="button" class="start-tribe-card start-difficulty-card" data-start-rival="random" aria-pressed="false">
+                    <strong>Random</strong>
+                    <span>Any tribe, drawn when the realm begins.</span>
+                    <span class="start-tribe-card__status" data-start-rival-status>Choose</span>
+                  </button>
+                  <button type="button" class="start-tribe-card start-difficulty-card" data-start-rival="yamato" aria-pressed="false">
+                    <strong>Yamato</strong>
+                    <span>Fast scouts and infantry.</span>
+                    <span class="start-tribe-card__status" data-start-rival-status>Choose</span>
+                  </button>
+                  <button type="button" class="start-tribe-card start-difficulty-card" data-start-rival="egyptian" aria-pressed="false">
+                    <strong>Egyptian</strong>
+                    <span>Durable priests, strong economy.</span>
+                    <span class="start-tribe-card__status" data-start-rival-status>Choose</span>
+                  </button>
+                  <button type="button" class="start-tribe-card start-difficulty-card" data-start-rival="greek" aria-pressed="false">
+                    <strong>Greek</strong>
+                    <span>Hard-hitting infantry and siege.</span>
+                    <span class="start-tribe-card__status" data-start-rival-status>Choose</span>
+                  </button>
+                </div>
+              </div>
+              <div class="start-tribe start-difficulty" role="group" aria-label="Choose rival difficulty">
+                <p class="start-identity__eyebrow">Rival Difficulty</p>
+                <div class="start-tribe__grid">
+                  <button type="button" class="start-tribe-card start-difficulty-card" data-start-difficulty="easy" aria-pressed="false">
+                    <strong>Easy</strong>
+                    <span>Slower raids, no assault before 15 minutes.</span>
+                    <span class="start-tribe-card__status" data-start-difficulty-status>Choose</span>
+                  </button>
+                  <button type="button" class="start-tribe-card start-difficulty-card" data-start-difficulty="normal" aria-pressed="true">
+                    <strong>Normal</strong>
+                    <span>Steady raids, assaults from the Tool Age.</span>
+                    <span class="start-tribe-card__status" data-start-difficulty-status>Selected</span>
+                  </button>
+                  <button type="button" class="start-tribe-card start-difficulty-card" data-start-difficulty="hard" aria-pressed="false">
+                    <strong>Hard</strong>
+                    <span>Early, larger raids and frequent assaults.</span>
+                    <span class="start-tribe-card__status" data-start-difficulty-status>Choose</span>
                   </button>
                 </div>
               </div>
